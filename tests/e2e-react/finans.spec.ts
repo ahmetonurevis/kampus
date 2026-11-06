@@ -728,6 +728,85 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-040, K-06: önizleme öğrenim sözleşmesini ve paket satışını ayrı ayrı gösterir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: [],
+      students: ['s21'],
+      tariffYears: ['current'],
+    })
+    const client = await api(school.user('yonetici'))
+    const made = await client.post('/api/v1/finance/packages', {
+      kind: 'hours',
+      name: '40 saatlik paket',
+      lessonHours: 40,
+    })
+    expect(made.status, 'paket').toBe(201)
+    const packageId = (made.body as { data: { id: string } }).data.id
+    const quote = await client.post('/api/v1/finance/package-sales/quote', {
+      packageId,
+      studentId: 's21',
+      installmentCount: 2,
+    })
+    expect(quote.status, 'satış önizlemesi').toBe(200)
+    const sold = await client.post(
+      '/api/v1/finance/package-sales',
+      {
+        packageId,
+        studentId: 's21',
+        installmentCount: 2,
+        tariffId: (quote.body as { data: { tariffId: string } }).data.tariffId,
+        firstDueDate: '2026-12-01',
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(sold.status, 'paket satışı').toBe(201)
+    const student = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { name: string } }
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByLabel('Öğrenci').selectOption({ label: student.data.record.name })
+    await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+
+    await expect(dialog.getByText('Yürürlükteki 2 sözleşme hesaba girdi.')).toBeVisible()
+    const packageLine = dialog.getByRole('region', {
+      name: 'Dil kursu paket sözleşmesi: 40 saatlik paket',
+    })
+    await expect(packageLine).toContainText('Kullanım (0 / 40 ders saati, kayıttan)')
+    await expect(packageLine).toContainText('İade edilen kalan saat')
+    await expect(dialog.getByRole('region', { name: 'Toplam' })).toContainText('Kalan borç')
+    await expect(dialog).toContainText('paketlerin kalan saati iade edilmiş yazılır')
+
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    await page
+      .getByRole('button', { name: `${student.data.record.name} hesap dökümünü görüntüle` })
+      .click()
+    await expect(
+      page.getByRole('dialog', { name: 'Hesap dökümü' }).getByRole('region', {
+        name: 'Dil kursu paket sözleşmesi: 40 saatlik paket',
+      }),
+    ).toBeVisible()
+    await page.keyboard.press('Escape')
+    const sale = (
+      (await client.get('/api/v1/finance/package-sales?studentId=s21')).body as {
+        data: { remainingHours: number }[]
+      }
+    ).data[0]
+    expect(sale?.remainingHours).toBe(0)
+  })
+
   test('DOM-FIN-050, -052: tahsilat dekontu PDF açılır; veli kendi tahsilatını ve dekontunu görür', async ({
     page,
     loginAs,

@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
+  contractLineRows,
+  contractLinesToShow,
   payRefundSchema,
   WITHDRAWAL_REASON_LABELS,
   WITHDRAWAL_REASONS,
@@ -227,7 +229,54 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
   )
 }
 
+function BreakdownRows({ rows }: { rows: readonly (readonly [string, string])[] }) {
+  return rows.map(([label, value]) => (
+    <div key={label} className="flex justify-between gap-4 border-b py-1.5">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium">{value}</dd>
+    </div>
+  ))
+}
+
+/** Birden çok sözleşmede ve pakette her sözleşme ayrı başlıkla, ardından tek bakiye (K-06). */
+function ContractBreakdown({ breakdown }: { breakdown: WithdrawalBreakdown }) {
+  const lines = contractLinesToShow(breakdown.contracts)
+  return (
+    <div className="grid gap-4 text-sm">
+      {lines.map((line) => (
+        <section key={line.contractId} aria-label={line.title}>
+          <h4 className="font-semibold">{line.title}</h4>
+          <dl className="grid gap-1">
+            <BreakdownRows rows={contractLineRows(line, breakdown.deductionBasisPoints)} />
+          </dl>
+        </section>
+      ))}
+      <section aria-label="Toplam">
+        <h4 className="font-semibold">Toplam</h4>
+        <p className="text-muted-foreground">
+          Sözleşmelerin sonucu tek bakiyede netleşir; iade ve borç birlikte oluşmaz.
+        </p>
+        <dl className="grid gap-1">
+          {breakdown.creditCents > 0 ? (
+            <BreakdownRows rows={[['Dağıtılmamış tahsilat', money(breakdown.creditCents)]]} />
+          ) : null}
+          <div className="flex justify-between gap-4 py-1.5 font-semibold">
+            <dt>İade</dt>
+            <dd>{money(breakdown.refundCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4 py-1.5 font-semibold">
+            <dt>Kalan borç</dt>
+            <dd>{money(breakdown.debtCents)}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  )
+}
+
 function BreakdownList({ breakdown }: { breakdown: WithdrawalBreakdown }) {
+  if (contractLinesToShow(breakdown.contracts).length > 0)
+    return <ContractBreakdown breakdown={breakdown} />
   const extras = breakdown.extras.reduce((sum, line) => sum + line.paidCents - line.usedCents, 0)
   const lines: readonly [string, string][] = [
     ['Hesap tabanı (net ücret)', money(breakdown.baseCents)],
@@ -250,12 +299,7 @@ function BreakdownList({ breakdown }: { breakdown: WithdrawalBreakdown }) {
   ]
   return (
     <dl className="grid gap-1 text-sm">
-      {lines.map(([label, value]) => (
-        <div key={label} className="flex justify-between gap-4 border-b py-1.5">
-          <dt className="text-muted-foreground">{label}</dt>
-          <dd className="font-medium">{value}</dd>
-        </div>
-      ))}
+      <BreakdownRows rows={lines} />
       <div className="flex justify-between gap-4 py-1.5 font-semibold">
         <dt>İade</dt>
         <dd>{money(breakdown.refundCents)}</dd>
@@ -437,6 +481,7 @@ function StartModal({ onClose }: { onClose: () => void }) {
             id="ayrilis-gorulen"
             label="Görülen gün veya ders saati"
             error={errors.attendedUnits}
+            description="Öğrenim sözleşmesine uygulanır; paket satışının saati kayıttan gelir."
           >
             {(control) => (
               <Input
@@ -497,10 +542,19 @@ function StartModal({ onClose }: { onClose: () => void }) {
       {preview ? (
         <div className="mt-5 rounded-card border bg-surface-soft p-4">
           <h3 className="mb-2 font-semibold">Hesap önizlemesi</h3>
+          {(preview.contracts?.length ?? 0) > 1 ? (
+            <p className="mb-2 text-sm text-muted-foreground">
+              Yürürlükteki {preview.contracts?.length} sözleşme hesaba girdi.
+            </p>
+          ) : null}
           <BreakdownList breakdown={preview} />
           <p className="mt-3 text-sm text-muted-foreground">
             Onayla öğrenci pasifleşir, açık taksitler iptal edilir, ileri tarihli etüt, servis ve
-            kulüp kayıtları sonlanır. Kesinti oranı ve hesap tabanı hukuki doğrulama bekliyor.
+            kulüp kayıtları sonlanır
+            {preview.contracts?.some((line) => line.packageSaleId !== undefined)
+              ? ', paketlerin kalan saati iade edilmiş yazılır'
+              : ''}
+            . Kesinti oranı ve hesap tabanı hukuki doğrulama bekliyor.
           </p>
         </div>
       ) : null}

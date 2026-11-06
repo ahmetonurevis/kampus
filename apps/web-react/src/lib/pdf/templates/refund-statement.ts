@@ -1,7 +1,10 @@
 // İade hesap kırılımı: veri ayrılış kaydından gelir, hesap burada yeniden yazılmaz (DOM-FIN-040, -041; IST-110).
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
+  contractLineRows,
+  contractLinesToShow,
   WITHDRAWAL_REASON_LABELS,
+  type WithdrawalContractLine,
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
@@ -31,6 +34,7 @@ export type RefundWithdrawal = {
     paidCents: number
     creditCents: number
     extras: readonly { kind: string; paidCents: number; usedCents: number }[]
+    contracts?: readonly WithdrawalContractLine[]
   }
 }
 
@@ -64,28 +68,46 @@ export function refundStatementDocument(
     ['Ayrılış nedeni', WITHDRAWAL_REASON_LABELS[withdrawal.reason]],
     ['Gittiği okul', withdrawal.targetSchool ?? '—'],
   ])
-  doc.section('Hesap')
-  const extraBalance = breakdown.extras.reduce(
-    (sum, line) => sum + line.paidCents - line.usedCents,
-    0,
-  )
-  doc.fields([
-    ['Hesap tabanı (net ücret)', money(breakdown.baseCents)],
-    [`Kesinti (%${String(breakdown.deductionBasisPoints / 100)})`, money(breakdown.deductionCents)],
-    [
-      `Kullanım (${String(breakdown.attendedUnits)} / ${String(breakdown.totalUnits)})`,
-      money(breakdown.usageCents),
-    ],
-    ['Hak edilen', money(breakdown.entitledCents)],
-    ...(breakdown.scholarshipExempt
-      ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
-      : []),
-    ['Ödenen öğrenim ücreti', money(breakdown.paidCents)],
-    ['Ek hizmet bakiyesi', money(extraBalance)],
-    ['Dağıtılmamış tahsilat', money(breakdown.creditCents)],
-    ['İade', money(withdrawal.refundCents)],
-    ['Kalan borç', money(withdrawal.debtCents)],
-  ])
+  const contractLines = contractLinesToShow(breakdown.contracts)
+  if (contractLines.length > 0) {
+    // Birden çok sözleşmede ve pakette toplam satırı kullanımı anlatamaz (K-06).
+    for (const line of contractLines) {
+      doc.section(line.title)
+      doc.fields(contractLineRows(line, breakdown.deductionBasisPoints))
+    }
+    doc.section('Toplam')
+    doc.fields([
+      ['Dağıtılmamış tahsilat', money(breakdown.creditCents)],
+      ['İade', money(withdrawal.refundCents)],
+      ['Kalan borç', money(withdrawal.debtCents)],
+    ])
+  } else {
+    doc.section('Hesap')
+    const extraBalance = breakdown.extras.reduce(
+      (sum, line) => sum + line.paidCents - line.usedCents,
+      0,
+    )
+    doc.fields([
+      ['Hesap tabanı (net ücret)', money(breakdown.baseCents)],
+      [
+        `Kesinti (%${String(breakdown.deductionBasisPoints / 100)})`,
+        money(breakdown.deductionCents),
+      ],
+      [
+        `Kullanım (${String(breakdown.attendedUnits)} / ${String(breakdown.totalUnits)})`,
+        money(breakdown.usageCents),
+      ],
+      ['Hak edilen', money(breakdown.entitledCents)],
+      ...(breakdown.scholarshipExempt
+        ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
+        : []),
+      ['Ödenen öğrenim ücreti', money(breakdown.paidCents)],
+      ['Ek hizmet bakiyesi', money(extraBalance)],
+      ['Dağıtılmamış tahsilat', money(breakdown.creditCents)],
+      ['İade', money(withdrawal.refundCents)],
+      ['Kalan borç', money(withdrawal.debtCents)],
+    ])
+  }
   doc.section('Ödeme')
   doc.fields([
     ['İade son günü', dateLabel(withdrawal.refundDueDate, DAY)],

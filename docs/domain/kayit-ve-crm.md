@@ -171,7 +171,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Ücret iadesi ayrılış tarihine göre hesaplanır; neden verisi kayıp analizi için gerekir.
 - **Kaynak:** ÖÖKY md. 56/3.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`. Dil okulunda kayıt dondurma yok.
+- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`; hesaba bütün yürürlükteki sözleşmeler girer (K-06, `DOM-FIN-040`). Dil okulunda kayıt dondurma yok.
 
 ### DOM-KAY-025 · Borçlu öğrencinin kaydı yenilenmeyebilir
 

@@ -3132,6 +3132,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/installment-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taksitleri dosyadan aktar
+         * @description Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: `kimlik no`, `taksit no`, `tutar kuruş` (tamsayı kuruş), `vade`; isteğe bağlı `öğrenci adı` (verilirse kayıtla eşleşmeli), `ödeme tarihi` ve `ödeme yöntemi` (birlikte), `eğitim yılı` (boşsa kurumun etkin yılı). `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `installment_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (`contract_approved`), plan toplamı sözleşmeyi aşamaz (`contract_total_exceeded`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz: kasa ve dönem tahsilatı değişmez. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importInstallments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -10145,6 +10165,52 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRowInput"][];
         };
+        InstallmentImportRowInput: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            /** @description Kimlikle bulunan öğrencinin kayıtlı adı */
+            studentName: string | null;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            installment: number | null;
+            /** @description Tutar, kuruş */
+            amountCents: number | null;
+            /** @description Vade, `YYYY-MM-DD` */
+            dueDate: string | null;
+            /** @description Ödeme günü, `YYYY-MM-DD`; açık taksitte `null` */
+            paidDate: string | null;
+            method: ("Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet") | null;
+            academicYear: number | null;
+            /** @description Taksit öğrencinin sözleşmesine bağlanacak mı */
+            contractLinked: boolean;
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        InstallmentImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) taksit sayısı */
+            readyCount: number;
+            /** @description Kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Sözleşmeye bağlanan taksit sayısı */
+            linkedCount: number;
+            /** @description Yazılacak taksitlerin toplamı, kuruş */
+            totalCents: number;
+            /** @description Bunların ödenmiş olanlarının toplamı, kuruş */
+            paidCents: number;
+            /** @description Yalnız önizlemede dolu; kimlik maskeli */
+            rows: components["schemas"]["InstallmentImportRowInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -14399,6 +14465,52 @@ export interface components {
             existingGuardianCount: number;
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRow"][];
+        };
+        InstallmentImportRow: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            /** @description Kimlikle bulunan öğrencinin kayıtlı adı */
+            studentName: string | null;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            installment: number | null;
+            /** @description Tutar, kuruş */
+            amountCents: number | null;
+            /** @description Vade, `YYYY-MM-DD` */
+            dueDate: string | null;
+            /** @description Ödeme günü, `YYYY-MM-DD`; açık taksitte `null` */
+            paidDate: string | null;
+            method: ("Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet") | null;
+            academicYear: number | null;
+            /** @description Taksit öğrencinin sözleşmesine bağlanacak mı */
+            contractLinked: boolean;
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        InstallmentImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) taksit sayısı */
+            readyCount: number;
+            /** @description Kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Sözleşmeye bağlanan taksit sayısı */
+            linkedCount: number;
+            /** @description Yazılacak taksitlerin toplamı, kuruş */
+            totalCents: number;
+            /** @description Bunların ödenmiş olanlarının toplamı, kuruş */
+            paidCents: number;
+            /** @description Yalnız önizlemede dolu; kimlik maskeli */
+            rows: components["schemas"]["InstallmentImportRow"][];
         };
     };
     responses: never;
@@ -33576,6 +33688,122 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["StudentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importInstallments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstallmentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstallmentImportResult"];
                     };
                 };
             };

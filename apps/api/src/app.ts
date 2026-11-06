@@ -32,6 +32,7 @@ import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
@@ -400,6 +401,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   registerEnrollmentImportRoutes(app)
+  registerFinanceInstallmentImportRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

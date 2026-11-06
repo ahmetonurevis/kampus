@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { PACKAGE_KINDS, PACKAGE_SALE_STATUSES } from '@kampus/school-core/lib/finance-packages.ts'
+import { contractPaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
@@ -49,6 +50,9 @@ export const quoteResponse = dataResponse(
     netCents: z.number().int().describe('İndirimden sonra öğrenim ücreti'),
     extras: z.array(lineSchema).describe('Ayrı borç kalemleri (DOM-FIN-003)'),
     installments: z.array(z.number().int()).describe('Öğrenim taksitleri, kuruş'),
+    paymentTerm: contractPaymentTermSchema
+      .nullable()
+      .describe('Taksit sayısının ilanlı koşulu (DOM-FIN-013); koşulsuz eski tarifede boş'),
     expiresDate: z.string().nullable().describe('Son kullanma günü; boşsa süresiz'),
   }),
 )

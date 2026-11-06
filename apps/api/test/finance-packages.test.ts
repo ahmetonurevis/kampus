@@ -218,6 +218,38 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     log: app.log,
   })
 
+  test('DOM-FIN-013: önizleme ve satış ilanlı ödeme koşuluna bağlıdır, koşul sözleşmeye kopyalanır', async () => {
+    const a = await ready()
+    await db
+      .update(feeTariffs)
+      .set({
+        paymentTerms: [
+          {
+            kind: 'installment',
+            minInstallments: 2,
+            maxInstallments: 4,
+            discountPercentBasisPoints: 300,
+            discountAmountCents: null,
+          },
+        ],
+      })
+      .where(eq(feeTariffs.id, a.tariffId))
+    const quote = await post(`${SALES}/quote`, a.admin, a.quote)
+    assert.equal(quote.statusCode, 200, quote.body)
+    const price = quote.json().data
+    assert.equal(price.paymentTerm.installmentCount, 4)
+    assert.deepEqual(price.discounts, [{ kind: 'payment_term', amountCents: 60_000 }])
+    assertError(
+      await post(`${SALES}/quote`, a.admin, { ...a.quote, installmentCount: 6 }),
+      422,
+      'payment_term_not_in_tariff',
+    )
+    const made = await sold(a)
+    const contract = await get(`/api/v1/collections/contracts/${made.contractId}`, a.admin)
+    assert.equal(contract.statusCode, 200, contract.body)
+    assert.equal(contract.json().data.record.paymentTerm.installmentCount, 4)
+  })
+
   test('DOM-YTK-001: her uç oturumsuz 401', async () => {
     const id = randomUUID()
     assertError(await get(PACKAGES, null), 401)

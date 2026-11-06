@@ -19,6 +19,11 @@ import {
 import { DomainError } from './errors.ts'
 import { FEE_DISCOUNT_KINDS, FEE_ITEM_KINDS } from './fee-tariffs.ts'
 import { dayKey } from './format.ts'
+import {
+  assertEarlyPaymentOnUpfront,
+  resolvePaymentTerm,
+  type ContractPaymentTerm,
+} from './payment-terms.ts'
 import { installmentAmounts } from './payments.ts'
 import { dueDateOf } from './renewals.ts'
 
@@ -262,6 +267,8 @@ export interface PackagePrice {
   netCents: number
   extras: ExtraLine[]
   installments: number[]
+  /** Taksit sayısının ilanlı koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`. */
+  paymentTerm: ContractPaymentTerm | null
   /** Son kullanma günü (Europe/Istanbul); süresiz pakette `null`. */
   expiresDate: string | null
 }
@@ -326,8 +333,12 @@ function pricePackage(
     )
   const announcedCents = purchasedHours * announcedHourlyCents
   const grossCents = purchasedHours * hourlyCents
+  // Taksit sayısı ilanlı koşula bağlanır, koşulun fiyat farkı indirim kalemi olur (DOM-FIN-013).
+  const paymentTerm = resolvePaymentTerm(tariff.paymentTerms, data.installmentCount)
+  assertEarlyPaymentOnUpfront(paymentTerm, data.discounts)
   const discounts = discountLines(tariff.discounts, announcedCents, data.discounts, {
     canApproveCapException: context.canApproveCapException,
+    paymentTerm,
   })
   const discountCents = discounts.reduce((sum, line) => sum + line.amountCents, 0)
   const netCents = grossCents - discountCents
@@ -370,6 +381,7 @@ function pricePackage(
       netCents,
       extras: extraLines(tariff.items, level ?? '', data.extras),
       installments: installmentAmounts(netCents, data.installmentCount),
+      paymentTerm,
       expiresDate: pkg.validityDays === null ? null : addDays(dayKey(now), pkg.validityDays),
     },
   }
@@ -481,6 +493,7 @@ export function sellPackage(
     extras: price.extras,
     approvedByUserId: context.approvedByUserId,
     payer: !parent || isNotGuardian(parent) ? 'student' : 'guardian',
+    ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
   })
   state.invoices.push(...invoices)
   return {

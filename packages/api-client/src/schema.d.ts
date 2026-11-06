@@ -2471,7 +2471,7 @@ export interface paths {
         put?: never;
         /**
          * Paket satışını önizle
-         * @description Hiçbir kayıt yazmaz; satışla aynı kuralları çalıştırır (DOM-DIL-050). Saat × saat ücreti − ilanlı indirimler, taksitler ve son kullanma günü döner. Yayımlı tarife yoksa 422 `tariff_not_published`, ilan üstü saat ücreti 422 `package_above_tariff`, indirim ve ilan altı fiyat toplamı %50'yi aşarsa 422 `discount_cap_exceeded`, kur etkin değilse 422 `package_course_inactive`. Olmayan paket ya da öğrenci 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz; satışla aynı kuralları çalıştırır (DOM-DIL-050). Saat × saat ücreti − ilanlı indirimler, taksitler, ödeme koşulu ve son kullanma günü döner. İlanda olmayan taksit sayısı 422 `payment_term_not_in_tariff`, peşin koşulu dışında peşin indirimi 422 `early_payment_requires_upfront` (DOM-FIN-013). Yayımlı tarife yoksa 422 `tariff_not_published`, ilan üstü saat ücreti 422 `package_above_tariff`, indirim ve ilan altı fiyat toplamı %50'yi aşarsa 422 `discount_cap_exceeded`, kur etkin değilse 422 `package_course_inactive`. Olmayan paket ya da öğrenci 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
          */
         post: operations["quotePackageSale"];
         delete?: never;
@@ -29152,6 +29152,16 @@ export interface operations {
                             }[];
                             /** @description Öğrenim taksitleri, kuruş */
                             installments: number[];
+                            /** @description Taksit sayısının ilanlı koşulu (DOM-FIN-013); koşulsuz eski tarifede boş */
+                            paymentTerm: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                                installmentCount: number;
+                            } | null;
                             /** @description Son kullanma günü; boşsa süresiz */
                             expiresDate: string | null;
                         };

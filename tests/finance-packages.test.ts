@@ -592,3 +592,73 @@ test('DOM-DIL-051: süre uzatma yeni günü ister; süresiz ve saati biten paket
   assert.throws(() => planPackageExtension(sale, { ...body, reason: ' ' }, TODAY), isZodError)
   assert.throws(() => planPackageExtension(sale, { expiresDate: '2026-12-01' }, TODAY), isZodError)
 })
+
+test('DOM-FIN-013, DOM-DIL-050: paket satışında taksit sayısı ilanlı koşula bağlanır, koşulun fiyat farkı indirim olur', () => {
+  const state = seed()
+  const context: PackageSaleContext = {
+    ...CONTEXT,
+    tariff: {
+      ...TARIFF,
+      paymentTerms: [
+        {
+          kind: 'upfront',
+          minInstallments: 1,
+          maxInstallments: 1,
+          discountPercentBasisPoints: null,
+          discountAmountCents: null,
+        },
+        {
+          kind: 'installment',
+          minInstallments: 2,
+          maxInstallments: 4,
+          discountPercentBasisPoints: 300,
+          discountAmountCents: null,
+        },
+      ],
+    },
+  }
+  const body = { packageId: PACKAGE_ID, studentId: 's3' }
+
+  const term = quotePackageSale(state, { ...body, installmentCount: 3 }, NOW, context)
+  assert.equal(term.paymentTerm?.kind, 'installment')
+  assert.equal(term.paymentTerm?.installmentCount, 3)
+  assert.deepEqual(term.discounts, [{ kind: 'payment_term', amountCents: 60_000 }])
+  assert.equal(term.netCents, term.grossCents - 60_000)
+
+  assert.throws(
+    () => quotePackageSale(state, { ...body, installmentCount: 6 }, NOW, context),
+    isDomainError('payment_term_not_in_tariff'),
+  )
+  assert.throws(
+    () =>
+      quotePackageSale(
+        state,
+        { ...body, installmentCount: 3, discounts: ['early_payment'] },
+        NOW,
+        context,
+      ),
+    isDomainError('early_payment_requires_upfront'),
+  )
+  const upfront = quotePackageSale(
+    state,
+    { ...body, installmentCount: 1, discounts: ['early_payment'] },
+    NOW,
+    context,
+  )
+  assert.equal(upfront.paymentTerm?.kind, 'upfront')
+
+  sellPackage(
+    state,
+    { ...body, installmentCount: 3, tariffId: TARIFF.id, firstDueDate: TODAY },
+    makeIds(),
+    NOW,
+    { ...context, approvedByUserId: 'test-user' },
+  )
+  assert.equal(state.contracts.at(-1)?.paymentTerm?.installmentCount, 3)
+})
+
+test('DOM-FIN-013: koşulsuz eski tarifede paket satışı önceki gibi hesaplanır', () => {
+  const quote = quotePackageSale(seed(), { ...QUOTE, installmentCount: 12 }, NOW, CONTEXT)
+  assert.equal(quote.paymentTerm, null)
+  assert.deepEqual(quote.discounts, [])
+})

@@ -52,7 +52,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 
 - **Kural:** `DOM-FIN-013`, `DOM-FIN-004`; ADR 0007 açık soruları. Muhasebe tarafı M-06.
 - **Soru:** Kartla ödemede ödeme kuruluşunun kestiği komisyonu veliye ayrı bir tutar olarak yansıtmak, ilan dışı ad altında ücret alma ve süreli ödemede ilan ücretini aşma yasağına (ÖÖKY md. 54/1-a, b, d ve 55/4) aykırı mı?
-- **Bugünkü varsayım:** Karar verilmedi. Sistem yalnız tarifede ilan edilmiş kalemlerle borç açtığı için komisyonu veliye yansıtamaz; komisyon kurumda kalır.
+- **Bugünkü varsayım:** Karar verilmedi. Sistem yalnız tarifede ilan edilmiş kalemlerle borç açtığı ve ödeme koşulu yalnız indirim yönünde fiyat farkı taşıdığı için (`lib/payment-terms.ts`) komisyonu veliye yansıtamaz; komisyon kurumda kalır.
 - **Kodda:** Çevrim içi ödeme kapalıdır (`invoice.payOnline`, `TODO(payment-provider)`); tarife kalem türleri sabit listedir (`FEE_ITEM_KINDS`).
 - **Cevap değişirse:** Yansıtma uygunsa tarifeye ilanlı bir kart ödeme farkı kalemi ve sağlayıcı ayarı eklenir; uygun değilse ADR 0007'ye "komisyonu kurum üstlenir" kararı yazılır.
 - **Cevap:** bekleniyor
@@ -164,8 +164,8 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 
 - **Kural:** `DOM-FIN-042`; ister listesi §4.3 "Mesafeli kayıt".
 - **Soru:** Dil okulu paketinin kurum binasına gelinmeden tamamen çevrim içi satılması mesafeli sözleşme sayılır mı; sayılırsa cayma süresi, istisnalar ve ÖÖKY'deki iade kuralıyla ilişkisi nedir (6502 sayılı Kanun, Mesafeli Sözleşmeler Yönetmeliği)?
-- **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz.
-- **Kodda:** Yok; çevrim içi paket satışı yok.
+- **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz. Süre ister listesindeki genel 14 gündür, sözleşme gününden sayılır ve son gün dahildir.
+- **Kodda:** Çevrim içi paket satışı yok. Kural, süre ve ön bilgilendirme verisi saf fonksiyondur (`distanceSaleWithdrawal`, `distanceSalePreInformation`, `lib/finance-distance-sale.ts`); ON-059 ve ON-072 çağıracak.
 - **Cevap değişirse:** Çevrim içi satışta ön bilgilendirme ve cayma metni ile cayma süresi içindeki kesintisiz iade yolu eklenir (IST-078).
 - **Cevap:** bekleniyor
 

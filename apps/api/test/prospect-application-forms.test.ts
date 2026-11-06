@@ -379,7 +379,18 @@ describe('Ön başvuru formu (ON-133)', () => {
       own.version,
     )
     assert.equal(stray.statusCode, 400)
-    assert.equal((await adminCall('GET', SETTINGS, b.admin)).json().data.enabled, true)
+    const rotated = await adminCall(
+      'POST',
+      `${SETTINGS}/rotate-key`,
+      a.admin,
+      { institutionId: b.institution.id },
+      own.version,
+    )
+    assert.equal(rotated.statusCode, 200, rotated.body)
+    assert.notEqual(rotated.json().data.formKey, a.form.formKey)
+    const other = (await adminCall('GET', SETTINGS, b.admin)).json().data
+    assert.equal(other.enabled, true)
+    assert.equal(other.formKey, b.form.formKey)
     assert.equal((await openGet(b.form.formKey)).statusCode, 200)
   })
 

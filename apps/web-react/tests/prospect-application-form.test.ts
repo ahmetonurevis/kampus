@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { prospectApplicationSchema } from '@kampus/school-core/lib/prospect-application-form.ts'
+import { APPLICATION_FORM_ROUTE } from '../src/pages/crm/application-form-route.ts'
 import {
-  APPLICATION_FORM_ROUTE,
   applicationBody,
   applicationDefaults,
   applicationEmbedCode,

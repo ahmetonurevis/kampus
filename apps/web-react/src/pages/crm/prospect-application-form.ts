@@ -7,10 +7,7 @@ import {
   prospectApplicationSchema,
   siteOriginSchema,
 } from '@kampus/school-core/lib/prospect-application-form.ts'
-
-/** Başvuru sayfasının yol parçası ve router yolu; `routes.tsx` ve gömme kodu bu sabitleri kullanır. */
-export const APPLICATION_FORM_PATH = 'basvuru'
-export const APPLICATION_FORM_ROUTE = `${APPLICATION_FORM_PATH}/:formKey`
+import { APPLICATION_FORM_PATH } from './application-form-route.ts'
 
 const { shape } = prospectApplicationSchema
 

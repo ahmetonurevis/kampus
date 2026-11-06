@@ -5,7 +5,7 @@ import { CONTRACT_STATUS_LABELS, contractStatus } from '@kampus/school-core/lib/
 import type { ContractRecord } from '@kampus/react-shared/contract-model.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
 import { Badge, Button, Empty, Sheet, T } from '../../ui/components.tsx'
-import { DetailPair, ListRow, Notice, Screen, Section } from '../../ui/SchoolLayout.tsx'
+import { DetailPair, ListRow, Notice, Screen } from '../../ui/SchoolLayout.tsx'
 import {
   APPROVAL_ON_WEB_NOTICE,
   awaitingApprovalCount,
@@ -13,11 +13,11 @@ import {
   contractFacts,
   contractListItems,
   contractNotice,
-  contractPlanView,
   contractStatusTone,
 } from '../contract-approval.ts'
 import { ListLoading, QueryError, resolveChild, useApiSession, useSelectedChild } from '../shell.ts'
 import { ContractPdf } from './contract-pdf.tsx'
+import { ContractPlanSection } from './contract-plan.tsx'
 import { childOptions, ChildPicker } from './parent-child-picker.tsx'
 
 type StudentRecord = State['students'][number]
@@ -152,12 +152,6 @@ function ContractSheet({
   if (!contract) return null
   const status = contractStatus(contract, contracts)
   const notice = contractNotice(contract, status)
-  const plan = invoices.data
-    ? contractPlanView(
-        contract,
-        invoices.data.map((row) => row.record),
-      )
-    : null
   return (
     <Sheet
       visible
@@ -177,27 +171,12 @@ function ContractSheet({
           <DetailPair key={label} label={label} value={value} />
         ))}
       </View>
-      <Section title={plan?.caption ?? 'Ödeme planı'}>
-        {invoices.error ? (
-          <QueryError error={invoices.error} onRetry={() => void invoices.refetch()} />
-        ) : !plan ? (
-          <ListLoading label="Ödeme planı yükleniyor…" />
-        ) : plan.rows.length === 0 ? (
-          <T muted>Sözleşmeye bağlı taksit yok.</T>
-        ) : (
-          <View accessibilityRole="list">
-            {plan.rows.map((row) => (
-              <ListRow
-                key={row.key}
-                title={row.title}
-                subtitle={row.subtitle}
-                eyebrow={row.amount}
-                badge={row.kind ? <Badge text={row.kind} tone="primary" /> : undefined}
-              />
-            ))}
-          </View>
-        )}
-      </Section>
+      <ContractPlanSection
+        contract={contract}
+        invoices={invoices.data?.map((row) => row.record)}
+        error={invoices.error}
+        onRetry={() => void invoices.refetch()}
+      />
       <ContractPdf contractId={contract.id} institution={institution} />
     </Sheet>
   )

@@ -327,19 +327,28 @@ export function priceEnrollment(
     canApproveCapException: request.canApproveCapException,
   })
   const total = discounts.reduce((sum, line) => sum + line.amountCents, 0)
-  if (new Set(request.extras).size !== request.extras.length)
+  const extras = extraLines(tariff.items, request.level, request.extras)
+  return { grossCents, discounts, netCents: grossCents - total, extras }
+}
+
+/** Seçilen ek hizmetlerin tarifedeki kalemi (DOM-FIN-003); kesin kayıt ve paket satışı ortak. */
+export function extraLines(
+  items: readonly FeeItem[],
+  level: string,
+  kinds: readonly FeeItemKind[],
+): ExtraLine[] {
+  if (new Set(kinds).size !== kinds.length)
     throw new DomainError('extra_duplicate', 'Aynı ek hizmet iki kez seçilemez.', {
       path: ['extras'],
     })
-  const extras = request.extras.map((kind): ExtraLine => {
-    const item = kind === 'tuition' ? undefined : itemFor(tariff.items, kind, request.level)
+  return kinds.map((kind): ExtraLine => {
+    const item = kind === 'tuition' ? undefined : itemFor(items, kind, level)
     if (!item)
       throw new DomainError('extra_not_in_tariff', 'Bu ek hizmet tarifede ilan edilmemiş.', {
         path: ['extras'],
       })
     return { kind, amountCents: item.amountCents }
   })
-  return { grossCents, discounts, netCents: grossCents - total, extras }
 }
 
 type ParentLike = {

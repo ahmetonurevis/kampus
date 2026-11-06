@@ -25,7 +25,9 @@ export const STUDENT_IMPORT_INVALIDATES: readonly (readonly unknown[])[] = [
 export const INSTALLMENT_IMPORT_INVALIDATES: readonly (readonly unknown[])[] = [
   collectionKeyPrefix('invoices'),
   collectionKeyPrefix('contracts'),
-  ['finance'],
+  // Finans kartları, bakiye ve ekstre `['payments', …]`, dönem özeti `['finance-summary', …]`'dedir.
+  ['payments'],
+  ['finance-summary'],
 ]
 
 export function importStudentsRequest(

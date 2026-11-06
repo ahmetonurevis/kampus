@@ -115,11 +115,12 @@ export function installmentImportRow(row: InstallmentImportRowResult): Installme
     identity: row.identityMasked,
     installment: row.installment === null ? '' : String(row.installment),
     amount: row.amountCents === null ? '' : money(row.amountCents),
-    due: row.dueDate === null ? '' : dateLabel(`${row.dueDate}T09:00:00.000Z`),
+    // Aktarım geçmiş yılları da taşır: yılsız tarih yanlış yıla yazılan satırı gizler.
+    due: row.dueDate === null ? '' : dateLabel(`${row.dueDate}T09:00:00.000Z`, { year: 'numeric' }),
     paid:
       row.paidDate === null
         ? 'Açık'
-        : `${dateLabel(`${row.paidDate}T09:00:00.000Z`)} · ${row.method ?? ''}`,
+        : `${dateLabel(`${row.paidDate}T09:00:00.000Z`, { year: 'numeric' })} · ${row.method ?? ''}`,
     contract: row.status === 'ready' ? (row.contractLinked ? 'Bağlanacak' : 'Sözleşmesiz') : '',
   }
 }

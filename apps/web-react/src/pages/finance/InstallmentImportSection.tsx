@@ -17,15 +17,16 @@ const COLUMNS: DataColumn<InstallmentImportTableRow>[] = [
   { key: 'line', label: 'Satır' },
   statusColumn<InstallmentImportTableRow>(),
   { key: 'student', label: 'Öğrenci' },
-  noteColumn<InstallmentImportTableRow>(),
-  { key: 'identity', label: 'Kimlik' },
+  // Pencerede yatay kaydırma olmadan görünsün: onay öncesi asıl sağlama tutar ve ödeme durumudur.
   { key: 'installment', label: 'Taksit' },
   { key: 'amount', label: 'Tutar' },
-  { key: 'due', label: 'Vade' },
   { key: 'paid', label: 'Ödeme' },
+  noteColumn<InstallmentImportTableRow>(),
+  { key: 'due', label: 'Vade' },
   { key: 'contract', label: 'Sözleşme' },
+  { key: 'identity', label: 'Kimlik' },
 ]
-const MOBILE_COLUMNS = ['line', 'student', 'amount', 'status', 'noteText']
+const MOBILE_COLUMNS = ['line', 'student', 'amount', 'paid', 'status', 'noteText']
 const SEARCH_KEYS = ['student', 'noteText']
 
 const toRows = (result: InstallmentImportResult) => result.rows.map(installmentImportRow)

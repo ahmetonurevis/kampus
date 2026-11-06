@@ -148,6 +148,10 @@ test.describe('Pilot aktarımı', () => {
 
     await dialog.getByRole('button', { name: '2 taksit aktar' }).click()
     await expect(toast(page, '2 taksit aktarıldı.')).toBeVisible()
+    // Kartlar aktarımdan sonra yenilenir; geçmiş ödeme tahsilat sayılmaz.
+    const totals = page.getByLabel('Kurum geneli ödeme toplamları')
+    await expect(totals).toContainText('25.000,00 ₺')
+    await expect(totals).toContainText('Ayrıca 12.500,00 ₺ açılış aktarımı')
     const invoices = await records<{ installment: number; paidAt: string | null }>(
       client,
       'invoices',

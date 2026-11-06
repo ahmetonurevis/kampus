@@ -63,9 +63,9 @@ export type InstallmentImportField = keyof typeof INSTALLMENT_IMPORT_COLUMNS
 
 /** İndirilebilir örnek dosya: açık ve ödenmiş taksit; kimlik örnektir, tutar TL'dir. */
 export const INSTALLMENT_IMPORT_SAMPLE = [
-  'kimlik no;öğrenci adı;taksit no;tutar;vade;ödeme tarihi;ödeme yöntemi;eğitim yılı',
-  '10000000146;Ece Demir;1;12.500,00;15.09.2026;14.09.2026;Banka havalesi;2026',
-  '10000000146;Ece Demir;2;12.500,00;15.10.2026;;;2026',
+  'kimlik no;öğrenci adı;taksit no;tutar;vade;ödeme tarihi;eğitim yılı',
+  '10000000146;Ece Demir;1;12.500,00;15.09.2026;14.09.2026;2026',
+  '10000000146;Ece Demir;2;12.500,00;15.10.2026;;2026',
 ].join('\n')
 
 export interface InstallmentImportRow {

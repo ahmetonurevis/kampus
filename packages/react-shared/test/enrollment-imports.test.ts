@@ -58,6 +58,11 @@ describe('pilot aktarımı istekleri (IST-007)', () => {
     assert.ok(STUDENT_IMPORT_INVALIDATES.some((key) => key.includes('students')))
     assert.ok(STUDENT_IMPORT_INVALIDATES.some((key) => key.includes('parents')))
     assert.ok(INSTALLMENT_IMPORT_INVALIDATES.some((key) => key.includes('invoices')))
+    // Finans kartı aktarımdan sonra eski tutarda kalmasın (ON-061, `use-finance-exports.ts` anahtarları).
+    assert.deepEqual(
+      INSTALLMENT_IMPORT_INVALIDATES.filter((key) => key.length === 1),
+      [['payments'], ['finance-summary']],
+    )
   })
 })
 

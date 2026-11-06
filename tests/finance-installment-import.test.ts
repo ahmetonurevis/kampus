@@ -83,6 +83,19 @@ describe('parseInstallmentImport (ON-061)', () => {
     assert.equal(rows.length, 2)
     assert.equal(rows[0]?.amount, '12.500,00')
     assert.equal(rows[0]?.amountCents, '')
+    const sample = planInstallmentImport(
+      state(),
+      rows,
+      context({ identityHolders: new Map([['10000000146', 's-1']]) }),
+    )
+    assert.deepEqual(sample.issues, [], 'örnek dosya hatasız aktarılır')
+    assert.equal(sample.totalCents, 2_500_000)
+    assert.equal(sample.paidCents, 1_250_000)
+    assert.deepEqual(
+      sample.rows.flatMap((item) => item.notices.map((notice) => notice.code)),
+      ['no_contract', 'no_contract'],
+      'örnek dosya saklanmayan sütun istemez',
+    )
     assert.throws(
       () => parseInstallmentImport('kimlik no;taksit no;bedel;vade\n1;1;1;2026-01-01'),
       (error: DomainError) => error.code === 'csv_unknown_column',

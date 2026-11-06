@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query'
+
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
@@ -6,6 +8,8 @@ import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useKampusClient } from './kampus-context.ts'
+import { institutionKey } from './query-keys.ts'
+import { useActiveInstitutionId } from './use-active-institution.ts'
 
 // Kayıt yenileme kancaları (`/finance/renewals`; IST-100, DOM-FIN-005, DOM-KAY-020). Önizleme
 // yazmaz; plan sözleşme ve taksit açar (`Idempotency-Key`), sınıf geçişi ayrı komuttur.
@@ -22,15 +26,23 @@ export type PlanRenewalBody = JsonBody<'planRenewal'>
 export type CreatePriceIndexBody = JsonBody<'createPriceIndex'>
 export type UpdatePriceIndexBody = JsonBody<'updatePriceIndex'>
 export type RenewalListQuery = NonNullable<operations['listRenewals']['parameters']['query']>
+export type OpenRenewalInvitationsBody = JsonBody<'openRenewalInvitations'>
+export type RespondRenewalInvitationBody = JsonBody<'respondRenewalInvitation'>
+export type RenewalInvitationListQuery = NonNullable<
+  operations['listRenewalInvitations']['parameters']['query']
+>
 
 export const RENEWAL_CHANGED_MESSAGE =
   'Kayıt başka biri tarafından değiştirildi. Liste güncellendi.'
 
 const RENEWALS_KEY = ['renewals'] as const
 const PRICE_INDEXES_KEY = ['price-indexes'] as const
+const RENEWAL_INVITATIONS_KEY = ['renewal-invitations'] as const
 /** Plan ve geçiş sözleşme, taksit ve öğrencinin sınıfını değiştirir; finans listeleri de tazelenir. */
 const RENEWAL_WRITES = [
   RENEWALS_KEY,
+  // Davet durumu yenileme kaydından türer (DOM-KAY-027): plan listeyi `planned` yapar.
+  RENEWAL_INVITATIONS_KEY,
   collectionKeyPrefix('renewals'),
   collectionKeyPrefix('contracts'),
   collectionKeyPrefix('invoices'),
@@ -117,6 +129,79 @@ export function useActivateRenewal() {
       }),
     version: (input) => input.version,
     invalidates: RENEWAL_WRITES,
+    messages: { version_conflict: RENEWAL_CHANGED_MESSAGE },
+  })
+}
+
+// --- Yenileme daveti (K-10; DOM-KAY-027) -----------------------------------------------------
+
+export function useRenewalInvitations(
+  query: RenewalInvitationListQuery,
+  options: { enabled?: boolean } = {},
+) {
+  return useApiQuery({
+    key: [...RENEWAL_INVITATIONS_KEY, 'list', query],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/renewal-invitations', { params: { query }, signal }),
+  })
+}
+
+/** Yılın bütün davetleri: davet formu daveti olan öğrenciyi sunmaz. */
+export function useAllRenewalInvitations(academicYear: number) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery({
+    queryKey: institutionKey(institutionId, ...RENEWAL_INVITATIONS_KEY, 'all', academicYear),
+    enabled: institutionId !== null,
+    queryFn: async ({ signal }) => {
+      const read = (page: number) =>
+        runRequest(() =>
+          client.GET('/api/v1/finance/renewal-invitations', {
+            params: { query: { academicYear, page, pageSize: FETCH_PAGE_SIZE } },
+            signal,
+          }),
+        )
+      const first = await read(1)
+      if (first.meta.total > FETCH_ALL_LIMIT) throw new CollectionTooLargeError()
+      const rows = [...first.data]
+      for (let page = 2; rows.length < first.meta.total; page += 1) {
+        const next = await read(page)
+        if (next.data.length === 0) break
+        rows.push(...next.data)
+      }
+      return rows
+    },
+  })
+}
+
+export function useOpenRenewalInvitations() {
+  return useApiCommand({
+    request: (client, body: OpenRenewalInvitationsBody, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/renewal-invitations', {
+        params: { header: { 'idempotency-key': headers['idempotency-key'] } },
+        body,
+      }),
+    invalidates: [RENEWAL_INVITATIONS_KEY],
+  })
+}
+
+export function useRespondRenewalInvitation() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { invitationId: string; version: number; body: RespondRenewalInvitationBody },
+      headers: CommandHeaders,
+    ) =>
+      client.POST('/api/v1/finance/renewal-invitations/{invitationId}/respond', {
+        params: {
+          path: { invitationId: input.invitationId },
+          header: { ...headers, 'if-match': requireIfMatch(headers) },
+        },
+        body: input.body,
+      }),
+    version: (input) => input.version,
+    invalidates: [RENEWAL_INVITATIONS_KEY],
     messages: { version_conflict: RENEWAL_CHANGED_MESSAGE },
   })
 }

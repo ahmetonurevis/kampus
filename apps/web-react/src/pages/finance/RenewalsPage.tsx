@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { use, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useSearchParams } from 'react-router'
 import type { z } from 'zod'
 import { useFeeTariffs } from '@kampus/react-shared/use-fee-tariffs.ts'
 import {
@@ -27,6 +28,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -72,6 +74,8 @@ import {
   type RenewalQuoteView,
 } from './renewal-forms.ts'
 import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
+import { ParentRenewalInvitations } from './ParentRenewalInvitations.tsx'
+import { RenewalInvitationsSection } from './RenewalInvitationsSection.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -104,6 +108,13 @@ const STATUS_FIELD: FilterField = {
 const SORT_KEYS = new Set<string>(SORTABLE)
 const PLAN_FORM = 'yenileme-formu'
 const INDEX_FORM = 'oran-formu'
+
+const VIEW_PARAM = 'gorunum'
+const INVITATIONS_VIEW = 'davetler'
+const VIEW_OPTIONS = [
+  { value: 'plans', label: 'Yenileme planları' },
+  { value: 'invitations', label: 'Davetler' },
+] as const
 
 const periodOf = (year: number) => `${String(year)}–${String(year + 1)}`
 type RenewalItem = {
@@ -152,6 +163,9 @@ export function RenewalsPage({ page }: { page: NavPage }) {
   const csv = useCsvExport()
   const fetchAll = useFetchAllRenewals()
   const [planning, setPlanning] = useState(false)
+  const [params, setParams] = useSearchParams()
+  // Davetler ayrı sekmedir: iki liste aynı ekrana konunca arama ve süzgeç adları çakışır.
+  const view = staff && params.get(VIEW_PARAM) === INVITATIONS_VIEW ? 'invitations' : 'plans'
 
   const status = list.state.filters.status
   const sort = SORT_KEYS.has(list.state.sortKey)
@@ -227,7 +241,22 @@ export function RenewalsPage({ page }: { page: NavPage }) {
           ) : null
         }
       />
+      {staff ? (
+        <LineTabs
+          label="Kayıt yenileme görünümü"
+          value={view}
+          options={VIEW_OPTIONS}
+          onChange={(next) =>
+            setParams(
+              next === 'invitations' ? { [VIEW_PARAM]: INVITATIONS_VIEW } : new URLSearchParams(),
+            )
+          }
+        />
+      ) : null}
+      {role === 'veli' ? <ParentRenewalInvitations childId={childId} /> : null}
+      {view === 'invitations' ? <RenewalInvitationsSection academicYear={academicYear} /> : null}
       <section
+        hidden={view === 'invitations'}
         aria-labelledby="kayit-yenileme-listesi"
         className="panel overflow-hidden rounded-card border bg-surface"
       >
@@ -271,7 +300,7 @@ export function RenewalsPage({ page }: { page: NavPage }) {
           onRowClick={(row) => openRecord(row.id)}
         />
       </section>
-      {staff ? (
+      {staff && view === 'plans' ? (
         <PriceIndexSection canManage={role === 'yonetici'} academicYear={academicYear} />
       ) : null}
       <RenewalDetail renewalId={panel.selectedId} canAct={staff} onClose={panel.close} />
@@ -780,6 +809,12 @@ function PlanModal({
               {line}
             </p>
           ))}
+          {preview !== 'graduate' && preview?.invitationStatus === 'will_not_renew' ? (
+            <p role="note" className="mt-2 rounded-md border bg-warning-soft p-3 text-sm">
+              Veli davete "Yenilemeyecek" yanıtı verdi. Plan yine yapılabilir; önce veliyle
+              görüşmeniz önerilir.
+            </p>
+          ) : null}
           {debtCents > 0 ? (
             <div role="note" className="mt-2 grid gap-2 rounded-md border bg-warning-soft p-3">
               <p className="text-sm">

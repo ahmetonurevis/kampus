@@ -190,6 +190,8 @@ export type RenewalQuoteView = {
   installments: readonly number[]
   /** Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025); sıfırdan büyükse yönetici onayı. */
   outstandingTuitionCents: number
+  /** Hedef yılın yenileme daveti; "yenilemeyecek" planı engellemez, uyarır (DOM-KAY-027). */
+  invitationStatus?: string | null
 }
 
 const discountLabel = (kind: string) =>

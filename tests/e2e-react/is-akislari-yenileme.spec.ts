@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import type { ApiClient } from './support/api.ts'
+import { apiRequest, type ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
 // Kayıt yenileme (IST-100): ücret yayımlı tarifeden ve artış tavanından hesaplanır, yenileme
@@ -305,6 +305,92 @@ test.describe('kayıt yenileme', () => {
     await page.keyboard.press('Escape')
     await expect(preview).toBeHidden()
     await expect(opener).toBeFocused()
+  })
+
+  test('K-10, DOM-KAY-027: yönetici davet açar, ödeyici veli yanıt verir; yenilemeyecek planı engellemez, plan daveti planlandı yapar', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['veli'],
+      students: ['s3'],
+      childIds: ['s3'],
+      collections: ['renewals'],
+      tariffYears: ['current', 'next'],
+    })
+    const client = await api(school.user('yonetici'))
+    const year = await renewalYear(client)
+    const guardians = await client.get('/api/v1/students/s3/guardians')
+    expect(guardians.status).toBe(200)
+    const bond = (
+      guardians.body as { data: { id: string; membershipId: string | null; rowVersion?: number }[] }
+    ).data.find((item) => item.membershipId !== null)
+    const payer = await apiRequest(
+      client.context,
+      'PATCH',
+      `/api/v1/students/s3/guardians/${String(bond?.id)}`,
+      { isPayer: true },
+      { 'if-match': `"${String(bond?.rowVersion ?? 1)}"` },
+    )
+    expect(payer.status, JSON.stringify(payer.body)).toBe(200)
+    const rate = await client.post(`${RENEWALS}/price-indexes`, {
+      academicYear: year,
+      ppiBasisPoints: 4_000,
+      cpiBasisPoints: 3_000,
+      source: 'TÜİK bülteni 53607',
+      bulletinDate: nextDay(-30),
+    })
+    expect(rate.status, JSON.stringify(rate.body)).toBe(201)
+
+    // Personel seçili öğrenciye davet açar; liste durumu gösterir.
+    const admin = await loginAs(school.user('yonetici'))
+    await admin.goto('/yonetici/kayit-yenileme')
+    await admin.getByRole('button', { name: 'Davetler' }).click()
+    const section = admin.getByRole('region', { name: 'Yenileme davetleri' })
+    await section.getByRole('button', { name: 'Davet aç' }).click()
+    const dialog = admin.getByRole('dialog', { name: 'Yenileme daveti aç' })
+    await dialog.getByRole('checkbox', { name: 'Zeynep Demir · 6-A' }).check()
+    await dialog.getByRole('button', { name: 'Davet aç (1)' }).click()
+    await expect(dialog).toBeHidden()
+    const invitations = section.getByRole('table', { name: 'Yenileme davetleri' })
+    await expect(invitations.getByText('Zeynep Demir')).toBeVisible()
+    await expect(invitations.getByText('Bekliyor')).toBeVisible()
+
+    // Ödeyici veli niyetini bildirir; sözleşme ve taksit açılmaz.
+    const parent = await loginAs(school.user('veli'))
+    await parent.goto('/veli/kayit-yenileme?cocuk=s3')
+    const card = parent.getByRole('region', { name: /kayıt yenileme daveti/ })
+    await card.getByLabel('Not (isteğe bağlı)').fill('Taşınıyoruz.')
+    await card.getByRole('button', { name: 'Yenilemeyeceğim' }).click()
+    await expect(card.getByText('Yenilemeyecek')).toBeVisible()
+    await expect(card.getByRole('button', { name: 'Yenilemeyeceğim' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(await renewalOf(client, 's3')).toBeUndefined()
+
+    // Personel yanıtı görür; plan formu uyarır, engellemez. Oturum bağlamda tektir: rol değişir.
+    await loginAs(school.user('yonetici'), { fresh: true })
+    await admin.goto('/yonetici/kayit-yenileme?gorunum=davetler')
+    await expect(invitations.getByText('Taşınıyoruz.')).toBeVisible()
+    await admin.getByRole('button', { name: 'Kayıt yenile' }).click()
+    const form = admin.getByRole('dialog', { name: 'Kayıt yenile' })
+    await form.getByLabel('Öğrenci', { exact: true }).selectOption({ label: 'Zeynep Demir · 6-A' })
+    await form.getByLabel('Yeni sınıf').selectOption({ label: '7-A · Kadıköy Kampüsü' })
+    await form.getByLabel('Taksit sayısı').fill('2')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+    await expect(form.getByText(/Veli davete "Yenilemeyecek" yanıtı verdi/)).toBeVisible()
+    await form.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+    await expect(form).toBeHidden()
+    await expect(invitations.getByText('Planlandı')).toBeVisible()
+
+    // Plan yapılınca veli yanıtı değiştiremez; sözleşme onayı ayrı kalır.
+    await loginAs(school.user('veli'), { fresh: true })
+    await parent.goto('/veli/kayit-yenileme?cocuk=s3')
+    await expect(card.getByRole('button', { name: 'Yenilemek istiyorum' })).toHaveCount(0)
+    await expect(card.getByRole('link', { name: 'Sözleşmeler' })).toBeVisible()
   })
 
   test('veli yenileme işlemi göremez; liste kapsamına daralır', async ({ loginAs }) => {

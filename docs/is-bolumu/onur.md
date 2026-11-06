@@ -214,7 +214,7 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 | ON-136 | Bursluluk sınavı başvurusu: başvuru formu, oturum seçimi, sınav giriş belgesi PDF'i                                 | M     | bekliyor    |                        | bağımlılık: K14 çevrim içi deneme ya da K5 optik                                 |
 | ON-137 | Bursluluk sınavı sonucu ve burs teklifi: sonuçtan burs oranı önerisi, teklif mektubu PDF'i, süreli kabul            | M     | bekliyor    |                        | bağımlılık: DOM-FIN-025 burs programı                                            |
 | ON-138 | Aday iletişim otomasyonu: aşamaya göre zamanlanmış hatırlatma dizisi (görüşme sonrası, teklif süresi)               | M     | bekliyor    |                        | KVKK: hizmet/ticari ayrımı (DOM-ILT-022)                                         |
-| ON-139 | Referans programı takibi: veli referansı, referans indirimi hak edişi ve bildirimi                                  | M     | çalışılıyor | onur/referans-programi | bağımlılık: DOM-FIN-024                                                          |
+| ON-139 | Referans programı takibi: veli referansı, referans indirimi hak edişi ve bildirimi                                  | M     | bitti | 9ea232ba | bağımlılık: DOM-FIN-024; ortak dosya: cross-institution-inventory (izinli); migration 0067; referans paket satışında sunulmaz |
 | ON-140 | Kayıp aday nedeni ve rakip analizi: kaybedilen adayda neden ve tercih edilen kurum, raporda kırılım                 | M     | bitti       | 32a64972               | Ortak dosya: cross-institution-inventory.test.ts (alan-izni, #54)                |
 
 ### K2 · Finans · genişleme

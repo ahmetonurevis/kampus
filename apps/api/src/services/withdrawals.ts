@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
+import { closeStudentServicesOnWithdrawal } from '@kampus/school-core/lib/finance-student-services.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   payerNameOf,
@@ -12,6 +13,7 @@ import {
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { openStudentServicesOf } from '../db/finance-student-services.ts'
 import { allocatedByInvoice, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -26,6 +28,7 @@ import {
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { applyStudentServiceClosures } from './finance-student-services.ts'
 import { notify } from './notify.ts'
 import {
   runCommand,
@@ -162,19 +165,28 @@ export function withdrawStudentCommand(
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
         const payments = await paymentContext(tx, ctx, studentId)
+        const openServices = await openStudentServicesOf(tx, ctx.institutionId, studentId)
         return {
           scalars,
           run: (state, { now, makeId }) => {
             requireAuthorized(actor, 'student.withdraw', {}, state, { now, institutionType })
-            return withdrawStudent(state, studentId, input, makeId, {
+            const plan = withdrawStudent(state, studentId, input, makeId, {
               institutionType,
               ...payments,
               now,
             })
+            const serviceClosures = closeStudentServicesOnWithdrawal(
+              state,
+              openServices,
+              plan.withdrawalDate,
+              payments.allocated,
+            )
+            return { ...plan, serviceClosures }
           },
         }
       },
       after: async (tx, plan) => {
+        await applyStudentServiceClosures(tx, ctx, plan.serviceClosures, 'withdrawal')
         await insertWithdrawal(tx, ctx.institutionId, {
           id,
           studentId: plan.studentId,

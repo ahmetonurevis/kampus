@@ -502,6 +502,53 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assert.deepEqual(await loadRecords(db, a.id, ['renewals', 'contracts', 'invoices']), before)
   })
 
+  test('DOM-FIN-003: aynı yılın açık aboneliğindeki ek hizmet yenilemede ikinci borç açtırmaz', async () => {
+    const a = await ready()
+    const subscribed = await post(
+      '/api/v1/finance/student-services',
+      a.admin,
+      {
+        studentId: 's3',
+        kind: 'meal',
+        academicYear: YEAR,
+        startDate: '2027-09-15',
+      },
+      key(),
+    )
+    assert.equal(subscribed.statusCode, 201, subscribed.body)
+    const service = subscribed.json().data
+    const body = { ...QUOTE, extras: ['meal'] }
+    assertError(await post(`${BASE}/quote`, a.admin, body), 409, 'renewal_extra_has_service')
+    const before = await loadRecords(db, a.id, ['renewals', 'contracts'])
+    assertError(
+      await post(
+        BASE,
+        a.admin,
+        { ...body, mode: 'renew', tariffId: service.tariffId, firstDueDate: '2026-11-15' },
+        key(),
+      ),
+      409,
+      'renewal_extra_has_service',
+    )
+    assert.deepEqual(await loadRecords(db, a.id, ['renewals', 'contracts']), before)
+  })
+
+  test('DOM-FIN-003: yenilemede sözleşmeye giren ek hizmete abonelik açılmaz', async () => {
+    const a = await ready()
+    const made = await post(BASE, a.admin, await planBody(a.admin, { extras: ['meal'] }), key())
+    assert.equal(made.statusCode, 201, made.body)
+    assertError(
+      await post(
+        '/api/v1/finance/student-services',
+        a.admin,
+        { studentId: 's3', kind: 'meal', academicYear: YEAR, startDate: '2027-09-15' },
+        key(),
+      ),
+      409,
+      'student_service_on_contract',
+    )
+  })
+
   test('DOM-KAY-020, DOM-FIN-012: plan sözleşme ve kendi taksitlerini yazar, sınıf değişmez; tekrarlanan anahtar ilk yanıtı döner, ikinci plan 409', async () => {
     const a = await ready()
     const body = await planBody(a.admin, { extras: ['meal'] })

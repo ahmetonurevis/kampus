@@ -33,6 +33,7 @@ import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
+import { registerFinanceStudentServiceRoutes } from './routes/finance-student-services.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -392,6 +393,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceExportRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerFinanceStudentServiceRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)

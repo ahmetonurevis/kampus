@@ -43,6 +43,7 @@ import { getCollectionItem, listCollection, type CollectionItem } from './collec
 import { commandBody } from './command-result.ts'
 import { environment } from './commands.ts'
 import { withTariffCarryOver } from './fee-tariffs.ts'
+import { openServiceKindsOfYear } from './finance-student-services.ts'
 import {
   runCommand,
   runReadOnly,
@@ -122,6 +123,12 @@ async function renewalContext(
     previousTariff,
     priceIndexes,
     outstandingTuitionCents: debtCents,
+    openStudentServiceKinds: await openServiceKindsOfYear(
+      tx,
+      ctx,
+      input.studentId,
+      input.academicYear,
+    ),
     ...(programId === undefined
       ? {}
       : {

@@ -48,6 +48,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/contracts/{contractId}/approve',
   'POST /api/v1/finance/contracts/{contractId}/amendments',
   'POST /api/v1/finance/contracts/{contractId}/cancel-amendment',
+  // Ek hizmet aboneliği taksit yazar ve iptal eder (routes/finance-student-services.ts; DOM-FIN-003).
+  'POST /api/v1/finance/student-services',
+  'POST /api/v1/finance/student-services/{serviceId}/end',
 ]
 // Onur: kayıt ve finans sonu
 

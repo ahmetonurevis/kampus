@@ -514,6 +514,53 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Yeni burs programı' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-013: yönetici peşin ve süreli koşulu ilan eder; görüntülemede görünür, koşulsuz yayım reddedilir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s19'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tarife`)
+    await page.getByRole('button', { name: 'Yeni tarife' }).click()
+    const editor = page.getByRole('dialog', { name: 'Yeni tarife' })
+    await editor.getByLabel('Tutar (₺)', { exact: true }).fill('300.000,00')
+    await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('300.000,00')
+    // Koşul satırları dar ekranda taşmaz; satırlar tek sütuna iner.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expectNoHorizontalOverflow(page)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await editor.getByRole('button', { name: '1. ödeme koşulunu kaldır' }).click()
+    await editor.getByRole('button', { name: '1. ödeme koşulunu kaldır' }).click()
+    await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    const publish = page.getByRole('dialog', { name: 'Tarifeyi yayımla' })
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(
+      page.getByText('Tarifede peşin ya da süreli en az bir ödeme koşulu ilan edilmelidir.'),
+    ).toBeVisible()
+    await publish.getByRole('button', { name: 'Vazgeç' }).click()
+
+    await page.getByRole('button', { name: /taslağını düzenle/ }).click()
+    const draft = page.getByRole('dialog', { name: 'Tarife taslağını düzenle' })
+    await draft.getByRole('button', { name: 'Koşul ekle' }).click()
+    await draft.getByLabel('1. koşul en çok taksit').fill('4')
+    await draft.getByLabel('1. koşul fiyat farkı').selectOption('percent')
+    await draft.getByLabel('1. koşul indirim değeri').fill('3')
+    await draft.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.').last()).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(page.getByText('Tarife yayımlandı.')).toBeVisible()
+
+    await page.getByRole('button', { name: /tarifesini görüntüle/ }).click()
+    const view = page.getByRole('dialog', { name: /tarifesi$/ })
+    await expect(view.getByRole('list', { name: 'İlan edilen ödeme koşulları' })).toHaveText(
+      'Süreli · 2–4 taksit · %3 indirim',
+    )
+  })
+
   test('DOM-FIN-002: yönetici tarife taslağı açar ve yayımlar; yayımlanan düzenlenemez; ön büro yalnız görür', async ({
     page,
     loginAs,

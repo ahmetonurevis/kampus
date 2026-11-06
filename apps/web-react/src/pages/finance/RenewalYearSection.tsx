@@ -46,6 +46,7 @@ import {
   renewalBulkFormSchema,
   targetClassOptions,
   type RenewalBulkFormValues,
+  bulkDiscountKinds,
 } from './renewal-forms.ts'
 import { ChoiceFieldset } from './RenewalChoices.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
@@ -513,7 +514,7 @@ function BulkPlanModal({
       </Modal>
     )
 
-  const discountKinds = tariff?.discounts.map((item) => item.kind) ?? []
+  const discountKinds = bulkDiscountKinds(tariff?.discounts ?? [])
   const extraKinds = [
     ...new Set(tariff?.items.filter((item) => item.kind !== 'tuition').map((item) => item.kind)),
   ]

@@ -360,3 +360,8 @@ export function priceIndexBody(values: z.output<typeof priceIndexFormSchema>) {
 }
 
 export const bulletinText = (day: string) => dateLabel(day, { year: 'numeric' })
+
+/** Toplu planda seçilecek indirimler: referans hakkı öğrenci başına seçilir, toplu planda sunulmaz (DOM-FIN-024). */
+export const bulkDiscountKinds = <Kind extends string>(
+  discounts: readonly { kind: Kind }[],
+): Kind[] => discounts.map((item) => item.kind).filter((kind) => kind !== 'referral')

@@ -8,6 +8,7 @@ import {
 } from '@kampus/school-core/modules/collection-modules.ts'
 import { visiblePages } from '../src/lib/navigation.ts'
 import {
+  bulkDiscountKinds,
   ceilingLines,
   parseRateInput,
   priceIndexBody,
@@ -276,4 +277,11 @@ test('ON-057, DOM-KAY-025: borç onayı yalnız işaretlenince plan gövdesine g
   assert.equal('debtApproved' in approved && approved.debtApproved, true)
   assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1'), false)
   assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1', false), false)
+})
+
+test('DOM-FIN-024: toplu planda referans indirimi sunulmaz', () => {
+  assert.deepEqual(
+    bulkDiscountKinds([{ kind: 'sibling' }, { kind: 'referral' }, { kind: 'corporate' }]),
+    ['sibling', 'corporate'],
+  )
 })

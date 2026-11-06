@@ -32776,6 +32776,11 @@ export interface operations {
                                 contracts?: {
                                     contractId: string;
                                     title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
                                     /** @description Paket satışı; öğrenim sözleşmesinde yok */
                                     packageSaleId?: string;
                                     /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
@@ -32794,7 +32799,24 @@ export interface operations {
                                     /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
                                     balanceCents: number;
                                 }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    reason?: string;
+                                };
                             };
+                            /** @description Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12) */
+                            payersDiffer: boolean;
+                            /** @description Sözleşme başına ödeyici */
+                            payers: {
+                                contractId: string;
+                                /** @enum {string} */
+                                payer: "guardian" | "student";
+                                /** @description Ödeyicinin adı; iletişim bilgisi dönmez */
+                                payerName: string;
+                            }[];
                         };
                     };
                 };
@@ -32899,6 +32921,11 @@ export interface operations {
                     reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                     /** @default null */
                     targetSchool?: string | null;
+                    /** @default null */
+                    payerDecision?: {
+                        payer: string;
+                        reason: string;
+                    } | null;
                 };
             };
         };
@@ -32955,6 +32982,11 @@ export interface operations {
                                 contracts?: {
                                     contractId: string;
                                     title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
                                     /** @description Paket satışı; öğrenim sözleşmesinde yok */
                                     packageSaleId?: string;
                                     /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
@@ -32973,6 +33005,13 @@ export interface operations {
                                     /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
                                     balanceCents: number;
                                 }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    reason?: string;
+                                };
                             };
                             refundCents: number;
                             debtCents: number;
@@ -33134,6 +33173,11 @@ export interface operations {
                                 contracts?: {
                                     contractId: string;
                                     title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
                                     /** @description Paket satışı; öğrenim sözleşmesinde yok */
                                     packageSaleId?: string;
                                     /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
@@ -33152,6 +33196,13 @@ export interface operations {
                                     /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
                                     balanceCents: number;
                                 }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    reason?: string;
+                                };
                             };
                             refundCents: number;
                             debtCents: number;
@@ -33307,6 +33358,11 @@ export interface operations {
                                 contracts?: {
                                     contractId: string;
                                     title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
                                     /** @description Paket satışı; öğrenim sözleşmesinde yok */
                                     packageSaleId?: string;
                                     /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
@@ -33325,6 +33381,13 @@ export interface operations {
                                     /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
                                     balanceCents: number;
                                 }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    reason?: string;
+                                };
                             };
                             refundCents: number;
                             debtCents: number;
@@ -33492,6 +33555,11 @@ export interface operations {
                                 contracts?: {
                                     contractId: string;
                                     title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
                                     /** @description Paket satışı; öğrenim sözleşmesinde yok */
                                     packageSaleId?: string;
                                     /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
@@ -33510,6 +33578,13 @@ export interface operations {
                                     /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
                                     balanceCents: number;
                                 }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    reason?: string;
+                                };
                             };
                             refundCents: number;
                             debtCents: number;

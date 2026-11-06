@@ -44,10 +44,30 @@ const quoteFields = {
 export const withdrawalQuoteSchema = z.strictObject(quoteFields)
 export type WithdrawalQuoteInput = z.input<typeof withdrawalQuoteSchema>
 
+/**
+ * Hesaba giren sözleşmelerin ödeyicileri farklıysa iadeyi kimin alacağı yöneticinin kararıdır
+ * (K-12, DOM-FIN-040). Geçerli ödeyici hesaba bağlıdır: denetim `withdrawStudent`'tadır (422).
+ */
+export const payerDecisionSchema = z.strictObject({
+  payer: z
+    .string('İadeyi alacak ödeyiciyi seçin.')
+    .trim()
+    .min(1, 'İadeyi alacak ödeyiciyi seçin.')
+    .max(200),
+  // kvkk: K — yalnız ayrılış kaydında saklanır, loglanmaz; denetime alan adı düşer.
+  reason: z
+    .string('Karar gerekçesini yazın.')
+    .trim()
+    .min(2, 'Karar gerekçesini yazın.')
+    .max(500, 'En fazla 500 karakter girebilirsiniz.'),
+})
+export type PayerDecisionInput = z.input<typeof payerDecisionSchema>
+
 export const withdrawStudentSchema = z.strictObject({
   ...quoteFields,
   reason: z.enum(WITHDRAWAL_REASONS, 'Ayrılış nedenini seçin.'),
   targetSchool: requiredText.max(200).nullable().default(null),
+  payerDecision: payerDecisionSchema.nullable().default(null),
 })
 export type WithdrawStudentInput = z.input<typeof withdrawStudentSchema>
 
@@ -104,10 +124,27 @@ export interface WithdrawalExtraLine {
   usedCents: number
 }
 
+export type WithdrawalPayer = 'guardian' | 'student'
+
+export const WITHDRAWAL_PAYER_LABELS: Readonly<Record<WithdrawalPayer, string>> = {
+  guardian: 'Veli',
+  student: 'Öğrenci veya kursiyer',
+}
+
+/** Sözleşmenin ödeyicisi (DOM-KAY-012); yalnız önizlemede döner, ad kayda girmez. */
+export interface WithdrawalContractPayer {
+  contractId: string
+  payer: WithdrawalPayer
+  // kvkk: K
+  payerName: string
+}
+
 /** Bir sözleşmenin dökümü; toplam döküm bu satırların toplamıdır. */
 export interface WithdrawalContractLine {
   contractId: string
   title: string
+  /** Ödeyicinin türü; ad yazılmaz, iade yanıtının idempotency kaydına hesap sahibi girmesin. */
+  payer: WithdrawalPayer
   /** Paket satışı; öğrenim sözleşmesinde yoktur. */
   packageSaleId?: string
   /** Pakette kullanılan ve satın alınan saat; öğrenim sözleşmesinde girilen birim. */
@@ -158,6 +195,15 @@ export interface WithdrawalBreakdown {
    * kayıtta yoktur. Kayıt `contract_id`'si yalnız son sözleşmeyi tutar; öteki kimlikler buradadır.
    */
   contracts?: WithdrawalContractLine[]
+  /**
+   * Yöneticinin iade kararı (K-12): yalnız ödeyiciler farklı ve iade varken bulunur. Gerekçe komut
+   * yanıtına girmez (`services/withdrawals.ts`), kayıt okumalarında döner.
+   */
+  payerDecision?: {
+    payer: WithdrawalPayer
+    // kvkk: K
+    reason?: string
+  }
 }
 
 /** Hesaba giren paket satışı ve saat hareketleri (`lesson_package_sales`, DOM-DIL-051). */
@@ -319,6 +365,7 @@ function quoteContract(
     line: {
       contractId: contract.id,
       title: contract.title,
+      payer: contract.payer === 'student' ? 'student' : 'guardian',
       ...(sale
         ? {
             packageSaleId: sale.id,
@@ -377,7 +424,13 @@ export function quoteWithdrawal(
   studentId: string,
   input: unknown,
   context: WithdrawalContext,
-): { contractId: string; breakdown: WithdrawalBreakdown } {
+): {
+  contractId: string
+  breakdown: WithdrawalBreakdown
+  /** Hesaba giren sözleşmelerin ödeyicileri farklı mı (K-12). */
+  payersDiffer: boolean
+  payers: WithdrawalContractPayer[]
+} {
   const data = withdrawalQuoteSchema.parse(input)
   studentOf(state, studentId)
   const started = assertUnits(data, dayKey(context.now))
@@ -398,8 +451,15 @@ export function quoteWithdrawal(
   // Sözleşmeler, ek hizmet ve dağıtılmamış tahsilat tek bakiyede netleşir: iade ve borç birlikte
   // oluşmaz (DOM-FIN-040: ödenen hak edilenden azsa iade sıfırdır).
   const balance = total((line) => line.balanceCents) + context.creditCents
+  const payers = lines.map((line): WithdrawalContractPayer => ({
+    contractId: line.contractId,
+    payer: line.payer,
+    payerName: payerNameOf(state, line.contractId),
+  }))
   return {
     contractId: latest.contract.id,
+    payersDiffer: new Set(payers.map((item) => normalizedName(item.payerName))).size > 1,
+    payers,
     breakdown: {
       institutionType: context.institutionType,
       withdrawalDate: data.withdrawalDate,
@@ -436,13 +496,27 @@ export function contractLinesToShow<T extends { packageSaleId?: string | undefin
   return lines.length > 1 || lines.some((line) => line.packageSaleId !== undefined) ? lines : []
 }
 
+/** Seçilebilir iade ödeyicileri (K-12): her biri bir kez; adı bulunamayan ödeyici seçilemez. */
+export function refundPayerOptions(
+  payers: readonly WithdrawalContractPayer[],
+): WithdrawalContractPayer[] {
+  const seen = new Set<WithdrawalPayer>()
+  return payers.filter((item) => {
+    if (seen.has(item.payer) || normalizedName(item.payerName) === '') return false
+    seen.add(item.payer)
+    return true
+  })
+}
+
 /** Bir sözleşmenin ekran ve belge satırları; ikisi aynı dökümü aynı sözlerle gösterir (IST-110). */
 export function contractLineRows(
   line: WithdrawalContractLine,
   deductionBasisPoints: number,
+  payerName?: string,
 ): readonly (readonly [string, string])[] {
   const usage = `${String(line.attendedUnits)} / ${String(line.totalUnits)}`
   return [
+    ['Ödeyici', payerName ?? WITHDRAWAL_PAYER_LABELS[line.payer]],
     ['Hesap tabanı (net ücret)', money(line.baseCents)],
     [`Kesinti (%${String(deductionBasisPoints / 100)})`, money(line.deductionCents)],
     [
@@ -496,7 +570,7 @@ export function withdrawStudent(
     throw new DomainError('student_already_withdrawn', 'Bu öğrencinin kaydı zaten pasif.', {
       kind: 'conflict',
     })
-  const { contractId, breakdown } = quoteWithdrawal(
+  const { contractId, breakdown, payersDiffer, payers } = quoteWithdrawal(
     state,
     studentId,
     {
@@ -508,6 +582,10 @@ export function withdrawStudent(
     },
     context,
   )
+  const payerDecision =
+    payersDiffer && breakdown.refundCents > 0
+      ? requirePayerDecision(payers, data.payerDecision)
+      : null
   const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
 
   const planned = state.renewals.filter(
@@ -587,8 +665,33 @@ export function withdrawStudent(
     targetSchool: data.targetSchool,
     withdrawalDate: data.withdrawalDate,
     refundDueDate: refundDueDate(data.withdrawalDate),
-    breakdown: debt ? { ...breakdown, debtInvoiceId: debt.id } : breakdown,
+    breakdown: {
+      ...breakdown,
+      ...(debt ? { debtInvoiceId: debt.id } : {}),
+      ...(payerDecision ? { payerDecision } : {}),
+    },
   }
+}
+
+/** Ödeyiciler farklı ve iade varken yöneticinin açık kararı (K-12); hesabı değiştirmez. */
+function requirePayerDecision(
+  payers: readonly WithdrawalContractPayer[],
+  decision: z.output<typeof payerDecisionSchema> | null,
+): NonNullable<WithdrawalBreakdown['payerDecision']> {
+  if (decision === null)
+    throw new DomainError(
+      'withdrawal_payer_decision_required',
+      'Sözleşmelerin ödeyicileri farklı. İadeyi alacak ödeyiciyi seçip gerekçeyi yazın.',
+      { path: ['payerDecision'] },
+    )
+  const chosen = refundPayerOptions(payers).find((item) => item.payer === decision.payer)
+  if (!chosen)
+    throw new DomainError(
+      'withdrawal_payer_invalid',
+      'İadeyi yalnız bu sözleşmelerin ödeyicilerinden biri alabilir.',
+      { path: ['payerDecision', 'payer'] },
+    )
+  return { payer: chosen.payer, reason: decision.reason }
 }
 
 const normalizedName = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr')
@@ -598,13 +701,7 @@ const normalizedName = (value: string) => value.trim().replace(/\s+/g, ' ').toLo
  * denetimdir, yazımı servis yapar.
  */
 export function planRefundPayment(
-  withdrawal: {
-    refundCents: number
-    refundPaidDate: string | null
-    payerName: string
-    /** Hesaba giren öteki sözleşmelerin ödeyicileri (K-06). */
-    otherPayerNames?: readonly string[]
-  },
+  withdrawal: { refundCents: number; refundPaidDate: string | null; payerName: string },
   input: unknown,
   today: string,
 ): { paidDate: string; iban: string; accountHolder: string } {
@@ -617,8 +714,7 @@ export function planRefundPayment(
     throw new DomainError('refund_date_in_future', 'Ödeme tarihi ileri bir gün olamaz.', {
       path: ['paidDate'],
     })
-  const payers = [withdrawal.payerName, ...(withdrawal.otherPayerNames ?? [])]
-  if (!payers.some((name) => normalizedName(name) === normalizedName(data.accountHolder)))
+  if (normalizedName(data.accountHolder) !== normalizedName(withdrawal.payerName))
     throw new DomainError(
       'refund_holder_mismatch',
       'Hesap sahibi sözleşmedeki ödeyici olmalıdır.',
@@ -635,4 +731,17 @@ export function payerNameOf(state: State, contractId: string): string {
     throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
   if (contract.payer === 'student') return student.name
   return state.parents.find((parent) => parent.id === student.parentId)?.name ?? ''
+}
+
+/** İadeyi alacak kişi: kararla seçilen ödeyici (K-12), karar yoksa kaydın sözleşmesinin ödeyicisi. */
+export function refundPayerName(
+  state: State,
+  withdrawal: {
+    contractId: string
+    breakdown: Pick<WithdrawalBreakdown, 'contracts' | 'payerDecision'>
+  },
+): string {
+  const { contracts, payerDecision } = withdrawal.breakdown
+  const chosen = payerDecision && contracts?.find((line) => line.payer === payerDecision.payer)
+  return payerNameOf(state, chosen?.contractId ?? withdrawal.contractId)
 }

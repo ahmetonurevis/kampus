@@ -3,8 +3,10 @@ import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   contractLineRows,
   contractLinesToShow,
+  WITHDRAWAL_PAYER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type WithdrawalContractLine,
+  type WithdrawalPayer,
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
@@ -35,6 +37,8 @@ export type RefundWithdrawal = {
     creditCents: number
     extras: readonly { kind: string; paidCents: number; usedCents: number }[]
     contracts?: readonly WithdrawalContractLine[]
+    /** Gerekçe belgeye yazılmaz; yalnız iadeyi alacak ödeyici (K-12). */
+    payerDecision?: { payer: WithdrawalPayer }
   }
 }
 
@@ -78,6 +82,11 @@ export function refundStatementDocument(
     doc.section('Toplam')
     doc.fields([
       ['Dağıtılmamış tahsilat', money(breakdown.creditCents)],
+      ...(breakdown.payerDecision
+        ? ([
+            ['İadeyi alacak ödeyici', WITHDRAWAL_PAYER_LABELS[breakdown.payerDecision.payer]],
+          ] as const)
+        : []),
       ['İade', money(withdrawal.refundCents)],
       ['Kalan borç', money(withdrawal.debtCents)],
     ])

@@ -10,6 +10,8 @@ import {
   planRefundPayment,
   quoteWithdrawal,
   refundDueDate,
+  refundPayerName,
+  refundPayerOptions,
   withdrawalFormSchema,
   withdrawStudent,
   type WithdrawalContext,
@@ -733,6 +735,7 @@ test('IST-110: sözleşme satırı burs, ek hizmet, kalan saat ve sonucu göster
   const line = {
     contractId: 'c1',
     title: 'Sözleşme',
+    payer: 'guardian' as const,
     attendedUnits: 18,
     totalUnits: 180,
     scholarshipExempt: false,
@@ -747,6 +750,7 @@ test('IST-110: sözleşme satırı burs, ek hizmet, kalan saat ve sonucu göster
   const labels = (input: Parameters<typeof contractLineRows>[0]) =>
     contractLineRows(input, 1_000).map(([label]) => label)
   assert.deepEqual(labels(line), [
+    'Ödeyici',
     'Hesap tabanı (net ücret)',
     'Kesinti (%10)',
     'Kullanım (18 / 180)',
@@ -774,19 +778,185 @@ test('IST-110: sözleşme satırı burs, ek hizmet, kalan saat ve sonucu göster
     assert.ok(rich.includes(label), label)
 })
 
-test('DOM-FIN-041, DOM-KAY-012: iade hesap sahibi hesaba giren sözleşmelerden birinin ödeyicisi olabilir', () => {
-  const row = {
-    refundCents: 100,
-    refundPaidDate: null,
-    payerName: 'Ayşe Yılmaz',
-    otherPayerNames: ['Deniz Yılmaz'],
-  }
-  const input = { paidDate: '2026-10-05', iban: IBAN, accountHolder: 'Deniz Yılmaz' }
-  assert.equal(planRefundPayment(row, input, '2026-10-06').accountHolder, 'Deniz Yılmaz')
+/** İki sözleşme, farklı ödeyici: öğrenim veli, paket kursiyer; öğrenim taksiti ödendi (iade oluşur). */
+function twoPayers() {
+  const { state, studentId } = fixture()
+  withPackage(state, studentId)
+  state.contracts.find((item) => item.id === 'c-now')!.payer = 'guardian'
+  state.contracts.find((item) => item.id === 'c-package')!.payer = 'student'
+  state.invoices.find((invoice) => invoice.id === 't-1')!.paidAt = NOW
+  const student = state.students.find((item) => item.id === studentId)!
+  const parent = state.parents.find((item) => item.id === student.parentId)!
+  return { state, studentId, studentName: student.name, parentName: parent.name }
+}
+const DECISION = { payer: 'student', reason: 'Tahsilat kursiyerin hesabından yapıldı' }
+
+test('K-12, DOM-FIN-040: önizleme ödeyicilerin farkını ve sözleşme başına ödeyiciyi döner', () => {
+  const { state, studentId, studentName, parentName } = twoPayers()
+  const quote = quoteWithdrawal(state, studentId, AFTER, context({ packageSales: [sale([])] }))
+  assert.equal(quote.payersDiffer, true)
+  assert.deepEqual(quote.payers, [
+    { contractId: 'c-now', payer: 'guardian', payerName: parentName },
+    { contractId: 'c-package', payer: 'student', payerName: studentName },
+  ])
+  assert.deepEqual(
+    quote.breakdown.contracts!.map((line) => line.payer),
+    ['guardian', 'student'],
+  )
+  // Ad kayda girecek dökümde yoktur: iade yanıtı idempotency kaydına hesap sahibini yazmaz.
+  assert.equal(JSON.stringify(quote.breakdown).includes(parentName), false)
+})
+
+test('K-12: ödeyicisi aynı olan öğrencide önizleme farkı bildirmez, karar istenmez', () => {
+  const { state, studentId } = fixture()
+  withPackage(state, studentId)
+  state.invoices[0]!.paidAt = NOW
+  const input = { ...WITHDRAW, attendedUnits: 1 }
+  const options = context({ packageSales: [sale([])] })
+  assert.equal(quoteWithdrawal(state, studentId, AFTER, options).payersDiffer, false)
+  const plan = withdrawStudent(state, studentId, input, makeId, options)
+  assert.ok(plan.breakdown.refundCents > 0)
+  assert.equal(plan.breakdown.payerDecision, undefined)
+})
+
+test('K-12: ödeyiciler farklı ve iade varsa karar zorunludur; kayıt değişmez', () => {
+  const { state, studentId } = twoPayers()
+  const before = JSON.stringify(state)
+  const options = context({ packageSales: [sale([])] })
+  const input = { ...WITHDRAW, attendedUnits: 1 }
+  const quote = quoteWithdrawal(state, studentId, { ...AFTER, attendedUnits: 1 }, options)
+  assert.ok(quote.breakdown.refundCents > 0)
   assert.throws(
-    () => planRefundPayment(row, { ...input, accountHolder: 'Başka Kişi' }, '2026-10-06'),
+    () => withdrawStudent(state, studentId, input, makeId, options),
+    (error: unknown) => {
+      assert.ok(isDomainError('withdrawal_payer_decision_required')(error))
+      assert.deepEqual((error as { path?: unknown }).path, ['payerDecision'])
+      return true
+    },
+  )
+  assert.equal(JSON.stringify(state), before)
+  // Hesaba girmeyen kişi seçilemez; biçim doğrulaması şemadadır.
+  assert.throws(
+    () =>
+      withdrawStudent(
+        state,
+        studentId,
+        { ...input, payerDecision: { payer: 'baska-kisi', reason: 'Gerekçe yazıldı' } },
+        makeId,
+        options,
+      ),
+    isDomainError('withdrawal_payer_invalid'),
+  )
+  assert.equal(JSON.stringify(state), before)
+  for (const reason of ['', 'x'.repeat(501)])
+    assert.throws(() =>
+      withdrawStudent(
+        state,
+        studentId,
+        { ...input, payerDecision: { payer: 'student', reason } },
+        makeId,
+        options,
+      ),
+    )
+  assert.equal(JSON.stringify(state), before)
+})
+
+test('K-12: karar kayda girer, hesap değişmez; iade yalnız seçilen ödeyiciye yazılır', () => {
+  const { state, studentId, studentName, parentName } = twoPayers()
+  const options = context({ packageSales: [sale([])] })
+  const input = { ...WITHDRAW, attendedUnits: 1 }
+  const { breakdown: quoted } = quoteWithdrawal(
+    state,
+    studentId,
+    { ...AFTER, attendedUnits: 1 },
+    options,
+  )
+  const plan = withdrawStudent(state, studentId, { ...input, payerDecision: DECISION }, makeId, {
+    ...options,
+  })
+  assert.deepEqual(plan.breakdown.payerDecision, DECISION)
+  assert.equal(plan.breakdown.refundCents, quoted.refundCents)
+  assert.deepEqual(plan.breakdown.contracts, quoted.contracts)
+  assert.equal(refundPayerName(state, plan), studentName)
+
+  const row = { refundCents: 100, refundPaidDate: null, payerName: refundPayerName(state, plan) }
+  const pay = { paidDate: '2026-10-05', iban: IBAN, accountHolder: studentName }
+  assert.equal(planRefundPayment(row, pay, '2026-10-06').accountHolder, studentName)
+  assert.throws(
+    () => planRefundPayment(row, { ...pay, accountHolder: parentName }, '2026-10-06'),
     isDomainError('refund_holder_mismatch'),
   )
+})
+
+test('K-12: iadesi sıfır olan ayrılışta karar istenmez, verilse de yazılmaz', () => {
+  const { state, studentId, parentName } = twoPayers()
+  state.invoices.find((invoice) => invoice.id === 't-1')!.paidAt = null
+  const options = context({ packageSales: [sale([])] })
+  assert.equal(quoteWithdrawal(state, studentId, AFTER, options).payersDiffer, true)
+  const plan = withdrawStudent(
+    state,
+    studentId,
+    { ...WITHDRAW, payerDecision: DECISION },
+    makeId,
+    options,
+  )
+  assert.equal(plan.breakdown.refundCents, 0)
+  assert.ok(plan.breakdown.debtCents > 0)
+  assert.equal(plan.breakdown.payerDecision, undefined)
+  assert.notEqual(parentName, '')
+})
+
+test('K-12: seçenekler ödeyici başına birdir; önizlemede ad, kayıtta tür yazılır', () => {
+  const options = refundPayerOptions([
+    { contractId: 'a', payer: 'guardian', payerName: 'Veli Adı' },
+    { contractId: 'b', payer: 'guardian', payerName: 'Veli Adı' },
+    { contractId: 'c', payer: 'student', payerName: 'Öğrenci Adı' },
+    { contractId: 'd', payer: 'student', payerName: ' ' },
+  ])
+  assert.deepEqual(
+    options.map((item) => item.contractId),
+    ['a', 'c'],
+  )
+  const line = {
+    contractId: 'a',
+    title: 'Sözleşme',
+    payer: 'student' as const,
+    attendedUnits: 0,
+    totalUnits: 1,
+    scholarshipExempt: false,
+    baseCents: 0,
+    deductionCents: 0,
+    usageCents: 0,
+    entitledCents: 0,
+    paidCents: 0,
+    extraBalanceCents: 0,
+    balanceCents: 0,
+  }
+  assert.deepEqual(contractLineRows(line, 1_000)[0], ['Ödeyici', 'Öğrenci veya kursiyer'])
+  assert.deepEqual(contractLineRows(line, 1_000, 'Deniz')[0], ['Ödeyici', 'Deniz'])
+})
+
+test('K-12: adı bulunamayan ödeyici seçilemez', () => {
+  const { state, studentId } = twoPayers()
+  const student = state.students.find((item) => item.id === studentId)!
+  student.parentId = 'yok'
+  const input = {
+    ...WITHDRAW,
+    attendedUnits: 1,
+    payerDecision: { payer: 'guardian', reason: 'Gerekçe yazıldı' },
+  }
+  assert.throws(
+    () => withdrawStudent(state, studentId, input, makeId, context({ packageSales: [sale([])] })),
+    isDomainError('withdrawal_payer_invalid'),
+  )
+})
+
+test('DOM-FIN-041: kararsız ayrılışta iade kaydın sözleşmesinin ödeyicisinedir', () => {
+  const { state, studentId } = fixture()
+  const student = state.students.find((item) => item.id === studentId)!
+  const parent = state.parents.find((item) => item.id === student.parentId)!
+  const plan = { contractId: 'c-now', breakdown: {} }
+  assert.equal(refundPayerName(state, plan), parent.name)
 })
 
 test('IST-110: ayrılış formu öğrenci ve geçerli birim ister', () => {

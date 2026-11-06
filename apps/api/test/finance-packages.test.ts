@@ -1044,11 +1044,23 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       assert.equal((await findRecord(db, a.id, 'students', 's3'))?.data.isActive, true)
     })
 
-    test('DOM-FIN-041: iade iki sözleşmeden netleşir; hesap sahibi iki sözleşmenin ödeyicisinden biri olabilir', async () => {
+    test('DOM-FIN-041, K-12: iade iki sözleşmeden netleşir; hesap sahibi kararla seçilen ödeyicidir', async () => {
       const a = await withPackage({ tuition: true })
       const paid = await pay(a.admin, TUITION_NET + PACKAGE_NET)
       assert.equal(paid.statusCode, 201, paid.body)
-      const withdrawn = await withdraw(a.admin)
+      // Öğrenim sözleşmesinin ödeyicisi kursiyer, paketinki veli: iade kararı yöneticinindir (K-12).
+      assertError(await withdraw(a.admin), 422, 'withdrawal_payer_decision_required')
+      const withdrawn = await post(
+        '/api/v1/students/s3/withdraw',
+        a.admin,
+        {
+          ...WITHDRAW,
+          reason: 'relocation',
+          targetSchool: null,
+          payerDecision: { payer: 'student', reason: 'Ödemeyi kursiyer yaptı' },
+        },
+        key(),
+      )
       assert.equal(withdrawn.statusCode, 201, withdrawn.body)
       const { id, version: rowVersion, refundCents, breakdown } = withdrawn.json().data
       assert.equal(breakdown.contracts[0].balanceCents, TUITION_NET - 2_000_000)
@@ -1069,7 +1081,6 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
           { ...key(), ...version(rowVersion as number) },
         )
       assertError(await refund('Başka Kişi'), 422, 'refund_holder_mismatch')
-      // Öğrenim sözleşmesinin ödeyicisi kursiyerdir; kayıt paket sözleşmesini tutar.
       const done = await refund(student?.data.name)
       assert.equal(done.statusCode, 200, done.body)
       assert.equal(done.json().data.refundStatus, 'paid')

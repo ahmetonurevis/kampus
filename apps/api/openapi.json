@@ -68938,6 +68938,14 @@
                                   "title": {
                                     "type": "string"
                                   },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
                                   "packageSaleId": {
                                     "description": "Paket satışı; öğrenim sözleşmesinde yok",
                                     "type": "string"
@@ -69003,6 +69011,7 @@
                                 "required": [
                                   "contractId",
                                   "title",
+                                  "payer",
                                   "attendedUnits",
                                   "totalUnits",
                                   "scholarshipExempt",
@@ -69016,6 +69025,27 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; komut yanıtında yok, kayıtta döner",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -69038,11 +69068,46 @@
                             "debtCents"
                           ],
                           "additionalProperties": false
+                        },
+                        "payersDiffer": {
+                          "type": "boolean",
+                          "description": "Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12)"
+                        },
+                        "payers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "contractId": {
+                                "type": "string"
+                              },
+                              "payer": {
+                                "type": "string",
+                                "enum": [
+                                  "guardian",
+                                  "student"
+                                ]
+                              },
+                              "payerName": {
+                                "type": "string",
+                                "description": "Ödeyicinin adı; iletişim bilgisi dönmez"
+                              }
+                            },
+                            "required": [
+                              "contractId",
+                              "payer",
+                              "payerName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sözleşme başına ödeyici"
                         }
                       },
                       "required": [
                         "contractId",
-                        "breakdown"
+                        "breakdown",
+                        "payersDiffer",
+                        "payers"
                       ],
                       "additionalProperties": false
                     }
@@ -69193,6 +69258,34 @@
                         "type": "string",
                         "minLength": 2,
                         "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "payerDecision": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "payer": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "payer",
+                          "reason"
+                        ],
+                        "additionalProperties": false
                       },
                       {
                         "type": "null"
@@ -69416,6 +69509,14 @@
                                   "title": {
                                     "type": "string"
                                   },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
                                   "packageSaleId": {
                                     "description": "Paket satışı; öğrenim sözleşmesinde yok",
                                     "type": "string"
@@ -69481,6 +69582,7 @@
                                 "required": [
                                   "contractId",
                                   "title",
+                                  "payer",
                                   "attendedUnits",
                                   "totalUnits",
                                   "scholarshipExempt",
@@ -69494,6 +69596,27 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; komut yanıtında yok, kayıtta döner",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -69919,6 +70042,14 @@
                                     "title": {
                                       "type": "string"
                                     },
+                                    "payer": {
+                                      "type": "string",
+                                      "enum": [
+                                        "guardian",
+                                        "student"
+                                      ],
+                                      "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                    },
                                     "packageSaleId": {
                                       "description": "Paket satışı; öğrenim sözleşmesinde yok",
                                       "type": "string"
@@ -69984,6 +70115,7 @@
                                   "required": [
                                     "contractId",
                                     "title",
+                                    "payer",
                                     "attendedUnits",
                                     "totalUnits",
                                     "scholarshipExempt",
@@ -69997,6 +70129,27 @@
                                   ],
                                   "additionalProperties": false
                                 }
+                              },
+                              "payerDecision": {
+                                "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                                "type": "object",
+                                "properties": {
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ]
+                                  },
+                                  "reason": {
+                                    "description": "Karar gerekçesi; komut yanıtında yok, kayıtta döner",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "payer"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -70386,6 +70539,14 @@
                                   "title": {
                                     "type": "string"
                                   },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
                                   "packageSaleId": {
                                     "description": "Paket satışı; öğrenim sözleşmesinde yok",
                                     "type": "string"
@@ -70451,6 +70612,7 @@
                                 "required": [
                                   "contractId",
                                   "title",
+                                  "payer",
                                   "attendedUnits",
                                   "totalUnits",
                                   "scholarshipExempt",
@@ -70464,6 +70626,27 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; komut yanıtında yok, kayıtta döner",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -70898,6 +71081,14 @@
                                   "title": {
                                     "type": "string"
                                   },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
                                   "packageSaleId": {
                                     "description": "Paket satışı; öğrenim sözleşmesinde yok",
                                     "type": "string"
@@ -70963,6 +71154,7 @@
                                 "required": [
                                   "contractId",
                                   "title",
+                                  "payer",
                                   "attendedUnits",
                                   "totalUnits",
                                   "scholarshipExempt",
@@ -70976,6 +71168,27 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; komut yanıtında yok, kayıtta döner",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [

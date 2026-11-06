@@ -5,7 +5,7 @@ import type { Download, Locator, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
-import { seedScholarshipContract } from './support/finance-terms.ts'
+import { seedScholarshipContract, seedStudentPayerContract } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
 import {
   expectContentInsideCards,
@@ -805,6 +805,72 @@ test.describe('Finans: tahsilat', () => {
       }
     ).data[0]
     expect(sale?.remainingHours).toBe(0)
+  })
+
+  test('K-12, DOM-FIN-040: ödeyiciler farklıysa önizleme söyler, karar ister; iade seçilen ödeyiciye yazılır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s21'] })
+    await seedStudentPayerContract({
+      institutionId: school.institutionId,
+      studentId: 's21',
+      contractId: 'contract-e2e-ogrenci',
+      title: 'Öğrenci ödeyicili sözleşme',
+    })
+    const client = await api(school.user('yonetici'))
+    const student = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { name: string; parentId: string } }
+    }
+    const { name, parentId } = student.data.record
+    const parent = (await client.get(`/api/v1/collections/parents/${parentId}`)).body as {
+      data: { record: { name: string } }
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+    await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+
+    await expect(dialog.getByText('Hesaba giren sözleşmelerin ödeyicileri farklı.')).toBeVisible()
+    await expect(dialog.getByRole('region', { name: 'Öğrenci ödeyicili sözleşme' })).toContainText(
+      name,
+    )
+    // Karar verilmeden onay sunucuya gitmez.
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(dialog.getByText('İadeyi alacak ödeyiciyi seçin.')).toBeVisible()
+    await expect(dialog.getByText('Karar gerekçesini yazın.')).toBeVisible()
+    const unchanged = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { isActive: boolean } }
+    }
+    expect(unchanged.data.record.isActive).toBe(true)
+
+    await dialog.getByLabel('İadeyi alacak ödeyici').selectOption({ value: 'guardian' })
+    await dialog.getByLabel('Karar gerekçesi').fill('Tahsilat velinin hesabından yapıldı')
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+
+    await page.getByRole('button', { name: `${name} hesap dökümünü görüntüle` }).click()
+    const breakdown = page.getByRole('dialog', { name: 'Hesap dökümü' })
+    await expect(breakdown).toContainText('İadeyi alacak ödeyici')
+    await expect(breakdown).toContainText('Tahsilat velinin hesabından yapıldı')
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
+    const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
+    await refund.getByLabel('IBAN').fill('TR330006100519786457841326')
+    await refund.getByLabel('Hesap sahibi').fill(name)
+    await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
+    await expect(refund.getByText('Hesap sahibi sözleşmedeki ödeyici olmalıdır.')).toBeVisible()
+    await refund.getByLabel('Hesap sahibi').fill(parent.data.record.name)
+    await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
+    await expect(page.getByText('İade ödendi olarak kaydedildi.')).toBeVisible()
   })
 
   test('DOM-FIN-050, -052: tahsilat dekontu PDF açılır; veli kendi tahsilatını ve dekontunu görür', async ({

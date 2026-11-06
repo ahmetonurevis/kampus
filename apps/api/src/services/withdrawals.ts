@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
-  payerNameOf,
   planRefundPayment,
   quoteWithdrawal,
+  refundPayerName,
   withdrawStudent,
   type WithdrawalBreakdown,
   type WithdrawalContext,
@@ -63,8 +63,20 @@ const ACCOUNT_FIELDS: ReadonlySet<string> = new Set<keyof RefundAccount>([
   'refundAccountHolder',
 ])
 
+/**
+ * Komut yanıtı idempotency kaydında saklanır: karar gerekçesi (K-12, serbest metin) ona girmez,
+ * yalnız ayrılış kaydında durur ve kayıt okumalarında döner.
+ */
+function withoutDecisionReason(row: WithdrawalView): WithdrawalView {
+  const decision = row.breakdown.payerDecision
+  if (!decision) return row
+  return { ...row, breakdown: { ...row.breakdown, payerDecision: { payer: decision.payer } } }
+}
+
 function withoutAccount(row: WithdrawalView): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(row).filter(([field]) => !ACCOUNT_FIELDS.has(field)))
+  return Object.fromEntries(
+    Object.entries(withoutDecisionReason(row)).filter(([field]) => !ACCOUNT_FIELDS.has(field)),
+  )
 }
 
 /**
@@ -236,10 +248,11 @@ export function withdrawStudentCommand(
           'reason',
           'targetSchool',
           'breakdown',
+          ...(plan.breakdown.payerDecision ? ['payerDecision'] : []),
         ])
         const row = await findWithdrawal(tx, ctx.institutionId, id)
         if (row === null) throw new NotFoundError()
-        result = view(row)
+        result = withoutDecisionReason(view(row))
       },
     },
     () => {
@@ -283,10 +296,7 @@ export async function payRefundCommand(
               {
                 refundCents: row.refundCents,
                 refundPaidDate: row.refundPaidDate,
-                payerName: payerNameOf(state, row.contractId),
-                otherPayerNames: (row.breakdown.contracts ?? [])
-                  .filter((line) => line.contractId !== row.contractId)
-                  .map((line) => payerNameOf(state, line.contractId)),
+                payerName: refundPayerName(state, row),
               },
               input,
               dayKey(ctx.now),

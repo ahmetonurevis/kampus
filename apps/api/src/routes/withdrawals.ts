@@ -32,6 +32,8 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 
 const STAFF = ['yonetici', 'onburo'] as const
 
+const payerSchema = z.enum(['guardian', 'student'])
+
 const breakdownSchema = z.object({
   institutionType: z.enum(INSTITUTION_TYPES),
   withdrawalDate: z.string(),
@@ -67,6 +69,9 @@ const breakdownSchema = z.object({
       z.object({
         contractId: z.string(),
         title: z.string(),
+        payer: payerSchema.describe(
+          'Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında',
+        ),
         packageSaleId: z.string().optional().describe('Paket satışı; öğrenim sözleşmesinde yok'),
         attendedUnits: z
           .number()
@@ -89,6 +94,13 @@ const breakdownSchema = z.object({
     )
     .optional()
     .describe('Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok'),
+  payerDecision: z
+    .object({
+      payer: payerSchema,
+      reason: z.string().optional().describe('Karar gerekçesi; komut yanıtında yok, kayıtta döner'),
+    })
+    .optional()
+    .describe('Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)'),
 })
 
 const withdrawalSchema = z.object({
@@ -152,7 +164,26 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         params: studentParams,
         body: withdrawalQuoteSchema,
         response: {
-          200: dataResponse(z.object({ contractId: z.string(), breakdown: breakdownSchema })),
+          200: dataResponse(
+            z.object({
+              contractId: z.string(),
+              breakdown: breakdownSchema,
+              payersDiffer: z
+                .boolean()
+                .describe(
+                  'Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12)',
+                ),
+              payers: z
+                .array(
+                  z.object({
+                    contractId: z.string(),
+                    payer: payerSchema,
+                    payerName: z.string().describe('Ödeyicinin adı; iletişim bilgisi dönmez'),
+                  }),
+                )
+                .describe('Sözleşme başına ödeyici'),
+            }),
+          ),
           ...commandErrors,
         },
       },

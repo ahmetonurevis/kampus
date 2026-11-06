@@ -50,6 +50,7 @@ test('DOM-FIN-025: burslu istisnası iade dökümünde yazılır, bursuz ayrıl�
 const CONTRACT_LINE = {
   contractId: 'c1',
   title: 'Öğrenim sözleşmesi',
+  payer: 'guardian' as const,
   attendedUnits: 18,
   totalUnits: 180,
   scholarshipExempt: false,
@@ -100,6 +101,26 @@ test('DOM-FIN-040, K-06: birden çok sözleşmede her sözleşme ayrı bölümde
     'Toplam',
   ])
     assert.ok(texts.includes(text), text)
+})
+
+test('K-12: iadeyi alacak ödeyici belgede yazılır, gerekçe yazılmaz', () => {
+  const texts = allTexts(
+    refundStatementDocument(
+      measurer,
+      {
+        ...WITHDRAWAL,
+        breakdown: {
+          ...WITHDRAWAL.breakdown,
+          contracts: [CONTRACT_LINE, { ...CONTRACT_LINE, contractId: 'c2', payer: 'student' }],
+          payerDecision: { payer: 'student', reason: 'Gizli gerekçe' } as { payer: 'student' },
+        },
+      },
+      OPTIONS,
+    ),
+  )
+  assert.ok(texts.includes('İadeyi alacak ödeyici'))
+  assert.ok(texts.includes('Öğrenci veya kursiyer'))
+  assert.equal(texts.includes('Gizli gerekçe'), false)
 })
 
 test('DOM-FIN-040: tek öğrenim sözleşmesinde belge toplam satırlarıyla kalır', () => {

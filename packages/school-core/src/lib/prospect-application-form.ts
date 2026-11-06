@@ -25,7 +25,7 @@ import {
  *   referans ve kardeş alanı yoktur; bilinmeyen alan 400. Kaynak sunucuda `Web sitesi`dir.
  * - Aydınlatma sürümü güncel yayımlı sürüm olmalıdır: başvuran başka bir metni görmüş kaydedilmez.
  * - Yanıt kişi varlığını belli etmez: aynı iletişimli açık adayda yeni kayıt açılmaz, adayın kartına
- *   sabit metinli temas notu düşülür (DOM-KAY-002) ve dışarıya aynı başarı yanıtı döner. Mükerrer
+ *   sınırlı temas notu düşülür (DOM-KAY-002) ve dışarıya aynı başarı yanıtı döner. Mükerrer
  *   başvurunun ticari ileti onayı yazılmaz: doğrulanmamış bir gönderim başkasının onayını açamaz.
  * - Yeni adayın formda işaretlediği kanal `verified: false` yazılır ve onay sayılmaz: formu kimin
  *   doldurduğu bilinmez. Personel kişiyle konuşup doğrularsa işaret kalkar (DOM-KAY-004).
@@ -38,10 +38,21 @@ z.config(z.locales.tr())
 export const APPLICATION_FORM_SOURCE = 'Web sitesi' satisfies ProspectSource
 /** Forma düşen temas notunun gösterilen yazarı; notu yazan kullanıcı yoktur. */
 export const APPLICATION_NOTE_AUTHOR = 'Web sitesi formu'
-/** Aynı metinli form notu bu süre içinde yinelenmez. */
+/** Bir adaya bu süre içinde ikinci form notu düşmez; metne bakılmaz, metni başvuran belirler. */
 export const APPLICATION_NOTE_REPEAT_MS = 24 * 60 * 60 * 1000
-/** Bir adayda en çok form notu: formdan gelen gönderim ön büro notlarının yerini dolduramaz. */
+/** `APPLICATION_NOTE_LIMIT`'in sayıldığı pencere: eski notlar gerçek başvuruyu susturmaz. */
+export const APPLICATION_NOTE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+/** Pencere içinde bir adayda en çok form notu. */
 export const APPLICATION_NOTE_LIMIT = 20
+/** Kartta en çok form notu: gönderimler ön büronun not payını dolduramaz (`PROSPECT_NOTE_LIMIT`). */
+export const APPLICATION_NOTE_TOTAL_LIMIT = 100
+/** Nottaki ad ve ilginin en fazla uzunluğu: başvuran kartta uzun serbest metin bırakamaz. */
+export const APPLICATION_NOTE_FIELD_MAX = 40
+/**
+ * Bir kurumda formdan bir günde (Europe/Istanbul) açılabilecek en çok aday. IP sınırı proxy havuzuna
+ * karşı yetmez; tavan sahte aday yığılmasını ve kurum kilidinde beklemeyi sınırlar.
+ */
+export const APPLICATION_DAILY_PROSPECT_LIMIT = 200
 
 /** Form anahtarının biçimi: 24 rastgele baytın base64url karşılığı. */
 const FORM_KEY = /^[A-Za-z0-9_-]{32}$/
@@ -129,30 +140,38 @@ export interface ProspectApplicationOptions {
   now: string
 }
 
+/** Kod noktasına göre kırpar: Türkçe harf ve emoji ortasından bölünmez. */
+function clipNoteField(value: string): string {
+  const characters = [...value]
+  return characters.length > APPLICATION_NOTE_FIELD_MAX
+    ? `${characters.slice(0, APPLICATION_NOTE_FIELD_MAX).join('')}…`
+    : value
+}
+
 function repeatNoteText(
   duplicate: ProspectDuplicate,
   data: { name: string; interest: string },
 ): string {
   return duplicate.kind === 'same'
     ? 'Web sitesi formundan yeniden başvuru alındı.'
-    : `Web sitesi formundan aynı iletişimle başka bir ad için başvuru alındı: ${data.name} · ${data.interest}`
+    : `Web sitesi formundan aynı iletişimle başka bir ad için başvuru alındı: ${clipNoteField(data.name)} · ${clipNoteField(data.interest)}`
 }
 
-/** Temas notu (DOM-KAY-002); yinelenen gönderim ve sınır aşımı sessizce hiçbir şey yazmaz. */
+/**
+ * Temas notu (DOM-KAY-002); yinelenen gönderim ve sınır aşımı sessizce hiçbir şey yazmaz. Sınırlar
+ * metne bakmaz: paylaşılan iletişimde metni başvuran belirlediği için farklı adlarla aşılırdı.
+ */
 function addRepeatNote(
   prospect: State['prospects'][number],
   text: string,
   { makeId, now }: ProspectApplicationOptions,
 ): boolean {
   const own = prospect.notes.filter((note) => note.author === APPLICATION_NOTE_AUTHOR)
-  const repeated = own.some(
-    (note) =>
-      note.text === text &&
-      Date.parse(now) - Date.parse(note.date ?? '') < APPLICATION_NOTE_REPEAT_MS,
-  )
+  const age = (note: ProspectNote) => Date.parse(now) - Date.parse(note.date ?? '')
   if (
-    repeated ||
-    own.length >= APPLICATION_NOTE_LIMIT ||
+    own.some((note) => age(note) < APPLICATION_NOTE_REPEAT_MS) ||
+    own.filter((note) => age(note) < APPLICATION_NOTE_WINDOW_MS).length >= APPLICATION_NOTE_LIMIT ||
+    own.length >= APPLICATION_NOTE_TOTAL_LIMIT ||
     prospect.notes.length >= PROSPECT_NOTE_LIMIT
   )
     return false

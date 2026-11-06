@@ -5,7 +5,10 @@ import { createSeed, type State } from '../packages/school-core/src/data/seed.ts
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import {
   APPLICATION_NOTE_AUTHOR,
+  APPLICATION_NOTE_FIELD_MAX,
   APPLICATION_NOTE_LIMIT,
+  APPLICATION_NOTE_TOTAL_LIMIT,
+  APPLICATION_NOTE_WINDOW_MS,
   applicationFrameAncestors,
   isApplicationFormKey,
   prospectApplicationSchema,
@@ -229,19 +232,73 @@ test('DOM-KAY-002: aynı form notu 24 saat içinde yinelenmez, sonra yeniden yaz
   assert.equal(existing.notes.length, count + 1)
 })
 
-test('DOM-KAY-002: form notu sınırı aşılmaz, ön büro notları korunur', () => {
+test('DOM-KAY-002: 24 saat denetimi metinden bağımsızdır; aynı telefonla 20 farklı ad tek not düşer', () => {
   const state = fresh()
   const existing = firstProspect(state)
-  existing.notes = Array.from({ length: APPLICATION_NOTE_LIMIT }, (_, index) => ({
+  const count = existing.notes.length
+  const outcomes = Array.from({ length: 20 }, (_, index) =>
+    submitProspectApplication(
+      state,
+      body({ phone: existing.phone, name: `Sahte Aday ${index}`, interest: `İlgi ${index}` }),
+      options({ now: LATER_SAME_DAY }),
+    ),
+  )
+  assert.equal(outcomes[0]?.kind, 'noted')
+  assert.ok(outcomes.slice(1).every((outcome) => outcome.kind === 'ignored'))
+  assert.equal(existing.notes.length, count + 1)
+})
+
+const formNotes = (length: number, date: string) =>
+  Array.from({ length }, (_, index) => ({
     id: `n${index}`,
     text: `eski ${index}`,
-    date: '2026-01-01T00:00:00.000Z',
+    date,
     author: APPLICATION_NOTE_AUTHOR,
   }))
+
+test('DOM-KAY-002: form notu sınırı pencere içinde sayılır; eski notlar gerçek başvuruyu susturmaz', () => {
+  const state = fresh()
+  const existing = firstProspect(state)
   const repeat = body({ name: existing.name, phone: existing.phone })
+  const inWindow = new Date(Date.parse(now) - APPLICATION_NOTE_WINDOW_MS + 86_400_000).toISOString()
+  existing.notes = formNotes(APPLICATION_NOTE_LIMIT, inWindow)
   assert.equal(submitProspectApplication(state, repeat, options()).kind, 'ignored')
   assert.equal(existing.notes.length, APPLICATION_NOTE_LIMIT)
 
+  const outOfWindow = new Date(Date.parse(now) - APPLICATION_NOTE_WINDOW_MS - 1).toISOString()
+  existing.notes = formNotes(APPLICATION_NOTE_LIMIT, outOfWindow)
+  assert.equal(submitProspectApplication(state, repeat, options()).kind, 'noted')
+  assert.equal(existing.notes.length, APPLICATION_NOTE_LIMIT + 1)
+})
+
+test('DOM-KAY-002: form notları kartın ön büro payını dolduramaz', () => {
+  const state = fresh()
+  const existing = firstProspect(state)
+  const repeat = body({ name: existing.name, phone: existing.phone })
+  existing.notes = formNotes(APPLICATION_NOTE_TOTAL_LIMIT, '2026-01-01T00:00:00.000Z')
+  assert.equal(submitProspectApplication(state, repeat, options()).kind, 'ignored')
+  assert.equal(existing.notes.length, APPLICATION_NOTE_TOTAL_LIMIT)
+  assert.ok(APPLICATION_NOTE_TOTAL_LIMIT < PROSPECT_NOTE_LIMIT)
+})
+
+test('DOM-KAY-002: nottaki ad ve ilgi uzunluğu sınırlıdır', () => {
+  const state = fresh()
+  const existing = firstProspect(state)
+  submitProspectApplication(
+    state,
+    body({ phone: existing.phone, name: 'Ş'.repeat(80), interest: 'İ'.repeat(120) }),
+    options(),
+  )
+  const text = existing.notes[0]?.text ?? ''
+  assert.ok(text.includes(`${'Ş'.repeat(APPLICATION_NOTE_FIELD_MAX)}…`))
+  assert.equal(text.includes('Ş'.repeat(APPLICATION_NOTE_FIELD_MAX + 1)), false)
+  assert.equal(text.includes('İ'.repeat(APPLICATION_NOTE_FIELD_MAX + 1)), false)
+})
+
+test('DOM-KAY-002: ön büro notları sınırı doldurduysa form notu yazılmaz', () => {
+  const state = fresh()
+  const existing = firstProspect(state)
+  const repeat = body({ name: existing.name, phone: existing.phone })
   existing.notes = Array.from({ length: PROSPECT_NOTE_LIMIT }, (_, index) => ({
     id: `s${index}`,
     text: `ön büro ${index}`,

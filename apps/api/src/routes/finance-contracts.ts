@@ -117,7 +117,7 @@ export function registerFinanceContractRoutes(app: FastifyInstance) {
         tags: ['finance-contracts'],
         summary: 'Ek protokol hazırla',
         description:
-          'Onaylı sözleşmenin yeni sürümünü taslak açar (IST-092, DOM-FIN-010): tahsilat görmüş öğrenim taksitleri ve ek hizmetler korunur, kalan net yeni plana dağıtılır. Önceki sürüm ve taksitler onaya kadar değişmez; yeni sürüm imza ve onayı yeniden ister. `discounts` verilirse indirim sözleşmenin tarifesinden yeniden hesaplanır (DOM-FIN-020, -021). Onaysız sözleşmede 422 `contract_not_approved`, açık ek protokol varken 409 `contract_amendment_open`, yerini ek protokole bırakan sürümde 409 `contract_superseded`, değişiklik yoksa 422 `contract_amendment_no_change`. `Idempotency-Key` ve `If-Match` (önceki sürüm) zorunlu. Roller: `yonetici`, `onburo`.',
+          'Onaylı sözleşmenin yeni sürümünü taslak açar (IST-092, DOM-FIN-010): tahsilat görmüş öğrenim taksitleri ve ek hizmetler korunur, kalan net yeni plana dağıtılır. Önceki sürüm ve taksitler onaya kadar değişmez; yeni sürüm imza ve onayı yeniden ister. `discounts` verilirse indirim sözleşmenin tarifesinden yeniden hesaplanır (DOM-FIN-020, -021). Onaysız sözleşmede 422 `contract_not_approved`, açık ek protokol varken 409 `contract_amendment_open`, yerini ek protokole bırakan sürümde 409 `contract_superseded`, değişiklik yoksa 422 `contract_amendment_no_change`. `Idempotency-Key` ve `If-Match` (önceki sürüm) zorunlu. Roller: `yonetici`, `onburo`. Toplam taksit sayısı (korunan öğrenim taksitleri + yeni plan) tarifedeki ödeme koşulunda olmalıdır: değilse 422 `payment_term_not_in_tariff`; koşul değişirse indirimler yeniden hesaplanır (DOM-FIN-013).',
         headers: HEADERS,
         params,
         body: amendContractSchema,

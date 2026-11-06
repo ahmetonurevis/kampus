@@ -1,4 +1,6 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
+import { resolveEffectiveTariff } from '@kampus/school-core/lib/fee-tariffs.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 
 import { requireIfMatch } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
@@ -25,11 +27,54 @@ export const FEE_TARIFF_CHANGED_MESSAGE =
 const FEE_TARIFFS_KEY = ['fee-tariffs'] as const
 const MESSAGES = { version_conflict: FEE_TARIFF_CHANGED_MESSAGE }
 
-export function useFeeTariffs(query: { page: number; pageSize: number; academicYear?: number }) {
+export function useFeeTariffs(
+  query: { page: number; pageSize: number; academicYear?: number },
+  options: { enabled?: boolean } = {},
+) {
   return useApiQuery({
     key: [...FEE_TARIFFS_KEY, query],
+    enabled: options.enabled ?? true,
     request: (client, signal) => client.GET('/api/v1/fee-tariffs', { params: { query }, signal }),
   })
+}
+
+const isPublished = (tariff: { status: string }) => tariff.status === 'published'
+
+/**
+ * Eğitim yılının sözleşmeye esas tarifesi (DOM-FIN-002, K-11): hedef yılın yayımlı tarifesi, yoksa
+ * core kuralıyla önceki yılınki. Önceki yıl yalnız hedef yılın tarifesi yoksa istenir. Ekran bu
+ * tarifeyle önizler; kesin karar sunucunundur, tarife değiştiyse 409 `tariff_changed` döner.
+ */
+export function useEffectiveFeeTariff(query: {
+  academicYear: number
+  institutionType: InstitutionType
+  pageSize: number
+}) {
+  const { academicYear, institutionType, pageSize } = query
+  const current = useFeeTariffs({ page: 1, pageSize, academicYear })
+  const published = current.data?.data.find(isPublished) ?? null
+  const needsPrevious = current.isSuccess && published === null
+  const previous = useFeeTariffs(
+    { page: 1, pageSize, academicYear: academicYear - 1 },
+    { enabled: needsPrevious },
+  )
+  const effective = resolveEffectiveTariff({
+    academicYear,
+    institutionType,
+    published,
+    previousPublished: previous.data?.data.find(isPublished) ?? null,
+    now: new Date(),
+  })
+  return {
+    tariff: effective?.tariff ?? null,
+    carriedOverFromYear: effective?.carriedOverFromYear ?? null,
+    isPending: current.isPending || (needsPrevious && previous.isPending),
+    error: current.error ?? (needsPrevious ? previous.error : null),
+    refetch: () => {
+      void current.refetch()
+      if (needsPrevious) void previous.refetch()
+    },
+  }
 }
 
 export function useCreateFeeTariff() {

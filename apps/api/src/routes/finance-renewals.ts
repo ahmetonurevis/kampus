@@ -18,6 +18,7 @@ import {
   renewalQuoteSchema,
   updatePriceIndexSchema,
 } from '@kampus/school-core/lib/renewals.ts'
+import { contractPaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
 import { mayRun } from '@kampus/school-core/lib/school-workflows.ts'
 
 import { ROLES } from '../auth.ts'
@@ -56,6 +57,13 @@ const scholarshipSchema = renewalPricingSchema.shape.scholarship
 const quoteSchema = z.object({
   tariffId: z.string(),
   tariffVersion: z.number().int(),
+  tariffCarriedOverFromYear: z
+    .number()
+    .int()
+    .nullable()
+    .describe(
+      'Hedef yılın tarifesi süresinde ilan edilmediği için önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); hedef yılın kendi tarifesinde `null`',
+    ),
   announcedCents: z.number().int().describe('İlan edilen öğrenim ücreti'),
   ceiling: renewalCeilingSchema,
   maxTuitionCents: z.number().int().describe('Uygulanabilecek en yüksek ücret'),
@@ -66,6 +74,11 @@ const quoteSchema = z.object({
   netCents: z.number().int().describe('İndirim ve burstan sonra kalan öğrenim ücreti'),
   extras: z.array(lineSchema),
   installments: z.array(z.number().int()).describe('Öğrenim taksitleri, kuruş'),
+  paymentTerm: contractPaymentTermSchema
+    .nullable()
+    .describe(
+      'Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`, ilanda olmayan taksit sayısı 422 `payment_term_not_in_tariff`',
+    ),
   outstandingTuitionCents: z
     .number()
     .int()
@@ -111,6 +124,11 @@ const renewalDetailSchema = renewalSchema.extend({
 const planResponseSchema = z.object({
   data: commandResponseSchema.shape.data.extend({
     contractId: z.string().optional().describe('Açılan sözleşme; mezuniyette yoktur'),
+    tariffCarriedOverFromYear: z
+      .number()
+      .int()
+      .optional()
+      .describe('Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur'),
   }),
 })
 const priceIndexSchema = z.object({
@@ -209,7 +227,7 @@ export function registerFinanceRenewalRoutes(app: FastifyInstance) {
         tags: ['finance-renewals'],
         summary: 'Yenileme ücretini önizle',
         description:
-          'Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Yayımlı tarife yoksa 422 `tariff_not_published`, oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`.',
+          'Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Hedef yılın yayımlı tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu) önceki yılın yayımlı tarifesi uygulanır, `tariffCarriedOverFromYear` o yılı söyler (DOM-FIN-002); dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).',
         body: renewalQuoteSchema,
         response: { 200: dataResponse(quoteSchema), ...commandErrors },
       },
@@ -228,7 +246,7 @@ export function registerFinanceRenewalRoutes(app: FastifyInstance) {
         tags: ['finance-renewals'],
         summary: 'Kayıt yenileme planla',
         description:
-          'Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005), indirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); tarife sürümü değiştiyse 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.',
+          'Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005); süresinde ilan yapılmadıysa önceki yılın tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, `academicYear` hedef yıl kalır, yanıtta `tariffCarriedOverFromYear` döner. İndirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); gövdedeki `tariffId` geçerli tarifeden farklıysa (yeni sürüm ya da hedef yılın tarifesi sonradan yayımlandı) 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: renewalPlanSchema,
         response: { 201: planResponseSchema, ...commandErrors },

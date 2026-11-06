@@ -376,11 +376,105 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assert.equal(planned.statusCode, 201, planned.body)
   })
 
-  test('DOM-FIN-002: hedef yılın tarifesi yoksa 422 tariff_not_published', async () => {
+  test('DOM-FIN-002, K-11: ilan dönemi sürüyorsa önceki yılın tarifesi taşınmaz, 422 tariff_not_published', async () => {
+    // Hedef 2027–2028'in ilan dönemi 2027 mayıs sonunda biter; FIXED_NOW 2026 ekimidir.
     const a = await institution()
     await publish(a.id, 2026)
     await post(INDEXES, a.admin, INDEX)
     assertError(await post(`${BASE}/quote`, a.admin, QUOTE), 422, 'tariff_not_published')
+  })
+
+  /**
+   * Hedef yıl 2026: ilan dönemi FIXED_NOW'dan (2026 ekimi) önce biter. Kurumun yılı 2025, yenileme
+   * yılı 2026; önceki yılın (2025) tarifesi yayımlı, 2026'nın tarifesi yoktur.
+   */
+  const CARRY_QUOTE = { ...QUOTE, academicYear: 2026 }
+  async function carriedOver() {
+    const a = await institution({ academicYear: 2025 })
+    await publish(a.id, 2025)
+    const made = await post(INDEXES, a.admin, { ...INDEX, academicYear: 2026 })
+    assert.equal(made.statusCode, 201, made.body)
+    return a
+  }
+  const quotedTariffId = async (cookie: string) =>
+    (await post(`${BASE}/quote`, cookie, CARRY_QUOTE)).json().data.tariffId as string
+
+  test('DOM-FIN-002, K-11: süresinde ilan yoksa önceki yılın tarifesi uygulanır; önizleme, yanıt ve kayıt bunu söyler, sözleşme o tarifeyi taşır', async () => {
+    const a = await carriedOver()
+    const quote = await post(`${BASE}/quote`, a.admin, CARRY_QUOTE)
+    assert.equal(quote.statusCode, 200, quote.body)
+    const { tariffId, tariffVersion, tariffCarriedOverFromYear, ceiling, announcedCents } =
+      quote.json().data
+    assert.equal(tariffCarriedOverFromYear, 2025)
+    assert.equal(tariffVersion, 1)
+    // Fikstür tarifesi koşulsuz eski kayıttır (DOM-FIN-013): koşul yazılmaz, taksit serbest.
+    assert.equal(quote.json().data.paymentTerm, null)
+    assert.equal(announcedCents, ANNOUNCED_CENTS)
+    // Tavanın bazı önceki yılın ilan ücretidir; taşınma onu değiştirmez (DOM-FIN-005).
+    assert.equal(ceiling.status, 'applied')
+    assert.equal(ceiling.baseSource, 'previous_tariff')
+    assert.equal(ceiling.baseCents, ANNOUNCED_CENTS)
+
+    const planned = await post(
+      BASE,
+      a.admin,
+      { ...CARRY_QUOTE, mode: 'renew', tariffId, firstDueDate: '2026-11-15' },
+      key(),
+    )
+    assert.equal(planned.statusCode, 201, planned.body)
+    const { contractId, entity, tariffCarriedOverFromYear: planYear } = planned.json().data
+    assert.equal(planYear, 2025)
+    const contract = await findRecord(db, a.id, 'contracts', contractId as string)
+    assert.equal(contract?.data.tariffId, tariffId)
+    assert.equal(contract?.data.tariffVersion, 1)
+    assert.equal(contract?.data.academicYear, 2026)
+    const detail = await get(`${BASE}/${String(entity.id)}`, a.admin)
+    assert.equal(detail.statusCode, 200, detail.body)
+    assert.equal(detail.json().data.academicYear, 2026)
+    assert.equal(detail.json().data.pricing.tariffId, tariffId)
+    assert.equal(detail.json().data.pricing.tariffCarriedOverFromYear, 2025)
+  })
+
+  test('DOM-FIN-002, K-11: hedef yılın tarifesi sonradan yayımlanınca taşınan tarifeyle plan 409 ve kayıt değişmez; yeniden önizlemede taşınma yok', async () => {
+    const a = await carriedOver()
+    const tariffId = await quotedTariffId(a.admin)
+    await publish(a.id, 2026)
+    const before = await loadRecords(db, a.id, ['renewals', 'contracts', 'invoices'])
+    assertError(
+      await post(
+        BASE,
+        a.admin,
+        { ...CARRY_QUOTE, mode: 'renew', tariffId, firstDueDate: '2026-11-15' },
+        key(),
+      ),
+      409,
+      'tariff_changed',
+    )
+    assert.deepEqual(await loadRecords(db, a.id, ['renewals', 'contracts', 'invoices']), before)
+    const fresh = await post(`${BASE}/quote`, a.admin, CARRY_QUOTE)
+    assert.equal(fresh.statusCode, 200, fresh.body)
+    assert.notEqual(fresh.json().data.tariffId, tariffId)
+    assert.equal(fresh.json().data.tariffCarriedOverFromYear, null)
+    const planned = await post(
+      BASE,
+      a.admin,
+      {
+        ...CARRY_QUOTE,
+        mode: 'renew',
+        tariffId: fresh.json().data.tariffId,
+        firstDueDate: '2026-11-15',
+      },
+      key(),
+    )
+    assert.equal(planned.statusCode, 201, planned.body)
+    assert.equal('tariffCarriedOverFromYear' in planned.json().data, false)
+  })
+
+  test('DOM-FIN-002, K-11: önceki yılın da tarifesi yoksa 422; iki yıl önceki tarife taşınmaz', async () => {
+    const a = await institution({ academicYear: 2025 })
+    await publish(a.id, 2024)
+    await post(INDEXES, a.admin, { ...INDEX, academicYear: 2026 })
+    assertError(await post(`${BASE}/quote`, a.admin, CARRY_QUOTE), 422, 'tariff_not_published')
   })
 
   test('DOM-FIN-005: tavanı aşan plan 422 ve kayıt değişmez; Idempotency-Key zorunlu, gövde 400', async () => {

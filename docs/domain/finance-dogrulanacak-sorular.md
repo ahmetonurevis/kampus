@@ -52,7 +52,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 
 - **Kural:** `DOM-FIN-013`, `DOM-FIN-004`; ADR 0007 açık soruları. Muhasebe tarafı M-06.
 - **Soru:** Kartla ödemede ödeme kuruluşunun kestiği komisyonu veliye ayrı bir tutar olarak yansıtmak, ilan dışı ad altında ücret alma ve süreli ödemede ilan ücretini aşma yasağına (ÖÖKY md. 54/1-a, b, d ve 55/4) aykırı mı?
-- **Bugünkü varsayım:** Karar verilmedi. Sistem yalnız tarifede ilan edilmiş kalemlerle borç açtığı için komisyonu veliye yansıtamaz; komisyon kurumda kalır.
+- **Bugünkü varsayım:** Karar verilmedi. Sistem yalnız tarifede ilan edilmiş kalemlerle borç açtığı ve ödeme koşulu yalnız indirim yönünde fiyat farkı taşıdığı için (`lib/payment-terms.ts`) komisyonu veliye yansıtamaz; komisyon kurumda kalır.
 - **Kodda:** Çevrim içi ödeme kapalıdır (`invoice.payOnline`, `TODO(payment-provider)`); tarife kalem türleri sabit listedir (`FEE_ITEM_KINDS`).
 - **Cevap değişirse:** Yansıtma uygunsa tarifeye ilanlı bir kart ödeme farkı kalemi ve sağlayıcı ayarı eklenir; uygun değilse ADR 0007'ye "komisyonu kurum üstlenir" kararı yazılır.
 - **Cevap:** bekleniyor
@@ -164,8 +164,8 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 
 - **Kural:** `DOM-FIN-042`; ister listesi §4.3 "Mesafeli kayıt".
 - **Soru:** Dil okulu paketinin kurum binasına gelinmeden tamamen çevrim içi satılması mesafeli sözleşme sayılır mı; sayılırsa cayma süresi, istisnalar ve ÖÖKY'deki iade kuralıyla ilişkisi nedir (6502 sayılı Kanun, Mesafeli Sözleşmeler Yönetmeliği)?
-- **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz.
-- **Kodda:** Yok; paket yalnız yönetici ve ön büro tarafından satılır (`POST /api/v1/finance/package-sales`, ON-058), çevrim içi satış kanalı ve ön bilgilendirme yok (ON-059).
+- **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz. Süre ister listesindeki genel 14 gündür, sözleşme gününden sayılır ve son gün dahildir.
+- **Kodda:** Çevrim içi paket satışı yok; paket yalnız yönetici ve ön büro tarafından satılır (`POST /api/v1/finance/package-sales`, ON-058, K-07). Kural, süre ve ön bilgilendirme verisi saf fonksiyondur (`distanceSaleWithdrawal`, `distanceSalePreInformation`, `lib/finance-distance-sale.ts`); ON-059 ve ON-072 çağıracak.
 - **Cevap değişirse:** Çevrim içi satışta ön bilgilendirme ve cayma metni ile cayma süresi içindeki kesintisiz iade yolu eklenir (IST-078).
 - **Cevap:** bekleniyor
 
@@ -317,14 +317,46 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Referans hakkının biçimi ve sözleşmedeki gösterimi değişir.
 - **Cevap:** bekleniyor
 
+#### M-09 · Kasa gün sonu kaydının defter niteliği
+
+- **Kural:** `DOM-FIN-033` (kasa ve gün sonu, ON-064).
+- **Soru:** Gün sonu kapanış kaydı VUK anlamında kasa defteri yerine geçer mi; kasa farkı nasıl muhasebeleşir ve kaydın saklama süresi nedir (`M-07` ile birlikte)?
+- **Bugünkü varsayım:** Kayıt iç kontrol aracıdır, yasal defter sayılmaz; fark açıklamayla tutulur, muhasebe kaydı üretmez.
+- **Kodda:** `lib/finance-day-closings.ts`, `POST /api/v1/finance/day-closings/:closingDate/close`.
+- **Cevap değişirse:** Kapanışa defter alanları ve fark için muhasebe aktarım satırı eklenir.
+- **Cevap:** bekleniyor
+
+#### M-10 · Paket satışında ilan altı fiyatın indirim tavanına sayılması
+
+- **Kural:** `DOM-FIN-001`, `DOM-DIL-050` (paket satışı, ON-058).
+- **Soru:** Dil okulu paketinde ilan edilen saat ücretinin altında satış, %50 indirim tavanı hesabında indirim sayılır mı?
+- **Bugünkü varsayım:** Sayılır (temkinli); ilan fiyatının yarısının altındaki satış reddedilir.
+- **Kodda:** ON-058 paket satışı kuralı.
+- **Cevap değişirse:** Tavan yalnız adı konmuş indirimlere uygulanır.
+- **Cevap:** bekleniyor
+
 ## Kararlaştırılanlar
 
 Aşağıdakiler soru değildir; proje sahibinin kararıdır ve kural belgelerine "kullanıcı kararı" olarak işlenmiştir.
 
-| Kimlik | Tarih      | Kural                        | Karar                                                                                    | Etkilenen yer                                                                 |
-| ------ | ---------- | ---------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| K-01   | 2026-11-03 | `DOM-FIN-032`                | Senet alındığı anda tahsilat sayılır ve taksiti kapatır; senedin vadesi ayrıca izlenmez. | `PAYMENT_METHODS` `Senet` (`lib/payments.ts`), ON-018                         |
-| K-02   | 2026-11-03 | `DOM-FIN-005`                | Artış tavanındaki ÜFE ve TÜFE oranları kurum başına, eğitim yılı için girilir.           | `tuitionIncreaseCeiling` (`lib/fee-tariffs.ts`); yenileme API'si (ON-030)     |
-| K-03   | 2026-11-03 | `DOM-FIN-005`                | 1, 5 ve 9. sınıf kademe başıdır; bu sınıflara yenilemede artış tavanı uygulanmaz.        | Yenileme tavan denetimi (ON-030)                                              |
-| K-04   | 2026-11-03 | `DOM-FIN-052`, `DOM-FIN-035` | Ödeyici veli, velayeti olmasa da ödeyicisi olduğu öğrencinin finans bilgisini görür.     | Finans okuma kapsamı ve bildirim alıcısı (ON-291; `DOM-ILT-074`, Oğuzhan #33) |
-| K-05   | 2026-11-03 | `DOM-KAY-012`, `DOM-KAY-013` | Veli hesabını personel açar: veli kaydı girilir, hesabın göreceği öğrenci seçilir.       | Kesin kayıttan veli hesabı açma (ON-290, ON-128; veli daveti ucu Oğuzhan #32) |
+| Kimlik | Tarih      | Kural                        | Karar                                                                                                                                                                                                                                 | Etkilenen yer                                                                 |
+| ------ | ---------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| K-01   | 2026-11-03 | `DOM-FIN-032`                | Senet alındığı anda tahsilat sayılır ve taksiti kapatır; senedin vadesi ayrıca izlenmez.                                                                                                                                              | `PAYMENT_METHODS` `Senet` (`lib/payments.ts`), ON-018                         |
+| K-02   | 2026-11-03 | `DOM-FIN-005`                | Artış tavanındaki ÜFE ve TÜFE oranları kurum başına, eğitim yılı için girilir.                                                                                                                                                        | `tuitionIncreaseCeiling` (`lib/fee-tariffs.ts`); yenileme API'si (ON-030)     |
+| K-03   | 2026-11-03 | `DOM-FIN-005`                | 1, 5 ve 9. sınıf kademe başıdır; bu sınıflara yenilemede artış tavanı uygulanmaz.                                                                                                                                                     | Yenileme tavan denetimi (ON-030)                                              |
+| K-04   | 2026-11-03 | `DOM-FIN-052`, `DOM-FIN-035` | Ödeyici veli, velayeti olmasa da ödeyicisi olduğu öğrencinin finans bilgisini görür.                                                                                                                                                  | Finans okuma kapsamı ve bildirim alıcısı (ON-291; `DOM-ILT-074`, Oğuzhan #33) |
+| K-05   | 2026-11-03 | `DOM-KAY-012`, `DOM-KAY-013` | Veli hesabını personel açar: veli kaydı girilir, hesabın göreceği öğrenci seçilir.                                                                                                                                                    | Kesin kayıttan veli hesabı açma (ON-290, ON-128; veli daveti ucu Oğuzhan #32) |
+| K-06   | 2026-11-06 | `DOM-FIN-040`                | Öğrenci ayrılırken bütün yürürlükteki sözleşmeleri (paket satışı dahil) iade ve borç hesabına girer.                                                                                                                                  | Ayrılış (`lib/withdrawals.ts`), ON-296                                        |
+| K-07   | 2026-11-06 | `DOM-DIL-050`                | Paket satışını yönetici ve personel (ön büro) yapar; veli kendi başına satın almaz.                                                                                                                                                   | Paket satışı (ON-058)                                                         |
+| K-08   | 2026-11-06 | `DOM-FIN-033`                | Gün sonunda iptal edilen nakit kasadan çıkmış sayılır; kasadan bankaya aktarım izlenmez, açıklama yeterlidir.                                                                                                                         | Gün sonu (ON-064)                                                             |
+| K-09   | 2026-11-06 | `DOM-KAY-040`                | Kayıt hunisinde danışman adayı açan personeldir.                                                                                                                                                                                      | Kayıt hunisi (ON-051)                                                         |
+| K-10   | 2026-11-06 | `DOM-KAY-020`                | Yenilemeden önce veliye ayrı davet gönderilir; veli çevrim içi yanıt verir, plan ve sözleşme onayı ayrı kalır.                                                                                                                        | Yenileme daveti (ON-056)                                                      |
+| K-11   | 2026-11-06 | `DOM-FIN-002`                | Tarife süresinde ilan edilmezse önceki yılın yayımlı tarifesi geçerli kalır.                                                                                                                                                          | Kesin kayıt ve yenileme, ON-297                                               |
+| K-12   | 2026-11-06 | `DOM-FIN-040`                | Ayrılışta sözleşmelerin ödeyicileri farklıysa iade otomatik yazılmaz; alacak kişiyi yönetici gerekçeyle seçer.                                                                                                                        | Ayrılış (`lib/withdrawals.ts`), ON-296                                        |
+| K-13   | 2026-11-06 | `DOM-FIN-040`                | Ayrılışta ödeyici seçim gerekçesini yalnız yönetici görür; dökümde ad değil tür yazar.                                                                                                                                                | Ayrılış, ON-296                                                               |
+| K-14   | 2026-11-06 | `DOM-FIN-024`                | Referans hakkının değeri kayıt anında sabitlenir; tam bursta hak doğmaz, iadesiz erken ayrılışta kalır, iptal bildirimi gitmez, iptal edilen yenilemedeki hak sahibine döner.                                                         | Referans programı, ON-139                                                     |
+| K-15   | 2026-11-06 | `DOM-KAY-015`                | e-Özel listesinde tam kimlik tek satırda "Göster" ile açılır ve denetime yazılır, CSV maskeli kalır; işlenmiş satır sonradan değişirse "e-Özel'de düzeltilmeli" diye listede kalır; ön büro CSV indirebilir.                          | e-Özel, ON-083                                                                |
+| K-16   | 2026-11-06 | `IST-007`                    | Pilot aktarımda tutar TL ya da kuruş olabilir; geçmiş ödeme "açılış aktarımı" diye ayrılır, kasayı değiştirmez, mutabakatta tutmayan çıkmaz. `read-excel-file` kabul edildi.                                                          | Pilot aktarım, ON-060, ON-061, ON-085                                         |
+| K-17   | 2026-11-06 | `DOM-FIN-003`                | Dönem ortasında ek hizmet tutarını personel tarifenin üstüne çıkmadan düzeltebilir, aylık tarifede her ay ayrı taksit açılır; kulüp ücret türüdür. Ayrılışta tutar yöneticiye gösterilir, H-15 cevabına kadar otomatik iade yazılmaz. | Ek hizmet, ON-087, ON-298                                                     |
+| K-18   | 2026-11-06 | `DOM-KAY-002`, `DOM-KAY-004` | Web formu mükerrer başvuruda not düşer. Formdan gelen ticari onay, kişi doğrulanana kadar İYS'ye gönderilmez ve kampanyada kullanılmaz. Denetimde gerçek sistem aktörü kullanılır. Kapalı modülde açık uçlar 404 döner.               | Ön başvuru formu, ON-133                                                      |
+| K-19   | 2026-11-06 | `IST-111`                    | Mutabakat formülü: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış; mali müşavire de gösterilir. Dil okulu ve kursta önceki yıl tarifesi taşınmaz. Paket satışında burs yok.                               | ON-085, ON-297, ON-058                                                        |

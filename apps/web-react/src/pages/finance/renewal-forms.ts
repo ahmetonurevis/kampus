@@ -4,13 +4,18 @@
 import { z } from 'zod'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
-  FEE_DISCOUNT_KIND_LABELS,
+  carriedOverTariffNote,
+  DISCOUNT_LINE_LABELS,
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
-  type FeeDiscountKind,
+  type DiscountLineKind,
   type FeeItemKind,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
+import {
+  contractPaymentTermLabel,
+  type ContractPaymentTerm,
+} from '@kampus/school-core/lib/payment-terms.ts'
 import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import { createPriceIndexSchema } from '@kampus/school-core/lib/renewals.ts'
 import type { RenewalCeiling } from '@kampus/school-core/lib/renewal-ceiling.ts'
@@ -179,6 +184,8 @@ export function ceilingLines(ceiling: RenewalCeiling): string[] {
 }
 
 export type RenewalQuoteView = {
+  /** Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002, K-11). */
+  tariffCarriedOverFromYear: number | null
   announcedCents: number
   ceiling: RenewalCeiling
   tuitionCents: number
@@ -188,20 +195,27 @@ export type RenewalQuoteView = {
   netCents: number
   extras: readonly { kind: string; amountCents: number }[]
   installments: readonly number[]
+  /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede yok. */
+  paymentTerm?: ContractPaymentTerm | null
   /** Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025); sıfırdan büyükse yönetici onayı. */
   outstandingTuitionCents: number
 }
 
-const discountLabel = (kind: string) =>
-  FEE_DISCOUNT_KIND_LABELS[kind as FeeDiscountKind] ?? 'İndirim'
+const discountLabel = (kind: string) => DISCOUNT_LINE_LABELS[kind as DiscountLineKind] ?? 'İndirim'
 const extraLabel = (kind: string) => FEE_ITEM_KIND_LABELS[kind as FeeItemKind] ?? 'Ek hizmet'
 
 /** Ödeme özeti satırları; tutarlar sunucunun önizlemesidir. */
 export function quoteLines(quote: RenewalQuoteView) {
   return {
     pricing: [
+      ...(quote.tariffCarriedOverFromYear === null
+        ? []
+        : [carriedOverTariffNote(quote.tariffCarriedOverFromYear)]),
       `İlan edilen ücret: ${money(quote.announcedCents)}`,
       ...ceilingLines(quote.ceiling),
+      ...(quote.paymentTerm
+        ? [`Ödeme koşulu: ${contractPaymentTermLabel(quote.paymentTerm)}`]
+        : []),
       `Öğrenim ücreti: ${money(quote.tuitionCents)}`,
       ...quote.discounts.map(
         (line) => `${discountLabel(line.kind)} indirimi: −${money(line.amountCents)}`,

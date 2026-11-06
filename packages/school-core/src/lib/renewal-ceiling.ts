@@ -8,6 +8,7 @@ import {
   type PriceIndexRates,
 } from './fee-tariffs.ts'
 import { money } from './format.ts'
+import { contractPaymentTermSchema } from './payment-terms.ts'
 
 /**
  * Yenilemenin artış tavanı (docs/domain/finans.md DOM-FIN-005, DOM-FIN-023; ÖÖKY md. 53/1). Baz ve
@@ -57,11 +58,22 @@ export type DiscountLoss = NonNullable<
 export const renewalPricingSchema = z.object({
   tariffId: z.string(),
   tariffVersion: z.number().int(),
+  /** Süresinde ilan yapılmadıysa tarifenin taşındığı yıl (DOM-FIN-002); eski kayıtta yoktur. */
+  tariffCarriedOverFromYear: z
+    .number()
+    .int()
+    .nullable()
+    .optional()
+    .describe('Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002)'),
   announcedCents: z.number().int(),
   ceiling: renewalCeilingSchema,
   discounts: z.array(lineSchema),
   extras: z.array(lineSchema),
   scholarship: z.object({ programId: z.string(), amountCents: z.number().int() }).nullable(),
+  /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); eski kayıtta ve eski tarifede yoktur. */
+  paymentTerm: contractPaymentTermSchema
+    .optional()
+    .describe('Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013)'),
 })
 export type RenewalPricing = z.output<typeof renewalPricingSchema>
 

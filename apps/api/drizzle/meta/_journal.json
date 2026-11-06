@@ -453,8 +453,15 @@
     {
       "idx": 64,
       "version": "7",
-      "when": 1793968509610,
-      "tag": "0064_create_lesson_packages",
+      "when": 1793975109233,
+      "tag": "0064_add_payment_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793996569232,
+      "tag": "0065_create_lesson_packages",
       "breakpoints": true
     }
   ]

@@ -523,7 +523,7 @@ function ReturnModal({ row, onClose }: { row: Row; onClose: () => void }) {
           : 'Dönüş işlendi. Kursiyer yeniden aktif.',
       )
     }
-    if (outcome.status !== 'pending') onClose()
+    if (outcome.status !== 'busy') onClose()
   }
   return (
     <Modal

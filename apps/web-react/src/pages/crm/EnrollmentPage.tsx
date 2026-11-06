@@ -52,6 +52,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
+import { StudentImportSection } from './StudentImportSection.tsx'
 import { enrollmentParentId } from './enrollment-guardian-account.ts'
 import {
   ENROLLMENT_CONSENT_NOTE,
@@ -202,6 +203,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
         />
       )}
       <GuardianInvitationsSection />
+      <StudentImportSection />
     </>
   )
 }

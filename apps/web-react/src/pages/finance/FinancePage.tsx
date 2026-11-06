@@ -12,6 +12,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
+import { InstallmentImportSection } from './InstallmentImportSection.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
@@ -114,6 +115,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'invoices' ? (
         <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />
       ) : null}
+      {tab === 'invoices' && isManager ? <InstallmentImportSection /> : null}
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}
         onClose={panel.close}

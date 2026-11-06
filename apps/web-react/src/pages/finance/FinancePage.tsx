@@ -13,6 +13,7 @@ import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
+import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
@@ -124,10 +125,13 @@ export function FinancePage({ page }: { page: NavPage }) {
         invoiceId={panel.selectedId}
         onClose={panel.close}
         actions={(row) => (
-          <Button onClick={() => openPayment(row.id)}>
-            <Icon name="Wallet" size={17} aria-hidden="true" />
-            Tahsil et
-          </Button>
+          <>
+            <Button onClick={() => openPayment(row.id)}>
+              <Icon name="Wallet" size={17} aria-hidden="true" />
+              Tahsil et
+            </Button>
+            <InvoiceRemindButton row={row} />
+          </>
         )}
       />
       <PaymentPanel invoiceId={payment.selectedId} onClose={payment.close} />

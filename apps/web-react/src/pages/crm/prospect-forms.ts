@@ -18,6 +18,7 @@ import {
   createProspectSchema,
   MEETING_DURATION,
   OPEN_PROSPECT_STAGES,
+  PROSPECT_LOST_INSTITUTION_MAX,
   PROSPECT_LOST_REASONS,
   PROSPECT_STAGES,
   prospectAgeGroupRequired,
@@ -146,6 +147,14 @@ export const isDuplicateCode = (code: string) =>
 export const stageFormSchema = z.object({
   stage: z.string().min(1, 'Aşamayı seçin.'),
   lostReason: z.enum([...PROSPECT_LOST_REASONS, '']).optional(),
+  lostToInstitution: z
+    .string()
+    .trim()
+    .max(
+      PROSPECT_LOST_INSTITUTION_MAX,
+      `En fazla ${PROSPECT_LOST_INSTITUTION_MAX} karakter girebilirsiniz.`,
+    )
+    .optional(),
   siblingOfId: z.string().optional(),
 })
 export type StageFormValues = z.input<typeof stageFormSchema>
@@ -153,6 +162,7 @@ export type StageFormValues = z.input<typeof stageFormSchema>
 export const stageDefaults = (): StageFormValues => ({
   stage: '',
   lostReason: '',
+  lostToInstitution: '',
   siblingOfId: '',
 })
 
@@ -170,8 +180,16 @@ export function stageBody(
   if (!stage) return { ok: false, field: 'stage', message: 'Aşamayı seçin.' }
   if (stage === 'Vazgeçti') {
     const reason = PROSPECT_LOST_REASONS.find((item) => item === values.lostReason)
+    const institution = optional(values.lostToInstitution)
     return reason
-      ? { ok: true, body: { stage, lostReason: reason } }
+      ? {
+          ok: true,
+          body: {
+            stage,
+            lostReason: reason,
+            ...(institution ? { lostToInstitution: institution } : {}),
+          },
+        }
       : { ok: false, field: 'lostReason', message: 'Vazgeçme nedenini seçin.' }
   }
   const sibling = optional(values.siblingOfId)

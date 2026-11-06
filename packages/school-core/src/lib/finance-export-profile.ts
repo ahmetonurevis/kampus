@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { csvAmount, csvCell } from './csv.ts'
 import type { FinanceExportKind, InvoiceLine, PaymentLine, RefundLine } from './finance-export.ts'
 import { RECONCILIATION_MISMATCH_LABELS, type ReconciliationRow } from './finance-reconciliation.ts'
+import { dateSheetCell, type FinanceSheet, type SheetCell } from './finance-sheet.ts'
 
 /**
  * Muhasebe aktarım profili (ON-024, IST-111): kurum dosyanın sütun adını, sırasını, tarih ve tutar
@@ -185,6 +186,70 @@ export function defaultFinanceExportProfile(): FinanceExportProfile {
       reconciliation: columnsOf('reconciliation'),
     },
   }
+}
+
+function sheetCell(kind: CellKind, value: string | number): SheetCell {
+  if (kind === 'amount') return { kind: 'amount', cents: Number(value) }
+  if (typeof value === 'number') return { kind: 'integer', value }
+  return kind === 'date' ? dateSheetCell(value) : { kind: 'text', value }
+}
+
+/**
+ * Excel karşılığı (ON-094): sütun adı ve sırası CSV ile aynı profilden gelir. Ayırıcı ve ondalık
+ * işareti dosyaya girmez; tutar sayı hücresidir, ondalığı Excel'in kendi dili gösterir.
+ */
+function renderSheet<L>(
+  name: string,
+  sources: Record<string, Source<L>>,
+  columns: readonly ExportColumn[],
+  lines: readonly L[],
+  profile: FinanceExportProfile,
+): FinanceSheet {
+  const cell = (column: ExportColumn, line: L): SheetCell => {
+    const source = sources[column.source]
+    return source
+      ? sheetCell(source.kind, source.read(line))
+      : { kind: 'text', value: column.value ?? '' }
+  }
+  return {
+    name,
+    dateFormat: profile.dateFormat,
+    headers: columns.map((column) => column.header),
+    rows: lines.map((line) => columns.map((column) => cell(column, line))),
+  }
+}
+
+export function profiledPaymentsSheet(
+  lines: readonly PaymentLine[],
+  profile: FinanceExportProfile,
+): FinanceSheet {
+  return renderSheet<PaymentLine>(
+    'Tahsilat',
+    PAYMENT_SOURCES,
+    profile.columns.payments,
+    lines,
+    profile,
+  )
+}
+
+export function profiledRefundsSheet(
+  lines: readonly RefundLine[],
+  profile: FinanceExportProfile,
+): FinanceSheet {
+  return renderSheet<RefundLine>('İade', REFUND_SOURCES, profile.columns.refunds, lines, profile)
+}
+
+export function profiledInvoicesSheet(
+  lines: readonly InvoiceLine[],
+  profile: FinanceExportProfile,
+): FinanceSheet {
+  return renderSheet<InvoiceLine>(
+    'Taksit',
+    INVOICE_SOURCES,
+    profile.columns.invoices,
+    lines,
+    profile,
+  )
 }
 
 function dateCell(value: string | number, format: FinanceExportProfile['dateFormat']): string {

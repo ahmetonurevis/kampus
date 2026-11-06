@@ -27,6 +27,7 @@ import {
   isOpenStage,
   prospectContactOwner,
   slotLabel,
+  lostReasonLabel,
   stageTone,
 } from './prospect-rows.ts'
 
@@ -243,6 +244,24 @@ function Detail({
                 <div>
                   <dt className="text-xs text-muted-foreground">Veli</dt>
                   <dd>{prospect.guardianName}</dd>
+                </div>
+              </div>
+            ) : null}
+            {prospect.stage === 'Vazgeçti' && prospect.lostReason ? (
+              <div className="flex items-start gap-2.5">
+                <Icon name="TriangleAlert" size={17} aria-hidden="true" />
+                <div>
+                  <dt className="text-xs text-muted-foreground">Vazgeçme nedeni</dt>
+                  <dd>{lostReasonLabel(prospect.lostReason)}</dd>
+                </div>
+              </div>
+            ) : null}
+            {prospect.stage === 'Vazgeçti' && prospect.lostToInstitution ? (
+              <div className="flex items-start gap-2.5">
+                <Icon name="Building2" size={17} aria-hidden="true" />
+                <div>
+                  <dt className="text-xs text-muted-foreground">Tercih ettiği kurum</dt>
+                  <dd className="[overflow-wrap:anywhere]">{prospect.lostToInstitution}</dd>
                 </div>
               </div>
             ) : null}

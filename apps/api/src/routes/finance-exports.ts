@@ -20,6 +20,7 @@ import {
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   financeExportFor,
+  financeExportWorkbookFor,
   financeOverviewFor,
   financeSummaryFor,
   financeTotalsFor,
@@ -32,6 +33,7 @@ import {
   financeReconciliationExportFor,
   financeReconciliationFor,
 } from '../services/finance-reconciliation.ts'
+import { XLSX_CONTENT_TYPE } from '../services/finance-workbook.ts'
 import { captureInput, options, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
@@ -386,13 +388,21 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
         tags: ['finance-exports'],
         summary: 'Muhasebe aktarım dosyası',
         description:
-          '`kind` ile tahsilat, iade veya taksit satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.',
+          '`kind` ile tahsilat, iade veya taksit satırlarını döner. `format=csv` (varsayılan): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. `format=xlsx`: Excel dosyası (ikili gövde); metin alanları formül çalıştırmayan metin hücresi, tutar `#,##0.00` biçimli sayı hücresi, tarih Europe/Istanbul günü olarak profilin tarih biçimiyle tarih hücresidir; sütun adı ve sırası kurumun profilinden gelir, ayırıcı ve ondalık işareti yalnız CSV içindir. Belirli bir muhasebe programına uyum iddiası, hesap kodu ve KDV dökümü yoktur. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.',
         querystring: financeExportQuerySchema,
-        response: { 200: z.string().describe('CSV dosyası'), ...commandErrors },
+        response: { 200: z.string().describe('CSV metni ya da `.xlsx` dosyası'), ...commandErrors },
       },
     },
     async (request, reply) => {
-      const { kind, from, to } = request.query
+      const { kind, from, to, format } = request.query
+      if (format === 'xlsx') {
+        const file = await financeExportWorkbookFor(contextOf(request), { kind, from, to })
+        // Buffer serileştirilmeden gönderilir; yanıt şeması yalnız OpenAPI içindir.
+        return (reply as FastifyReply)
+          .type(XLSX_CONTENT_TYPE)
+          .header('content-disposition', `attachment; filename="${kind}-${from}-${to}.xlsx"`)
+          .send(file)
+      }
       const csv = await financeExportFor(contextOf(request), { kind, from, to })
       return reply
         .type('text/csv; charset=utf-8')

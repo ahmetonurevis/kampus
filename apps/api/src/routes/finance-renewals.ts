@@ -12,6 +12,7 @@ import {
   renewalCeilingSchema,
   renewalPricingSchema,
 } from '@kampus/school-core/lib/renewal-ceiling.ts'
+import { RENEWAL_INVITATION_STATUSES } from '@kampus/school-core/lib/renewal-invitations.ts'
 import {
   createPriceIndexSchema,
   renewalPlanSchema,
@@ -71,6 +72,12 @@ const quoteSchema = z.object({
     .int()
     .describe(
       'Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister',
+    ),
+  invitationStatus: z
+    .enum(RENEWAL_INVITATION_STATUSES)
+    .nullable()
+    .describe(
+      'Hedef yılın yenileme daveti; `will_not_renew` planı engellemez, form uyarır (DOM-KAY-027). Davet yoksa `null`',
     ),
 })
 const renewalSchema = z.object({

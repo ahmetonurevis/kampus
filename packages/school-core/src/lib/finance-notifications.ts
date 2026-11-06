@@ -105,6 +105,30 @@ export const CONTRACT_NOTIFICATION_TYPES = {
 } as const
 
 /**
+ * Yenileme daveti (K-10; ON-056; DOM-KAY-027, IST-100). Veri yalnız davet kimliğidir; tutar ve plan
+ * yoktur (DOM-ILT-023). Yenileme yalnız okul türündedir, öğrenci her zaman velilidir; modül
+ * `renewal` kapalıysa üretilmez. `FINANCE_NOTIFICATION_TYPES`'ten ayrıdır, çünkü ödeyici bağının
+ * açtığı tür listesi (`lib/guardianship.ts`) o nesneden türer ve Oğuzhan'ın alanındadır: velayeti
+ * olmayan ödeyici velinin bu bildirimi görmesi o listenin genişlemesini bekler.
+ */
+export const RENEWAL_NOTIFICATION_TYPES = {
+  renewal_invited: defineNotificationType({
+    topic: 'enrollment',
+    category: 'service',
+    mandatory: false,
+    module: 'renewal',
+    audiences: { minor: ['parent'], adult: [] },
+    subjectType: 'renewal_invitations',
+    data: z.strictObject({ invitationId: notificationId }),
+    subjectId: (data) => data.invitationId,
+    titles: {
+      student: 'Kayıt yenileme davetin var.',
+      parent: '{öğrenci} için kayıt yenileme daveti var.',
+    },
+  }),
+} as const
+
+/**
  * Sözleşme bildiriminin kitlesi ödeyicidir, yaş değil (DOM-FIN-052, DOM-KAY-012): ödeyici veli
  * (`payer: 'guardian'`; alanı olmayan eski sözleşme de veli ödeyicilidir) `parent`, kendi ödeyicisi
  * yetişkin kursiyer (`payer: 'student'`) `student` kitlesine gider. Sözleşme 18 yaş altında

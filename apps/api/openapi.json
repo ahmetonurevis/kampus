@@ -5618,7 +5618,8 @@
               "payment_received",
               "refund_paid",
               "contract_approval_requested",
-              "contract_approved"
+              "contract_approved",
+              "renewal_invited"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -23323,7 +23324,8 @@
               "payment_received",
               "refund_paid",
               "contract_approval_requested",
-              "contract_approved"
+              "contract_approved",
+              "renewal_invited"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -61042,6 +61044,23 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
                           "description": "Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister"
+                        },
+                        "invitationStatus": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "will_renew",
+                                "will_not_renew",
+                                "planned"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Hedef yılın yenileme daveti; `will_not_renew` planı engellemez, form uyarır (DOM-KAY-027). Davet yoksa `null`"
                         }
                       },
                       "required": [
@@ -61057,7 +61076,8 @@
                         "netCents",
                         "extras",
                         "installments",
-                        "outstandingTuitionCents"
+                        "outstandingTuitionCents",
+                        "invitationStatus"
                       ],
                       "additionalProperties": false
                     }
@@ -62370,6 +62390,679 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/renewal-invitations": {
+      "get": {
+        "operationId": "listRenewalInvitations",
+        "summary": "Yenileme davetlerini listele",
+        "tags": [
+          "finance-renewals"
+        ],
+        "description": "Yönetici ve ön büro kurum geneli; veli velayetli ya da ödeyicisi olduğu çocuklarını görür (DOM-KAY-027). Durum `pending`, `will_renew`, `will_not_renew` ya da `planned`; `q` öğrenci adında arar. Velinin notunu personel ve ödeyici veli görür. Roller: `yonetici`, `onburo`, `veli`. Modül `renewal`: dil okulu ve kursta 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğrenci adında arama"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Hedef eğitim yılı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "will_renew",
+                "will_not_renew",
+                "planned"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Davet durumu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Öğrenci; veli için seçili çocuk"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "description": "Öğrencinin güncel sınıfı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Davetin hedef eğitim yılı"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "will_renew",
+                              "will_not_renew",
+                              "planned"
+                            ],
+                            "description": "Yenileme kaydı ve velinin yanıtından türer; `planned` plan yapılmıştır"
+                          },
+                          "response": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "will_renew",
+                                  "will_not_renew"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Velinin son yanıtı"
+                          },
+                          "note": {
+                            "description": "Velinin notu; personel ve ödeyici veli görür",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "respondedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "canRespond": {
+                            "type": "boolean",
+                            "description": "Oturumdaki hesap bu daveti şimdi yanıtlayabilir mi"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "createdAt",
+                          "studentId",
+                          "studentName",
+                          "className",
+                          "academicYear",
+                          "status",
+                          "response",
+                          "note",
+                          "respondedAt",
+                          "canRespond"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "openRenewalInvitations",
+        "summary": "Yenileme daveti aç",
+        "tags": [
+          "finance-renewals"
+        ],
+        "description": "Hedef eğitim yılı için seçili öğrencilere (en çok 200) tek işlemde davet açar; biri reddedilirse hiçbiri açılmaz (DOM-KAY-027). Aynı öğrenci ve yıla ikinci davet 409 `renewal_invitation_exists`, planı yapılmış öğrenci 409 `renewal_invitation_already_planned`, geçmiş yıl 422 `renewal_year_invalid`, son sınıf 422 `renewal_invitation_final_grade`. Ödeyicisi kayıtlı öğrencinin velisine bildirim gider. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "academicYear": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100
+                  },
+                  "studentIds": {
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "required": [
+                  "academicYear",
+                  "studentIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "invitations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "studentId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "withoutPayerCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödeyicisi kayıtlı olmadığı için bildirim gitmeyen öğrenci sayısı"
+                        }
+                      },
+                      "required": [
+                        "invitations",
+                        "withoutPayerCount"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/renewal-invitations/{invitationId}/respond": {
+      "post": {
+        "operationId": "respondRenewalInvitation",
+        "summary": "Yenileme davetini yanıtla",
+        "tags": [
+          "finance-renewals"
+        ],
+        "description": "Ödeyici velinin niyet beyanı: sözleşme, taksit ve sınıf yazmaz, sözleşme onayı ayrı kalır (K-10, DOM-KAY-027). Plan yapılana kadar değiştirilebilir, sonra 409 `renewal_invitation_planned`. Velayetli olup ödeyici olmayan veli 403 `renewal_invitation_payer_only`; kapsam dışı, yok ya da başka kurum 404. `If-Match` zorunlu. Rol: `veli`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "response": {
+                    "type": "string",
+                    "enum": [
+                      "will_renew",
+                      "will_not_renew"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 280
+                  }
+                },
+                "required": [
+                  "response"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "description": "Davet"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "will_renew",
+                            "will_not_renew",
+                            "planned"
+                          ]
+                        },
+                        "respondedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "status",
+                        "respondedAt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

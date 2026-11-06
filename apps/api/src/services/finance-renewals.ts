@@ -15,6 +15,7 @@ import {
   renewalQuoteSchema,
   type RenewalContext,
 } from '@kampus/school-core/lib/renewals.ts'
+import { renewalInvitationStatus } from '@kampus/school-core/lib/renewal-invitations.ts'
 import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
@@ -35,6 +36,7 @@ import {
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { allocatedForInvoices } from '../db/payments.ts'
 import { loadRecordsByIds } from '../db/records.ts'
+import { findStudentRenewalInvitation } from '../db/renewal-invitations.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getCollectionItem, listCollection, type CollectionItem } from './collection-reads.ts'
@@ -145,8 +147,18 @@ export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
     loadScope: scopeOf(data.studentId),
     load: async (tx) => {
       const { session, scalars } = await environment(tx, ctx, SPEC)
-      const context = await renewalContext(tx, ctx, data)
-      return { scalars, run: (state) => quoteRenewal(state, session, input, context) }
+      const [context, invitation] = await Promise.all([
+        renewalContext(tx, ctx, data),
+        findStudentRenewalInvitation(tx, ctx.institutionId, data.studentId, data.academicYear),
+      ])
+      return {
+        scalars,
+        run: (state) => ({
+          ...quoteRenewal(state, session, input, context),
+          // Önizleme açılabildiyse o yıl plan yoktur; "yenilemeyecek" engellemez, uyarır (DOM-KAY-027).
+          invitationStatus: invitation === null ? null : renewalInvitationStatus(invitation, false),
+        }),
+      }
     },
   })
 }

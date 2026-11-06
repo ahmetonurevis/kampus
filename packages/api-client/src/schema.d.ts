@@ -2536,6 +2536,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/renewal-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yenileme davetlerini listele
+         * @description Yönetici ve ön büro kurum geneli; veli velayetli ya da ödeyicisi olduğu çocuklarını görür (DOM-KAY-027). Durum `pending`, `will_renew`, `will_not_renew` ya da `planned`; `q` öğrenci adında arar. Velinin notunu personel ve ödeyici veli görür. Roller: `yonetici`, `onburo`, `veli`. Modül `renewal`: dil okulu ve kursta 404.
+         */
+        get: operations["listRenewalInvitations"];
+        put?: never;
+        /**
+         * Yenileme daveti aç
+         * @description Hedef eğitim yılı için seçili öğrencilere (en çok 200) tek işlemde davet açar; biri reddedilirse hiçbiri açılmaz (DOM-KAY-027). Aynı öğrenci ve yıla ikinci davet 409 `renewal_invitation_exists`, planı yapılmış öğrenci 409 `renewal_invitation_already_planned`, geçmiş yıl 422 `renewal_year_invalid`, son sınıf 422 `renewal_invitation_final_grade`. Ödeyicisi kayıtlı öğrencinin velisine bildirim gider. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["openRenewalInvitations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewal-invitations/{invitationId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yenileme davetini yanıtla
+         * @description Ödeyici velinin niyet beyanı: sözleşme, taksit ve sınıf yazmaz, sözleşme onayı ayrı kalır (K-10, DOM-KAY-027). Plan yapılana kadar değiştirilebilir, sonra 409 `renewal_invitation_planned`. Velayetli olup ödeyici olmayan veli 403 `renewal_invitation_payer_only`; kapsam dışı, yok ya da başka kurum 404. `If-Match` zorunlu. Rol: `veli`.
+         */
+        post: operations["respondRenewalInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/scholarship-programs": {
         parameters: {
             query?: never;
@@ -7150,7 +7194,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "renewal_invited";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -11357,7 +11401,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "renewal_invited";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -28711,6 +28755,8 @@ export interface operations {
                             installments: number[];
                             /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister */
                             outstandingTuitionCents: number;
+                            /** @description Hedef yılın yenileme daveti; `will_not_renew` planı engellemez, form uyarır (DOM-KAY-027). Davet yoksa `null` */
+                            invitationStatus: ("pending" | "will_renew" | "will_not_renew" | "planned") | null;
                         };
                     };
                 };
@@ -29338,6 +29384,364 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRenewalInvitations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğrenci adında arama */
+                q?: string;
+                /** @description Hedef eğitim yılı */
+                academicYear?: number;
+                /** @description Davet durumu */
+                status?: "pending" | "will_renew" | "will_not_renew" | "planned";
+                /** @description Öğrenci; veli için seçili çocuk */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            createdAt: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Öğrencinin güncel sınıfı */
+                            className: string | null;
+                            /** @description Davetin hedef eğitim yılı */
+                            academicYear: number;
+                            /**
+                             * @description Yenileme kaydı ve velinin yanıtından türer; `planned` plan yapılmıştır
+                             * @enum {string}
+                             */
+                            status: "pending" | "will_renew" | "will_not_renew" | "planned";
+                            /** @description Velinin son yanıtı */
+                            response: ("will_renew" | "will_not_renew") | null;
+                            /** @description Velinin notu; personel ve ödeyici veli görür */
+                            note: string | null;
+                            respondedAt: string | null;
+                            /** @description Oturumdaki hesap bu daveti şimdi yanıtlayabilir mi */
+                            canRespond: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openRenewalInvitations: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    studentIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            invitations: {
+                                id: string;
+                                studentId: string;
+                            }[];
+                            /** @description Ödeyicisi kayıtlı olmadığı için bildirim gitmeyen öğrenci sayısı */
+                            withoutPayerCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    respondRenewalInvitation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Davet */
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    response: "will_renew" | "will_not_renew";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            version: number;
+                            /** @enum {string} */
+                            status: "pending" | "will_renew" | "will_not_renew" | "planned";
+                            respondedAt: string | null;
+                        };
                     };
                 };
             };

@@ -32,6 +32,7 @@ import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
@@ -91,6 +92,9 @@ export const REDACTED_PATHS = [
   '*.phone',
   'guardianName',
   '*.guardianName',
+  // kvkk: K — vazgeçen adayın tercih ettiği kurum, serbest metin (DOM-KAY-005).
+  'lostToInstitution',
+  '*.lostToInstitution',
   // kvkk: Ç — kesin kayıtta öğrencinin kimliği, kimlik numarası ve doğum tarihi (DOM-KAY-012).
   'identity',
   '*.identity',
@@ -391,6 +395,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFeeTariffRoutes(app)
   registerFinanceContractRoutes(app)
   registerFinanceExportRoutes(app)
+  registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
   registerPaymentRoutes(app)

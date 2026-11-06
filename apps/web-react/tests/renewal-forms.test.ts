@@ -151,6 +151,7 @@ test('DOM-FIN-005, -023: tavan özeti bazı, oranları ve indirim kaybının ger
 
 test('ödeme özeti net tutarı ve taksiti verir; tam bursta taksit açılmaz', () => {
   const base = {
+    tariffCarriedOverFromYear: null,
     announcedCents: 3_000_000,
     ceiling: { status: 'no_base' as const },
     tuitionCents: 3_000_000,
@@ -160,6 +161,7 @@ test('ödeme özeti net tutarı ve taksiti verir; tam bursta taksit açılmaz', 
     netCents: 2_500_000,
     extras: [{ kind: 'meal', amountCents: 500_000 }],
     installments: [1_250_000, 1_250_000],
+    outstandingTuitionCents: 0,
   }
   const lines = quoteLines(base)
   assert.equal(lines.net, 'Net eğitim bedeli: 25.000,00 ₺')
@@ -171,6 +173,56 @@ test('ödeme özeti net tutarı ve taksiti verir; tam bursta taksit açılmaz', 
     quoteLines({ ...base, netCents: 0, installments: [] }).installments,
     'Tam burs: öğrenim taksiti açılmaz',
   )
+})
+
+test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulanınca ödeme özeti bunu kaynak yılıyla yazar', () => {
+  const base = {
+    tariffCarriedOverFromYear: null,
+    announcedCents: 3_000_000,
+    ceiling: { status: 'no_base' as const },
+    tuitionCents: 3_000_000,
+    discounts: [],
+    discountCents: 0,
+    scholarship: null,
+    netCents: 3_000_000,
+    extras: [],
+    installments: [3_000_000],
+    outstandingTuitionCents: 0,
+  }
+  assert.ok(!quoteLines(base).pricing.some((line) => line.includes('tarifesi uygulanır')))
+  const [first] = quoteLines({ ...base, tariffCarriedOverFromYear: 2026 }).pricing
+  assert.match(first ?? '', /önceki yılın \(2026–2027\) tarifesi uygulanır/)
+})
+
+test('DOM-FIN-013: ödeme özeti planın ilanlı koşulunu yazar; koşulsuz eski tarifede satır yok', () => {
+  const base = {
+    tariffCarriedOverFromYear: null,
+    announcedCents: 3_000_000,
+    ceiling: { status: 'no_base' as const },
+    tuitionCents: 3_000_000,
+    discounts: [{ kind: 'payment_term', amountCents: 90_000 }],
+    discountCents: 90_000,
+    scholarship: null,
+    netCents: 2_910_000,
+    extras: [],
+    installments: [970_000, 970_000, 970_000],
+    outstandingTuitionCents: 0,
+  }
+  const { pricing } = quoteLines({
+    ...base,
+    paymentTerm: {
+      kind: 'installment',
+      minInstallments: 2,
+      maxInstallments: 4,
+      discountPercentBasisPoints: 300,
+      discountAmountCents: null,
+      installmentCount: 3,
+    },
+  })
+  assert.ok(pricing.includes('Ödeme koşulu: Süreli · 3 taksit · %3 indirim'))
+  assert.ok(pricing.includes('Ödeme koşulu indirimi: −900,00 ₺'))
+  for (const line of quoteLines({ ...base, paymentTerm: null }).pricing)
+    assert.doesNotMatch(line, /^Ödeme koşulu:/)
 })
 
 test('sunucu alanları form alanına eşlenir', () => {
@@ -217,4 +269,11 @@ test('DOM-FIN-005: ÜFE/TÜFE yüzde olarak girilir, on binde birliğe çevrilir
       bulletinDate: '2026-02-03',
     },
   )
+})
+
+test('ON-057, DOM-KAY-025: borç onayı yalnız işaretlenince plan gövdesine girer', () => {
+  const approved = renewalPlanBody(VALUES, 2027, 't-1', true)
+  assert.equal('debtApproved' in approved && approved.debtApproved, true)
+  assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1'), false)
+  assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1', false), false)
 })

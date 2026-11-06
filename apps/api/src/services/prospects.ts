@@ -17,6 +17,7 @@ import {
   addProspectNote,
   changeProspectStage,
   createProspect,
+  prospectLossBreakdown,
   scheduleProspectMeeting,
   recordTrialResult,
   revertProspectStage,
@@ -30,7 +31,6 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { findParentAccount, linkChildToAccount, loadParentBonds } from '../db/enrollment-bonds.ts'
-import { findPublishedTariff } from '../db/fee-tariffs.ts'
 import {
   countScholarshipAwards,
   findScholarshipProgram,
@@ -51,12 +51,14 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { loadEffectiveTariff, withTariffCarryOver } from './fee-tariffs.ts'
 import { auditWork } from './task-work.ts'
 import {
   runCommand,
   type CommandResponse,
   type LoadScope,
   type OperationTools,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 
 /**
@@ -270,11 +272,13 @@ export function enrollProspectCommand(
     guardian !== null && 'existingParentId' in guardian ? guardian.existingParentId : null
   // Yükleme kurum kilidi altında okur, kayıt sonrası yazma (`after`) aynı işlemde kullanır.
   let parentAccountId: string | null = null
+  let tariffCarriedOverFromYear: number | null = null
   return runCommand(
     ctx,
     {
       action: 'prospect.enroll',
       collections: spec.collections,
+      stores: FINANCE_TABLE_STORES,
       loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
       ...(options.expectedVersion !== null
         ? {
@@ -295,7 +299,9 @@ export function enrollProspectCommand(
           .where(eq(institutionSettings.institutionId, ctx.institutionId))
           .limit(1)
         const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
-        const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
+        // Süresinde ilan yoksa önceki yılın tarifesi geçerli kalır (DOM-FIN-002, K-11).
+        const effective = await loadEffectiveTariff(tx, ctx, academicYear, institutionType)
+        tariffCarriedOverFromYear = effective?.carriedOverFromYear ?? null
         const identityHolderId = await findIdentityHolder(tx, ctx.institutionId, identity.number)
         const guardianBonds =
           existingParentId === null
@@ -320,7 +326,7 @@ export function enrollProspectCommand(
             requireAuthorized(actor, 'prospect.enroll', {}, state, { now, institutionType })
             return enrollProspectWithTariff(state, prospectId, input, makeId, now, {
               institutionType,
-              tariff,
+              tariff: effective?.tariff ?? null,
               academicYear,
               identityHolderId,
               approvedByUserId: ctx.actor.userId,
@@ -403,7 +409,14 @@ export function enrollProspectCommand(
       },
     },
     (outcome) =>
-      commandBody({ collection: 'students', id: outcome.result.student.id }, outcome.changes, 201),
+      withTariffCarryOver(
+        commandBody(
+          { collection: 'students', id: outcome.result.student.id },
+          outcome.changes,
+          201,
+        ),
+        tariffCarriedOverFromYear,
+      ),
     options.idempotency,
   )
 }
@@ -431,6 +444,14 @@ const PROSPECT_MATCH = z.object({
  * Adayın telefonuyla ya da kardeş adayının kesin kaydıyla eşleşen veliler; ön büroya öneridir,
  * birleştirmez (DOM-KAY-013).
  */
+/** Kayıp aday kırılımı (IST-117, DOM-KAY-005); arşivlenen aday sayılmaz, rol denetimi rotadadır. */
+export async function prospectLossBreakdownFor(ctx: ServiceContext) {
+  const lost = await loadRecords(ctx.db, ctx.institutionId, ['prospects'], {
+    match: [{ kind: 'equals', field: 'stage', values: ['Vazgeçti'] }],
+  })
+  return prospectLossBreakdown(lost.map((row) => row.data))
+}
+
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()

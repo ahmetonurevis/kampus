@@ -8,6 +8,7 @@ import type { ScholarshipProgram } from '../packages/school-core/src/lib/finance
 import {
   planPriceIndexCreate,
   planPriceIndexUpdate,
+  outstandingTuitionCents,
   planRenewal,
   quoteRenewal,
   type RenewalContext,
@@ -147,6 +148,57 @@ test('DOM-FIN-002: yayımlı tarife yoksa plan ve önizleme reddedilir; tarife d
     'tariff_changed',
     'conflict',
   )
+})
+
+test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulanınca önizleme ve kayıt bunu söyler; sözleşme o tarifeyi taşır, yıl hedef yıl kalır', () => {
+  const state = seeded()
+  const carried: EnrollmentTariff = { ...TARIFF, id: 'test-tariff-2026', versionNumber: 5 }
+  const context: RenewalContext = {
+    ...CONTEXT,
+    tariff: carried,
+    tariffCarriedOverFromYear: YEAR - 1,
+    previousTariff: carried,
+  }
+  const quote = quoteRenewal(state, ADMIN, QUOTE, context)
+  assert.equal(quote.tariffId, carried.id)
+  assert.equal(quote.tariffVersion, 5)
+  assert.equal(quote.tariffCarriedOverFromYear, YEAR - 1)
+  // Plan gövdesi önizlemenin tarifesiyle uyumlu olmalı: hedef yılın tarifesi sonradan yayımlandıysa 409.
+  unchangedOnFailure(state, () => plan(state, PLAN, context), 'tariff_changed', 'conflict')
+  const { renewal, contractId } = plan(state, { ...PLAN, tariffId: carried.id }, context)
+  const contract = state.contracts.find((item) => item.id === contractId)
+  assert.equal(contract?.tariffId, carried.id)
+  assert.equal(contract?.tariffVersion, 5)
+  assert.equal(contract?.academicYear, YEAR)
+  assert.equal(renewal.year, YEAR)
+  assert.equal(renewal.pricing?.tariffCarriedOverFromYear, YEAR - 1)
+})
+
+test('DOM-FIN-002, K-11: hedef yılın kendi tarifesinde taşınma işareti yoktur', () => {
+  const state = seeded()
+  assert.equal(quoteRenewal(state, ADMIN, QUOTE, CONTEXT).tariffCarriedOverFromYear, null)
+  assert.equal(plan(state).renewal.pricing?.tariffCarriedOverFromYear, null)
+})
+
+test('DOM-FIN-005, K-11: taşınan tarife tavan bazını değiştirmez; baz önceki yılın ilan ücretidir', () => {
+  const state = seeded()
+  state.contracts = state.contracts.filter((item) => item.studentId !== 's3')
+  const previous: EnrollmentTariff = {
+    ...TARIFF,
+    id: 'test-tariff-2026',
+    items: [item({ amountCents: 4_000_000, announcedAmountCents: 5_000_000 })],
+  }
+  const quote = quoteRenewal(state, ADMIN, QUOTE, {
+    ...CONTEXT,
+    tariff: previous,
+    tariffCarriedOverFromYear: YEAR - 1,
+    previousTariff: previous,
+  })
+  assert.equal(quote.announcedCents, 4_000_000)
+  assert.ok(quote.ceiling.status === 'applied')
+  assert.equal(quote.ceiling.baseSource, 'previous_tariff')
+  assert.equal(quote.ceiling.baseCents, 5_000_000)
+  assert.equal(quote.maxTuitionCents, 4_000_000)
 })
 
 test('DOM-FIN-005: oran girilmemiş yılda plan reddedilir; yıl atlanmışsa her yılın oranı sırayla uygulanır', () => {
@@ -506,4 +558,57 @@ test('DOM-FIN-005: ÜFE/TÜFE satırı yıl başına tektir, gelecek bülten tar
     isDomainError('price_index_date_future'),
   )
   assert.throws(() => planPriceIndexUpdate({}, '2026-10-06'))
+})
+
+test('DOM-KAY-025, ON-057: önceki yıllardan vadesi geçmiş açık öğrenim ücreti dağılımlar düşülerek hesaplanır', () => {
+  const past = '2026-06-15T09:00:00.000Z'
+  const future = '2027-03-15T09:00:00.000Z'
+  const today = '2026-11-04'
+  const invoices = [
+    {
+      id: 'i1',
+      amount: 1_000,
+      paidAt: null,
+      feeKind: 'tuition',
+      academicYear: YEAR - 1,
+      dueDate: past,
+    },
+    { id: 'i2', amount: 1_000, paidAt: past, academicYear: YEAR - 1, dueDate: past },
+    { id: 'i3', amount: 500, paidAt: null, feeKind: 'meal', academicYear: YEAR - 1, dueDate: past },
+    {
+      id: 'i4',
+      amount: 2_000,
+      paidAt: null,
+      feeKind: 'tuition',
+      academicYear: YEAR,
+      dueDate: past,
+    },
+    { id: 'i5', amount: 700, paidAt: null, dueDate: past },
+    { id: 'i6', amount: 900, paidAt: null, academicYear: YEAR - 1, dueDate: future },
+  ]
+  const allocated = new Map([['i1', 400]])
+  assert.equal(outstandingTuitionCents(invoices, allocated, YEAR, today), 600 + 700)
+  assert.equal(outstandingTuitionCents(invoices, new Map([['i1', 5_000]]), YEAR, today), 700)
+  assert.equal(outstandingTuitionCents([], allocated, YEAR, today), 0)
+})
+
+test('DOM-KAY-025, ON-057: borçlu öğrencinin yenilemesi yönetici onayı olmadan planlanmaz; ön büro onaylayamaz', () => {
+  const debt = { ...CONTEXT, outstandingTuitionCents: 150_000 }
+  const quote = quoteRenewal(seeded(), DESK, QUOTE, debt)
+  assert.equal(quote.outstandingTuitionCents, 150_000)
+  unchangedOnFailure(seeded(), () => plan(seeded(), PLAN, debt), 'renewal_debt_unapproved')
+  const state = seeded()
+  unchangedOnFailure(state, () => plan(state, PLAN, debt), 'renewal_debt_unapproved')
+  const desk = seeded()
+  unchangedOnFailure(
+    desk,
+    () => plan(desk, { ...PLAN, debtApproved: true }, debt, DESK),
+    'renewal_debt_approval_forbidden',
+    'forbidden',
+  )
+  const approved = plan(seeded(), { ...PLAN, debtApproved: true }, debt)
+  assert.equal(approved.renewal.studentId, 's3')
+  // Borç yokken onay alanı etkisizdir; ön büro planlar.
+  assert.equal(plan(seeded(), PLAN, CONTEXT, DESK).renewal.studentId, 's3')
+  assert.equal(quoteRenewal(seeded(), DESK, QUOTE, CONTEXT).outstandingTuitionCents, 0)
 })

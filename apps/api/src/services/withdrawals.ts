@@ -32,7 +32,9 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
+import { studentFinanceScope } from './payments.ts'
 
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
@@ -123,6 +125,7 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
   return runReadOnly(ctx, {
     action: 'student.withdraw.quote',
     collections: SPEC.collections,
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const { institutionType, scalars } = await environment(tx, ctx, SPEC)
       const payments = await paymentContext(tx, ctx, studentId)
@@ -149,6 +152,12 @@ export function withdrawStudentCommand(
     {
       action: 'student.withdraw.records',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
+      // Ayrılış yalnız öğrencinin sözleşme zincirine ve taksitlerine dokunur (DOM-FIN-040, -041).
+      loadScope: {
+        invoices: studentFinanceScope(studentId),
+        contracts: studentFinanceScope(studentId),
+      },
       entity: { type: 'student_withdrawals', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
@@ -216,6 +225,7 @@ export async function payRefundCommand(
     {
       action: 'student.withdraw.refund',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
       entity: { type: 'student_withdrawals', id: withdrawalId },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
@@ -279,7 +289,12 @@ export async function payRefundCommand(
 
 export async function listWithdrawalsFor(
   ctx: ServiceContext,
-  query: { refundStatus?: RefundStatus | undefined; page: number; pageSize: number },
+  query: {
+    refundStatus?: RefundStatus | undefined
+    q?: string | undefined
+    page: number
+    pageSize: number
+  },
 ): Promise<{ items: WithdrawalView[]; total: number }> {
   const { items, total } = await listWithdrawals(ctx.db, ctx.institutionId, query)
   return { items: items.map(view), total }

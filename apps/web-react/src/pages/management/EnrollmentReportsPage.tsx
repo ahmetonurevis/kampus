@@ -11,6 +11,7 @@ import { exportCsv } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { combineStates, ListCard, ShareBar } from '../dashboard/DashboardParts.tsx'
 import { EnrollmentFunnelSection } from './EnrollmentFunnelSection.tsx'
+import { EnrollmentLossBreakdown } from './EnrollmentLossBreakdown.tsx'
 import {
   ENROLLED_STAGE,
   funnelSteps,
@@ -141,6 +142,7 @@ export function EnrollmentReportsPage({ page }: { page: NavPage }) {
           />
         )}
       </section>
+      <EnrollmentLossBreakdown />
     </>
   )
 }

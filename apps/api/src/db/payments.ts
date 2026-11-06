@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, max, or, sql } from 'drizzle-orm'
 
 import type { ExportPayment } from '@kampus/school-core/lib/finance-export.ts'
+import type { ReconciliationPayment } from '@kampus/school-core/lib/finance-reconciliation.ts'
 import {
   bankAccountLabel,
   type PaymentAllocation,
@@ -370,6 +371,9 @@ export async function listPayments(
     mebbisPending?: boolean
     /** Yalnız bu ödeme yöntemiyle alınanlar. */
     method?: PaymentMethod | undefined
+    /** Ödeme anı aralığı: başlangıç dahil, bitiş hariç (Europe/Istanbul günlerinden çevrilmiş). */
+    paidFrom?: Date | undefined
+    paidBefore?: Date | undefined
     page: number
     pageSize: number
   },
@@ -382,6 +386,8 @@ export async function listPayments(
       ? and(isNull(payments.mebbisRecordedAt), isNull(payments.reversedAt))
       : undefined,
     query.method === undefined ? undefined : eq(payments.method, PAYMENT_METHOD_KEYS[query.method]),
+    query.paidFrom === undefined ? undefined : gte(payments.paidAt, query.paidFrom),
+    query.paidBefore === undefined ? undefined : lt(payments.paidAt, query.paidBefore),
     query.q === undefined
       ? undefined
       : sql`(strpos(${foldSql(sql`${records.data} ->> 'name'`)}, ${foldSearch(query.q)}) > 0 or strpos(${foldSql(payments.reference)}, ${foldSearch(query.q)}) > 0)`,
@@ -407,6 +413,55 @@ export async function listPayments(
 }
 
 /** Sürüm koşulu tutmazsa `null` döner. */
+/**
+ * Mutabakat için verilen andan önceki bütün tahsilatlar ve dağılımları (ON-085): dönem başı açık borç
+ * geçmişin tamamından hesaplanır. İptal edilenler de gelir; iptal günü core'da değerlendirilir.
+ */
+export async function paymentsForReconciliation(
+  db: Database,
+  institutionId: string,
+  toInstant: Date,
+): Promise<ReconciliationPayment[]> {
+  const where = and(eq(payments.institutionId, institutionId), lt(payments.paidAt, toInstant))
+  const rows = await db
+    .select({
+      id: payments.id,
+      studentId: payments.studentId,
+      amountCents: payments.amountCents,
+      paidAt: payments.paidAt,
+      reversedAt: payments.reversedAt,
+    })
+    .from(payments)
+    .where(where)
+  const allocations = await db
+    .select({
+      paymentId: paymentAllocations.paymentId,
+      invoiceId: paymentAllocations.invoiceId,
+      amountCents: paymentAllocations.amountCents,
+    })
+    .from(paymentAllocations)
+    .innerJoin(
+      payments,
+      and(
+        eq(payments.institutionId, paymentAllocations.institutionId),
+        eq(payments.id, paymentAllocations.paymentId),
+      ),
+    )
+    .where(where)
+  const byPayment = new Map<string, { invoiceId: string; amountCents: number }[]>()
+  for (const { paymentId, ...allocation } of allocations) {
+    const list = byPayment.get(paymentId)
+    if (list) list.push(allocation)
+    else byPayment.set(paymentId, [allocation])
+  }
+  return rows.map(({ id, ...row }) => ({
+    ...row,
+    paidAt: row.paidAt.toISOString(),
+    reversedAt: row.reversedAt?.toISOString() ?? null,
+    allocations: byPayment.get(id) ?? [],
+  }))
+}
+
 /** Öğrencinin bütün tahsilatları, iptal edilenler dahil; ekstre sayfalanmaz (IST-107). */
 export async function paymentsOfStudent(
   db: Database,

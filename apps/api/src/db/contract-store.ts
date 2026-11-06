@@ -5,6 +5,7 @@ import {
   CONTRACT_APPROVAL_METHODS,
   SIGNATORY_ROLES,
 } from '@kampus/school-core/lib/contract-status.ts'
+import { contractPaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
 
 import { ConflictError, withDatabaseErrors } from '../errors.ts'
 import type { Database } from './client.ts'
@@ -26,8 +27,9 @@ import { invoices } from './schema/invoices.ts'
 /**
  * Sözleşme deposu (ADR 0010 karar 3, 7, 8; ON-046d): `contracts` + `contract_invoices` satırları ↔
  * core sözleşme kaydı (`State['contracts'][number]`), süzgeç çevirisi, yükleme ve iki koleksiyonun
- * bağımlılık sırasıyla yazılması (sözleşme → taksit → bağ). Henüz çalıştırıcıya bağlı değildir
- * (ON-046b); kaynak `records`'tır.
+ * bağımlılık sırasıyla yazılması (sözleşme → taksit → bağ). Çift yazma süresince (ON-046e) kaynak
+ * `records`'tır ve ayna SQL'de eşitlenir (`finance-mirror-store.ts`); bu depo okuma geçişinde
+ * (046f) çalıştırıcıya bağlanır.
  *
  * Dönüşüm birebirdir: `invoiceIds` sırası `contract_invoices.position`'dır, alanı olmayan eski kayıt
  * `has_invoice_list = false`'tur. İlk sürümde core `revision` alanı yoktur (kolon 1).
@@ -76,6 +78,7 @@ export const contractRecordSchema = z
     approvedByUserId: idSchema.optional(),
     payer: z.enum(CONTRACT_PAYERS).optional(),
     scholarship: z.strictObject({ programId: z.uuid(), amountCents: centsSchema }).optional(),
+    paymentTerm: contractPaymentTermSchema.optional(),
     signatory: z
       .strictObject({
         name: z.string().min(1),
@@ -114,6 +117,7 @@ export const contractRecordSchema = z
     return filled === 0 || filled === TERMS_FIELDS.length
   }, 'terms group')
   .refine((c) => c.scholarship === undefined || c.tariffId !== undefined, 'scholarship terms')
+  .refine((c) => c.paymentTerm === undefined || c.tariffId !== undefined, 'payment term terms')
   .refine(
     (c) =>
       (c.cancelledAt === undefined) === (c.cancelledByUserId === undefined) &&
@@ -166,6 +170,7 @@ export function contractToColumns(
     payer: contract.payer ?? null,
     scholarshipProgramId: contract.scholarship?.programId ?? null,
     scholarshipCents: contract.scholarship?.amountCents ?? null,
+    paymentTerm: contract.paymentTerm ?? null,
     signatoryName: contract.signatory?.name ?? null,
     signatoryRole: contract.signatory?.role ?? null,
     signatoryRecordedAt: contract.signatory ? new Date(contract.signatory.recordedAt) : null,
@@ -267,6 +272,7 @@ export function rowToContract(row: ContractRow, invoiceIds: readonly string[]): 
     ...(row.hasInvoiceList ? { invoiceIds: [...invoiceIds] } : {}),
     ...terms,
     ...(scholarship === undefined ? {} : { scholarship }),
+    ...(row.paymentTerm === null ? {} : { paymentTerm: row.paymentTerm }),
     ...(signatory === undefined ? {} : { signatory }),
     ...(approval === undefined ? {} : { approval }),
     ...(row.amendsContractId === null

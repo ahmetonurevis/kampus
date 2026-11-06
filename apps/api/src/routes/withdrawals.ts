@@ -90,6 +90,7 @@ const withdrawalParams = z.object({ withdrawalId: z.uuid('Ayrılış kimliği ge
 const listQuerySchema = z.strictObject({
   ...pageQuerySchema.shape,
   refundStatus: z.enum(['none', 'pending', 'paid']).optional().describe('İade durumu'),
+  q: z.string().trim().min(2).max(100).optional().describe('Öğrenci adında arama'),
 })
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
@@ -176,7 +177,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iadeleri listele',
         description:
-          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.',
+          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.',
         querystring: listQuerySchema,
         response: {
           200: z.object({ data: z.array(withdrawalSchema), meta: pageMetaSchema }),

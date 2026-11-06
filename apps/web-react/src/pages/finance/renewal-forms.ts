@@ -4,13 +4,18 @@
 import { z } from 'zod'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
-  FEE_DISCOUNT_KIND_LABELS,
+  carriedOverTariffNote,
+  DISCOUNT_LINE_LABELS,
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
-  type FeeDiscountKind,
+  type DiscountLineKind,
   type FeeItemKind,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
+import {
+  contractPaymentTermLabel,
+  type ContractPaymentTerm,
+} from '@kampus/school-core/lib/payment-terms.ts'
 import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import { createPriceIndexSchema } from '@kampus/school-core/lib/renewals.ts'
 import type { RenewalCeiling } from '@kampus/school-core/lib/renewal-ceiling.ts'
@@ -94,6 +99,7 @@ export function renewalPlanBody(
   values: RenewalFormValues,
   academicYear: number,
   tariffId: string | null,
+  debtApproved = false,
 ) {
   if (values.mode === 'graduate')
     return { mode: 'graduate' as const, studentId: values.studentId, academicYear }
@@ -102,6 +108,8 @@ export function renewalPlanBody(
     mode: 'renew' as const,
     tariffId: tariffId ?? '',
     firstDueDate: values.firstDueDate,
+    // Borçlu öğrencide yöneticinin açık onayı (DOM-KAY-025, ON-057); borç yokken gönderilmez.
+    ...(debtApproved ? { debtApproved: true } : {}),
   }
 }
 
@@ -176,6 +184,8 @@ export function ceilingLines(ceiling: RenewalCeiling): string[] {
 }
 
 export type RenewalQuoteView = {
+  /** Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002, K-11). */
+  tariffCarriedOverFromYear: number | null
   announcedCents: number
   ceiling: RenewalCeiling
   tuitionCents: number
@@ -185,18 +195,27 @@ export type RenewalQuoteView = {
   netCents: number
   extras: readonly { kind: string; amountCents: number }[]
   installments: readonly number[]
+  /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede yok. */
+  paymentTerm?: ContractPaymentTerm | null
+  /** Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025); sıfırdan büyükse yönetici onayı. */
+  outstandingTuitionCents: number
 }
 
-const discountLabel = (kind: string) =>
-  FEE_DISCOUNT_KIND_LABELS[kind as FeeDiscountKind] ?? 'İndirim'
+const discountLabel = (kind: string) => DISCOUNT_LINE_LABELS[kind as DiscountLineKind] ?? 'İndirim'
 const extraLabel = (kind: string) => FEE_ITEM_KIND_LABELS[kind as FeeItemKind] ?? 'Ek hizmet'
 
 /** Ödeme özeti satırları; tutarlar sunucunun önizlemesidir. */
 export function quoteLines(quote: RenewalQuoteView) {
   return {
     pricing: [
+      ...(quote.tariffCarriedOverFromYear === null
+        ? []
+        : [carriedOverTariffNote(quote.tariffCarriedOverFromYear)]),
       `İlan edilen ücret: ${money(quote.announcedCents)}`,
       ...ceilingLines(quote.ceiling),
+      ...(quote.paymentTerm
+        ? [`Ödeme koşulu: ${contractPaymentTermLabel(quote.paymentTerm)}`]
+        : []),
       `Öğrenim ücreti: ${money(quote.tuitionCents)}`,
       ...quote.discounts.map(
         (line) => `${discountLabel(line.kind)} indirimi: −${money(line.amountCents)}`,
@@ -212,6 +231,55 @@ export function quoteLines(quote: RenewalQuoteView) {
       (line) => `${extraLabel(line.kind)}: ${money(line.amountCents)} (ayrı taksit)`,
     ),
   }
+}
+
+// --- Yeni yılın toplu planı (IST-105, ON-086) ---------------------------------------------------
+
+export const renewalBulkFormSchema = z.object({
+  installmentCount: z
+    .string()
+    .trim()
+    .regex(/^(?:[1-9]|1[0-2])$/, 'Taksit sayısını 1 ile 12 arasında girin.'),
+  firstDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk taksit tarihini seçin.'),
+  discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
+  extras: z.array(z.enum(FEE_ITEM_KINDS)),
+  scholarshipProgramId: z.string(),
+})
+export type RenewalBulkFormValues = z.input<typeof renewalBulkFormSchema>
+
+export const renewalBulkDefaults = (): RenewalBulkFormValues => ({
+  installmentCount: '8',
+  firstDueDate: '',
+  discounts: [],
+  extras: [],
+  scholarshipProgramId: '',
+})
+
+/** Önizleme gövdesi; onay aynı gövdeye önizlemenin tarifesini ekler. */
+export function renewalBulkBody(
+  values: z.output<typeof renewalBulkFormSchema>,
+  academicYear: number,
+  rows: readonly { studentId: string; targetClassId: string }[],
+) {
+  return {
+    academicYear,
+    installmentCount: Number(values.installmentCount),
+    firstDueDate: values.firstDueDate,
+    discounts: [...values.discounts],
+    extras: [...values.extras],
+    rows: rows.map(({ studentId, targetClassId }) => ({ studentId, targetClassId })),
+    ...(values.scholarshipProgramId === ''
+      ? {}
+      : { scholarshipProgramId: values.scholarshipProgramId }),
+  }
+}
+
+/** Listedeki tavan hücresi: tutar ya da neden uygulanmadığı (DOM-FIN-005). */
+export function ceilingCell(ceiling: RenewalCeiling | null): string {
+  if (ceiling === null) return '—'
+  if (ceiling.status === 'entry_grade') return 'Uygulanmaz'
+  if (ceiling.status === 'no_base') return 'Hesaplanamadı'
+  return money(ceiling.ceilingCents)
 }
 
 export const RENEWAL_SERVER_FIELDS = [

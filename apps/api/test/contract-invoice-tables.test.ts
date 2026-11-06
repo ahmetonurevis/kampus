@@ -234,6 +234,23 @@ describe('0061: taksit ve sözleşme tabloları', () => {
       db.update(contracts).set({ archivedAt: AT }).where(where),
       /contracts rows are immutable/,
     )
+    // Ödeme koşulu da sözleşmenin koşuludur; onaydan sonra değişmez (DOM-FIN-013).
+    await rejectsImmutable(
+      db
+        .update(contracts)
+        .set({
+          paymentTerm: {
+            kind: 'upfront',
+            minInstallments: 1,
+            maxInstallments: 1,
+            discountPercentBasisPoints: null,
+            discountAmountCents: null,
+            installmentCount: 1,
+          },
+        })
+        .where(where),
+      /contracts rows are immutable/,
+    )
     await db
       .update(contracts)
       .set({ classId: 'c-yeni', position: 2048, version: 2, updatedAt: new Date() })
@@ -421,6 +438,19 @@ describe('0061: taksit ve sözleşme tabloları', () => {
         'contracts_proposed_plan_check',
       ],
       [{ scholarshipCents: 100 }, 'contracts_scholarship_check'],
+      [
+        {
+          paymentTerm: {
+            kind: 'upfront',
+            minInstallments: 1,
+            maxInstallments: 1,
+            discountPercentBasisPoints: null,
+            discountAmountCents: null,
+            installmentCount: 1,
+          },
+        },
+        'contracts_payment_term_check',
+      ],
     ]
     for (const [extra, constraint] of cases)
       await violates(

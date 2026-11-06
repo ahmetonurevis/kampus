@@ -3,6 +3,7 @@ import type { questionBank } from '../data/question-bank.ts'
 import type { State } from '../data/seed.ts'
 import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
+import type { ContractPaymentTerm } from './payment-terms.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
 import { studentsWithEffect } from './student-roster.ts'
@@ -27,6 +28,8 @@ export interface ContractTerms {
   payer: 'guardian' | 'student'
   /** Kayıtta atanan burs (DOM-FIN-025); `netCents` burstan sonraki tutardır. */
   scholarship?: { programId: string; amountCents: number }
+  /** Sözleşmenin dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede yoktur. */
+  paymentTerm?: ContractPaymentTerm
 }
 // Oturum: rol ve velinin seçili çocuğu. API oturumu üyelik bağlantılarını (`links`) ve işlemi
 // yapan kişinin kullanıcı kimliğini (`userId`) da taşır; çevrimdışı demoda bağlantılar sabit demo

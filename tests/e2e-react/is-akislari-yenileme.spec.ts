@@ -49,11 +49,30 @@ async function renewalYear(client: ApiClient) {
   return year + 1
 }
 
+/** İlanlı koşullar (DOM-FIN-013): peşin ve 2–12 taksit. */
+const PAYMENT_TERMS = [
+  {
+    kind: 'upfront',
+    minInstallments: 1,
+    maxInstallments: 1,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+  {
+    kind: 'installment',
+    minInstallments: 2,
+    maxInstallments: 12,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+]
+
 /** Yılın öğrenim ücreti tarifesini API'den açar ve yayımlar (tutar kuruş). */
 async function publishTariff(
   client: ApiClient,
   academicYear: number,
   amountCents: number,
+  paymentTerms: readonly object[] = PAYMENT_TERMS,
   discounts: readonly Record<string, unknown>[] = [],
 ) {
   const draft = await client.post(
@@ -72,6 +91,7 @@ async function publishTariff(
         },
       ],
       discounts,
+      paymentTerms,
     },
     { 'idempotency-key': randomUUID() },
   )
@@ -128,6 +148,8 @@ test.describe('kayıt yenileme', () => {
     await expect(summary.getByText(/^Artış tavanı: /)).toBeVisible()
     await expect(summary.getByText(/^Net eğitim bedeli: /)).toBeVisible()
     await expect(summary.getByText('6 taksit')).toBeVisible()
+    // Fikstür tarifesi koşulsuz eski kayıttır: taksit serbest, özette koşul satırı yok (DOM-FIN-013).
+    await expect(summary.getByText(/^Ödeme koşulu: /)).toHaveCount(0)
     const quote = await client.post(`${RENEWALS}/quote`, {
       studentId: 's3',
       targetClassId: 'c1',
@@ -260,6 +282,64 @@ test.describe('kayıt yenileme', () => {
     // Form düzeltme için açık kalır; kayıt değişmez.
     await expect(form.getByLabel('Öğrenim ücreti (₺)')).toHaveValue('30000')
     expect(await renewalOf(client, 's3')).toEqual(before)
+  })
+
+  test('DOM-FIN-013: ilanda olmayan taksit sayısı alanda reddedilir; ilanlı koşul özette görünür', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3'],
+      collections: ['renewals'],
+      tariffYears: ['current'],
+    })
+    const client = await api(school.user('yonetici'))
+    const year = await renewalYear(client)
+    await publishTariff(client, year, 2_500_000, [
+      {
+        kind: 'installment',
+        minInstallments: 2,
+        maxInstallments: 4,
+        discountPercentBasisPoints: 300,
+        discountAmountCents: null,
+      },
+    ])
+    const rates = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: year,
+        ppiBasisPoints: 4_000,
+        cpiBasisPoints: 3_000,
+        source: 'TÜİK bülteni (test)',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(rates.status, JSON.stringify(rates.body)).toBe(201)
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-yenileme')
+    await page.getByRole('button', { name: 'Kayıt yenile' }).click()
+    const form = page.getByRole('dialog', { name: 'Kayıt yenile' })
+    await form.getByLabel('Öğrenci', { exact: true }).selectOption({ label: 'Zeynep Demir · 6-A' })
+    await form.getByLabel('Yeni sınıf').selectOption({ label: '7-A · Kadıköy Kampüsü' })
+    await expect(
+      form.getByText('İlan edilen koşullar: Süreli · 2–4 taksit · %3 indirim'),
+    ).toBeVisible()
+    await form.getByLabel('Taksit sayısı').fill('6')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+    await expect(
+      form.getByText('Bu taksit sayısı tarifede ilan edilen ödeme koşullarında yok.'),
+    ).toBeVisible()
+
+    await form.getByLabel('Taksit sayısı').fill('3')
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+    const summary = form.getByRole('region', { name: 'Yeni dönem ödeme özeti' })
+    await expect(summary.getByText('Ödeme koşulu: Süreli · 3 taksit · %3 indirim')).toBeVisible()
+    await expect(summary.getByText(/^Ödeme koşulu indirimi: /)).toBeVisible()
   })
 
   test('dönem geçişi ayrı işlemle uygulanır ve sınıfı değiştirir', async ({
@@ -409,8 +489,8 @@ test.describe('kayıt yenileme', () => {
     const client = await api(school.user('yonetici'))
     const year = await renewalYear(client)
     const referral = [{ kind: 'referral', percentBasisPoints: 1_000, amountCents: null }]
-    await publishTariff(client, year - 1, 10_000_000, referral)
-    await publishTariff(client, year, 10_000_000, referral)
+    await publishTariff(client, year - 1, 10_000_000, PAYMENT_TERMS, referral)
+    await publishTariff(client, year, 10_000_000, PAYMENT_TERMS, referral)
     const index = await client.post(
       `${RENEWALS}/price-indexes`,
       {
@@ -492,6 +572,87 @@ test.describe('kayıt yenileme', () => {
     await expect(page.getByText(candidate)).toHaveCount(0)
   })
 
+  test('IST-105, ON-086: yönetici yeni yılın planlarını önizler, onaylar; sonuç satır satır gelir, sınıf değişmez', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3', 's4'],
+      collections: ['renewals'],
+      tariffYears: ['current', 'next'],
+    })
+    const client = await api(school.user('yonetici'))
+    const year = await renewalYear(client)
+    const rates = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: year,
+        ppiBasisPoints: 4000,
+        cpiBasisPoints: 3000,
+        source: 'TÜİK bülteni 53607',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(rates.status, JSON.stringify(rates.body)).toBe(201)
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-yenileme')
+    const section = page.getByRole('region', { name: 'Yeni yılın planları' })
+    await section.getByRole('checkbox', { name: 'Zeynep Demir seç' }).click()
+    await section.getByRole('checkbox', { name: 'Arda Çelik seç' }).click()
+    await section.getByRole('button', { name: 'Seçilenleri planla (2)' }).click()
+
+    const form = page.getByRole('dialog', { name: 'Toplu yenileme planı' })
+    await expect(form.getByLabel('Zeynep Demir hedef sınıfı')).toHaveValue('c1')
+    await form.getByLabel('Taksit sayısı').fill('6')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Önizle' }).click()
+    await expect(form.getByText('2 hazır · 0 atlanacak · 0 yapılamaz')).toBeVisible()
+    await expect(form.getByText('6 taksit', { exact: false }).first()).toBeVisible()
+    // Önizleme yazmaz.
+    expect(await renewalOf(client, 's3')).toBeUndefined()
+
+    await form.getByRole('button', { name: 'Planları onayla' }).click()
+    const result = page.getByRole('dialog', { name: 'Toplu plan sonucu' })
+    await expect(result.getByText('2 planlandı · 0 atlandı · 0 yapılamadı')).toBeVisible()
+    await result.getByRole('button', { name: 'Kapat', exact: true }).click()
+    await expect(result).toBeHidden()
+
+    await expect.poll(async () => (await renewalOf(client, 's3'))?.status).toBe('Planlandı')
+    await expect.poll(async () => (await renewalOf(client, 's4'))?.status).toBe('Planlandı')
+    expect(await classOf(client, 's3')).toBe('c3')
+    await expect(section.getByText('Bu durumda öğrenci yok.')).toBeVisible()
+  })
+
+  test('IST-105, ON-086: ön büro toplu planı önizler, onay düğmesi yoktur, kayıt yazılmaz', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'onburo'],
+      students: ['s4'],
+      collections: ['renewals'],
+      tariffYears: ['current', 'next'],
+    })
+    const client = await api(school.user('yonetici'))
+    const page = await loginAs(school.user('onburo'))
+    await page.goto('/onburo/kayit-yenileme')
+    const section = page.getByRole('region', { name: 'Yeni yılın planları' })
+    await section.getByRole('checkbox', { name: 'Arda Çelik seç' }).click()
+    await section.getByRole('button', { name: 'Seçilenleri planla (1)' }).click()
+    const form = page.getByRole('dialog', { name: 'Toplu yenileme planı' })
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Önizle' }).click()
+    await expect(form.getByText('1 hazır · 0 atlanacak · 0 yapılamaz')).toBeVisible()
+    await expect(form.getByText('Toplu onayı yönetici verir.')).toBeVisible()
+    await expect(form.getByRole('button', { name: 'Planları onayla' })).toHaveCount(0)
+    expect(await renewalOf(client, 's4')).toBeUndefined()
+  })
+
   test('veli yenileme işlemi göremez; liste kapsamına daralır', async ({ loginAs }) => {
     const page = await loginAs('veli')
     await page.goto('/veli/kayit-yenileme?cocuk=s1')
@@ -499,5 +660,6 @@ test.describe('kayıt yenileme', () => {
     await expect(page.getByRole('button', { name: 'Kayıt yenile' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Zeynep Demir' })).toHaveCount(0)
     await expect(page.getByRole('region', { name: 'Artış tavanı oranları' })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Yeni yılın planları' })).toHaveCount(0)
   })
 })

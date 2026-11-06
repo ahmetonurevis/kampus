@@ -25,6 +25,7 @@ import { ContractApprovalPanel } from './ContractApprovalPanel.tsx'
 import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
 import { FamilyReferralRewards } from './ReferralRewardsSection.tsx'
+import { FamilyPackagesSection } from './FamilyPackagesSection.tsx'
 import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
 
@@ -75,8 +76,10 @@ function ChildSummary({ childId }: { childId: string }) {
  */
 export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts: boolean }) {
   useDocumentTitle(page.title)
+  const { session } = useAuth()
   const childId = use(ViewScopeContext)
   if (!childId) return <NoChild page={page} />
+  const languageSchool = session?.institution?.type === 'language_school'
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
@@ -89,6 +92,7 @@ export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts:
       />
       {receipts ? null : <ChildStatement childId={childId} />}
       {receipts ? null : <FamilyReferralRewards />}
+      {languageSchool && !receipts ? <FamilyPackagesSection studentId={childId} /> : null}
     </>
   )
 }
@@ -318,10 +322,19 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
           <FamilyInvoicesView audience="student" studentId="" title="Ödemelerim" />
           <OwnStatement />
           <FamilyReferralRewards />
+          <OwnPackages />
         </>
       )}
     </>
   )
+}
+
+/** Dil okulu kursiyerinin kendi paketleri; öğrenci kimliği oturum bağından gelir (IST-078). */
+function OwnPackages() {
+  const { session } = useAuth()
+  const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
+  if (!studentId || session?.institution?.type !== 'language_school') return null
+  return <FamilyPackagesSection studentId={studentId} />
 }
 
 /** Öğrencinin kendi ekstresi; öğrenci kimliği oturum bağından gelir. */

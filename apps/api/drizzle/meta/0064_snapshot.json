@@ -1,5 +1,5 @@
 {
-  "id": "5e3ade0f-245f-4d6f-9257-ecc3fc84b9b2",
+  "id": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "prevId": "f58a7c9e-ac9b-4263-a179-40ad00d6e517",
   "version": "7",
   "dialect": "postgresql",
@@ -4109,6 +4109,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_term": {
+          "name": "payment_term",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "signatory_name": {
           "name": "signatory_name",
           "type": "text",
@@ -4523,6 +4529,10 @@
         "contracts_scholarship_check": {
           "name": "contracts_scholarship_check",
           "value": "(\"contracts\".\"scholarship_program_id\" is null) = (\"contracts\".\"scholarship_cents\" is null) and (\"contracts\".\"scholarship_program_id\" is null or \"contracts\".\"tariff_id\" is not null)"
+        },
+        "contracts_payment_term_check": {
+          "name": "contracts_payment_term_check",
+          "value": "\"contracts\".\"payment_term\" is null or \"contracts\".\"tariff_id\" is not null"
         },
         "contracts_signatory_check": {
           "name": "contracts_signatory_check",
@@ -5102,6 +5112,13 @@
         },
         "discounts": {
           "name": "discounts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "payment_terms": {
+          "name": "payment_terms",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
@@ -5824,309 +5841,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.referral_rewards": {
-      "name": "referral_rewards",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prospect_id": {
-          "name": "prospect_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referrer_student_id": {
-          "name": "referrer_student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referrer_parent_id": {
-          "name": "referrer_parent_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referred_student_id": {
-          "name": "referred_student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tariff_id": {
-          "name": "tariff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "earned_at": {
-          "name": "earned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "used_at": {
-          "name": "used_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "used_contract_id": {
-          "name": "used_contract_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "used_student_id": {
-          "name": "used_student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "used_amount_cents": {
-          "name": "used_amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "used_by_user_id": {
-          "name": "used_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "referral_rewards_prospect_key": {
-          "name": "referral_rewards_prospect_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "prospect_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"referral_rewards\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "referral_rewards_referrer_parent_idx": {
-          "name": "referral_rewards_referrer_parent_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "referrer_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "referral_rewards_referrer_student_idx": {
-          "name": "referral_rewards_referrer_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "referrer_student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "referral_rewards_referred_student_idx": {
-          "name": "referral_rewards_referred_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "referred_student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "referral_rewards_used_contract_idx": {
-          "name": "referral_rewards_used_contract_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "used_contract_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "referral_rewards_institution_id_institutions_id_fk": {
-          "name": "referral_rewards_institution_id_institutions_id_fk",
-          "tableFrom": "referral_rewards",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "referral_rewards_pkey": {
-          "name": "referral_rewards_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "referral_rewards_status_check": {
-          "name": "referral_rewards_status_check",
-          "value": "\"referral_rewards\".\"status\" in ('pending', 'available', 'used', 'cancelled')"
-        },
-        "referral_rewards_cancel_reason_check": {
-          "name": "referral_rewards_cancel_reason_check",
-          "value": "\"referral_rewards\".\"cancel_reason\" is null or \"referral_rewards\".\"cancel_reason\" in ('refunded_before_start', 'withdrawn_before_earned')"
-        },
-        "referral_rewards_amount_check": {
-          "name": "referral_rewards_amount_check",
-          "value": "\"referral_rewards\".\"amount_cents\" > 0"
-        },
-        "referral_rewards_used_amount_check": {
-          "name": "referral_rewards_used_amount_check",
-          "value": "\"referral_rewards\".\"used_amount_cents\" is null or \"referral_rewards\".\"used_amount_cents\" <= \"referral_rewards\".\"amount_cents\""
-        },
-        "referral_rewards_used_check": {
-          "name": "referral_rewards_used_check",
-          "value": "(\"referral_rewards\".\"status\" = 'used') = (\"referral_rewards\".\"used_contract_id\" is not null)"
-        },
-        "referral_rewards_cancelled_check": {
-          "name": "referral_rewards_cancelled_check",
-          "value": "(\"referral_rewards\".\"status\" = 'cancelled') = (\"referral_rewards\".\"cancel_reason\" is not null)"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.scholarship_awards": {

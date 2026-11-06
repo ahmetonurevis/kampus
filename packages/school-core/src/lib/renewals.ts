@@ -4,7 +4,7 @@ import type { State } from '../data/seed.ts'
 import { daySchema, requiredText, type MakeId, type Session } from './domain.ts'
 import {
   itemFor,
-  priceEnrollment,
+  priceEnrollmentOnTerm,
   requireSiblingDiscountEligible,
   type DiscountLine,
   type EnrollmentTariff,
@@ -24,6 +24,7 @@ import {
   scholarshipAmount,
   type ScholarshipProgram,
 } from './finance-scholarships.ts'
+import type { ContractPaymentTerm } from './payment-terms.ts'
 import { installmentAmounts } from './payments.ts'
 import {
   assertWithinCeiling,
@@ -131,15 +132,47 @@ export interface RenewalPrice {
   netCents: number
   extras: ExtraLine[]
   installments: number[]
+  /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`. */
+  paymentTerm: ContractPaymentTerm | null
   /** Önceki yıllardan ödenmemiş öğrenim ücreti; sıfırdan büyükse plan yönetici onayı ister. */
   outstandingTuitionCents: number
 }
 
-function requireRenewalRole(session: Session): void {
+export function requireRenewalRole(session: Session): void {
   if (!mayRun(session, 'renewal'))
     throw new DomainError('permission_denied', 'Bu işlem için rolünüzün yetkisi yok.', {
       kind: 'forbidden',
     })
+}
+
+/**
+ * Hedef düzeyin artış tavanı ve uygulanabilecek en yüksek ücreti (DOM-FIN-002, -005). Plan, önizleme
+ * ve yeni yıl listesi aynı hesabı çalıştırır (`lib/renewal-bulk.ts`).
+ */
+export function renewalTuitionLimit(
+  state: State,
+  input: { studentId: string; targetGrade: number; year: number; announcedCents: number },
+  context: Pick<RenewalContext, 'previousTariff' | 'priceIndexes'>,
+): { ceiling: RenewalCeiling; maxTuitionCents: number } {
+  const previous = context.previousTariff
+    ? itemFor(context.previousTariff.items, 'tuition', String(input.targetGrade))
+    : undefined
+  const ceiling = renewalCeiling(state, {
+    studentId: input.studentId,
+    targetGrade: input.targetGrade,
+    year: input.year,
+    previousAnnouncedCents: previous
+      ? (previous.announcedAmountCents ?? previous.amountCents)
+      : null,
+    priceIndexes: context.priceIndexes,
+  })
+  return {
+    ceiling,
+    maxTuitionCents:
+      ceiling.status === 'applied'
+        ? Math.min(input.announcedCents, ceiling.ceilingCents)
+        : input.announcedCents,
+  }
 }
 
 /** Plan ve önizlemenin ortak fiyatı; State değişmez. */
@@ -171,7 +204,8 @@ function priceRenewal(
     reward: context.referralReward ?? null,
     ownerParentId: student.parentId || null,
   })
-  const price = priceEnrollment(context.tariff, {
+  const price = priceEnrollmentOnTerm(context.tariff, {
+    installmentCount: data.installmentCount,
     level,
     institutionType: 'school',
     discounts: data.discounts,
@@ -179,21 +213,17 @@ function priceRenewal(
     canApproveCapException: canApprove,
     referralRewardCents: referralReward?.amountCents,
   })
-  const previous = context.previousTariff
-    ? itemFor(context.previousTariff.items, 'tuition', level)
-    : undefined
-  const ceiling = renewalCeiling(state, {
-    studentId: student.id,
-    targetGrade: target.grade,
-    year: data.academicYear,
-    previousAnnouncedCents: previous
-      ? (previous.announcedAmountCents ?? previous.amountCents)
-      : null,
-    priceIndexes: context.priceIndexes,
-  })
   const announcedCents = price.grossCents
-  const maxTuitionCents =
-    ceiling.status === 'applied' ? Math.min(announcedCents, ceiling.ceilingCents) : announcedCents
+  const { ceiling, maxTuitionCents } = renewalTuitionLimit(
+    state,
+    {
+      studentId: student.id,
+      targetGrade: target.grade,
+      year: data.academicYear,
+      announcedCents,
+    },
+    context,
+  )
   const tuitionCents = data.tuitionCents ?? maxTuitionCents
   if (tuitionCents > announcedCents)
     throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {
@@ -251,6 +281,7 @@ function priceRenewal(
     extras: price.extras,
     // Tam bursta öğrenim taksiti açılmaz.
     installments: netCents === 0 ? [] : installmentAmounts(netCents, data.installmentCount),
+    paymentTerm: price.paymentTerm,
     outstandingTuitionCents: context.outstandingTuitionCents ?? 0,
   }
   return { student, oldClass, target, price: result }
@@ -320,7 +351,7 @@ export function quoteRenewal(
 }
 
 /** Ay sonunu aşan gün ayın son gününe çekilir (kesin kayıtla aynı plan). */
-function dueDateOf(start: Date, index: number): string {
+export function dueDateOf(start: Date, index: number): string {
   const lastDay = new Date(
     Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + index + 1, 0),
   ).getUTCDate()
@@ -441,6 +472,7 @@ export function planRenewal(
     approvedByUserId: context.approvedByUserId,
     payer: 'guardian',
     ...(price.scholarship === null ? {} : { scholarship: price.scholarship }),
+    ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
   })
   state.invoices.push(...invoices)
   const entry: Renewal = {
@@ -468,6 +500,7 @@ export function planRenewal(
       discounts: price.discounts,
       extras: price.extras,
       scholarship: price.scholarship,
+      ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
     },
     createdAt: now,
     updatedAt: now,

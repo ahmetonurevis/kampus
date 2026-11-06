@@ -2,7 +2,12 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import { DomainError } from './errors.ts'
-import { discountRuleAmount, type FeeDiscount, type FeeDiscountKind } from './fee-tariffs.ts'
+import {
+  discountRuleAmount,
+  type DiscountLineKind,
+  type FeeDiscount,
+  type FeeDiscountKind,
+} from './fee-tariffs.ts'
 
 /**
  * Referans indirimi hakkı (docs/domain/finans.md DOM-FIN-024; kayit-ve-crm.md DOM-KAY-007; ON-139).
@@ -173,7 +178,7 @@ export function requireUsableReferralReward(request: {
 /** Sözleşmenin referans kalemi: hakkın sabit tutarının tavandan sonra kalanı (DOM-FIN-024). */
 export function referralUseOf(
   rewardId: string | null,
-  discounts: readonly { kind: FeeDiscountKind; amountCents: number }[],
+  discounts: readonly { kind: DiscountLineKind; amountCents: number }[],
 ): { rewardId: string; amountCents: number } | null {
   if (rewardId === null) return null
   const line = discounts.find((item) => item.kind === 'referral')

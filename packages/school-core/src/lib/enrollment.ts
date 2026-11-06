@@ -22,6 +22,14 @@ import {
 } from './finance-referrals.ts'
 import { dayKey } from './format.ts'
 import { isCustodial, type GuardianLink } from './guardianship.ts'
+import {
+  assertEarlyPaymentOnUpfront,
+  PAYMENT_TERM_DISCOUNT_KIND,
+  paymentTermDiscountCents,
+  resolvePaymentTerm,
+  type ContractPaymentTerm,
+  type FeePaymentTerm,
+} from './payment-terms.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { assertWithinCeiling, renewalCeiling, type PriceIndexEntry } from './renewal-ceiling.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
@@ -29,6 +37,7 @@ import {
   discountRuleAmount,
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KINDS,
+  type DiscountLineKind,
   type FeeDiscount,
   type FeeDiscountKind,
   type FeeItem,
@@ -137,6 +146,8 @@ export interface EnrollmentTariff {
   versionNumber: number
   items: readonly FeeItem[]
   discounts: readonly FeeDiscount[]
+  /** İlanlı ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boştur. */
+  paymentTerms?: readonly FeePaymentTerm[]
 }
 
 /**
@@ -170,7 +181,7 @@ export function guardianRequired(
 }
 
 export interface DiscountLine {
-  kind: FeeDiscountKind
+  kind: DiscountLineKind
   amountCents: number
 }
 export interface ExtraLine {
@@ -283,6 +294,7 @@ export function discountLines(
   kinds: readonly FeeDiscountKind[],
   options: {
     canApproveCapException: boolean
+    paymentTerm?: ContractPaymentTerm | null
     referral?: { amountCents: number; trimToCap: boolean } | undefined
   },
 ): DiscountLine[] {
@@ -290,7 +302,7 @@ export function discountLines(
     throw new DomainError('discount_duplicate', 'Aynı indirim iki kez seçilemez.', {
       path: ['discounts'],
     })
-  const lines = kinds.map((kind): DiscountLine => {
+  const announced = kinds.map((kind): DiscountLine => {
     const rule = rules.find((item) => item.kind === kind)
     if (!rule)
       throw new DomainError('discount_not_in_tariff', 'Bu indirim tarifede ilan edilmemiş.', {
@@ -300,6 +312,12 @@ export function discountLines(
     if (options.referral === undefined) throw referralRewardRequiredError()
     return { kind, amountCents: options.referral.amountCents }
   })
+  // Koşulun fiyat farkı da indirimdir: ilan ücretinden düşer, tavana girer (DOM-FIN-013, -021).
+  const termCents = paymentTermDiscountCents(options.paymentTerm ?? null, grossCents)
+  const lines: DiscountLine[] =
+    termCents === 0
+      ? announced
+      : [...announced, { kind: PAYMENT_TERM_DISCOUNT_KIND, amountCents: termCents }]
   const exempt = kinds.includes('staff_child')
   if (!exempt && options.referral?.trimToCap === true) trimReferralLine(lines, grossCents)
   if (exempt && !options.canApproveCapException)
@@ -336,6 +354,7 @@ export function priceEnrollment(
     canApproveCapException: boolean
     /** Kullanılan referans hakkının sabit tutarı; tavanı aşan kısım düşer (DOM-FIN-024). */
     referralRewardCents?: number | undefined
+    paymentTerm?: ContractPaymentTerm | null
   },
 ): EnrollmentPrice {
   const tuition = itemFor(tariff.items, 'tuition', request.level)
@@ -355,25 +374,52 @@ export function priceEnrollment(
   }
   const discounts = discountLines(tariff.discounts, grossCents, request.discounts, {
     canApproveCapException: request.canApproveCapException,
+    paymentTerm: request.paymentTerm ?? null,
     referral:
       request.referralRewardCents === undefined
         ? undefined
         : { amountCents: request.referralRewardCents, trimToCap: true },
   })
   const total = discounts.reduce((sum, line) => sum + line.amountCents, 0)
-  if (new Set(request.extras).size !== request.extras.length)
+  const extras = extraLines(tariff.items, request.level, request.extras)
+  return { grossCents, discounts, netCents: grossCents - total, extras }
+}
+
+/** Seçilen ek hizmetlerin tarifedeki kalemi (DOM-FIN-003); kesin kayıt ve paket satışı ortak. */
+export function extraLines(
+  items: readonly FeeItem[],
+  level: string,
+  kinds: readonly FeeItemKind[],
+): ExtraLine[] {
+  if (new Set(kinds).size !== kinds.length)
     throw new DomainError('extra_duplicate', 'Aynı ek hizmet iki kez seçilemez.', {
       path: ['extras'],
     })
-  const extras = request.extras.map((kind): ExtraLine => {
-    const item = kind === 'tuition' ? undefined : itemFor(tariff.items, kind, request.level)
+  return kinds.map((kind): ExtraLine => {
+    const item = kind === 'tuition' ? undefined : itemFor(items, kind, level)
     if (!item)
       throw new DomainError('extra_not_in_tariff', 'Bu ek hizmet tarifede ilan edilmemiş.', {
         path: ['extras'],
       })
     return { kind, amountCents: item.amountCents }
   })
-  return { grossCents, discounts, netCents: grossCents - total, extras }
+}
+
+/**
+ * Fiyat + ödeme koşulu (DOM-FIN-013): taksit sayısı ilanlı koşula bağlanır, peşin indirimi yalnız
+ * peşin koşulunda geçer, koşulun fiyat farkı indirim kalemi olur. Kesin kayıt, yenileme ve önizleme
+ * ortak kullanır. Koşulsuz eski tarifede `paymentTerm` `null`dur ve fiyat değişmez.
+ */
+export function priceEnrollmentOnTerm(
+  tariff: EnrollmentTariff,
+  request: Omit<Parameters<typeof priceEnrollment>[1], 'paymentTerm'> & {
+    installmentCount?: number | undefined
+  },
+): EnrollmentPrice & { paymentTerm: ContractPaymentTerm | null } {
+  const { installmentCount, ...priced } = request
+  const paymentTerm = resolvePaymentTerm(tariff.paymentTerms, installmentCount)
+  assertEarlyPaymentOnUpfront(paymentTerm, request.discounts)
+  return { ...priceEnrollment(tariff, { ...priced, paymentTerm }), paymentTerm }
 }
 
 type ParentLike = {
@@ -640,7 +686,8 @@ export function enrollProspectWithTariff(
     reward: context.referralReward ?? null,
     ownerParentId: existing?.id ?? null,
   })
-  const price = priceEnrollment(context.tariff, {
+  const price = priceEnrollmentOnTerm(context.tariff, {
+    installmentCount: data.installmentCount,
     // Okulda düzey sınıf derecesi, dil okulunda sınıfın CEFR düzeyidir (`level`).
     level: !cls
       ? ''
@@ -717,6 +764,7 @@ export function enrollProspectWithTariff(
         ...(program === null
           ? {}
           : { scholarship: { programId: program.id, amountCents: scholarshipCents } }),
+        ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
       },
       guardianContact: !adult,
       ...(data.studentContact === undefined ? {} : { studentContact: data.studentContact }),
@@ -958,18 +1006,23 @@ export function enrollmentFormToBody(
  */
 export function previewEnrollment(
   tariff: EnrollmentTariff,
-  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'>,
+  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'> &
+    Partial<Pick<EnrollmentFormValues, 'installmentCount'>>,
   options: {
     institutionType: InstitutionType
     level: string
     referralRewardCents?: number | undefined
   },
-): { ok: true; price: EnrollmentPrice } | { ok: false; message: string } {
+):
+  | { ok: true; price: EnrollmentPrice & { paymentTerm: ContractPaymentTerm | null } }
+  | { ok: false; message: string } {
   try {
     const hours = Number(values.lessonHours)
     return {
       ok: true,
-      price: priceEnrollment(tariff, {
+      price: priceEnrollmentOnTerm(tariff, {
+        installmentCount:
+          values.installmentCount === undefined ? undefined : Number(values.installmentCount),
         level: options.level,
         institutionType: options.institutionType,
         lessonHours:
@@ -997,7 +1050,11 @@ export function previewEnrollment(
 export function assertRenewalWithinTariff(
   state: Pick<State, 'classes' | 'contracts' | 'students' | 'renewals' | 'academicYear'>,
   input: unknown,
-  tariff: (Pick<EnrollmentTariff, 'items'> & { priceIndexes?: readonly PriceIndexEntry[] }) | null,
+  tariff:
+    | (Pick<EnrollmentTariff, 'items' | 'paymentTerms'> & {
+        priceIndexes?: readonly PriceIndexEntry[]
+      })
+    | null,
   institutionType: InstitutionType,
 ): void {
   const data = workflowSchemas.renewal.safeParse(input)
@@ -1027,7 +1084,10 @@ export function assertRenewalWithinTariff(
       'İndirim serbest tutar olarak girilmez; tarifedeki türlerden seçilir.',
       { path: ['discount'] },
     )
-  if (gross > tuition.amountCents)
+  // Köprü taksit sayısını da ilanlı koşula bağlar; koşulun fiyat farkı üst sınırı düşürür
+  // (DOM-FIN-013). Serbest tutar taşıdığı için indirim kalemi yazmaz.
+  const term = resolvePaymentTerm(tariff.paymentTerms, data.data.count)
+  if (gross > tuition.amountCents - paymentTermDiscountCents(term, tuition.amountCents))
     throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {
       path: ['total'],
     })

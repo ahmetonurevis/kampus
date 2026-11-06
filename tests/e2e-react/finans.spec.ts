@@ -3,9 +3,10 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Locator, Page, Request } from '@playwright/test'
 
+import { readWorkbook } from '../../apps/api/test/support/finance-workbook.ts'
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
-import { seedScholarshipContract } from './support/finance-terms.ts'
+import { seedScholarshipContract, seedStudentPayerContract } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
 import {
   expectContentInsideCards,
@@ -238,6 +239,48 @@ test.describe('Finans: tahsilat', () => {
     await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
     await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
     expect((await invoice(client, 'inv-s14-5')).paidAt).not.toBeNull()
+  })
+
+  test('DOM-FIN-035, ON-113: gecikmiş taksitte Hatırlat bildirim yazar, düğme Hatırlatıldı olur', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const late = 'e2e-inv-gecikmis'
+    const school = await tenant({
+      roles: [],
+      students: ['s17'],
+      records: [
+        {
+          collection: 'invoices' as const,
+          data: {
+            id: late,
+            studentId: 's17',
+            installment: 9,
+            amount: 100_000,
+            // Taksit tablosu vadeyi 09:00 UTC ister (`invoice-store.ts`).
+            dueDate: `${new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10)}T09:00:00.000Z`,
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+          },
+        },
+      ],
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?durum=gecikmis`)
+    const row = bodyRows(page).filter({ hasText: '9. taksit' })
+    const button = row.getByRole('button', { name: /9\. taksit: Hatırlat/ })
+    await expect(button).toHaveText('Hatırlat')
+    await button.click()
+    await expect(page.getByText('Hatırlatma veliye gönderildi.')).toBeVisible()
+    await expect(button).toHaveText('Hatırlatıldı')
+    await expect(button).toBeDisabled()
+    const client = await api(school.user('yonetici'))
+    const stored = await client.get(`/api/v1/collections/invoices/${late}`)
+    const record = (stored.body as { data: { record: { reminderAt: string | null } } }).data.record
+    expect(record.reminderAt).not.toBeNull()
   })
 
   test('DOM-FIN-031: kullanılmış referans alanda gösterilir, form açık kalır', async ({
@@ -514,6 +557,53 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Yeni burs programı' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-013: yönetici peşin ve süreli koşulu ilan eder; görüntülemede görünür, koşulsuz yayım reddedilir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s19'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tarife`)
+    await page.getByRole('button', { name: 'Yeni tarife' }).click()
+    const editor = page.getByRole('dialog', { name: 'Yeni tarife' })
+    await editor.getByLabel('Tutar (₺)', { exact: true }).fill('300.000,00')
+    await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('300.000,00')
+    // Koşul satırları dar ekranda taşmaz; satırlar tek sütuna iner.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expectNoHorizontalOverflow(page)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await editor.getByRole('button', { name: '1. ödeme koşulunu kaldır' }).click()
+    await editor.getByRole('button', { name: '1. ödeme koşulunu kaldır' }).click()
+    await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    const publish = page.getByRole('dialog', { name: 'Tarifeyi yayımla' })
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(
+      page.getByText('Tarifede peşin ya da süreli en az bir ödeme koşulu ilan edilmelidir.'),
+    ).toBeVisible()
+    await publish.getByRole('button', { name: 'Vazgeç' }).click()
+
+    await page.getByRole('button', { name: /taslağını düzenle/ }).click()
+    const draft = page.getByRole('dialog', { name: 'Tarife taslağını düzenle' })
+    await draft.getByRole('button', { name: 'Koşul ekle' }).click()
+    await draft.getByLabel('1. koşul en çok taksit').fill('4')
+    await draft.getByLabel('1. koşul fiyat farkı').selectOption('percent')
+    await draft.getByLabel('1. koşul indirim değeri').fill('3')
+    await draft.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.').last()).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(page.getByText('Tarife yayımlandı.')).toBeVisible()
+
+    await page.getByRole('button', { name: /tarifesini görüntüle/ }).click()
+    const view = page.getByRole('dialog', { name: /tarifesi$/ })
+    await expect(view.getByRole('list', { name: 'İlan edilen ödeme koşulları' })).toHaveText(
+      'Süreli · 2–4 taksit · %3 indirim',
+    )
+  })
+
   test('DOM-FIN-002: yönetici tarife taslağı açar ve yayımlar; yayımlanan düzenlenemez; ön büro yalnız görür', async ({
     page,
     loginAs,
@@ -560,7 +650,9 @@ test.describe('Finans: tahsilat', () => {
     await expect(nextYear.getByLabel('MEBBİS onaylı tutar (₺)')).toHaveValue('')
     await expect(nextYear.getByLabel('Tutar (₺)', { exact: true })).toHaveValue('300000,00')
     await nextYear.getByRole('button', { name: 'Taslağı kaydet' }).click()
-    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    // Hızlı koşuda ilk taslağın aynı metinli bildirimi henüz kapanmamış olabilir.
+    await expect(page.getByText('Tarife kaydedildi.').last()).toBeVisible()
+    await expect(nextYear).toBeHidden()
     await expect(table).toContainText(String(year + 1))
     await expect(table).toContainText('Taslak')
 
@@ -608,6 +700,77 @@ test.describe('Finans: tahsilat', () => {
     await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
     await expect(page.getByLabel('Dönem toplamları').or(page.getByRole('main'))).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dosya sütunları' })).toHaveCount(0)
+  })
+
+  test('IST-111 ON-085: yıl sonu mutabakatı toplamı, tutmayan öğrenci ve dosya; ön büroda yok', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    // Seed taksitlerinin ilk üçü tahsilat kaydı olmadan ödenmiştir: eğitim yılında tutmayan satırdır.
+    const school = await tenant({ roles: ['onburo'], students: ['s22'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    const section = page.getByRole('region', { name: 'Yıl sonu mutabakatı' })
+    await expect(section.getByLabel('Mutabakat toplamları')).toContainText('Kapanış')
+    await expect(section.getByRole('status').first()).toBeVisible()
+
+    const table = section.getByRole('table', { name: 'Öğrenci bazında mutabakat' })
+    await section.getByLabel('Gösterilecek öğrenciler').selectOption('mismatch')
+    await expect
+      .poll(async () => (await table.getByText('Tutuyor', { exact: true }).count()) === 0)
+      .toBe(true)
+
+    const downloading = page.waitForEvent('download')
+    await section.getByRole('button', { name: 'Mutabakat dosyası' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toMatch(/^mutabakat-\d{4}\.csv$/)
+    const body = await readFile(await file.path(), 'utf8')
+    expect(body.charCodeAt(0)).toBe(0xfeff)
+    expect(body).toContain('"Beklenen kapanış (₺)"')
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
+    await expect(page.getByRole('heading', { name: 'Muhasebe aktarımı' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Yıl sonu mutabakatı' })).toHaveCount(0)
+  })
+
+  test('ON-094: yönetici hazır şablonu uygular; Excel dosyası profilin sütunlarıyla iner', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s23'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s23-5', 'Kredi kartı')
+    const amount = (await invoice(client, 'inv-s23-5')).amount
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    await page.getByRole('button', { name: 'Dosya sütunları' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dosya sütunları' })
+    await dialog.getByLabel('Hazır sütun şablonu').selectOption({ label: 'Kısa liste' })
+    await dialog.getByRole('button', { name: 'Şablonu uygula' }).click()
+    await expect(dialog.getByLabel('Tahsilat dosyası 2. sütun başlığı')).toHaveValue('Ad soyad')
+    await expect(dialog.getByLabel('Tahsilat dosyası 4. sütun başlığı')).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Dosya sütunları kaydedildi.')).toBeVisible()
+
+    await page.getByLabel('Dosya biçimi').selectOption('xlsx')
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Tahsilat dosyası' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toMatch(/^tahsilatlar-.*\.xlsx$/)
+    const workbook = readWorkbook(await readFile(await file.path()))
+    expect(workbook.row(1)).toEqual(['Tarih', 'Ad soyad', 'Tutar'])
+    expect(workbook.hasFormula).toBe(false)
+    expect(workbook.cells.get('C2')).toMatchObject({
+      type: 'n',
+      value: amount / 100,
+      format: '#,##0.00',
+    })
+    expect(workbook.cells.get('B2')).toMatchObject({ type: 's', format: '@' })
   })
 
   test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({
@@ -726,6 +889,151 @@ test.describe('Finans: tahsilat', () => {
     await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
     await expect(page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })).toContainText(name)
     await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
+  })
+
+  test('DOM-FIN-040, K-06: önizleme öğrenim sözleşmesini ve paket satışını ayrı ayrı gösterir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: [],
+      students: ['s21'],
+      tariffYears: ['current'],
+    })
+    const client = await api(school.user('yonetici'))
+    const made = await client.post('/api/v1/finance/packages', {
+      kind: 'hours',
+      name: '40 saatlik paket',
+      lessonHours: 40,
+    })
+    expect(made.status, 'paket').toBe(201)
+    const packageId = (made.body as { data: { id: string } }).data.id
+    const quote = await client.post('/api/v1/finance/package-sales/quote', {
+      packageId,
+      studentId: 's21',
+      installmentCount: 2,
+    })
+    expect(quote.status, 'satış önizlemesi').toBe(200)
+    const sold = await client.post(
+      '/api/v1/finance/package-sales',
+      {
+        packageId,
+        studentId: 's21',
+        installmentCount: 2,
+        tariffId: (quote.body as { data: { tariffId: string } }).data.tariffId,
+        firstDueDate: '2026-12-01',
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(sold.status, 'paket satışı').toBe(201)
+    const student = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { name: string } }
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByLabel('Öğrenci').selectOption({ label: student.data.record.name })
+    await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+
+    await expect(dialog.getByText('Yürürlükteki 2 sözleşme hesaba girdi.')).toBeVisible()
+    const packageLine = dialog.getByRole('region', {
+      name: 'Dil kursu paket sözleşmesi: 40 saatlik paket',
+    })
+    await expect(packageLine).toContainText('Kullanım (0 / 40 ders saati, kayıttan)')
+    await expect(packageLine).toContainText('İade edilen kalan saat')
+    await expect(dialog.getByRole('region', { name: 'Toplam' })).toContainText('Kalan borç')
+    await expect(dialog).toContainText('paketlerin kalan saati iade edilmiş yazılır')
+
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    await page
+      .getByRole('button', { name: `${student.data.record.name} hesap dökümünü görüntüle` })
+      .click()
+    await expect(
+      page.getByRole('dialog', { name: 'Hesap dökümü' }).getByRole('region', {
+        name: 'Dil kursu paket sözleşmesi: 40 saatlik paket',
+      }),
+    ).toBeVisible()
+    await page.keyboard.press('Escape')
+    const sale = (
+      (await client.get('/api/v1/finance/package-sales?studentId=s21')).body as {
+        data: { remainingHours: number }[]
+      }
+    ).data[0]
+    expect(sale?.remainingHours).toBe(0)
+  })
+
+  test('K-12, DOM-FIN-040: ödeyiciler farklıysa önizleme söyler, karar ister; iade seçilen ödeyiciye yazılır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s21'] })
+    await seedStudentPayerContract({
+      institutionId: school.institutionId,
+      studentId: 's21',
+      contractId: 'contract-e2e-ogrenci',
+      title: 'Öğrenci ödeyicili sözleşme',
+    })
+    const client = await api(school.user('yonetici'))
+    const student = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { name: string; parentId: string } }
+    }
+    const { name, parentId } = student.data.record
+    const parent = (await client.get(`/api/v1/collections/parents/${parentId}`)).body as {
+      data: { record: { name: string } }
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+    await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+
+    await expect(dialog.getByText('Hesaba giren sözleşmelerin ödeyicileri farklı.')).toBeVisible()
+    await expect(dialog.getByRole('region', { name: 'Öğrenci ödeyicili sözleşme' })).toContainText(
+      name,
+    )
+    // Karar verilmeden onay sunucuya gitmez.
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(dialog.getByText('İadeyi alacak ödeyiciyi seçin.')).toBeVisible()
+    await expect(dialog.getByText('Karar gerekçesini yazın.')).toBeVisible()
+    const unchanged = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { isActive: boolean } }
+    }
+    expect(unchanged.data.record.isActive).toBe(true)
+
+    await dialog.getByLabel('İadeyi alacak ödeyici').selectOption({ value: 'guardian' })
+    await dialog.getByLabel('Karar gerekçesi').fill('Tahsilat velinin hesabından yapıldı')
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+
+    await page.getByRole('button', { name: `${name} hesap dökümünü görüntüle` }).click()
+    const breakdown = page.getByRole('dialog', { name: 'Hesap dökümü' })
+    await expect(breakdown).toContainText('İadeyi alacak ödeyici')
+    await expect(breakdown).toContainText('Tahsilat velinin hesabından yapıldı')
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
+    const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
+    await refund.getByLabel('IBAN').fill('TR330006100519786457841326')
+    await refund.getByLabel('Hesap sahibi').fill(name)
+    await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
+    await expect(refund.getByText('Hesap sahibi sözleşmedeki ödeyici olmalıdır.')).toBeVisible()
+    await refund.getByLabel('Hesap sahibi').fill(parent.data.record.name)
+    await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
+    await expect(page.getByText('İade ödendi olarak kaydedildi.')).toBeVisible()
   })
 
   test('DOM-FIN-050, -052: tahsilat dekontu PDF açılır; veli kendi tahsilatını ve dekontunu görür', async ({
@@ -1316,6 +1624,7 @@ test.describe('Finans: liste', () => {
     ['tahsilatlar', 'Tahsilat geçmişi'],
     ['tarife', 'Ücret tarifeleri'],
     ['ayrilis', 'Ayrılış ve iade kayıtları'],
+    ['gunsonu', 'Gün sonu'],
   ] as const)
     test(`320 ve 390 px genişlikte ${view} sekmesi yatay taşmaz`, async ({ page }) => {
       for (const width of [390, 320]) {
@@ -1332,6 +1641,8 @@ test.describe('Finans: liste', () => {
     await page.setViewportSize({ width: 320, height: 844 })
     await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
     await expect(page.getByRole('heading', { name: 'Muhasebe aktarımı' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Yıl sonu mutabakatı' })).toBeVisible()
+    await expect(page.getByLabel('Mutabakat toplamları')).toBeVisible()
     await expectNoHorizontalOverflow(page)
   })
 })
@@ -1457,6 +1768,108 @@ test.describe('Finans: sunucu retleri', () => {
     await publish.getByRole('button', { name: 'Vazgeç' }).click()
     await expect(table).toContainText('Taslak')
     await expect(table).not.toContainText('Yayında')
+  })
+})
+
+test.describe('Finans: gün sonu', () => {
+  const dayPanel = (page: Page) => page.getByRole('group', { name: 'Gün kapanışı' })
+
+  /** Arayüzden geçmeden nakit tahsilat; yanıt durumu döner (kapalı günde 422). */
+  async function payCash(client: ApiClient, studentId: string, amountCents: number) {
+    const response = await client.context.fetch('/api/v1/payments', {
+      method: 'POST',
+      data: { studentId, amountCents, method: 'Nakit' },
+      headers: { 'idempotency-key': randomUUID() },
+      failOnStatusCode: false,
+    })
+    return { status: response.status(), body: (await response.json()) as { code?: string } }
+  }
+
+  test('IST-113, DOM-FIN-036: ön büro kasayı sayar, farkı açıklar ve kapatır; kapalı güne tahsilat girilemez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s21'] })
+    const admin = await api(school.user('yonetici'))
+    await setCashPayments(admin, true)
+    expect((await payCash(admin, 's21', 30_000)).status).toBe(201)
+    await payThroughApi(admin, 'inv-s21-5', 'Kredi kartı')
+
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=gunsonu`)
+    const methods = page.getByRole('table', { name: 'Ödeme yöntemine göre gün özeti' })
+    await expect(methods.getByRole('row', { name: /Nakit/ })).toContainText('300,00')
+    await expect(page.getByRole('table', { name: 'Günün tahsilatları' })).toContainText('Nakit')
+    await expect(dayPanel(page)).toContainText('Açık')
+
+    await dayPanel(page).getByRole('button', { name: 'Günü kapat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Günü kapat' })
+    await dialog.getByLabel('Sayılan nakit (₺)').fill('250,00')
+    await expect(dialog.getByText(/50,00 ₺ eksik/)).toBeVisible()
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(dialog.getByText('Kasa farkını açıklayın.')).toBeVisible()
+    await dialog.getByLabel('Açıklama').fill('Para üstü eksik verildi')
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(page.getByText('Gün kapatıldı.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+
+    const panel = dayPanel(page)
+    await expect(panel).toContainText('Kapatıldı')
+    await expect(panel).toContainText('Para üstü eksik verildi')
+    await expect(panel).toContainText(/50,00 ₺ eksik/)
+    // Yeniden açma yöneticinindir (DOM-FIN-052).
+    await expect(panel.getByRole('button', { name: 'Günü yeniden aç' })).toHaveCount(0)
+    await expect(panel.getByRole('button', { name: 'Günü kapat' })).toHaveCount(0)
+
+    const denied = await payCash(admin, 's21', 1_000)
+    expect(denied.status).toBe(422)
+    expect(denied.body.code).toBe('finance_day_closed')
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('DOM-FIN-036: yönetici gerekçeyle yeniden açar, eski kapanış kayıtta kalır; PDF tıklamada yüklenir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s22'] })
+    const pdfCode: string[] = []
+    page.on('request', (request) => {
+      if (/jspdf/i.test(request.url())) pdfCode.push(request.url())
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=gunsonu`)
+    await dayPanel(page).getByRole('button', { name: 'Günü kapat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Günü kapat' })
+    // Nakit kapalı ve hareketsiz gün: kasa sayımı istenmez (DOM-FIN-032).
+    await expect(dialog.getByLabel('Sayılan nakit (₺)')).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(page.getByText('Gün kapatıldı.')).toBeVisible()
+    await expect(dayPanel(page)).toContainText('Kapatıldı')
+
+    expect(pdfCode, 'jsPDF tıklamadan önce yüklenmez').toEqual([])
+    await page.getByRole('button', { name: 'Gün sonu PDF' }).click()
+    const preview = page.getByRole('dialog', { name: 'Gün sonu raporu · Önizleme' })
+    const downloading = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    expect((await downloading).suggestedFilename()).toMatch(/^gun-sonu-\d{4}-\d{2}-\d{2}\.pdf$/)
+    expect(pdfCode.length, 'jsPDF tıklamada yüklenir').toBeGreaterThan(0)
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Gün sonu PDF' })).toBeFocused()
+
+    await dayPanel(page).getByRole('button', { name: 'Günü yeniden aç' }).click()
+    const reopen = page.getByRole('dialog', { name: 'Günü yeniden aç' })
+    await reopen.getByRole('button', { name: 'Günü yeniden aç' }).click()
+    await expect(reopen.getByText(/gerekçesi en az 5/)).toBeVisible()
+    await reopen.getByLabel('Yeniden açma gerekçesi').fill('Sayım yanlış girildi')
+    await reopen.getByRole('button', { name: 'Günü yeniden aç' }).click()
+    await expect(page.getByText('Gün yeniden açıldı.')).toBeVisible()
+    await expect(dayPanel(page)).toContainText('Açık')
+    await expect(page.getByRole('heading', { name: 'Önceki kapanışlar' })).toBeVisible()
+    await expect(page.getByText(/Gerekçe: Sayım yanlış girildi/)).toBeVisible()
   })
 })
 

@@ -3,6 +3,7 @@
 // ekran satırı ya da istek gövdesi çıkar. Ödeme kuralları core'dadır (`lib/payments.ts`).
 import type { State } from '@kampus/school-core/data/seed.ts'
 import {
+  dayKey,
   INVOICE_STATUS_KEYS,
   INVOICE_STATUS_LABELS,
   invoiceStatusKey,
@@ -49,6 +50,8 @@ export type InvoiceRow = {
   status: InvoiceStatus | typeof PARTIAL_STATUS
   /** Açık taksite dağıtılmış tutar; kuruş. */
   paidCents: number
+  /** Son hatırlatmanın anı (DOM-FIN-035); hatırlatılmadıysa `null`. */
+  reminderAt: string | null
 }
 
 /** `today` Europe/Istanbul günüdür; durum vadesi geçmiş ödenmemiş taksitte "Gecikmiş". */
@@ -73,8 +76,17 @@ export function invoiceRow(
     method: invoice.method ?? null,
     status: key === 'yaklasan' && paidCents > 0 ? PARTIAL_STATUS : INVOICE_STATUS_LABELS[key],
     paidCents,
+    reminderAt: invoice.reminderAt ?? null,
   }
 }
+
+/** Elle hatırlatma yalnız gecikmiş taksittedir (DOM-FIN-035, ON-113; kural API'dedir). */
+export const canRemindInvoice = (row: Pick<InvoiceRow, 'status'>) =>
+  row.status === INVOICE_STATUS_LABELS.gecikmis
+
+/** Taksite bugün hatırlatma gitti mi: günde bir hatırlatma; `today` Europe/Istanbul günü. */
+export const remindedOn = (row: Pick<InvoiceRow, 'reminderAt'>, today: string) =>
+  row.reminderAt !== null && dayKey(row.reminderAt) === today
 
 /**
  * Tahsilat formundan `POST /payments` gövdesi (DOM-FIN-030…032). Nakitte referans yoktur; banka

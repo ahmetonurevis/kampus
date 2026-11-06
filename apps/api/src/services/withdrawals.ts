@@ -4,15 +4,17 @@ import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { cancelledRenewalContractIds } from '@kampus/school-core/lib/finance-referrals.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
-  payerNameOf,
   planRefundPayment,
   quoteWithdrawal,
+  refundPayerName,
   withdrawStudent,
+  type WithdrawalBreakdown,
   type WithdrawalContext,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
 import { allocatedByInvoice, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -37,12 +39,14 @@ import {
   FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 import { studentFinanceScope } from './payments.ts'
+import { auditWork } from './task-work.ts'
 
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
- * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, iade kaydı ve kimlik arşivi
- * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz; denetime yalnız alan adları düşer. İade
- * ödendi bildirimi (`refund_paid`) ödemeyle aynı transaction'dadır, yalnız ayrılış kimliğini taşır.
+ * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, kalan paket saatinin iade
+ * hareketi, iade kaydı ve kimlik arşivi tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz;
+ * denetime yalnız alan adları düşer. İade ödendi bildirimi (`refund_paid`) ödemeyle aynı
+ * transaction'dadır, yalnız ayrılış kimliğini taşır.
  */
 
 const SPEC = OPERATION_COMMANDS['student.withdraw']
@@ -61,8 +65,20 @@ const ACCOUNT_FIELDS: ReadonlySet<string> = new Set<keyof RefundAccount>([
   'refundAccountHolder',
 ])
 
+/**
+ * Komut yanıtı idempotency kaydında saklanır: karar gerekçesi (K-12, serbest metin) ona girmez,
+ * yalnız ayrılış kaydında durur ve yalnız yöneticinin kayıt okumalarında döner (K-13).
+ */
+function withoutDecisionReason(row: WithdrawalView): WithdrawalView {
+  const decision = row.breakdown.payerDecision
+  if (!decision) return row
+  return { ...row, breakdown: { ...row.breakdown, payerDecision: { payer: decision.payer } } }
+}
+
 function withoutAccount(row: WithdrawalView): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(row).filter(([field]) => !ACCOUNT_FIELDS.has(field)))
+  return Object.fromEntries(
+    Object.entries(withoutDecisionReason(row)).filter(([field]) => !ACCOUNT_FIELDS.has(field)),
+  )
 }
 
 /**
@@ -91,6 +107,12 @@ function view(row: StoredWithdrawal): WithdrawalView {
   }
 }
 
+/** Kayıt okuması: yönetici dışındaki rol kararın ödeyici türünü görür, gerekçeyi görmez (K-13). */
+function readView(ctx: ServiceContext, row: StoredWithdrawal): WithdrawalView {
+  const withdrawal = view(row)
+  return ctx.actor.role === 'yonetici' ? withdrawal : withoutDecisionReason(withdrawal)
+}
+
 async function audit(
   tx: Database,
   ctx: ServiceContext,
@@ -110,16 +132,50 @@ async function audit(
   })
 }
 
-/** Dağılım ve dağıtılmamış tahsilat; kurum kilidi altında veya tek görüntüden okunur. */
-async function paymentContext(
+/** Dağılım, dağıtılmamış tahsilat ve paket satışları; kurum kilidi altında veya tek görüntüden okunur. */
+async function accountContext(
   tx: Database,
   ctx: ServiceContext,
   studentId: string,
-): Promise<Pick<WithdrawalContext, 'allocated' | 'creditCents'>> {
+): Promise<Pick<WithdrawalContext, 'allocated' | 'creditCents' | 'packageSales'>> {
   const allocated = await allocatedByInvoice(tx, ctx.institutionId, studentId)
   const total = await paymentTotal(tx, ctx.institutionId, studentId)
   const distributed = [...allocated.values()].reduce((sum, value) => sum + value, 0)
-  return { allocated, creditCents: Math.max(total - distributed, 0) }
+  const packageSales = await loadWithdrawalPackageSales(tx, ctx.institutionId, studentId)
+  return { allocated, creditCents: Math.max(total - distributed, 0), packageSales }
+}
+
+/**
+ * Kalan paket saatini iade edilmiş yazar (DOM-DIL-051): bakiye sıfırlanır, yoklama köprüsü sonradan
+ * saat düşemez. Kaynak ayrılış kaydıdır; öğrenci pasifleştiği için ayrılış yinelenmez.
+ */
+async function returnPackageHours(
+  tx: Database,
+  ctx: ServiceContext,
+  withdrawal: { id: string; date: string; breakdown: WithdrawalBreakdown },
+): Promise<void> {
+  for (const line of withdrawal.breakdown.contracts ?? []) {
+    if (line.packageSaleId === undefined || !line.returnedHours) continue
+    const id = randomUUID()
+    await insertPackageHourEntry(tx, ctx.institutionId, {
+      id,
+      saleId: line.packageSaleId,
+      kind: 'refunded',
+      hours: line.returnedHours,
+      occurredDate: withdrawal.date,
+      sourceType: 'withdrawal',
+      sourceId: withdrawal.id,
+      recordedByUserId: ctx.actor.userId,
+      now: ctx.now,
+    })
+    await auditWork(tx, ctx, 'package.hours', { type: 'lesson_package_hour_entries', id }, [
+      'kind',
+      'hours',
+      'occurredDate',
+      'sourceType',
+      'sourceId',
+    ])
+  }
 }
 
 /** Hesabı yazmadan gösterir (DOM-FIN-040, IST-110). */
@@ -130,11 +186,11 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
     stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const { institutionType, scalars } = await environment(tx, ctx, SPEC)
-      const payments = await paymentContext(tx, ctx, studentId)
+      const account = await accountContext(tx, ctx, studentId)
       return {
         scalars,
         run: (state, { now }) =>
-          quoteWithdrawal(state, studentId, input, { institutionType, ...payments, now }),
+          quoteWithdrawal(state, studentId, input, { institutionType, ...account, now }),
       }
     },
   })
@@ -163,14 +219,14 @@ export function withdrawStudentCommand(
       entity: { type: 'student_withdrawals', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
-        const payments = await paymentContext(tx, ctx, studentId)
+        const account = await accountContext(tx, ctx, studentId)
         return {
           scalars,
           run: (state, { now, makeId }) => {
             requireAuthorized(actor, 'student.withdraw', {}, state, { now, institutionType })
             const plan = withdrawStudent(state, studentId, input, makeId, {
               institutionType,
-              ...payments,
+              ...account,
               now,
             })
             return { ...plan, cancelledContractIds: cancelledRenewalContractIds(state, studentId) }
@@ -190,6 +246,11 @@ export function withdrawStudentCommand(
           approvedByUserId: ctx.actor.userId,
           now: ctx.now,
         })
+        await returnPackageHours(tx, ctx, {
+          id,
+          date: plan.withdrawalDate,
+          breakdown: plan.breakdown,
+        })
         await archiveStudentIdentity(tx, ctx.institutionId, plan.studentId, ctx.now)
         await applyWithdrawalToReferralRewards(tx, ctx, plan)
         await audit(tx, ctx, 'student.withdraw', id, [
@@ -197,10 +258,11 @@ export function withdrawStudentCommand(
           'reason',
           'targetSchool',
           'breakdown',
+          ...(plan.breakdown.payerDecision ? ['payerDecision'] : []),
         ])
         const row = await findWithdrawal(tx, ctx.institutionId, id)
         if (row === null) throw new NotFoundError()
-        result = view(row)
+        result = withoutDecisionReason(view(row))
       },
     },
     () => {
@@ -244,7 +306,7 @@ export async function payRefundCommand(
               {
                 refundCents: row.refundCents,
                 refundPaidDate: row.refundPaidDate,
-                payerName: payerNameOf(state, row.contractId),
+                payerName: refundPayerName(state, row),
               },
               input,
               dayKey(ctx.now),
@@ -301,11 +363,11 @@ export async function listWithdrawalsFor(
   },
 ): Promise<{ items: WithdrawalView[]; total: number }> {
   const { items, total } = await listWithdrawals(ctx.db, ctx.institutionId, query)
-  return { items: items.map(view), total }
+  return { items: items.map((row) => readView(ctx, row)), total }
 }
 
 export async function getWithdrawalFor(ctx: ServiceContext, id: string): Promise<WithdrawalView> {
   const row = await findWithdrawal(ctx.db, ctx.institutionId, id)
   if (row === null) throw new NotFoundError()
-  return view(row)
+  return readView(ctx, row)
 }

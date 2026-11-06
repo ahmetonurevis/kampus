@@ -263,7 +263,20 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
     })
     const created = await createFeeTariffCommand(
       ctx,
-      { academicYear: YEAR, items: [{ ...TUITION, amountCents: 95_000 }], discounts: [] },
+      {
+        academicYear: YEAR,
+        items: [{ ...TUITION, amountCents: 95_000 }],
+        discounts: [],
+        paymentTerms: [
+          {
+            kind: 'installment',
+            minInstallments: 2,
+            maxInstallments: 12,
+            discountPercentBasisPoints: null,
+            discountAmountCents: null,
+          },
+        ],
+      },
       keyed(),
     )
     assert.equal(created.statusCode, 201)

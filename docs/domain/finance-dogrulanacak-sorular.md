@@ -165,7 +165,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-042`; ister listesi §4.3 "Mesafeli kayıt".
 - **Soru:** Dil okulu paketinin kurum binasına gelinmeden tamamen çevrim içi satılması mesafeli sözleşme sayılır mı; sayılırsa cayma süresi, istisnalar ve ÖÖKY'deki iade kuralıyla ilişkisi nedir (6502 sayılı Kanun, Mesafeli Sözleşmeler Yönetmeliği)?
 - **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz.
-- **Kodda:** Yok; çevrim içi paket satışı yok.
+- **Kodda:** Yok; paket yalnız yönetici ve ön büro tarafından satılır (`POST /api/v1/finance/package-sales`, ON-058), çevrim içi satış kanalı ve ön bilgilendirme yok (ON-059).
 - **Cevap değişirse:** Çevrim içi satışta ön bilgilendirme ve cayma metni ile cayma süresi içindeki kesintisiz iade yolu eklenir (IST-078).
 - **Cevap:** bekleniyor
 
@@ -183,7 +183,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-DIL-051`.
 - **Soru:** Paketin kullanım süresi dolduğunda kullanılmayan ders saatlerinin silinmesi ("saat yanar" koşulu) 6502 sayılı Kanun açısından geçerli olabilir mi?
 - **Bugünkü varsayım:** Geçerli değildir; kullanılmayan saatler silinmez, kursiyerin seçimine göre süre uzatılır ya da iade hesabına girer (ÖÖKY md. 56/3-b ve 4).
-- **Kodda:** Yok; paket ve saat bakiyesi yok.
+- **Kodda:** Saat silinmez: son kullanma günü geçince `packageSaleStatus` `expired` döner, `remainingHours` aynı kalır; yeni tüketim durur (`package_expired`), süre `POST /api/v1/finance/package-sales/:saleId/extend` ile uzatılır (`lib/finance-packages.ts`, ON-058). Süre dolumunda otomatik iade hesabı yok.
 - **Cevap değişirse:** Paket kuralına süre dolumu seçeneği eklenir.
 - **Cevap:** bekleniyor
 

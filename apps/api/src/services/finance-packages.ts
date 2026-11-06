@@ -1,0 +1,580 @@
+import { randomUUID } from 'node:crypto'
+
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+
+import { dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  createPackageSchema,
+  extendPackageSaleSchema,
+  packageHourBalance,
+  packageQuoteSchema,
+  packageSaleStatus,
+  planPackageCreate,
+  planPackageExtension,
+  planPackageHourEntry,
+  planPackageUpdate,
+  quotePackageSale,
+  sellPackage,
+  sellPackageSchema,
+  updatePackageSchema,
+  type LessonPackage,
+  type PackageCourse,
+  type PackageKind,
+  type PackageSaleContext,
+} from '@kampus/school-core/lib/finance-packages.ts'
+import { financeStudentIds } from '@kampus/school-core/lib/scope.ts'
+
+import type { Database } from '../db/client.ts'
+import type { CollectionName } from '../db/collections.ts'
+import { loadCourses } from '../db/courses.ts'
+import { findPublishedTariff } from '../db/fee-tariffs.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
+import {
+  archiveLessonPackage,
+  extendPackageSale,
+  findLessonPackage,
+  findPackageSale,
+  insertLessonPackage,
+  insertPackageHourEntry,
+  insertPackageSale,
+  isPackageNameTaken,
+  listLessonPackages,
+  listPackageSales,
+  loadPackageHourEntries,
+  updateLessonPackage,
+  type StoredPackageSale,
+} from '../db/finance-packages.ts'
+import { loadRecordsByIds } from '../db/records.ts'
+import { auditLog } from '../db/schema/audit-log.ts'
+import { institutionSettings } from '../db/schema/institution-settings.ts'
+import { ConflictError, NotFoundError } from '../errors.ts'
+import type { ServiceContext } from '../plugins/authenticate.ts'
+import { getInstitutionModules } from './modules.ts'
+import {
+  FINANCE_TABLE_STORES,
+  runCommand,
+  runReadOnly,
+  type CommandResponse,
+  type IdempotencyRequest,
+  type LoadScope,
+} from './operation-runner.ts'
+import { assertReadable, readScope } from './read-scope.ts'
+import { auditWork } from './task-work.ts'
+
+/**
+ * Dil okulu paket ve ders saati satışı (IST-078; docs/domain/dil-okulu.md DOM-DIL-006, -050, -051;
+ * finans.md DOM-FIN-002, -006, -010). Kural core `lib/finance-packages.ts`'tedir. Satış, sözleşme ve
+ * taksitler tek transaction'da yazılır (`FINANCE_TABLE_STORES`, ADR 0010); fiyat ve tarife kurum
+ * kilidi altında okunur. Bakiye saklanmaz, saat hareketlerinden hesaplanır.
+ */
+
+const PACKAGE_ENTITY = 'lesson_packages'
+const SALE_ENTITY = 'lesson_package_sales'
+const HOUR_ENTITY = 'lesson_package_hour_entries'
+
+const SALE_COLLECTIONS = [
+  'students',
+  'parents',
+  'contracts',
+  'invoices',
+] as const satisfies readonly CollectionName[]
+
+/** Yeni sözleşme ve taksit sona eklenir; yalnız kardeş sırası öteki sözleşmeleri okur (DOM-FIN-022). */
+function saleScope(data: {
+  studentId: string
+  discounts: readonly string[]
+}): Partial<Record<CollectionName, LoadScope>> {
+  const sibling = data.discounts.includes('sibling')
+  return {
+    invoices: { ids: [] },
+    ...(sibling
+      ? {}
+      : {
+          students: { ids: [data.studentId] },
+          contracts: {
+            match: [{ kind: 'equals' as const, field: 'studentId', values: [data.studentId] }],
+          },
+        }),
+  }
+}
+
+/** Kurun satışta okunan alanları; arşivli kur da döner, karar core'dadır. */
+async function courseOf(
+  tx: Database,
+  institutionId: string,
+  courseId: string | null,
+): Promise<PackageCourse | null> {
+  if (courseId === null) return null
+  const course = (await loadCourses(tx, institutionId)).find((item) => item.id === courseId)
+  return course
+    ? { id: course.id, level: course.level, totalHours: course.totalHours, status: course.status }
+    : null
+}
+
+/** Fiyatı etkileyen satırları işlemin içinde okur: önizleme ve satış aynı girdiyle hesaplar. */
+async function saleContext(
+  tx: Database,
+  ctx: ServiceContext,
+  packageId: string,
+): Promise<PackageSaleContext> {
+  const [institution, settings, pkg] = await Promise.all([
+    getInstitutionModules(tx, ctx.institutionId),
+    tx
+      .select({ academicYear: institutionSettings.academicYear })
+      .from(institutionSettings)
+      .where(eq(institutionSettings.institutionId, ctx.institutionId))
+      .limit(1),
+    findLessonPackage(tx, ctx.institutionId, packageId),
+  ])
+  const academicYear = settings[0]?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
+  const [tariff, course] = await Promise.all([
+    findPublishedTariff(tx, ctx.institutionId, academicYear),
+    courseOf(tx, ctx.institutionId, pkg?.courseId ?? null),
+  ])
+  return {
+    institutionType: institution?.type ?? 'school',
+    package: pkg,
+    course,
+    tariff,
+    academicYear,
+    // Personel çocuğu istisnasını yalnız yönetici onaylar (DOM-FIN-021).
+    canApproveCapException: ctx.actor.role === 'yonetici',
+  }
+}
+
+// --- Paket tanımı --------------------------------------------------------------------------------
+
+export const listPackagesFor = (
+  ctx: ServiceContext,
+  query: {
+    page: number
+    pageSize: number
+    q?: string | undefined
+    kind?: PackageKind | undefined
+    courseId?: string | undefined
+  },
+) => listLessonPackages(ctx.db, ctx.institutionId, query)
+
+export async function getPackageFor(ctx: ServiceContext, id: string) {
+  const found = await findLessonPackage(ctx.db, ctx.institutionId, id)
+  if (found === null) throw new NotFoundError()
+  return found
+}
+
+async function reloadPackage(tx: Database, ctx: ServiceContext, id: string) {
+  const row = await findLessonPackage(tx, ctx.institutionId, id)
+  if (row === null) throw new NotFoundError()
+  return row
+}
+
+/** Paket tanımı (DOM-DIL-050); ad etkin paketlerde tekildir. 201. */
+export function createPackageCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const data = createPackageSchema.parse(input)
+  const id = randomUUID()
+  const entity = { type: PACKAGE_ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'package.create',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const [course, nameTaken] = await Promise.all([
+          courseOf(tx, ctx.institutionId, data.courseId),
+          isPackageNameTaken(tx, ctx.institutionId, data.name),
+        ])
+        return { run: () => planPackageCreate(input, { course, nameTaken }) }
+      },
+      after: async (tx, plan) => {
+        const row: LessonPackage = { ...plan, id }
+        await insertLessonPackage(tx, ctx.institutionId, { ...row, now: ctx.now })
+        await auditWork(tx, ctx, 'package.create', entity, Object.keys(plan))
+        body = { data: await reloadPackage(tx, ctx, id) }
+      },
+    },
+    () => ({ statusCode: 201, body }),
+    idempotency,
+  )
+}
+
+/** Düzeltme yalnız sonraki satışları etkiler; satış satırı kopyadır. */
+export function updatePackageCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const { name } = updatePackageSchema.parse(input)
+  const entity = { type: PACKAGE_ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'package.update',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const current = await reloadPackage(tx, ctx, id)
+        if (current.version !== expectedVersion) throw new ConflictError()
+        const nameTaken =
+          name !== undefined && (await isPackageNameTaken(tx, ctx.institutionId, name, id))
+        return { run: () => planPackageUpdate(current, input, { nameTaken }) }
+      },
+      after: async (tx, plan) => {
+        const saved = await updateLessonPackage(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          changes: plan,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'package.update', entity, Object.keys(plan))
+        body = { data: await reloadPackage(tx, ctx, id) }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/** Arşivli paket satılamaz; geçmiş satışlar ve bakiyeleri kalır. */
+export function archivePackageCommand(
+  ctx: ServiceContext,
+  id: string,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: PACKAGE_ENTITY, id }
+  return runCommand(
+    ctx,
+    {
+      action: 'package.archive',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const current = await reloadPackage(tx, ctx, id)
+        if (current.version !== expectedVersion) throw new ConflictError()
+        return { run: () => null }
+      },
+      after: async (tx) => {
+        const saved = await archiveLessonPackage(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'package.archive', entity, ['archivedAt'])
+      },
+    },
+    () => ({ statusCode: 200, body: { data: { id } } }),
+    idempotency,
+  )
+}
+
+// --- Satış ---------------------------------------------------------------------------------------
+
+/** Satış formunun ücret özeti (DOM-DIL-050): hiçbir kayıt yazılmaz, kurallar satışla aynıdır. */
+export function quotePackageSaleFor(ctx: ServiceContext, input: unknown) {
+  const data = packageQuoteSchema.parse(input)
+  return runReadOnly(ctx, {
+    action: 'package.quote',
+    collections: SALE_COLLECTIONS,
+    stores: FINANCE_TABLE_STORES,
+    loadScope: saleScope(data),
+    load: async (tx) => {
+      const context = await saleContext(tx, ctx, data.packageId)
+      return { run: (state, { now }) => quotePackageSale(state, input, now, context) }
+    },
+  })
+}
+
+function saleView(
+  sale: StoredPackageSale,
+  entries: Parameters<typeof packageHourBalance>[1],
+  today: string,
+) {
+  const balance = packageHourBalance(sale.purchasedHours, entries)
+  return {
+    ...sale,
+    ...balance,
+    status: packageSaleStatus(
+      { expiresDate: sale.expiresDate, remainingHours: balance.remainingHours },
+      today,
+    ),
+  }
+}
+
+async function reloadSale(tx: Database, ctx: ServiceContext, id: string) {
+  const row = await findPackageSale(tx, ctx.institutionId, id)
+  if (row === null) throw new NotFoundError()
+  return row
+}
+
+/**
+ * Paketi satar: satış satırı, sözleşme ve taksitler tek işlemde (IST-078). Tutar girdi değildir,
+ * tarifeden hesaplanır (DOM-DIL-050). Yanıt yalnız kimlik ve tutar taşır; `Idempotency-Key` kaydına
+ * ad yazılmaz. 201.
+ */
+export function sellPackageCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const data = sellPackageSchema.parse(input)
+  const id = randomUUID()
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'package.sell',
+      collections: SALE_COLLECTIONS,
+      stores: FINANCE_TABLE_STORES,
+      loadScope: saleScope(data),
+      entity: { type: SALE_ENTITY, id },
+      load: async (tx) => {
+        const context = await saleContext(tx, ctx, data.packageId)
+        return {
+          run: (state, { now, makeId }) =>
+            sellPackage(state, input, makeId, now, {
+              ...context,
+              approvedByUserId: ctx.actor.userId,
+            }),
+        }
+      },
+      after: async (tx, sale) => {
+        await insertPackageSale(tx, ctx.institutionId, {
+          id,
+          sale,
+          soldByUserId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        body = { data: saleView(await reloadSale(tx, ctx, id), [], dayKey(ctx.now)) }
+      },
+    },
+    () => ({ statusCode: 201, body }),
+    idempotency,
+  )
+}
+
+const nameOf = (row: { data: Record<string, unknown> }) =>
+  typeof row.data.name === 'string' ? row.data.name : null
+
+async function studentNames(ctx: ServiceContext, ids: readonly string[]) {
+  const rows = await loadRecordsByIds(ctx.db, ctx.institutionId, 'students', [...new Set(ids)])
+  return new Map(rows.map((row) => [row.id, nameOf(row)]))
+}
+
+/** Yönetici ve ön büro ayrılmış kursiyerin satışını da görür; öğrenci kaydı kapsamdan bağımsızdır. */
+const institutionWide = (ctx: ServiceContext) =>
+  ctx.actor.role === 'yonetici' || ctx.actor.role === 'onburo'
+
+/**
+ * Kapsam `/finance/students/:id/balance` ile aynıdır: yönetici ve ön büro kurum geneli, veli bağlı
+ * çocuğu ve ödeyicisi olduğu öğrenci, öğrenci kendisi (DOM-FIN-052, K-04). Kapsam `studentId`
+ * süzgeciyle daraltılır, genişletilmez. Varsayılan sıra yeni satış önce.
+ */
+export async function listPackageSalesFor(
+  ctx: ServiceContext,
+  query: {
+    page: number
+    pageSize: number
+    studentId?: string | undefined
+    packageId?: string | undefined
+  },
+) {
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, 'invoices')
+  const permitted = financeStudentIds(scope)
+  const wide = institutionWide(ctx)
+  const studentIds =
+    query.studentId !== undefined
+      ? wide || permitted.has(query.studentId)
+        ? [query.studentId]
+        : []
+      : wide
+        ? undefined
+        : [...permitted]
+  const { items, total } = await listPackageSales(ctx.db, ctx.institutionId, {
+    page: query.page,
+    pageSize: query.pageSize,
+    studentIds,
+    packageId: query.packageId,
+  })
+  const [entries, names] = await Promise.all([
+    loadPackageHourEntries(
+      ctx.db,
+      ctx.institutionId,
+      items.map((item) => item.id),
+    ),
+    studentNames(
+      ctx,
+      items.map((item) => item.studentId),
+    ),
+  ])
+  const today = dayKey(ctx.now)
+  return {
+    items: items.map((sale) => ({
+      ...saleView(sale, entries.get(sale.id) ?? [], today),
+      studentName: names.get(sale.studentId) ?? null,
+    })),
+    total,
+  }
+}
+
+const storedInvoiceSchema = z.object({
+  installment: z.number(),
+  amount: z.number(),
+  dueDate: z.string(),
+  paidAt: z.string().nullable().optional(),
+  feeKind: z.string().optional(),
+})
+
+/**
+ * Satış ayrıntısı: satın alınan, kullanılan ve kalan saat (IST-078), son kullanma günü ve
+ * sözleşmenin yalnız kendi taksitleri (DOM-FIN-012). Kapsam listeyle aynı; kapsam dışı 404.
+ */
+export async function getPackageSaleFor(ctx: ServiceContext, id: string) {
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, 'invoices')
+  const sale = await findPackageSale(ctx.db, ctx.institutionId, id)
+  if (sale === null) throw new NotFoundError()
+  if (!institutionWide(ctx) && !financeStudentIds(scope).has(sale.studentId))
+    throw new NotFoundError()
+  const [entries, names, contracts] = await Promise.all([
+    loadPackageHourEntries(ctx.db, ctx.institutionId, [id]),
+    studentNames(ctx, [sale.studentId]),
+    loadFinanceRecords(ctx.db, ctx.institutionId, 'contracts', { ids: [sale.contractId] }),
+  ])
+  const invoiceIds = z.array(z.string()).catch([]).parse(contracts[0]?.data.invoiceIds)
+  const invoices = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
+    ids: invoiceIds,
+  })
+  return {
+    ...saleView(sale, entries.get(id) ?? [], dayKey(ctx.now)),
+    studentName: names.get(sale.studentId) ?? null,
+    invoices: invoices
+      .map((row) => {
+        const invoice = storedInvoiceSchema.parse(row.data)
+        return {
+          id: row.id,
+          installment: invoice.installment,
+          amountCents: invoice.amount,
+          dueDate: invoice.dueDate,
+          paidAt: invoice.paidAt ?? null,
+          feeKind: invoice.feeKind ?? null,
+        }
+      })
+      .sort((a, b) => a.installment - b.installment),
+  }
+}
+
+/**
+ * Son kullanma tarihini uzatır (DOM-DIL-051): kursiyerin seçimi, gerekçesiyle. Saatler zaten
+ * silinmemiştir; uzatma yalnız tüketimi yeniden açar. Gerekçe yalnız denetim kaydına yazılır.
+ */
+export function extendPackageSaleCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const { reason } = extendPackageSaleSchema.parse(input)
+  const entity = { type: SALE_ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'package.extend',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const sale = await reloadSale(tx, ctx, id)
+        if (sale.version !== expectedVersion) throw new ConflictError()
+        const entries = await loadPackageHourEntries(tx, ctx.institutionId, [id])
+        const { remainingHours } = packageHourBalance(sale.purchasedHours, entries.get(id) ?? [])
+        const today = dayKey(ctx.now)
+        return {
+          run: () =>
+            planPackageExtension({ expiresDate: sale.expiresDate, remainingHours }, input, today),
+        }
+      },
+      after: async (tx, plan) => {
+        const saved = await extendPackageSale(tx, ctx.institutionId, {
+          id,
+          expiresDate: plan.expiresDate,
+          expectedVersion,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await tx.insert(auditLog).values({
+          institutionId: ctx.institutionId,
+          actorUserId: ctx.actor.userId,
+          actorRole: ctx.actor.role,
+          action: 'package.extend',
+          entityType: entity.type,
+          entityId: entity.id,
+          changes: { fields: ['expiresDate'] },
+          reason,
+          createdAt: ctx.now,
+        })
+        const entries = await loadPackageHourEntries(tx, ctx.institutionId, [id])
+        body = {
+          data: saleView(await reloadSale(tx, ctx, id), entries.get(id) ?? [], dayKey(ctx.now)),
+        }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/**
+ * Saat hareketi yazar (DOM-DIL-051, IST-078): bakiye kurum kilidi altında denetlenir, sıfırın altına
+ * inmez. Aynı kaynak yeniden gelirse yazmaz. HTTP ucu yoktur: yoklama ve özel ders köprüsü (OG-116,
+ * OG-144) ile ayrılış bu servisi çağırır. `recorded: false`: bu kaynak zaten yazılmıştı.
+ */
+export async function recordPackageHours(
+  ctx: ServiceContext,
+  saleId: string,
+  input: unknown,
+): Promise<{ recorded: boolean }> {
+  const id = randomUUID()
+  let recorded = false
+  await runCommand(
+    ctx,
+    {
+      action: 'package.hours',
+      collections: [],
+      entity: { type: HOUR_ENTITY, id },
+      load: async (tx) => {
+        const sale = await reloadSale(tx, ctx, saleId)
+        const entries = await loadPackageHourEntries(tx, ctx.institutionId, [saleId])
+        const today = dayKey(ctx.now)
+        return { run: () => planPackageHourEntry(sale, entries.get(saleId) ?? [], input, today) }
+      },
+      after: async (tx, plan) => {
+        if (plan === null) return
+        await insertPackageHourEntry(tx, ctx.institutionId, {
+          ...plan,
+          id,
+          saleId,
+          recordedByUserId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        await auditWork(tx, ctx, 'package.hours', { type: HOUR_ENTITY, id }, Object.keys(plan))
+        recorded = true
+      },
+    },
+    () => ({ statusCode: 200, body: null }),
+    null,
+  )
+  return { recorded }
+}

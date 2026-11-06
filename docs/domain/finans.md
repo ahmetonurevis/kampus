@@ -52,7 +52,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** İade ve indirim tabanı ücret birimine bağlıdır.
 - **Kaynak:** ÖÖKY md. 55/1-a, c. Dil kursunun MEB lisanslı "özel öğretim kursu" olması varsayılmıştır; lisanssız (ticari) dil okulu için ÖÖKY uygulanmaz ve bu kurum için **doğrulanmalı** (H-01).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — tarife yayımı öğrenim ücreti birimini kurum türüyle denetler (`planTariffPublish`). Paket yok; iade hesabı `quoteWithdrawal`'dadır.
+- **Kodda:** kısmen — tarife yayımı öğrenim ücreti birimini kurum türüyle denetler (`planTariffPublish`). Paket core ve API'dedir (`lib/finance-packages.ts`; `/api/v1/finance/packages`, `/api/v1/finance/package-sales`; tablolar `lesson_packages`, `lesson_package_sales`, `lesson_package_hour_entries`, migration `0064`; IST-078, ON-058): fiyat yayımlı tarifeden `saat × saat ücreti − ilanlı indirim`, satış sözleşme ve taksitleri tek işlemde yazar, uygulanan saat ücreti satışa kopyalanır. İlan altı paket saat ücreti fiili indirim sayılır, %50 tavanına girer (temkinli yorum, **doğrulanmalı**). İade hesabı `quoteWithdrawal`'dadır ve henüz paket satışını okumaz: görülen saat elle girilir, ayrılış saat hareketi yazmaz.
 
 ## Sözleşme ve taksit
 

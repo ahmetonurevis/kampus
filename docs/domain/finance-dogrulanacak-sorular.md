@@ -250,7 +250,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-050`; ister listesi §4.4.
 - **Soru:** Kurumun velilerden aldığı öğrenim ve ek hizmet ücretleri için fatura (e-Fatura ya da e-Arşiv) düzenlemesi zorunlu mu; Kampüs'ün ürettiği tahsilat dekontu bu yükümlülüğün yerine geçer mi?
 - **Bugünkü varsayım:** Dekont kurum içi tahsilat belgesidir; fatura veya e-Arşiv yerine geçmez. Kampüs fatura düzenlemez; fatura yükümlülüğü kurumda ve muhasebe programındadır.
-- **Kodda:** Dekont PDF'i "fatura veya e-arşiv yerine geçmez" notunu taşır (`apps/web-react/src/lib/pdf/templates/payment-receipt.ts`); tahsilata kurum ve yıl içinde ardışık dekont numarası verilir. Muhasebe aktarımı CSV'dir (`DOM-FIN-055`); entegratör bağlantısı yok (IST-112).
+- **Kodda:** Dekont PDF'i "fatura veya e-arşiv yerine geçmez" notunu taşır (`apps/web-react/src/lib/pdf/templates/payment-receipt.ts`); tahsilata kurum ve yıl içinde ardışık dekont numarası verilir. Muhasebe aktarımı CSV ya da `.xlsx`'tir (`DOM-FIN-055`); entegratör bağlantısı yok (IST-112).
 - **Cevap değişirse:** Entegratöre fatura isteği (IST-112) önceliklenir ya da dekont şablonu değişir.
 - **Cevap:** bekleniyor
 
@@ -277,7 +277,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-055`; ADR 0006 karar 11; ister listesi §4.4.
 - **Soru:** Birden fazla vergilendirme dönemine yayılan taksitli eğitim ücretinde fatura ne zaman düzenlenir (her ay sonundan itibaren 7 gün içinde mi, tahsilatta mı)?
 - **Bugünkü varsayım:** Muhasebe aktarımı dönem bazında yapılır; tahsilat ödeme gününde artı, iptal gününde eksi satırdır, taksit vade gününe göre listelenir.
-- **Kodda:** `lib/finance-export-profile.ts`, `GET /api/v1/finance/exports` ve `/api/v1/finance/export-profile` uçları.
+- **Kodda:** `lib/finance-export-profile.ts`, `GET /api/v1/finance/exports` (CSV ve `format=xlsx`) ve `/api/v1/finance/export-profile` uçları.
 - **Cevap değişirse:** Aktarım satırlarının dönem esası (tahsilat günü mü, hizmet dönemi mi) değişir.
 - **Cevap:** bekleniyor
 

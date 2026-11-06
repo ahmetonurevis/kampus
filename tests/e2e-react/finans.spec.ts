@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Locator, Page, Request } from '@playwright/test'
 
+import { readWorkbook } from '../../apps/api/test/support/finance-workbook.ts'
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
 import { seedScholarshipContract } from './support/finance-terms.ts'
@@ -655,6 +656,44 @@ test.describe('Finans: tahsilat', () => {
     await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
     await expect(page.getByLabel('Dönem toplamları').or(page.getByRole('main'))).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dosya sütunları' })).toHaveCount(0)
+  })
+
+  test('ON-094: yönetici hazır şablonu uygular; Excel dosyası profilin sütunlarıyla iner', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s23'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s23-5', 'Kredi kartı')
+    const amount = (await invoice(client, 'inv-s23-5')).amount
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    await page.getByRole('button', { name: 'Dosya sütunları' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dosya sütunları' })
+    await dialog.getByLabel('Hazır sütun şablonu').selectOption({ label: 'Kısa liste' })
+    await dialog.getByRole('button', { name: 'Şablonu uygula' }).click()
+    await expect(dialog.getByLabel('Tahsilat dosyası 2. sütun başlığı')).toHaveValue('Ad soyad')
+    await expect(dialog.getByLabel('Tahsilat dosyası 4. sütun başlığı')).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Dosya sütunları kaydedildi.')).toBeVisible()
+
+    await page.getByLabel('Dosya biçimi').selectOption('xlsx')
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Tahsilat dosyası' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toMatch(/^tahsilatlar-.*\.xlsx$/)
+    const workbook = readWorkbook(await readFile(await file.path()))
+    expect(workbook.row(1)).toEqual(['Tarih', 'Ad soyad', 'Tutar'])
+    expect(workbook.hasFormula).toBe(false)
+    expect(workbook.cells.get('C2')).toMatchObject({
+      type: 'n',
+      value: amount / 100,
+      format: '#,##0.00',
+    })
+    expect(workbook.cells.get('B2')).toMatchObject({ type: 's', format: '@' })
   })
 
   test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({

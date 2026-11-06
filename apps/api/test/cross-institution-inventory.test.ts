@@ -977,6 +977,10 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-day-closings.test.ts',
     'başka kurumun gün sonu görünmez',
   ),
+  'GET /api/v1/finance/referral-rewards': liste(
+    'finance-referrals.test.ts',
+    'DOM-FIN-024: başka kurumun hakkı listede yok',
+  ),
 }
 
 /**

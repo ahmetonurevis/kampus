@@ -14,6 +14,12 @@ import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
 import { FEE_DISCOUNT_KINDS, FEE_ITEM_KINDS } from './fee-tariffs.ts'
 import {
+  referralRewardIdSchema,
+  referralUseOf,
+  requireUsableReferralReward,
+  type ReferralRewardFacts,
+} from './finance-referrals.ts'
+import {
   requireAwardableProgram,
   scholarshipAmount,
   type ScholarshipProgram,
@@ -56,6 +62,8 @@ const renewalFields = {
   extras: z.array(z.enum(FEE_ITEM_KINDS, 'Ek hizmet geçersiz.')).max(10).default([]),
   /** Bu yılın burs programı (DOM-FIN-025); yalnız yönetici. */
   scholarshipProgramId: z.uuid('Burs programı geçersiz.').optional(),
+  /** Velinin kullanacağı referans hakkı (DOM-FIN-024); `referral` kalemiyle birlikte. */
+  referralRewardId: referralRewardIdSchema.optional(),
 }
 
 export const renewalQuoteSchema = z.strictObject(renewalFields)
@@ -94,6 +102,8 @@ export interface RenewalContext {
   scholarshipAwardedCount?: number
   /** Öğrencinin yenileme yılında arşivlenmemiş burs ataması var mı; servis yükler (DOM-FIN-025). */
   scholarshipStudentAwarded?: boolean
+  /** Gövdede seçilen referans hakkı; servis kurum kilidi altında yükler (DOM-FIN-024). */
+  referralReward?: ReferralRewardFacts | null
   /**
    * Önceki eğitim yıllarından ödenmemiş öğrenim ücreti (kuruş; DOM-KAY-025). Ödeme dağılımları
    * State dışında olduğu için servis `outstandingTuitionCents` ile hesaplar; verilmezse 0.
@@ -115,6 +125,8 @@ export interface RenewalPrice {
   tuitionCents: number
   discounts: DiscountLine[]
   discountCents: number
+  /** Kullanılan referans hakkı; yoksa `null` (DOM-FIN-024). */
+  referralRewardId: string | null
   scholarship: { programId: string; amountCents: number } | null
   /** İndirim ve burstan sonra kalan öğrenim ücreti. */
   netCents: number
@@ -185,6 +197,13 @@ function priceRenewal(
     )
   const level = String(target.grade)
   const canApprove = session.role === 'yonetici'
+  const referralReward = requireUsableReferralReward({
+    kinds: data.discounts,
+    rules: context.tariff.discounts,
+    rewardId: data.referralRewardId,
+    reward: context.referralReward ?? null,
+    ownerParentId: student.parentId || null,
+  })
   const price = priceEnrollmentOnTerm(context.tariff, {
     installmentCount: data.installmentCount,
     level,
@@ -192,6 +211,7 @@ function priceRenewal(
     discounts: data.discounts,
     extras: data.extras,
     canApproveCapException: canApprove,
+    referralRewardCents: referralReward?.amountCents,
   })
   const announcedCents = price.grossCents
   const { ceiling, maxTuitionCents } = renewalTuitionLimit(
@@ -255,6 +275,7 @@ function priceRenewal(
     tuitionCents,
     discounts: price.discounts,
     discountCents,
+    referralRewardId: referralReward?.id ?? null,
     scholarship: program === null ? null : { programId: program.id, amountCents: scholarshipCents },
     netCents,
     extras: price.extras,
@@ -360,6 +381,8 @@ export function planRenewal(
   renewal: Renewal
   contractId: string | null
   scholarshipAward: RenewalPrice['scholarship']
+  /** Bu yenilemede kullanılan referans hakkı; servis aynı işlemde işaretler (DOM-FIN-024). */
+  referralUse: { rewardId: string; amountCents: number } | null
 } {
   requireRenewalRole(session)
   const data = renewalPlanSchema.parse(input)
@@ -383,7 +406,7 @@ export function planRenewal(
       updatedAt: now,
     }
     state.renewals.unshift(entry)
-    return { renewal: entry, contractId: null, scholarshipAward: null }
+    return { renewal: entry, contractId: null, scholarshipAward: null, referralUse: null }
   }
   const { mode, tariffId, firstDueDate, debtApproved, ...quoteFields } = data
   const { student, oldClass, target, price } = priceRenewal(state, session, quoteFields, context)
@@ -483,7 +506,12 @@ export function planRenewal(
     updatedAt: now,
   }
   state.renewals.unshift(entry)
-  return { renewal: entry, contractId, scholarshipAward: price.scholarship }
+  return {
+    renewal: entry,
+    contractId,
+    scholarshipAward: price.scholarship,
+    referralUse: referralUseOf(price.referralRewardId, price.discounts),
+  }
 }
 
 // --- ÜFE ve TÜFE profili (DOM-FIN-005) ---------------------------------------------------------

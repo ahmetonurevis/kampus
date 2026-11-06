@@ -80,7 +80,7 @@ const TARIFF: EnrollmentTariff = {
   items: [tuition],
   discounts: [
     { kind: 'early_payment', percentBasisPoints: 500, amountCents: null },
-    { kind: 'referral', percentBasisPoints: 4_800, amountCents: null },
+    { kind: 'corporate', percentBasisPoints: 4_800, amountCents: null },
   ],
   paymentTerms: TERMS,
 }
@@ -207,18 +207,18 @@ test('DOM-FIN-013, DOM-FIN-021: koşulun fiyat farkı ilan ücretinden düşer, 
   const short = priceEnrollmentOnTerm(TARIFF, { ...priceRequest, installmentCount: 3 })
   assert.deepEqual(short.discounts, [{ kind: PAYMENT_TERM_DISCOUNT_KIND, amountCents: 300_000 }])
   assert.equal(short.netCents, 9_700_000)
-  const withReferral = priceEnrollmentOnTerm(TARIFF, {
+  const withCorporate = priceEnrollmentOnTerm(TARIFF, {
     ...priceRequest,
     installmentCount: 8,
-    discounts: ['referral'],
+    discounts: ['corporate'],
   })
-  assert.equal(withReferral.netCents, 5_200_000)
+  assert.equal(withCorporate.netCents, 5_200_000)
   assert.throws(
     () =>
       priceEnrollmentOnTerm(TARIFF, {
         ...priceRequest,
         installmentCount: 3,
-        discounts: ['referral'],
+        discounts: ['corporate'],
       }),
     isDomainError('discount_cap_exceeded'),
   )

@@ -24,6 +24,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { ContractApprovalPanel } from './ContractApprovalPanel.tsx'
 import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
+import { FamilyReferralRewards } from './ReferralRewardsSection.tsx'
 import { FamilyPackagesSection } from './FamilyPackagesSection.tsx'
 import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
@@ -90,6 +91,7 @@ export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts:
         title={receipts ? 'Ödeme dekontları' : 'Taksit listesi'}
       />
       {receipts ? null : <ChildStatement childId={childId} />}
+      {receipts ? null : <FamilyReferralRewards />}
       {languageSchool && !receipts ? <FamilyPackagesSection studentId={childId} /> : null}
     </>
   )
@@ -319,6 +321,7 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
         <>
           <FamilyInvoicesView audience="student" studentId="" title="Ödemelerim" />
           <OwnStatement />
+          <FamilyReferralRewards />
           <OwnPackages />
         </>
       )}

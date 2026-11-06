@@ -213,6 +213,7 @@ export function availableDiscounts(
     : null
   return tariff.discounts
     .filter(({ kind }) => {
+      if (kind === 'referral') return false
       if (kind === 'staff_child') return canApproveCapException
       if (kind === 'early_payment' && hasTerms) return term?.kind === 'upfront'
       return true

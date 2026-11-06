@@ -73,6 +73,7 @@ async function publishTariff(
   academicYear: number,
   amountCents: number,
   paymentTerms: readonly object[] = PAYMENT_TERMS,
+  discounts: readonly Record<string, unknown>[] = [],
 ) {
   const draft = await client.post(
     '/api/v1/fee-tariffs',
@@ -89,6 +90,7 @@ async function publishTariff(
           announcedAmountCents: amountCents,
         },
       ],
+      discounts,
       paymentTerms,
     },
     { 'idempotency-key': randomUUID() },
@@ -450,6 +452,124 @@ test.describe('kayıt yenileme', () => {
     await page.keyboard.press('Escape')
     await expect(preview).toBeHidden()
     await expect(opener).toBeFocused()
+  })
+
+  test('DOM-FIN-024: referansla gelen kaydın ilk taksiti hakkı doğurur; yenilemede bir kez kullanılır; veli adayı görmez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const candidate = 'Referanslı Aday'
+    const school = await tenant({
+      roles: ['yonetici', 'veli'],
+      students: ['s1'],
+      collections: ['renewals'],
+      records: [
+        {
+          collection: 'prospects',
+          data: {
+            id: 'e2e-referans',
+            name: candidate,
+            phone: '05550409991',
+            email: 'e2e-referans@kampus.example',
+            branchId: 'b1',
+            interest: '7. Sınıf · Ortaokul',
+            source: 'Veli referansı',
+            referrerStudentId: 's1',
+            stage: 'Yeni aday',
+            studentId: null,
+            createdAt: new Date(Date.now() - 86_400_000).toISOString(),
+            trialAt: null,
+            notes: [],
+          },
+        },
+      ],
+    })
+    const client = await api(school.user('yonetici'))
+    const year = await renewalYear(client)
+    const referral = [{ kind: 'referral', percentBasisPoints: 1_000, amountCents: null }]
+    await publishTariff(client, year - 1, 10_000_000, PAYMENT_TERMS, referral)
+    await publishTariff(client, year, 10_000_000, PAYMENT_TERMS, referral)
+    const index = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: year,
+        ppiBasisPoints: 4000,
+        cpiBasisPoints: 3000,
+        source: 'TÜİK bülteni 53607',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(index.status, JSON.stringify(index.body)).toBe(201)
+
+    // Kesin kayıt ve ilk taksit API'den: kuralın dalları birim ve API testlerindedir.
+    const tariffs = await client.get(`/api/v1/fee-tariffs?academicYear=${String(year - 1)}`)
+    const tariffId = (tariffs.body as { data: { id: string }[] }).data[0]?.id
+    const prospect = await client.get('/api/v1/collections/prospects/e2e-referans')
+    const version = (prospect.body as { data: { version: number } }).data.version
+    const enrolled = await client.post(
+      '/api/v1/prospects/e2e-referans/enroll',
+      {
+        classId: 'c1',
+        tariffId,
+        installmentCount: 2,
+        firstDueDate: nextDay(10),
+        identity: { kind: 'tc', number: '10000000146', birthDate: '2013-03-01' },
+        guardian: { name: 'Referanslı Veli', phone: '05559990070', relationship: 'mother' },
+      },
+      { 'idempotency-key': randomUUID(), 'if-match': `"${String(version)}"` },
+    )
+    expect(enrolled.status, JSON.stringify(enrolled.body)).toBe(201)
+    const referredId = (enrolled.body as { data: { entity: { id: string } } }).data.entity.id
+    const paid = await client.post(
+      '/api/v1/payments',
+      {
+        studentId: referredId,
+        amountCents: 5_000_000,
+        method: 'Banka havalesi',
+        reference: `E2E-${randomUUID()}`,
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(paid.status, JSON.stringify(paid.body)).toBe(201)
+
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/finans?gorunum=referans')
+    const table = page.getByRole('table', { name: 'Referans hakları' })
+    const row = table.locator('tbody tr').filter({ hasText: candidate })
+    await expect(row).toContainText('Deniz Yılmaz')
+    await expect(row).toContainText('10.000,00')
+    await expect(row).toContainText('Kullanılabilir')
+
+    await page.goto('/yonetici/kayit-yenileme')
+    await page.getByRole('button', { name: 'Kayıt yenile' }).click()
+    const form = page.getByRole('dialog', { name: 'Kayıt yenile' })
+    await form.getByLabel('Öğrenci', { exact: true }).selectOption({ label: 'Deniz Yılmaz · 7-A' })
+    await form.getByLabel('Yeni sınıf').selectOption({ index: 1 })
+    await form.getByLabel('Taksit sayısı').fill('4')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByLabel('Referans', { exact: true }).check()
+    const reward = form.getByLabel('Referans hakkı')
+    await expect(reward.locator('option')).toHaveCount(2)
+    await reward.selectOption({ index: 1 })
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+    const summary = form.getByRole('region', { name: 'Yeni dönem ödeme özeti' })
+    await expect(summary.getByText(/Referans/)).toBeVisible()
+    await form.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+    await expect(form).toBeHidden()
+
+    await page.goto('/yonetici/finans?gorunum=referans')
+    await expect(row).toContainText('Kullanıldı')
+
+    await page.context().clearCookies()
+    await loginAs(school.user('veli'))
+    await page.goto('/veli/finans')
+    const own = page.getByRole('table', { name: 'Referans haklarım' })
+    await expect(own).toContainText('Deniz Yılmaz')
+    await expect(own).toContainText('Kullanıldı')
+    await expect(page.getByText(candidate)).toHaveCount(0)
   })
 
   test('IST-105, ON-086: yönetici yeni yılın planlarını önizler, onaylar; sonuç satır satır gelir, sınıf değişmez', async ({

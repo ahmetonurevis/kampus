@@ -5618,7 +5618,8 @@
               "payment_received",
               "refund_paid",
               "contract_approval_requested",
-              "contract_approved"
+              "contract_approved",
+              "referral_reward_earned"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -23579,7 +23580,8 @@
               "payment_received",
               "refund_paid",
               "contract_approval_requested",
-              "contract_approved"
+              "contract_approved",
+              "referral_reward_earned"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -66806,6 +66808,11 @@
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
+                      "referralRewardId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
                       "tariffId": {
                         "type": "string",
                         "minLength": 2,
@@ -68770,6 +68777,11 @@
                     }
                   },
                   "scholarshipProgramId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "referralRewardId": {
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -71715,6 +71727,313 @@
                   },
                   "required": [
                     "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/referral-rewards": {
+      "get": {
+        "operationId": "listReferralRewards",
+        "summary": "Referans indirimi haklarını listele",
+        "tags": [
+          "finance-referrals"
+        ],
+        "description": "Yeni hak önce (DOM-FIN-024). `status`, `parentId` (hak sahibi veli) ve `familyOfStudentId` (öğrencinin velisinin hakları) süzer. Roller: `yonetici` ve `onburo` kurum geneli; `veli` ve `ogrenci` yalnız finans kapsamındaki öğrencinin hakkını görür, yanıtta aday ve referansla gelen öğrenci bulunmaz, doğmamış hak listelenmez.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "available",
+                "used",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "parentId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "familyOfStudentId",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Referansla gelen kaydın eğitim yılı"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "available",
+                              "used",
+                              "cancelled"
+                            ]
+                          },
+                          "referrerStudentId": {
+                            "type": "string",
+                            "description": "Referans veren öğrenci"
+                          },
+                          "referrerStudentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "amountCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kesin kayıtta sabitlenen hak değeri, kuruş"
+                          },
+                          "earnedAt": {
+                            "description": "İlk taksitin ödenmesiyle hakkın doğduğu an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "usedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "usedAmountCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sözleşmeye uygulanan tutar, kuruş; tavanı aşan kısım düşer"
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "prospectId": {
+                            "description": "Aday; yalnız personele döner",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referredStudentId": {
+                            "description": "Referansla gelen öğrenci; yalnız personele",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referredStudentName": {
+                            "description": "Yalnız personele döner",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referrerParentId": {
+                            "description": "Hakkın sahibi veli; yalnız personele",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "refunded_before_start",
+                                  "withdrawn_before_earned"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İptal gerekçesi; yalnız personele döner"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "academicYear",
+                          "status",
+                          "referrerStudentId",
+                          "referrerStudentName",
+                          "amountCents",
+                          "earnedAt",
+                          "usedAt",
+                          "usedAmountCents",
+                          "cancelledAt",
+                          "prospectId",
+                          "referredStudentId",
+                          "referredStudentName",
+                          "referrerParentId",
+                          "cancelReason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
                   ],
                   "additionalProperties": false
                 }
@@ -77672,6 +77991,11 @@
                     "type": "boolean"
                   },
                   "scholarshipProgramId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "referralRewardId": {
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"

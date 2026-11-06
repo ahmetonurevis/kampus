@@ -624,7 +624,7 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       'tariff_changed',
     )
     assertError(
-      await post(SALES, a.admin, { ...a.sale, discounts: ['referral'] }, key()),
+      await post(SALES, a.admin, { ...a.sale, discounts: ['corporate'] }, key()),
       422,
       'discount_not_in_tariff',
     )

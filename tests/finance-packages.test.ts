@@ -52,7 +52,7 @@ const TARIFF: EnrollmentTariff = {
   discounts: [
     { kind: 'early_payment', percentBasisPoints: 1_000, amountCents: null },
     { kind: 'sibling', percentBasisPoints: 3_000, amountCents: null },
-    { kind: 'referral', percentBasisPoints: 6_000, amountCents: null },
+    { kind: 'corporate', percentBasisPoints: 6_000, amountCents: null },
     { kind: 'staff_child', percentBasisPoints: 6_000, amountCents: null },
   ],
 }
@@ -265,8 +265,15 @@ test('DOM-FIN-021: ilan altı fiyat ve indirim toplamı ilan ücretinin %50sini 
     isDomainError('discount_cap_exceeded'),
   )
   assert.throws(
-    () => quotePackageSale(seed(), { ...QUOTE, discounts: ['referral'] }, NOW, CONTEXT),
+    () => quotePackageSale(seed(), { ...QUOTE, discounts: ['corporate'] }, NOW, CONTEXT),
     isDomainError('discount_cap_exceeded'),
+  )
+})
+
+test('DOM-FIN-024: referans indirimi paket satışında kullanılmaz; hak yalnız sözleşmede işaretlenir', () => {
+  assert.throws(
+    () => quotePackageSale(seed(), { ...QUOTE, discounts: ['referral'] }, NOW, CONTEXT),
+    isDomainError('referral_reward_required'),
   )
 })
 

@@ -33,6 +33,7 @@ import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
@@ -408,6 +409,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)

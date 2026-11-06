@@ -35,6 +35,7 @@ import {
   offeredInstallmentCounts,
 } from '@kampus/school-core/lib/payment-terms.ts'
 import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
+import { useAvailableReferralRewards } from '@kampus/react-shared/use-finance-referrals.ts'
 import {
   useEnrollProspect,
   useGuardianMatches,
@@ -76,6 +77,7 @@ import {
   seatsTaken,
   suggestedClassOrder,
 } from './enrollment-form.ts'
+import { ReferralRewardField } from '../finance/ReferralRewardField.tsx'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
@@ -259,6 +261,7 @@ function EnrollmentForm({
       guardianPhone: '',
       relationship: 'mother',
       existingParentId: '',
+      referralRewardId: '',
       studentPhone: '',
       studentEmail: '',
       lessonHours: '',
@@ -329,12 +332,22 @@ function EnrollmentForm({
     { enabled: session?.role === 'yonetici' },
   )
   const awardable = awardablePrograms(scholarshipPrograms.data?.data ?? [])
+  // Referans kalemi hakkın sabit tutarıyla önizlenir; alan da aynı sorguyu okur (DOM-FIN-024).
+  const referralOwner =
+    values.discounts?.includes('referral') &&
+    values.guardianMode === 'existing' &&
+    values.existingParentId
+      ? { parentId: values.existingParentId }
+      : null
+  const { items: referralRewards } = useAvailableReferralRewards(referralOwner)
   const preview = previewEnrollment(tariff, values, {
     institutionType,
     level:
       institutionType === 'language_school'
         ? (room?.record.level ?? '')
         : String(room?.record.grade ?? ''),
+    referralRewardCents: referralRewards.find((item) => item.id === values.referralRewardId)
+      ?.amountCents,
   })
   // Burs indirim değildir, netten düşer; kesin hesabı sunucu yapar (DOM-FIN-025).
   const selectedProgram = awardable.find((item) => item.id === values.scholarshipProgramId)
@@ -756,7 +769,13 @@ function EnrollmentForm({
                   description="Kardeş adayın velisi ve adayın telefonuyla eşleşen veliler önerilir."
                 >
                   {(control) => (
-                    <NativeSelect {...control} {...form.register('existingParentId')}>
+                    <NativeSelect
+                      {...control}
+                      {...form.register('existingParentId', {
+                        // Hak velinindir; veli değişince önceki velinin hakkı seçili kalmaz.
+                        onChange: () => form.setValue('referralRewardId', ''),
+                      })}
+                    >
                       <NativeSelectOption value="">
                         {matches.data?.data.length ? 'Veli seçin' : 'Eşleşen veli yok'}
                       </NativeSelectOption>
@@ -797,6 +816,14 @@ function EnrollmentForm({
                     </label>
                   ))}
                 </fieldset>
+              ) : null}
+              {values.discounts?.includes('referral') ? (
+                <ReferralRewardField
+                  id="kayit-referans-hakki"
+                  query={referralOwner}
+                  error={errors.referralRewardId}
+                  register={form.register('referralRewardId')}
+                />
               ) : null}
               {awardable.length > 0 ? (
                 <FormField

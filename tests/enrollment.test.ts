@@ -61,6 +61,14 @@ const TARIFF: EnrollmentTariff = {
     { kind: 'staff_child', percentBasisPoints: 8_000, amountCents: null },
   ],
 }
+/** Kardeş %30 + peşin %30: toplam tavanı aşar (DOM-FIN-021). */
+const OVER_CAP_TARIFF: EnrollmentTariff = {
+  ...TARIFF,
+  discounts: [
+    { kind: 'early_payment', percentBasisPoints: 3_000, amountCents: null },
+    { kind: 'sibling', percentBasisPoints: 3_000, amountCents: null },
+  ],
+}
 const request = {
   level: '7',
   institutionType: 'school',
@@ -169,7 +177,7 @@ test('DOM-FIN-021: toplam indirim %50yi aşamaz; personel çocuğu yalnız yöne
     12_000_000,
   )
   assert.throws(
-    () => priceEnrollment(TARIFF, { ...request, discounts: ['sibling', 'referral'] }),
+    () => priceEnrollment(OVER_CAP_TARIFF, { ...request, discounts: ['sibling', 'early_payment'] }),
     isDomainError('discount_cap_exceeded'),
   )
   assert.throws(
@@ -1230,8 +1238,8 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   )
   assert.equal(ok.ok && ok.price.netCents, 18_000_000)
   const capped = previewEnrollment(
-    TARIFF,
-    { lessonHours: '', discounts: ['sibling', 'referral'], extras: [] },
+    OVER_CAP_TARIFF,
+    { lessonHours: '', discounts: ['sibling', 'early_payment'], extras: [] },
     school,
   )
   assert.equal(capped.ok, false)
@@ -1239,6 +1247,23 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   assert.throws(() =>
     previewEnrollment(null as never, { lessonHours: '', discounts: [], extras: [] }, school),
   )
+})
+
+test('DOM-FIN-024, K-14: önizleme seçili hakkın sabit tutarını gösterir; hak seçilmeden kalem reddedilir', () => {
+  const school = { institutionType: 'school', level: '7' } as const
+  const values = { lessonHours: '', discounts: ['referral' as const], extras: [] }
+  // Tarife %30 der (6.000.000 kuruş); hak kayıt yılının 1.250.000 kuruşunu taşır.
+  const fixed = previewEnrollment(TARIFF, values, { ...school, referralRewardCents: 1_250_000 })
+  assert.equal(fixed.ok, true)
+  assert.deepEqual(fixed.ok && fixed.price.discounts, [
+    { kind: 'referral', amountCents: 1_250_000 },
+  ])
+  assert.equal(fixed.ok && fixed.price.netCents, 18_750_000)
+  const trimmed = previewEnrollment(TARIFF, values, { ...school, referralRewardCents: 30_000_000 })
+  assert.equal(trimmed.ok && trimmed.price.netCents, 10_000_000)
+  const missing = previewEnrollment(TARIFF, values, school)
+  assert.equal(missing.ok, false)
+  assert.equal(!missing.ok && missing.message.includes('referans hakkı seçin'), true)
 })
 
 test('DOM-FIN-010: form açıkken tarife değiştiyse kayıt yazılmaz (409)', () => {

@@ -313,7 +313,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-024`. Ticari ileti tarafı H-21.
 - **Soru:** Referans veren veliye hakkın yalnız sonraki sözleşmesine ilanlı indirim kalemi olarak verilmesi vergi açısından sorun doğurur mu; nakit ya da hediye çeki verilseydi hangi yükümlülük doğardı?
 - **Bugünkü varsayım:** Referans hakkı yalnız indirim kalemidir; nakit ödeme, hediye çeki veya borçtan bağımsız para iadesi yapılmaz.
-- **Kodda:** Yok; referans indirimi henüz yok (kaynak bağı `referrerStudentId`, `lib/prospects.ts`).
+- **Kodda:** Bugünkü varsayımla: hak yalnız sözleşmede indirim kalemidir (`lib/finance-referrals.ts`, ON-139); nakit ya da hediye çeki yolu yoktur.
 - **Cevap değişirse:** Referans hakkının biçimi ve sözleşmedeki gösterimi değişir.
 - **Cevap:** bekleniyor
 

@@ -470,6 +470,13 @@
       "when": 1794007757919,
       "tag": "0066_create_finance_day_closings",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794008483348,
+      "tag": "0067_create_referral_rewards",
+      "breakpoints": true
     }
   ]
 }

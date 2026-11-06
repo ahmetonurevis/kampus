@@ -37,6 +37,7 @@ export const renewalFormSchema = z
     discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
     extras: z.array(z.enum(FEE_ITEM_KINDS)),
     scholarshipProgramId: z.string(),
+    referralRewardId: z.string(),
     installmentCount: z.string(),
     firstDueDate: z.string(),
   })
@@ -73,6 +74,7 @@ export const renewalDefaults = (): RenewalFormValues => ({
   discounts: [],
   extras: [],
   scholarshipProgramId: '',
+  referralRewardId: '',
   installmentCount: '8',
   firstDueDate: '',
 })
@@ -91,6 +93,10 @@ export function renewalQuoteBody(values: RenewalFormValues, academicYear: number
     ...(values.scholarshipProgramId === ''
       ? {}
       : { scholarshipProgramId: values.scholarshipProgramId }),
+    // Kalem kaldırılınca seçili hak gitmez (sunucu 422 `referral_discount_required`).
+    ...(values.referralRewardId !== '' && values.discounts.includes('referral')
+      ? { referralRewardId: values.referralRewardId }
+      : {}),
   }
 }
 
@@ -289,6 +295,7 @@ export const RENEWAL_SERVER_FIELDS = [
   'discounts',
   'extras',
   'scholarshipProgramId',
+  'referralRewardId',
   'installmentCount',
   'firstDueDate',
 ] as const

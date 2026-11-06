@@ -340,6 +340,13 @@ function pricePackage(
   // Taksit sayısı ilanlı koşula bağlanır, koşulun fiyat farkı indirim kalemi olur (DOM-FIN-013).
   const paymentTerm = resolvePaymentTerm(tariff.paymentTerms, data.installmentCount)
   assertEarlyPaymentOnUpfront(paymentTerm, data.discounts)
+  // Referans hakkı kesin kayıt ve yenileme sözleşmesinde işaretlenir (DOM-FIN-024); pakette hak seçimi yok.
+  if (data.discounts.includes('referral'))
+    throw new DomainError(
+      'referral_reward_required',
+      'Referans indirimi paket satışında kullanılmaz; kesin kayıtta ya da yenilemede referans hakkıyla kullanılır.',
+      { path: ['discounts'] },
+    )
   const discounts = discountLines(tariff.discounts, announcedCents, data.discounts, {
     canApproveCapException: context.canApproveCapException,
     paymentTerm,

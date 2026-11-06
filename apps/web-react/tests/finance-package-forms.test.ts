@@ -160,6 +160,14 @@ test('DOM-FIN-013, DOM-FIN-021: peşin indirimi yalnız peşin koşulunda, perso
   )
 })
 
+test('DOM-FIN-024: referans indirimi paket satış formunda sunulmaz', () => {
+  const tariff = {
+    ...TARIFF,
+    discounts: [...TARIFF.discounts, { kind: 'referral' as const }],
+  }
+  assert.ok(!availableDiscounts(tariff, 1, true).some((option) => option.value === 'referral'))
+})
+
 test('DOM-FIN-003: ek kalem seçenekleri öğrenim dışı türlerdir ve tekildir', () => {
   assert.deepEqual(
     availableExtras(TARIFF).map((option) => option.value),

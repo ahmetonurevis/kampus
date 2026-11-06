@@ -48,6 +48,8 @@ type OnurWriteTargets = {
   'tariff.manage': Record<string, never>
   // Burs programı ve MEBBİS işareti (DOM-FIN-025).
   'scholarship.manage': Record<string, never>
+  // Ek hizmet aboneliği (DOM-FIN-003): kurum geneli; hedef kaydı yetkiyi değiştirmez.
+  'studentService.manage': Record<string, never>
   // Sözleşme onayı (IST-092): veli yalnız bağlı çocuğunda; ödeyici kuralı `lib/contract-approval.ts`.
   'contract.sign': Record<string, never>
   'contract.approve': { studentId: string }
@@ -114,6 +116,8 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'tariff.manage': ['yonetici'],
   // Burs onayı yöneticidedir (DOM-FIN-052).
   'scholarship.manage': ['yonetici'],
+  // Ek hizmete yazılma ve çıkış velinin talebiyle işlenir; veli ve öğrenci yalnız okur (DOM-FIN-052).
+  'studentService.manage': ['yonetici', 'onburo'],
   // İmza yetkilisini (kurucu/temsilci) kurumu bağlayan yönetici işler; ön büro sözleşme hazırlar ve
   // ıslak imzayı işler, veli ödeyiciyse kendisi onaylar (DOM-FIN-052, IST-092).
   'contract.sign': ['yonetici'],
@@ -285,6 +289,7 @@ function decide(
     case 'payment.reverse':
     case 'tariff.manage':
     case 'scholarship.manage':
+    case 'studentService.manage':
     case 'student.withdraw':
     case 'contract.sign':
     case 'contract.amend':

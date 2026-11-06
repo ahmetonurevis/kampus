@@ -31,6 +31,7 @@ export const FEE_ITEM_KINDS = [
   'stationery',
   'uniform',
   'tutoring',
+  'club',
 ] as const
 export type FeeItemKind = (typeof FEE_ITEM_KINDS)[number]
 
@@ -47,6 +48,7 @@ export const FEE_ITEM_KIND_LABELS: Readonly<Record<FeeItemKind, string>> = {
   stationery: 'Kitap ve kırtasiye',
   uniform: 'Kıyafet',
   tutoring: 'Etüt',
+  club: 'Kulüp',
 }
 export const FEE_UNIT_LABELS: Readonly<Record<FeeUnit, string>> = {
   year: 'Yıl',

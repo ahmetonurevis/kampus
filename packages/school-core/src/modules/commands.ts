@@ -69,6 +69,8 @@ export const ONUR_OPERATION_COMMANDS = {
   'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
   'tariff.manage': spec('finance', [...SCOPE]),
   'scholarship.manage': spec('finance', [...SCOPE]),
+  // Ek hizmet aboneliği (DOM-FIN-003): düzey sınıftan, çakışma sözleşmeden okunur, taksit yazılır.
+  'studentService.manage': spec('finance', [...SCOPE, 'contracts', 'invoices']),
   // Sözleşme onayı ve ek protokol (`lib/contract-approval.ts`, IST-092). Onay ödeyicinin adını okur ve
   // ek protokolün planını taksitlere geçirir; ek protokol planlanmış yenilemeyi denetler.
   'contract.sign': spec('finance', [...SCOPE, 'contracts']),

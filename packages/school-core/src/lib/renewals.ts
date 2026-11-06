@@ -18,6 +18,7 @@ import {
   scholarshipAmount,
   type ScholarshipProgram,
 } from './finance-scholarships.ts'
+import { assertExtrasFreeOfServices } from './finance-student-services.ts'
 import type { ContractPaymentTerm } from './payment-terms.ts'
 import { installmentAmounts } from './payments.ts'
 import {
@@ -99,6 +100,8 @@ export interface RenewalContext {
    * State dışında olduğu için servis `outstandingTuitionCents` ile hesaplar; verilmezse 0.
    */
   outstandingTuitionCents?: number
+  /** Öğrencinin bu eğitim yılındaki açık ek hizmet abonelikleri (DOM-FIN-003); verilmezse boş. */
+  openStudentServiceKinds?: readonly string[]
 }
 
 export interface RenewalPrice {
@@ -163,6 +166,7 @@ function priceRenewal(
     extras: data.extras,
     canApproveCapException: canApprove,
   })
+  assertExtrasFreeOfServices(price.extras, context.openStudentServiceKinds ?? [])
   const previous = context.previousTariff
     ? itemFor(context.previousTariff.items, 'tuition', level)
     : undefined

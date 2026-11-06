@@ -456,6 +456,13 @@
       "when": 1793975109233,
       "tag": "0064_add_payment_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793997838645,
+      "tag": "0065_enrollment_freezes",
+      "breakpoints": true
     }
   ]
 }

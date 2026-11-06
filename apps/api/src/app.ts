@@ -34,6 +34,7 @@ import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
+import { registerEnrollmentFreezeRoutes } from './routes/enrollment-freezes.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 // Onur: kayıt ve finans sonu
@@ -119,6 +120,13 @@ export const REDACTED_PATHS = [
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
+  // kvkk: Ç — kayıt dondurma gerekçesi, belge tanımı ve karar notu (DOM-DIL-052).
+  'reasonNote',
+  '*.reasonNote',
+  'documentNote',
+  '*.documentNote',
+  'decisionNote',
+  '*.decisionNote',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
@@ -394,6 +402,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceScholarshipRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
+  registerEnrollmentFreezeRoutes(app)
   registerProspectRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

@@ -12,6 +12,7 @@ import {
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { closeOpenFreezes } from '../db/enrollment-freezes.ts'
 import { allocatedByInvoice, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -188,6 +189,8 @@ export function withdrawStudentCommand(
           now: ctx.now,
         })
         await archiveStudentIdentity(tx, ctx.institutionId, plan.studentId, ctx.now)
+        // Dondurma süresi dolan kursiyer ayrılabilir; açık dondurma kaydı kapanır (DOM-DIL-052).
+        await closeOpenFreezes(tx, ctx.institutionId, plan.studentId, plan.withdrawalDate, ctx.now)
         await audit(tx, ctx, 'student.withdraw', id, [
           'withdrawalDate',
           'reason',

@@ -507,20 +507,15 @@ function requireSibling(state: State, prospect: ProspectRecord, siblingOfId: str
 // --- Aday ---------------------------------------------------------------------------------
 
 /**
- * Yeni aday açar (DOM-KAY-002, -003, -004, -007, -009). Aday `Yeni aday` aşamasında başlar ve
- * akademik/finansal kayıt üretmez (DOM-KAY-001).
+ * Mükerrer dışındaki açılış kuralları (DOM-KAY-004, -007, -009): kampüs, yaş grubu, veli adı,
+ * referans ve e-posta onayı. Yalnız girdiye ve kuruma bakar; aynı iletişimli bir adayın varlığına
+ * bağlı değildir, bu yüzden açık başvuru formunda reddi kişi varlığını belli etmez (ON-133).
  */
-export function createProspect(
+export function requireValidNewProspect(
   state: State,
-  by: Participant,
-  input: unknown,
-  makeId: MakeId,
-  now: string,
-  options: ProspectOptions = {},
-): ProspectRecord {
-  const data = createProspectSchema.parse(input)
-  requireAuthorized(by, 'prospect.create', {}, state, options)
-  const institutionType = options.institutionType ?? 'school'
+  data: z.output<typeof createProspectSchema>,
+  institutionType: InstitutionType,
+): { minor: boolean; email: string } {
   if (!state.branches.some((b) => b.id === data.branchId && b.isActive))
     throw new DomainError('branch_unavailable', 'Seçilen kampüs kullanılamıyor.', {
       path: ['branchId'],
@@ -561,24 +556,22 @@ export function createProspect(
     throw new DomainError('consent_contact_missing', 'E-posta onayı için e-posta adresi girin.', {
       path: ['marketingConsent', 'email'],
     })
-  const duplicate = findProspectDuplicate(state.prospects, { ...data, email })
-  // Kardeş onayı yalnız iletişimi gerçekten paylaşan açık adayla geçerlidir.
-  if (data.siblingOfId !== undefined) {
-    const sibling = state.prospects.find((p) => p.id === data.siblingOfId)
-    const sharesContact =
-      sibling !== undefined &&
-      isOpen(sibling.stage) &&
-      (sibling.phone === data.phone || (email !== '' && normalizedEmail(sibling.email) === email))
-    if (!sharesContact)
-      throw new DomainError(
-        'sibling_not_found',
-        'Kardeş aday aynı iletişim bilgisini taşıyan açık bir aday olmalıdır.',
-        { path: ['siblingOfId'] },
-      )
-  }
-  rejectDuplicate(duplicate, data.siblingOfId !== undefined)
+  return { minor, email }
+}
+
+/**
+ * Doğrulanmış girdiden `Yeni aday` kaydı; aydınlatma sürümü ve anı, kanal bazında ticari ileti onayı
+ * ile (DOM-KAY-003, -004). `createdBy` açık başvuru formunda boştur: kaydı açan kullanıcı yoktur.
+ */
+export function buildProspect(
+  data: z.output<typeof createProspectSchema>,
+  { minor, email }: { minor: boolean; email: string },
+  makeId: MakeId,
+  now: string,
+  createdBy?: RequestActor,
+): ProspectRecord {
   const consent = data.marketingConsent ?? {}
-  const prospect: ProspectRecord = {
+  return {
     id: makeId('pr'),
     name: data.name,
     phone: data.phone,
@@ -601,8 +594,42 @@ export function createProspect(
       email: { granted: consent.email ?? false, at: now },
       call: { granted: consent.call ?? false, at: now },
     },
-    createdBy: actorOf(by),
+    ...(createdBy === undefined ? {} : { createdBy }),
   }
+}
+
+/**
+ * Yeni aday açar (DOM-KAY-002, -003, -004, -007, -009). Aday `Yeni aday` aşamasında başlar ve
+ * akademik/finansal kayıt üretmez (DOM-KAY-001).
+ */
+export function createProspect(
+  state: State,
+  by: Participant,
+  input: unknown,
+  makeId: MakeId,
+  now: string,
+  options: ProspectOptions = {},
+): ProspectRecord {
+  const data = createProspectSchema.parse(input)
+  requireAuthorized(by, 'prospect.create', {}, state, options)
+  const { minor, email } = requireValidNewProspect(state, data, options.institutionType ?? 'school')
+  const duplicate = findProspectDuplicate(state.prospects, { ...data, email })
+  // Kardeş onayı yalnız iletişimi gerçekten paylaşan açık adayla geçerlidir.
+  if (data.siblingOfId !== undefined) {
+    const sibling = state.prospects.find((p) => p.id === data.siblingOfId)
+    const sharesContact =
+      sibling !== undefined &&
+      isOpen(sibling.stage) &&
+      (sibling.phone === data.phone || (email !== '' && normalizedEmail(sibling.email) === email))
+    if (!sharesContact)
+      throw new DomainError(
+        'sibling_not_found',
+        'Kardeş aday aynı iletişim bilgisini taşıyan açık bir aday olmalıdır.',
+        { path: ['siblingOfId'] },
+      )
+  }
+  rejectDuplicate(duplicate, data.siblingOfId !== undefined)
+  const prospect = buildProspect(data, { minor, email }, makeId, now, actorOf(by))
   // TODO(crm-consent): İYS bildirimi (OG-108) ve adayın aydınlatma metninin platform metin
   // deposundan gösterilmesi (aday kitlesi platformda yok, iş isteği #14) ayrıdır.
   state.prospects.unshift(prospect)

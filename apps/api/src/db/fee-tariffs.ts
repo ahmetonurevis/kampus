@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, sql } from 'drizzle-orm'
 
 import type { FeeDiscount, FeeItem, FeeTariffStatus } from '@kampus/school-core/lib/fee-tariffs.ts'
+import type { FeePaymentTerm } from '@kampus/school-core/lib/payment-terms.ts'
 
 import type { Database } from './client.ts'
 import { feeTariffs, priceIndexRates } from './schema/fee-tariffs.ts'
@@ -14,6 +15,7 @@ export interface StoredFeeTariff {
   status: FeeTariffStatus
   items: FeeItem[]
   discounts: FeeDiscount[]
+  paymentTerms: FeePaymentTerm[]
   announcedDate: string | null
   mebbisRecordedDate: string | null
   publishedAt: Date | null
@@ -27,6 +29,7 @@ const COLUMNS = {
   status: feeTariffs.status,
   items: feeTariffs.items,
   discounts: feeTariffs.discounts,
+  paymentTerms: feeTariffs.paymentTerms,
   announcedDate: feeTariffs.announcedDate,
   mebbisRecordedDate: feeTariffs.mebbisRecordedDate,
   publishedAt: feeTariffs.publishedAt,
@@ -93,6 +96,7 @@ export async function insertFeeTariff(
     versionNumber: number
     items: FeeItem[]
     discounts: FeeDiscount[]
+    paymentTerms?: FeePaymentTerm[]
     now: Date
   },
 ): Promise<void> {
@@ -104,6 +108,7 @@ export async function insertFeeTariff(
     status: 'draft',
     items: input.items,
     discounts: input.discounts,
+    paymentTerms: input.paymentTerms ?? [],
     createdAt: input.now,
     updatedAt: input.now,
   })
@@ -118,6 +123,7 @@ export async function updateFeeTariffItems(
     expectedVersion: number
     items: FeeItem[]
     discounts: FeeDiscount[]
+    paymentTerms: FeePaymentTerm[]
     now: Date
   },
 ): Promise<boolean> {
@@ -126,6 +132,7 @@ export async function updateFeeTariffItems(
     .set({
       items: input.items,
       discounts: input.discounts,
+      paymentTerms: input.paymentTerms,
       version: sql`${feeTariffs.version} + 1`,
       updatedAt: input.now,
     })

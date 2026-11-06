@@ -407,6 +407,8 @@ describe('IST-100: kayıt yenileme uçları', () => {
       quote.json().data
     assert.equal(tariffCarriedOverFromYear, 2025)
     assert.equal(tariffVersion, 1)
+    // Fikstür tarifesi koşulsuz eski kayıttır (DOM-FIN-013): koşul yazılmaz, taksit serbest.
+    assert.equal(quote.json().data.paymentTerm, null)
     assert.equal(announcedCents, ANNOUNCED_CENTS)
     // Tavanın bazı önceki yılın ilan ücretidir; taşınma onu değiştirmez (DOM-FIN-005).
     assert.equal(ceiling.status, 'applied')

@@ -274,11 +274,11 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 
 ### DOM-FIN-055 · Muhasebe aktarım profili
 
-- **Kural:** Kurum muhasebe dosyasının sütun adını, sırasını, ayırıcısını, tarih ve tutar biçimini ve sabit hesap kodlarını kendisi eşler. Profil yalnız biçimdir: satırlar ve toplamlar değişmez. Profil yoksa standart dosya iner. Yalnız yönetici düzenler.
+- **Kural:** Kurum muhasebe dosyasının sütun adını, sırasını, ayırıcısını, tarih ve tutar biçimini ve sabit hesap kodlarını kendisi eşler. Profil yalnız biçimdir: satırlar ve toplamlar değişmez. Profil yoksa standart dosya iner. Yalnız yönetici düzenler. Dosya CSV ya da `.xlsx` iner; ikisi aynı satırlardan ve aynı profilden üretilir. Yönetici genel bir hazır sütun şablonundan başlayabilir; şablon kaydedilince kurumun profili olur. Kampüs hesap kodu ve KDV dökümü üretmez, belirli bir muhasebe programına uyum iddia etmez (**doğrulanmalı**, M-11).
 - **Gerekçe:** Kurumlar farklı muhasebe programı kullanır; dosya bağlanan programa göre gelmelidir (IST-111).
 - **Kaynak:** İşletme kuralı. Taksitli ücrette fatura zamanı **doğrulanmalı** (M-04).
 - **Kurum türü:** ikisi
-- **Kodda:** var — `lib/finance-export-profile.ts`, `GET`/`PATCH /api/v1/finance/export-profile`, `FinanceExportProfilePanel.tsx`. Programa özel hazır profil örnek dosya gelince eklenir; doğrudan API bağlantısı kapsam dışıdır.
+- **Kodda:** var — `lib/finance-export-profile.ts`, `GET`/`PATCH /api/v1/finance/export-profile`, `FinanceExportProfilePanel.tsx`. `.xlsx` (ON-094): `GET /api/v1/finance/exports?format=xlsx` aynı yetki (yönetici, taze oturum, 10/dk) ve denetimle (`finance.export`, kimlik sonu `:xlsx`); model `lib/finance-sheet.ts`, yazıcı `services/finance-workbook.ts` (`write-excel-file`, yalnız API). Metin alanı `@` biçimli metin hücresidir, `=` ile başlayan ad formül çalıştırmaz ve değer `'` kaçışı almaz; tutar `#,##0.00` biçimli sayı, tarih Europe/Istanbul gününün saatsiz tarih hücresi, biçimi profilden. Ayırıcı ve ondalık işareti yalnız CSV içindir. Hazır şablonlar `lib/finance-export-templates.ts` (Standart, Genel kayıt, Kısa liste); hepsi geneldir, sabit sütun taşımaz. Programa özel hazır profil (Logo, Mikro, Luca vb.) örnek dosyayla doğrulanınca eklenir, bugün yoktur; doğrudan API bağlantısı kapsam dışıdır.
 
 ### DOM-FIN-054 · Cari ekstre
 

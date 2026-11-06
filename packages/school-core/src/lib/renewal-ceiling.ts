@@ -110,6 +110,18 @@ function contractBaseCents(state: CeilingState, contract: Contract): number {
   )
 }
 
+/** Hedef yıldan önceki son sözleşmenin yılı ve indirimsiz ücreti; yeni yıl listesinde gösterilir. */
+export function latestContractTuition(
+  state: CeilingState,
+  studentId: string,
+  year: number,
+): { academicYear: number; tuitionCents: number } | null {
+  const latest = priorContracts(state, studentId, year).at(-1)
+  return latest
+    ? { academicYear: latest.year, tuitionCents: contractBaseCents(state, latest.contract) }
+    : null
+}
+
 function hasActiveSibling(state: CeilingState, studentId: string): boolean {
   const parentId = state.students.find((item) => item.id === studentId)?.parentId
   return state.students.some(

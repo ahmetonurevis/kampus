@@ -142,15 +142,24 @@ const MAX_AMOUNT_CENTS = 100_000_000
 
 /**
  * Kullanıcı tutarını kuruşa çevirir: `1.234,56`, `1234,56`, `1234.5`. En fazla iki ondalık kabul
- * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`.
+ * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`; kasa
+ * sayımı (DOM-FIN-036) sıfırı ve kendi üst sınırını `options` ile verir.
  */
-export function parseAmountInput(text: string): number | null {
+export function parseAmountInput(
+  text: string,
+  options: { allowZero?: boolean; maxCents?: number } = {},
+): number | null {
   const value = text.trim()
   const grouped = /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
   if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(value)) return null
   const [whole = '', fraction = ''] = (grouped ? value.replaceAll('.', '') : value).split(/[.,]/)
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
-  return Number.isSafeInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS ? cents : null
+  const aboveFloor = options.allowZero ? cents >= 0 : cents > 0
+  return Number.isSafeInteger(cents) &&
+    aboveFloor &&
+    cents <= (options.maxCents ?? MAX_AMOUNT_CENTS)
+    ? cents
+    : null
 }
 
 /** Kuruşu form alanına yazılacak metne çevirir (`1234,56`). */

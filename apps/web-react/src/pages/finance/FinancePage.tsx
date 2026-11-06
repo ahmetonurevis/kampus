@@ -10,6 +10,7 @@ import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
+import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
@@ -27,6 +28,7 @@ const VIEW_PARAM = 'gorunum'
 const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
+  dayClosing: { label: 'Gün sonu', param: 'gunsonu' },
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
   packages: { label: 'Paketler', param: 'paket' },
@@ -103,6 +105,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         }
       />
       {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
+      {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
       {tab === 'contracts' ? <ContractsSection /> : null}
       {tab === 'tariffs' ? (
         <FeeTariffsSection

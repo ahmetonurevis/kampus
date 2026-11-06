@@ -41,7 +41,7 @@ export interface StoredPayment {
   allocations: PaymentAllocation[]
 }
 
-const METHOD_LABELS = Object.fromEntries(
+export const METHOD_LABELS = Object.fromEntries(
   Object.entries(PAYMENT_METHOD_KEYS).map(([label, key]) => [key, label]),
 ) as Record<string, PaymentMethod>
 
@@ -273,6 +273,35 @@ export async function paymentsTouchingPeriod(
     paidAt: row.paidAt.toISOString(),
     reversedAt: row.reversedAt?.toISOString() ?? null,
   }))
+}
+
+/**
+ * Gün sonu raporunun tahsilatları (IST-113): ödeme veya iptal anı aralığa düşenler, ad ve hesapla.
+ * Kesin gün süzmesi core'dadır. `payments_paid_at_idx` ödeme anına iner; iptal anı için indeks yok,
+ * satırlar kurum içinde taranır (kurum kilidi altında ve günde bir kez).
+ */
+export async function paymentsTouchingDay(
+  db: Database,
+  institutionId: string,
+  fromInstant: Date,
+  toInstant: Date,
+): Promise<StoredPayment[]> {
+  const rows = await db
+    .select(COLUMNS)
+    .from(payments)
+    .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
+    .where(
+      and(
+        eq(payments.institutionId, institutionId),
+        or(
+          and(gte(payments.paidAt, fromInstant), lt(payments.paidAt, toInstant)),
+          and(gte(payments.reversedAt, fromInstant), lt(payments.reversedAt, toInstant)),
+        ),
+      ),
+    )
+    .orderBy(asc(payments.paidAt), asc(payments.receiptNumber))
+  return withAllocations(db, institutionId, rows)
 }
 
 export async function isReferenceInUse(

@@ -34,6 +34,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/payments',
   'POST /api/v1/payments/{paymentId}/mebbis-record',
   'POST /api/v1/payments/{paymentId}/reverse',
+  // Gün kapanışı ve yeniden açma (routes/finance-day-closings.ts; DOM-FIN-036).
+  'POST /api/v1/finance/day-closings/{closingDate}/close',
+  'POST /api/v1/finance/day-closings/{closingDate}/reopen',
   'PATCH /api/v1/payment-settings',
   'PATCH /api/v1/finance/export-profile',
   'POST /api/v1/bank-accounts',

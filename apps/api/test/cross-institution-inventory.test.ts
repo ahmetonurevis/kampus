@@ -965,6 +965,18 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  'GET /api/v1/finance/day-closings/:closingDate': kayit(
+    'finance-day-closings.test.ts',
+    'başka kurumun gün sonu görünmez',
+  ),
+  'POST /api/v1/finance/day-closings/:closingDate/close': kayit(
+    'finance-day-closings.test.ts',
+    'başka kurumun gün sonu görünmez',
+  ),
+  'POST /api/v1/finance/day-closings/:closingDate/reopen': kayit(
+    'finance-day-closings.test.ts',
+    'başka kurumun gün sonu görünmez',
+  ),
 }
 
 /**

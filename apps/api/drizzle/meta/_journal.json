@@ -463,6 +463,13 @@
       "when": 1793996569232,
       "tag": "0065_create_lesson_packages",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794007757919,
+      "tag": "0066_create_finance_day_closings",
+      "breakpoints": true
     }
   ]
 }

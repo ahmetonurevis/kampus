@@ -121,6 +121,9 @@ export const REDACTED_PATHS = [
   '*.signatory',
   'payerName',
   '*.payerName',
+  // Ayrılışta iade kararı ve gerekçesi (K-12).
+  'payerDecision',
+  '*.payerDecision',
   'amendmentReason',
   '*.amendmentReason',
   'cancelReason',

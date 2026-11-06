@@ -72665,6 +72665,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -72687,11 +72808,46 @@
                             "debtCents"
                           ],
                           "additionalProperties": false
+                        },
+                        "payersDiffer": {
+                          "type": "boolean",
+                          "description": "Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12)"
+                        },
+                        "payers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "contractId": {
+                                "type": "string"
+                              },
+                              "payer": {
+                                "type": "string",
+                                "enum": [
+                                  "guardian",
+                                  "student"
+                                ]
+                              },
+                              "payerName": {
+                                "type": "string",
+                                "description": "Ödeyicinin adı; iletişim bilgisi dönmez"
+                              }
+                            },
+                            "required": [
+                              "contractId",
+                              "payer",
+                              "payerName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sözleşme başına ödeyici"
                         }
                       },
                       "required": [
                         "contractId",
-                        "breakdown"
+                        "breakdown",
+                        "payersDiffer",
+                        "payers"
                       ],
                       "additionalProperties": false
                     }
@@ -72842,6 +72998,34 @@
                         "type": "string",
                         "minLength": 2,
                         "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "payerDecision": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "payer": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "payer",
+                          "reason"
+                        ],
+                        "additionalProperties": false
                       },
                       {
                         "type": "null"
@@ -73052,6 +73236,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -73242,7 +73547,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.",
+        "description": "Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -73464,6 +73769,127 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "contracts": {
+                                "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "contractId": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "payer": {
+                                      "type": "string",
+                                      "enum": [
+                                        "guardian",
+                                        "student"
+                                      ],
+                                      "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                    },
+                                    "packageSaleId": {
+                                      "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                      "type": "string"
+                                    },
+                                    "attendedUnits": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                    },
+                                    "totalUnits": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                    },
+                                    "returnedHours": {
+                                      "description": "Pakette iade edilen kalan saat",
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "scholarshipExempt": {
+                                      "type": "boolean"
+                                    },
+                                    "baseCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "deductionCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "usageCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "entitledCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "paidCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "extraBalanceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "balanceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                    }
+                                  },
+                                  "required": [
+                                    "contractId",
+                                    "title",
+                                    "payer",
+                                    "attendedUnits",
+                                    "totalUnits",
+                                    "scholarshipExempt",
+                                    "baseCents",
+                                    "deductionCents",
+                                    "usageCents",
+                                    "entitledCents",
+                                    "paidCents",
+                                    "extraBalanceCents",
+                                    "balanceCents"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "payerDecision": {
+                                "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                                "type": "object",
+                                "properties": {
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ]
+                                  },
+                                  "reason": {
+                                    "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "payer"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -73659,7 +74085,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.",
+        "description": "Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -73840,6 +74266,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -74261,6 +74808,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [

@@ -12,10 +12,14 @@ import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { loadFinanceRecords } from '../src/db/finance-mirror-store.ts'
-import { insertMissingRecords } from '../src/db/records.ts'
+import { findRecord, insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
-import { lessonPackages, lessonPackageSales } from '../src/db/schema/finance-packages.ts'
+import {
+  lessonPackageHourEntries,
+  lessonPackages,
+  lessonPackageSales,
+} from '../src/db/schema/finance-packages.ts'
 import { recordPackageHours } from '../src/services/finance-packages.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
@@ -29,6 +33,7 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import { contractTerms } from './support/finance-terms.ts'
 
 /**
  * Dil okulu paket ve ders saati satışı uçları (IST-078; DOM-DIL-006, -050, -051; DOM-FIN-002, -010).
@@ -880,5 +885,245 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     assert.deepEqual(await packageRows(b.id), beforePackages)
     assert.deepEqual(await saleRows(b.id), beforeSales)
     assert.deepEqual(await financeCounts(a.id), NONE)
+  })
+
+  describe('DOM-FIN-040, K-06: ayrılış paket satışını hesaba alır', () => {
+    const WITHDRAW = {
+      withdrawalDate: '2026-10-06',
+      termStartDate: '2026-09-07',
+      attendedUnits: 18,
+      totalUnits: 180,
+    }
+    const TUITION_NET = 10_000_000
+    const PACKAGE_NET = 40 * HOURLY
+
+    /** Paket satışı ve 10 saat tüketim; `tuition` ile ayrıca öğrenim sözleşmesi (net 100.000 ₺). */
+    async function withPackage(options: { tuition: boolean }) {
+      const a = await ready()
+      if (options.tuition)
+        await insertMissingRecords(
+          db,
+          a.id,
+          [
+            {
+              collection: 'contracts',
+              id: 'test-tuition',
+              data: {
+                id: 'test-tuition',
+                studentId: 's3',
+                date: '2026-01-01T09:00:00.000Z',
+                amount: TUITION_NET,
+                title: 'Öğrenim sözleşmesi',
+                invoiceIds: ['test-tuition-1'],
+                ...contractTerms({ grossCents: TUITION_NET, netCents: TUITION_NET }),
+                tariffId: a.tariffId,
+                payer: 'student',
+              },
+            },
+            {
+              collection: 'invoices',
+              id: 'test-tuition-1',
+              data: {
+                id: 'test-tuition-1',
+                studentId: 's3',
+                installment: 1,
+                amount: TUITION_NET,
+                dueDate: '2026-09-15T09:00:00.000Z',
+                paidAt: null,
+                method: null,
+                reminderAt: null,
+                feeKind: 'tuition',
+              },
+            },
+          ],
+          FIXED_NOW,
+        )
+      const sale = await sold(a)
+      await recordPackageHours(ctxOf(a.id), sale.id, {
+        kind: 'consumed',
+        hours: 10,
+        occurredDate: '2026-10-01',
+        sourceType: 'lesson',
+        sourceId: 'test-ders-ayrilis',
+      })
+      return { ...a, sale }
+    }
+    const pay = (cookie: string, amountCents: number) =>
+      post(
+        '/api/v1/payments',
+        cookie,
+        { studentId: 's3', amountCents, method: 'Banka havalesi', reference: randomUUID() },
+        key(),
+      )
+    const quote = (cookie: string, body: unknown = WITHDRAW) =>
+      post('/api/v1/students/s3/withdrawal-quote', cookie, body)
+    const withdraw = (cookie: string, headers: Headers = key()) =>
+      post(
+        '/api/v1/students/s3/withdraw',
+        cookie,
+        { ...WITHDRAW, reason: 'relocation', targetSchool: null },
+        headers,
+      )
+    const hourRows = (institutionId: string) =>
+      db
+        .select()
+        .from(lessonPackageHourEntries)
+        .where(eq(lessonPackageHourEntries.institutionId, institutionId))
+
+    test('önizleme sözleşme başına döküm ve toplam döndürür, hiçbir kayıt yazmaz', async () => {
+      const a = await withPackage({ tuition: true })
+      const response = await quote(a.admin)
+      assert.equal(response.statusCode, 200, response.body)
+      const { contractId, breakdown } = response.json().data
+      assert.equal(contractId, a.sale.contractId)
+      assert.deepEqual(
+        breakdown.contracts.map((line: { contractId: string }) => line.contractId),
+        ['test-tuition', a.sale.contractId],
+      )
+      const [tuition, pack] = breakdown.contracts
+      assert.equal(tuition.packageSaleId, undefined)
+      assert.equal(tuition.attendedUnits, 18)
+      assert.equal(tuition.entitledCents, 2_000_000)
+      assert.equal(pack.packageSaleId, a.sale.id)
+      assert.equal(pack.attendedUnits, 10)
+      assert.equal(pack.totalUnits, 40)
+      assert.equal(pack.returnedHours, 30)
+      assert.equal(pack.deductionCents, PACKAGE_NET / 10)
+      assert.equal(pack.usageCents, 10 * HOURLY)
+      assert.equal(breakdown.baseCents, TUITION_NET + PACKAGE_NET)
+      assert.equal(breakdown.debtCents, 2_000_000 + PACKAGE_NET / 10 + 10 * HOURLY)
+      assert.equal((await hourRows(a.id)).length, 1)
+      assert.equal((await findRecord(db, a.id, 'students', 's3'))?.data.isActive, true)
+    })
+
+    test('ödenmemişse iki sözleşmenin açık taksiti iptal olur, tek borç taksiti kalır', async () => {
+      const a = await withPackage({ tuition: true })
+      const response = await withdraw(a.admin)
+      assert.equal(response.statusCode, 201, response.body)
+      const { data } = response.json()
+      assert.equal(data.contractId, a.sale.contractId)
+      assert.equal(data.debtCents, 2_000_000 + PACKAGE_NET / 10 + 10 * HOURLY)
+      assert.equal(data.refundCents, 0)
+      const invoices = await loadFinanceRecords(db, a.id, 'invoices')
+      assert.equal(invoices.length, 1)
+      assert.equal(invoices[0]?.data.amount, data.debtCents)
+      assert.equal(invoices[0]?.data.contractId, a.sale.contractId)
+      const contracts = await loadFinanceRecords(db, a.id, 'contracts')
+      const ids = (id: string) => contracts.find((row) => row.id === id)?.data.invoiceIds
+      assert.deepEqual(ids('test-tuition'), [])
+      assert.deepEqual(ids(a.sale.contractId), [invoices[0]?.id])
+    })
+
+    test('ayrılış kalan saati iade yazar, bakiye sıfırlanır; tekrar ve sonraki ders saat düşmez', async () => {
+      const a = await withPackage({ tuition: false })
+      const headers = key()
+      const first = await withdraw(a.admin, headers)
+      assert.equal(first.statusCode, 201, first.body)
+      const withdrawalId = first.json().data.id as string
+      const refunded = (await hourRows(a.id)).filter((row) => row.kind === 'refunded')
+      assert.equal(refunded.length, 1)
+      assert.equal(refunded[0]?.hours, 30)
+      assert.equal(refunded[0]?.sourceType, 'withdrawal')
+      assert.equal(refunded[0]?.sourceId, withdrawalId)
+      assert.equal(refunded[0]?.occurredDate, WITHDRAW.withdrawalDate)
+      const detail = (await get(`${SALES}/${a.sale.id}`, a.admin)).json().data
+      assert.equal(detail.consumedHours, 10)
+      assert.equal(detail.refundedHours, 30)
+      assert.equal(detail.remainingHours, 0)
+      assert.equal(detail.status, 'depleted')
+      const replay = await withdraw(a.admin, headers)
+      assert.equal(replay.headers['idempotent-replayed'], 'true')
+      assert.equal((await hourRows(a.id)).length, 2)
+      await assert.rejects(
+        recordPackageHours(ctxOf(a.id), a.sale.id, {
+          kind: 'consumed',
+          hours: 1,
+          occurredDate: '2026-10-06',
+          sourceType: 'lesson',
+          sourceId: 'test-ders-sonra',
+        }),
+        { code: 'package_balance_insufficient' },
+      )
+      const audits = await db
+        .select({ changes: auditLog.changes })
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'package.hours')))
+      assert.equal(audits.length, 2)
+    })
+
+    test('yalnız paketi olan kursiyerde girilen birim hesabı değiştirmez', async () => {
+      const a = await withPackage({ tuition: false })
+      const read = async (attendedUnits: number) =>
+        (await quote(a.admin, { ...WITHDRAW, attendedUnits })).json().data.breakdown
+      const few = await read(1)
+      const many = await read(90)
+      assert.equal(few.usageCents, 10 * HOURLY)
+      assert.equal(many.usageCents, 10 * HOURLY)
+      assert.equal(few.debtCents, many.debtCents)
+    })
+
+    test('reddedilen ayrılış saat hareketi ve kayıt yazmaz', async () => {
+      const a = await withPackage({ tuition: true })
+      const rejected = await post(
+        '/api/v1/students/s3/withdraw',
+        a.admin,
+        { ...WITHDRAW, attendedUnits: 181, reason: 'relocation', targetSchool: null },
+        key(),
+      )
+      assertError(rejected, 422, 'attended_exceeds_total')
+      assert.equal((await hourRows(a.id)).length, 1)
+      assert.equal((await loadFinanceRecords(db, a.id, 'invoices')).length, 5)
+      assert.equal((await findRecord(db, a.id, 'students', 's3'))?.data.isActive, true)
+    })
+
+    test('DOM-FIN-041, K-12: iade iki sözleşmeden netleşir; hesap sahibi kararla seçilen ödeyicidir', async () => {
+      const a = await withPackage({ tuition: true })
+      const paid = await pay(a.admin, TUITION_NET + PACKAGE_NET)
+      assert.equal(paid.statusCode, 201, paid.body)
+      // Öğrenim sözleşmesinin ödeyicisi kursiyer, paketinki veli: iade kararı yöneticinindir (K-12).
+      assertError(await withdraw(a.admin), 422, 'withdrawal_payer_decision_required')
+      const withdrawn = await post(
+        '/api/v1/students/s3/withdraw',
+        a.admin,
+        {
+          ...WITHDRAW,
+          reason: 'relocation',
+          targetSchool: null,
+          payerDecision: { payer: 'student', reason: 'Ödemeyi kursiyer yaptı' },
+        },
+        key(),
+      )
+      assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+      const { id, version: rowVersion, refundCents, breakdown } = withdrawn.json().data
+      assert.equal(breakdown.contracts[0].balanceCents, TUITION_NET - 2_000_000)
+      assert.equal(
+        breakdown.contracts[1].balanceCents,
+        PACKAGE_NET - PACKAGE_NET / 10 - 10 * HOURLY,
+      )
+      assert.equal(
+        refundCents,
+        breakdown.contracts[0].balanceCents + breakdown.contracts[1].balanceCents,
+      )
+      const student = await findRecord(db, a.id, 'students', 's3')
+      const refund = (accountHolder: unknown) =>
+        post(
+          `/api/v1/withdrawals/${String(id)}/pay-refund`,
+          a.admin,
+          { paidDate: '2026-10-06', iban: 'TR330006100519786457841326', accountHolder },
+          { ...key(), ...version(rowVersion as number) },
+        )
+      assertError(await refund('Başka Kişi'), 422, 'refund_holder_mismatch')
+      const done = await refund(student?.data.name)
+      assert.equal(done.statusCode, 200, done.body)
+      assert.equal(done.json().data.refundStatus, 'paid')
+    })
+
+    test('DOM-YTK-001: başka kurumun satışı hesaba girmez', async () => {
+      const a = await withPackage({ tuition: false })
+      const b = await ready()
+      assertError(await quote(b.admin), 422, 'withdrawal_contract_missing')
+      assert.equal((await hourRows(b.id)).length, 0)
+      assert.equal((await hourRows(a.id)).length, 1)
+    })
   })
 })

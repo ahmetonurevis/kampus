@@ -105,9 +105,18 @@ describe('aktarım hücreleri (IST-007)', () => {
   })
 
   test('başlıksız dosya, eksik zorunlu sütun ve satır sınırı dosya düzeyinde reddedilir', () => {
+    // KVKK: başlıksız dosyada ilk satır kişisel veridir; ileti değeri taşımaz.
     assert.throws(
-      () => parseStudentImport('Ece;Demir\nCan;Demir'),
-      (error: DomainError) => error.code === 'csv_unknown_column',
+      () => parseStudentImport('Ece Demir;10000000146\nCan;Demir'),
+      (error: DomainError) =>
+        error.code === 'csv_unknown_column' &&
+        !error.message.includes('Ece') &&
+        !error.message.includes('10000000146'),
+    )
+    assert.throws(
+      () => parseStudentImport('sınıf;sınıf adı\n7-A;7-A'),
+      (error: DomainError) =>
+        error.code === 'csv_duplicate_column' && !error.message.includes('7-A'),
     )
     assert.throws(
       () => parseStudentImport('öğrenci adı;sınıf\nEce;7-A'),

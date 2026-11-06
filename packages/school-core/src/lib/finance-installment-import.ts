@@ -5,6 +5,7 @@ import type { MakeId } from './domain.ts'
 import {
   normalizeImportIdentity,
   parseImportDay,
+  readImportTable,
   type ImportIssue,
   type ImportNotice,
   type ImportRowStatus,
@@ -76,11 +77,13 @@ export interface InstallmentImportRow {
 
 /** Metni satırlara ayırır; dosya düzeyindeki sorun `DomainError` (satır sınırı dahil). */
 export function parseInstallmentImport(raw: string): InstallmentImportRow[] {
-  return csvTable(raw, INSTALLMENT_IMPORT_COLUMNS, INSTALLMENT_IMPORT_MAX_ROWS).map((row) => ({
-    line: row.line,
-    ...row.values,
-    extraCells: row.extraCells,
-  }))
+  return readImportTable(() =>
+    csvTable(raw, INSTALLMENT_IMPORT_COLUMNS, INSTALLMENT_IMPORT_MAX_ROWS).map((row) => ({
+      line: row.line,
+      ...row.values,
+      extraCells: row.extraCells,
+    })),
+  )
 }
 
 export const INSTALLMENT_IMPORT_MESSAGES = {

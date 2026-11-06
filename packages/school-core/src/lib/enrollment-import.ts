@@ -16,6 +16,7 @@ import {
   normalizeImportIdentity,
   parseImportDay,
   parseImportPhone,
+  readImportTable,
   type ImportIssue,
   type ImportNotice,
   type ImportRowStatus,
@@ -82,11 +83,13 @@ export interface StudentImportRow {
 
 /** Metni satırlara ayırır; dosya düzeyindeki sorun `DomainError` (satır sınırı dahil). */
 export function parseStudentImport(raw: string): StudentImportRow[] {
-  return csvTable(raw, STUDENT_IMPORT_COLUMNS, STUDENT_IMPORT_MAX_ROWS).map((row) => ({
-    line: row.line,
-    ...row.values,
-    extraCells: row.extraCells,
-  }))
+  return readImportTable(() =>
+    csvTable(raw, STUDENT_IMPORT_COLUMNS, STUDENT_IMPORT_MAX_ROWS).map((row) => ({
+      line: row.line,
+      ...row.values,
+      extraCells: row.extraCells,
+    })),
+  )
 }
 
 export const STUDENT_IMPORT_MESSAGES = {

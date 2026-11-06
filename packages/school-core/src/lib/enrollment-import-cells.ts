@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { isCalendarDay } from './age.ts'
+import { DomainError } from './errors.ts'
 
 /**
  * Pilot verisi aktarımının ortak girişi (IST-007, ON-060, ON-061): dosya gövdesi, satır sorunları
@@ -43,6 +44,26 @@ export type ImportNotice = z.infer<typeof importNoticeSchema>
 /** Satırın sonucu: yazılacak, zaten kayıtlı olduğu için atlanacak ya da düzeltilmesi gereken. */
 export const IMPORT_ROW_STATUSES = ['ready', 'skipped', 'invalid'] as const
 export type ImportRowStatus = (typeof IMPORT_ROW_STATUSES)[number]
+
+/**
+ * Dosya okuma; başlık sorunu iletisi hücre değeri taşımaz. Başlıksız dosyada ilk satır veridir:
+ * ortak okuyucunun (`csvTable`) "… sütunu tanınmadı" iletisi kişinin adını ya da kimliğini yanıta
+ * ve hata kaydına taşırdı.
+ */
+export function readImportTable<T>(read: () => T): T {
+  try {
+    return read()
+  } catch (error) {
+    if (error instanceof DomainError && error.code === 'csv_unknown_column')
+      throw new DomainError(
+        error.code,
+        'Başlıkta tanınmayan sütun var. Örnek şablondaki başlıkları kullanın.',
+      )
+    if (error instanceof DomainError && error.code === 'csv_duplicate_column')
+      throw new DomainError(error.code, 'Başlıkta aynı sütun birden çok kez var.')
+    throw error
+  }
+}
 
 /** Tarih hücresi: `YYYY-MM-DD`, `GG.AA.YYYY`, `GG/AA/YYYY` ya da `GG-AA-YYYY`; geçersizse `null`. */
 export function parseImportDay(cell: string): string | null {

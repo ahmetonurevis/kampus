@@ -39,9 +39,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
@@ -77,7 +75,9 @@ import {
   type RenewalFormValues,
   type RenewalQuoteView,
 } from './renewal-forms.ts'
+import { ChoiceFieldset } from './RenewalChoices.tsx'
 import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
+import { RenewalYearSection } from './RenewalYearSection.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -277,6 +277,13 @@ export function RenewalsPage({ page }: { page: NavPage }) {
           onRowClick={(row) => openRecord(row.id)}
         />
       </section>
+      {staff ? (
+        <RenewalYearSection
+          academicYear={academicYear}
+          institutionType={session?.institution?.type ?? 'school'}
+          canApprove={role === 'yonetici'}
+        />
+      ) : null}
       {staff ? (
         <PriceIndexSection canManage={role === 'yonetici'} academicYear={academicYear} />
       ) : null}
@@ -862,45 +869,22 @@ function ChoiceGroup({
   >['control']
   disabled: boolean
 }) {
-  if (options.length === 0) return null
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">{legend}</legend>
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => {
-          const selected = field.value as readonly string[]
-          return (
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {options.map((option) => {
-                const id = `yenileme-${name}-${option.value}`
-                return (
-                  <div key={option.value} className="flex items-center gap-2.5">
-                    <Checkbox
-                      id={id}
-                      checked={selected.includes(option.value)}
-                      disabled={disabled}
-                      onCheckedChange={(checked) =>
-                        field.onChange(
-                          checked === true
-                            ? [...selected, option.value]
-                            : selected.filter((value) => value !== option.value),
-                        )
-                      }
-                    />
-                    <Label htmlFor={id} className="font-normal">
-                      {option.label}
-                    </Label>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        }}
-      />
-    </fieldset>
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <ChoiceFieldset
+          legend={legend}
+          hint={hint}
+          idPrefix={`yenileme-${name}`}
+          options={options}
+          selected={field.value as readonly string[]}
+          onChange={field.onChange}
+          disabled={disabled}
+        />
+      )}
+    />
   )
 }
 

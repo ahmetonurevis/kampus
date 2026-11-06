@@ -452,6 +452,87 @@ test.describe('kayıt yenileme', () => {
     await expect(opener).toBeFocused()
   })
 
+  test('IST-105, ON-086: yönetici yeni yılın planlarını önizler, onaylar; sonuç satır satır gelir, sınıf değişmez', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3', 's4'],
+      collections: ['renewals'],
+      tariffYears: ['current', 'next'],
+    })
+    const client = await api(school.user('yonetici'))
+    const year = await renewalYear(client)
+    const rates = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: year,
+        ppiBasisPoints: 4000,
+        cpiBasisPoints: 3000,
+        source: 'TÜİK bülteni 53607',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(rates.status, JSON.stringify(rates.body)).toBe(201)
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-yenileme')
+    const section = page.getByRole('region', { name: 'Yeni yılın planları' })
+    await section.getByRole('checkbox', { name: 'Zeynep Demir seç' }).click()
+    await section.getByRole('checkbox', { name: 'Arda Çelik seç' }).click()
+    await section.getByRole('button', { name: 'Seçilenleri planla (2)' }).click()
+
+    const form = page.getByRole('dialog', { name: 'Toplu yenileme planı' })
+    await expect(form.getByLabel('Zeynep Demir hedef sınıfı')).toHaveValue('c1')
+    await form.getByLabel('Taksit sayısı').fill('6')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Önizle' }).click()
+    await expect(form.getByText('2 hazır · 0 atlanacak · 0 yapılamaz')).toBeVisible()
+    await expect(form.getByText('6 taksit', { exact: false }).first()).toBeVisible()
+    // Önizleme yazmaz.
+    expect(await renewalOf(client, 's3')).toBeUndefined()
+
+    await form.getByRole('button', { name: 'Planları onayla' }).click()
+    const result = page.getByRole('dialog', { name: 'Toplu plan sonucu' })
+    await expect(result.getByText('2 planlandı · 0 atlandı · 0 yapılamadı')).toBeVisible()
+    await result.getByRole('button', { name: 'Kapat', exact: true }).click()
+    await expect(result).toBeHidden()
+
+    await expect.poll(async () => (await renewalOf(client, 's3'))?.status).toBe('Planlandı')
+    await expect.poll(async () => (await renewalOf(client, 's4'))?.status).toBe('Planlandı')
+    expect(await classOf(client, 's3')).toBe('c3')
+    await expect(section.getByText('Bu durumda öğrenci yok.')).toBeVisible()
+  })
+
+  test('IST-105, ON-086: ön büro toplu planı önizler, onay düğmesi yoktur, kayıt yazılmaz', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'onburo'],
+      students: ['s4'],
+      collections: ['renewals'],
+      tariffYears: ['current', 'next'],
+    })
+    const client = await api(school.user('yonetici'))
+    const page = await loginAs(school.user('onburo'))
+    await page.goto('/onburo/kayit-yenileme')
+    const section = page.getByRole('region', { name: 'Yeni yılın planları' })
+    await section.getByRole('checkbox', { name: 'Arda Çelik seç' }).click()
+    await section.getByRole('button', { name: 'Seçilenleri planla (1)' }).click()
+    const form = page.getByRole('dialog', { name: 'Toplu yenileme planı' })
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Önizle' }).click()
+    await expect(form.getByText('1 hazır · 0 atlanacak · 0 yapılamaz')).toBeVisible()
+    await expect(form.getByText('Toplu onayı yönetici verir.')).toBeVisible()
+    await expect(form.getByRole('button', { name: 'Planları onayla' })).toHaveCount(0)
+    expect(await renewalOf(client, 's4')).toBeUndefined()
+  })
+
   test('veli yenileme işlemi göremez; liste kapsamına daralır', async ({ loginAs }) => {
     const page = await loginAs('veli')
     await page.goto('/veli/kayit-yenileme?cocuk=s1')
@@ -459,5 +540,6 @@ test.describe('kayıt yenileme', () => {
     await expect(page.getByRole('button', { name: 'Kayıt yenile' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Zeynep Demir' })).toHaveCount(0)
     await expect(page.getByRole('region', { name: 'Artış tavanı oranları' })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Yeni yılın planları' })).toHaveCount(0)
   })
 })

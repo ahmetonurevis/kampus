@@ -69,6 +69,7 @@ import {
   seatsTaken,
   suggestedClassOrder,
 } from './enrollment-form.ts'
+import { ReferralRewardField } from '../finance/ReferralRewardField.tsx'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
@@ -252,6 +253,7 @@ function EnrollmentForm({
       guardianPhone: '',
       relationship: 'mother',
       existingParentId: '',
+      referralRewardId: '',
       studentPhone: '',
       studentEmail: '',
       lessonHours: '',
@@ -743,7 +745,13 @@ function EnrollmentForm({
                   description="Kardeş adayın velisi ve adayın telefonuyla eşleşen veliler önerilir."
                 >
                   {(control) => (
-                    <NativeSelect {...control} {...form.register('existingParentId')}>
+                    <NativeSelect
+                      {...control}
+                      {...form.register('existingParentId', {
+                        // Hak velinindir; veli değişince önceki velinin hakkı seçili kalmaz.
+                        onChange: () => form.setValue('referralRewardId', ''),
+                      })}
+                    >
                       <NativeSelectOption value="">
                         {matches.data?.data.length ? 'Veli seçin' : 'Eşleşen veli yok'}
                       </NativeSelectOption>
@@ -784,6 +792,18 @@ function EnrollmentForm({
                     </label>
                   ))}
                 </fieldset>
+              ) : null}
+              {values.discounts?.includes('referral') ? (
+                <ReferralRewardField
+                  id="kayit-referans-hakki"
+                  query={
+                    values.guardianMode === 'existing' && values.existingParentId
+                      ? { parentId: values.existingParentId }
+                      : null
+                  }
+                  error={errors.referralRewardId}
+                  register={form.register('referralRewardId')}
+                />
               ) : null}
               {awardable.length > 0 ? (
                 <FormField

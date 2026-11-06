@@ -60,7 +60,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Pazarlama bütçesi kaynak bazlı dönüşümle ölçülür.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — sabit liste (`PROSPECT_SOURCES`) ve veli referansında referans öğrenci (`referrerStudentId`) `packages/school-core/src/lib/prospects.ts`; aday düzenleme işlemi olmadığı için değişmezlik kendiliğinden. Referans indirimi bağı (`DOM-FIN-024`) yok.
+- **Kodda:** kısmen — sabit liste (`PROSPECT_SOURCES`) ve veli referansında referans öğrenci (`referrerStudentId`) `packages/school-core/src/lib/prospects.ts`; aday düzenleme işlemi olmadığı için değişmezlik kendiliğinden. Referans indirimi bağı kesin kayıtta kurulur (`DOM-FIN-024`, `lib/finance-referrals.ts`).
 
 ### DOM-KAY-008 · Aday saklama ve imha
 

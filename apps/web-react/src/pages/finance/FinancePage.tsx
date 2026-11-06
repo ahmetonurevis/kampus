@@ -10,6 +10,7 @@ import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
+import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
@@ -27,6 +28,7 @@ const VIEWS = {
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
   scholarships: { label: 'Burslar', param: 'burs' },
+  referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
 } as const
@@ -109,6 +111,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
       ) : null}
+      {tab === 'referrals' ? <ReferralRewardsSection /> : null}
       {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
       {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
       {tab === 'invoices' ? (

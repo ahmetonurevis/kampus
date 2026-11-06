@@ -74,6 +74,7 @@ import {
   type RenewalQuoteView,
 } from './renewal-forms.ts'
 import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
+import { ReferralRewardField } from './ReferralRewardField.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -496,7 +497,10 @@ function PlanModal({
     resolver: zodResolver(renewalFormSchema),
     defaultValues: renewalDefaults(),
   })
-  const [studentId, mode] = useWatch({ control: form.control, name: ['studentId', 'mode'] })
+  const [studentId, mode, discounts] = useWatch({
+    control: form.control,
+    name: ['studentId', 'mode', 'discounts'],
+  })
   // Önceki yıldan öğrenim ücreti borcu (DOM-KAY-025, ON-057): plan yöneticinin açık onayını ister.
   const [debtApproved, setDebtApproved] = useState(false)
   const debtCents = preview !== null && preview !== 'graduate' ? preview.outstandingTuitionCents : 0
@@ -726,6 +730,15 @@ function PlanModal({
               control={form.control}
               disabled={locked}
             />
+            {discounts.includes('referral') ? (
+              <ReferralRewardField
+                id="yenileme-referans-hakki"
+                query={studentId ? { familyOfStudentId: studentId } : null}
+                error={errors.referralRewardId}
+                disabled={locked}
+                register={form.register('referralRewardId')}
+              />
+            ) : null}
             <ChoiceGroup
               legend="Ek hizmetler"
               hint="Velinin talep ettiği hizmetler ayrı taksit olarak açılır."

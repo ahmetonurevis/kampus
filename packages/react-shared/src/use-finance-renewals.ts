@@ -5,6 +5,7 @@ import { CollectionTooLargeError, collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { REFERRAL_REWARDS_KEY } from './use-finance-referrals.ts'
 import { useKampusClient } from './kampus-context.ts'
 
 // Kayıt yenileme kancaları (`/finance/renewals`; IST-100, DOM-FIN-005, DOM-KAY-020). Önizleme
@@ -36,6 +37,7 @@ const RENEWAL_WRITES = [
   collectionKeyPrefix('invoices'),
   collectionKeyPrefix('students'),
   ['scholarships'],
+  REFERRAL_REWARDS_KEY,
 ]
 
 export function useRenewals(query: RenewalListQuery, options: { enabled?: boolean } = {}) {

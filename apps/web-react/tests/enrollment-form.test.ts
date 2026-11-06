@@ -56,6 +56,7 @@ test('class_campus_mismatch, DOM-KAY-013: aday değişince sınıf, kampüs onay
     identityNumber: '',
     birthDate: '',
     existingParentId: '',
+    referralRewardId: '',
     guardianName: '',
     guardianPhone: '',
     relationship: 'mother',

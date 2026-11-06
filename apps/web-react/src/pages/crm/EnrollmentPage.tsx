@@ -20,6 +20,7 @@ import {
 } from '@kampus/school-core/lib/enrollment.ts'
 import {
   carriedOverTariffNote,
+  DISCOUNT_LINE_LABELS,
   FEE_DISCOUNT_KIND_LABELS,
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
@@ -27,6 +28,12 @@ import {
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import {
+  contractPaymentTermLabel,
+  defaultInstallmentCount,
+  installmentOptionLabel,
+  offeredInstallmentCounts,
+} from '@kampus/school-core/lib/payment-terms.ts'
 import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
 import {
   useEnrollProspect,
@@ -257,7 +264,7 @@ function EnrollmentForm({
       lessonHours: '',
       discounts: [],
       extras: [],
-      installmentCount: '8',
+      installmentCount: String(defaultInstallmentCount(tariff.paymentTerms)),
       firstDueDate: today,
       allCampuses: false,
       confirmOtherCampus: false,
@@ -458,6 +465,12 @@ function EnrollmentForm({
           : values.guardianName,
     ],
     ['Taksit', `${values.installmentCount} taksit · İlk vade ${values.firstDueDate}`],
+    ...(preview.ok && preview.price.paymentTerm
+      ? ([['Ödeme koşulu', contractPaymentTermLabel(preview.price.paymentTerm)]] as [
+          string,
+          string,
+        ][])
+      : []),
     ['Aday aydınlatması', prospectNoticeLabel(prospect?.record.privacyNotice)],
   ]
 
@@ -831,9 +844,9 @@ function EnrollmentForm({
                 <FormField id="kayit-taksit" label="Taksit sayısı" error={errors.installmentCount}>
                   {(control) => (
                     <NativeSelect {...control} {...form.register('installmentCount')}>
-                      {Array.from({ length: 12 }, (_, index) => index + 1).map((count) => (
+                      {offeredInstallmentCounts(tariff.paymentTerms).map((count) => (
                         <NativeSelectOption key={count} value={String(count)}>
-                          {count} taksit
+                          {installmentOptionLabel(count, tariff.paymentTerms)}
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>
@@ -902,11 +915,17 @@ function EnrollmentForm({
                 value={`${String(carriedOverFromYear)}–${String(carriedOverFromYear + 1)} (önceki yıl)`}
               />
             )}
+            {preview.price.paymentTerm ? (
+              <Line
+                label="Ödeme koşulu"
+                value={contractPaymentTermLabel(preview.price.paymentTerm)}
+              />
+            ) : null}
             <Line label="İlan ücreti" value={money(preview.price.grossCents)} />
             {preview.price.discounts.map((line) => (
               <Line
                 key={line.kind}
-                label={`${FEE_DISCOUNT_KIND_LABELS[line.kind]} indirimi`}
+                label={`${DISCOUNT_LINE_LABELS[line.kind]} indirimi`}
                 value={`-${money(line.amountCents)}`}
               />
             ))}

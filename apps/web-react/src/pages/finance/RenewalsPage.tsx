@@ -24,6 +24,10 @@ import {
   type FeeItemKind,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import {
+  announcedPaymentTermLabel,
+  contractPaymentTermLabel,
+} from '@kampus/school-core/lib/payment-terms.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -340,6 +344,9 @@ function RenewalDetail({
                   ? [`İlan edilen ücret: ${money(data.pricing.announcedCents)}`]
                   : []),
                 ...(data.pricing ? ceilingLines(data.pricing.ceiling) : []),
+                ...(data.pricing?.paymentTerm
+                  ? [`Ödeme koşulu: ${contractPaymentTermLabel(data.pricing.paymentTerm)}`]
+                  : []),
                 ...(data.tuitionCents === null
                   ? []
                   : [`Öğrenim ücreti: ${money(data.tuitionCents)}`]),
@@ -682,7 +689,18 @@ function PlanModal({
                   />
                 )}
               </FormField>
-              <FormField id="yenileme-taksit" label="Taksit sayısı" error={errors.installmentCount}>
+              <FormField
+                id="yenileme-taksit"
+                label="Taksit sayısı"
+                error={errors.installmentCount}
+                {...(tariff?.paymentTerms.length
+                  ? {
+                      description: `İlan edilen koşullar: ${tariff.paymentTerms
+                        .map(announcedPaymentTermLabel)
+                        .join('; ')}`,
+                    }
+                  : {})}
+              >
                 {(control) => (
                   <Input
                     {...control}

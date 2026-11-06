@@ -44,6 +44,15 @@ const school = { institutionType: 'school', today: TODAY } as const
 const language = { institutionType: 'language_school', today: TODAY } as const
 
 const draftRow = { status: 'draft', items: [tuition], discounts: [] } as const
+const paymentTerms = [
+  {
+    kind: 'upfront',
+    minInstallments: 1,
+    maxInstallments: 1,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+] as const
 
 test('DOM-FIN-002: yeni taslak sürüm numarası artar, yılda tek açık taslak olur', () => {
   const plan = planTariffCreate({ academicYear: 2026, items: [tuition] }, [
@@ -89,7 +98,7 @@ test('DOM-FIN-002: yayımlanmış tarife düzenlenemez ve yeniden yayımlanamaz'
 })
 
 test('DOM-FIN-002: öğrenim ücreti olmadan ve onaylı tutarsız okul tarifesi yayımlanmaz', () => {
-  const draft = (items: FeeItem[]) => ({ status: 'draft', items }) as const
+  const draft = (items: FeeItem[]) => ({ status: 'draft', items, paymentTerms }) as const
   assert.throws(
     () => planTariffPublish(draft([meal]), publishInput, school),
     isDomainError('tariff_tuition_required'),
@@ -125,7 +134,11 @@ test('IST-104: ilan tutarını aşan fiyat girilince uyarı koşulu doğar', () 
 
 test('DOM-FIN-006: öğrenim ücreti birimi kurum türüne uyar', () => {
   const draft = (unit: FeeItem['unit']) =>
-    ({ status: 'draft', items: [{ ...tuition, unit, announcedAmountCents: null }] }) as const
+    ({
+      status: 'draft',
+      items: [{ ...tuition, unit, announcedAmountCents: null }],
+      paymentTerms,
+    }) as const
   assert.throws(
     () => planTariffPublish(draft('lesson_hour'), publishInput, school),
     isDomainError('tariff_unit_mismatch'),
@@ -138,7 +151,7 @@ test('DOM-FIN-006: öğrenim ücreti birimi kurum türüne uyar', () => {
 })
 
 test('DOM-FIN-002: ilan ve MEBBİS tarihi ileri gün olamaz', () => {
-  const draft = { status: 'draft', items: [tuition] } as const
+  const draft = { status: 'draft', items: [tuition], paymentTerms } as const
   assert.throws(
     () => planTariffPublish(draft, { ...publishInput, announcedDate: '2026-10-07' }, school),
     isDomainError('tariff_announced_in_future'),
@@ -170,6 +183,7 @@ test('IST-104: tarife formu kuruşa çevrilir, kayıtlı tarife forma kayıpsız
       { kind: 'sibling', percentBasisPoints: 1_250, amountCents: null },
       { kind: 'corporate', percentBasisPoints: null, amountCents: 100_050 },
     ] as const,
+    paymentTerms: [],
   }
   const form = tariffToForm(stored)
   assert.equal(form.items[0]?.amount, '300000,00')

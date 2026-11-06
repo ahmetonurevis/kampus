@@ -14,6 +14,7 @@ import { mirrorFinanceIds } from '../src/db/finance-mirror-store.ts'
 import { allocatedByInvoice } from '../src/db/payments.ts'
 import { findRecord, insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import { records } from '../src/db/schema/records.ts'
 import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import {
@@ -26,7 +27,7 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
-import { contractTerms, insertTestTariff } from './support/finance-terms.ts'
+import { contractTerms, insertTestTariff, TEST_TARIFF_ID } from './support/finance-terms.ts'
 
 /**
  * Sözleşme onayı ve ek protokol uçları (IST-092; DOM-FIN-010, -012, -051). Her test kendi kurumunu
@@ -508,6 +509,41 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
     assert.equal(data.netCents, 9_000_000)
     assert.deepEqual(data.discounts, [{ kind: 'early_registration', amountCents: 1_000_000 }])
     assert.equal(data.amount, 9_000_000)
+  })
+
+  test('DOM-FIN-013: ek protokol tarifenin ödeme koşulunun dışına çıkamaz; indirim değişmese de koşul denetlenir', async () => {
+    const t = await tenant()
+    const paymentTerm = {
+      kind: 'installment' as const,
+      minInstallments: 2,
+      maxInstallments: 4,
+      discountPercentBasisPoints: null,
+      discountAmountCents: null,
+    }
+    await db
+      .update(feeTariffs)
+      .set({ paymentTerms: [paymentTerm] })
+      .where(and(eq(feeTariffs.institutionId, t.id), eq(feeTariffs.id, TEST_TARIFF_ID)))
+    const previous = await approve(t)
+    assertError(
+      await post(
+        url(CONTRACT_ID, 'amendments'),
+        t.admin,
+        { ...AMEND, installmentCount: 5 },
+        previous.version,
+      ),
+      422,
+      'payment_term_not_in_tariff',
+    )
+    const created = await post(
+      url(CONTRACT_ID, 'amendments'),
+      t.admin,
+      { ...AMEND, installmentCount: 3 },
+      previous.version,
+    )
+    assert.equal(created.statusCode, 201, created.body)
+    const { data } = await contractOf(t.id, created.json().data.entity.id)
+    assert.deepEqual(data.paymentTerm, { ...paymentTerm, installmentCount: 3 })
   })
 
   test('IST-092, DOM-FIN-010: onaylı sözleşmenin satırı veritabanında da değişmez (55000), canlı bağlar değişir', async () => {

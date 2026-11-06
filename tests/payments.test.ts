@@ -185,7 +185,7 @@ test('DOM-FIN-033: iptal taksiti yeniden açar, ikinci iptal reddedilir', () => 
   assert.equal(paid(state).length, 1)
   const { reason } = reversePayment(
     state,
-    { reversedAt: null, allocations: plan.allocations },
+    { reversedAt: null, recordedAt: NOW, allocations: plan.allocations },
     { reason: 'Yanlış öğrenciye girildi' },
   )
   assert.equal(reason, 'Yanlış öğrenciye girildi')
@@ -194,14 +194,18 @@ test('DOM-FIN-033: iptal taksiti yeniden açar, ikinci iptal reddedilir', () => 
     () =>
       reversePayment(
         state,
-        { reversedAt: NOW, allocations: plan.allocations },
+        { reversedAt: NOW, recordedAt: NOW, allocations: plan.allocations },
         { reason: 'Yeniden iptal' },
       ),
     'payment_already_reversed',
     'conflict',
   )
   assert.throws(() =>
-    reversePayment(state, { reversedAt: null, allocations: [] }, { reason: 'kısa' }),
+    reversePayment(
+      state,
+      { reversedAt: null, recordedAt: NOW, allocations: [] },
+      { reason: 'kısa' },
+    ),
   )
 })
 
@@ -221,7 +225,12 @@ test('DOM-FIN-041: ayrılmış öğrencinin tahsilatı iptal edilemez; kayıt de
     () =>
       reversePayment(
         state,
-        { reversedAt: null, allocations: plan.allocations, withdrawals: [{ debtInvoiceId: null }] },
+        {
+          reversedAt: null,
+          recordedAt: NOW,
+          allocations: plan.allocations,
+          withdrawals: [{ debtInvoiceId: null, recordedAt: NOW }],
+        },
         { reason: 'Yanlış öğrenciye girildi' },
       ),
     'payment_student_withdrawn',
@@ -232,12 +241,12 @@ test('DOM-FIN-041: ayrılmış öğrencinin tahsilatı iptal edilemez; kayıt de
 
 test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat iptal edilir; ayrılış öncesi tahsilat edilemez', () => {
   const { state } = fixture()
-  const withdrawals = [{ debtInvoiceId: 'test-inv-3' }]
+  const withdrawals = [{ debtInvoiceId: 'test-inv-3', recordedAt: NOW }]
   const debtPayment = [{ invoiceId: 'test-inv-3', amountCents: 10_000 }]
   state.invoices.find((invoice) => invoice.id === 'test-inv-3')!.paidAt = NOW
   const result = reversePayment(
     state,
-    { reversedAt: null, allocations: debtPayment, withdrawals },
+    { reversedAt: null, recordedAt: NOW, allocations: debtPayment, withdrawals },
     { reason: 'Yanlış tutar girildi' },
   )
   assert.equal(result.reason, 'Yanlış tutar girildi')
@@ -255,7 +264,7 @@ test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat
       () =>
         reversePayment(
           state,
-          { reversedAt: null, allocations, withdrawals },
+          { reversedAt: null, recordedAt: NOW, allocations, withdrawals },
           { reason: 'Yanlış tutar girildi' },
         ),
       'payment_student_withdrawn',
@@ -267,10 +276,53 @@ test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat
   assert.doesNotThrow(() =>
     reversePayment(
       state,
-      { reversedAt: null, allocations: [{ invoiceId: 'test-inv-1', amountCents: 10_000 }] },
+      {
+        reversedAt: null,
+        recordedAt: NOW,
+        allocations: [{ invoiceId: 'test-inv-1', amountCents: 10_000 }],
+      },
       { reason: 'Yanlış tutar girildi' },
     ),
   )
+})
+
+test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra abonelik taksitine alınan tahsilat iptal edilir; önce ya da aynı anda alınan edilemez', () => {
+  const LATER = '2026-10-06T09:00:01.000Z'
+  const service = { invoiceId: 'test-inv-1', amountCents: 10_000 }
+  const tuition = { invoiceId: 'test-inv-2', amountCents: 10_000 }
+  const payment = (
+    recordedAt: string,
+    allocations: { invoiceId: string; amountCents: number }[],
+  ) => ({
+    reversedAt: null,
+    recordedAt,
+    allocations,
+    withdrawals: [{ debtInvoiceId: null, recordedAt: NOW }],
+    serviceInvoiceIds: ['test-inv-1'],
+  })
+  const { state } = fixture()
+  const target = state.invoices.find((invoice) => invoice.id === 'test-inv-1')!
+  target.paidAt = LATER
+  target.method = 'Nakit'
+  const before = JSON.stringify(state)
+  for (const rejected of [
+    payment(NOW, [service]),
+    payment('2026-10-06T08:59:59.000Z', [service]),
+    // Karışık dağılımın öğrenim kısmı ayrılış hesabına girer.
+    payment(LATER, [service, tuition]),
+    payment(LATER, [tuition]),
+    { ...payment(LATER, [service]), serviceInvoiceIds: [] },
+  ]) {
+    rejects(
+      () => reversePayment(state, rejected, { reason: 'Yanlış tutar girildi' }),
+      'payment_student_withdrawn',
+      'conflict',
+    )
+    assert.equal(JSON.stringify(state), before)
+  }
+  reversePayment(state, payment(LATER, [service]), { reason: 'Yanlış tutar girildi' })
+  assert.equal(target.paidAt, null)
+  assert.equal(target.method, null)
 })
 
 test('DOM-FIN-001: tutar metinden kuruşa kayıpsız çevrilir', () => {

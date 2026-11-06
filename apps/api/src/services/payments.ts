@@ -35,6 +35,7 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
+import { serviceInvoiceIdsAmong } from '../db/finance-student-services.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -251,6 +252,14 @@ export async function reversePaymentCommand(
         if (payment === null) throw new NotFoundError()
         if (payment.version !== expectedVersion) throw new ConflictError()
         const withdrawals = await withdrawalsForReversal(tx, ctx.institutionId, payment.studentId)
+        const serviceInvoiceIds =
+          withdrawals.length === 0
+            ? []
+            : await serviceInvoiceIdsAmong(
+                tx,
+                ctx.institutionId,
+                payment.allocations.map((allocation) => allocation.invoiceId),
+              )
         return {
           scalars,
           run: (state, { now }) => {
@@ -259,8 +268,10 @@ export async function reversePaymentCommand(
               state,
               {
                 reversedAt: payment.reversedAt?.toISOString() ?? null,
+                recordedAt: payment.createdAt.toISOString(),
                 allocations: payment.allocations,
                 withdrawals,
+                serviceInvoiceIds,
               },
               input,
             )

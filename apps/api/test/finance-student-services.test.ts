@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { after, before, describe, test } from 'node:test'
+import { after, afterEach, before, describe, test } from 'node:test'
 
 import { and, eq } from 'drizzle-orm'
 
@@ -75,14 +75,19 @@ describe('ON-087: ek hizmet aboneliği uçları', () => {
   let close: () => Promise<void>
   let app: App
   let serial = 0
+  // Ayrılış ve tahsilat sırası kayıt anından okunur; o testler saati ilerletir, sonraki test geri alır.
+  let clockNow = FIXED_NOW
   const key = () => ({ 'idempotency-key': `test-svc-${String(++serial).padStart(5, '0')}` })
   checkFinanceMirrorAfterEach(() => db)
+  afterEach(() => {
+    clockNow = FIXED_NOW
+  })
 
   before(async () => {
     assert.ok(STUDENT)
     assert.ok(OTHER)
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    app = await buildTestApp(db, { clock: () => clockNow })
   })
   after(async () => {
     await app.close()
@@ -648,5 +653,80 @@ describe('ON-087: ek hizmet aboneliği uçları', () => {
       .where(eq(studentServiceInvoices.institutionId, a.id))
     assert.equal(links.length, 5)
     assertError(await subscribe(a.cookie), 409, 'student_service_student_inactive')
+  })
+
+  const WITHDRAWAL = {
+    withdrawalDate: '2026-10-01',
+    termStartDate: '2026-09-07',
+    attendedUnits: 18,
+    totalUnits: 180,
+    reason: 'relocation',
+    targetSchool: null,
+  }
+  const withdrawStudent = (cookie: string) =>
+    send('POST', `/api/v1/students/${String(STUDENT?.id)}/withdraw`, cookie, WITHDRAWAL, key())
+  const payInvoice = (cookie: string, invoiceId: string, amountCents: number, reference: string) =>
+    send(
+      'POST',
+      '/api/v1/payments',
+      cookie,
+      { studentId: STUDENT?.id, amountCents, method: 'Banka havalesi', reference, invoiceId },
+      key(),
+    )
+  const reversePayment = (cookie: string, payment: { id: string; version: number }) =>
+    send(
+      'POST',
+      `/api/v1/payments/${payment.id}/reverse`,
+      cookie,
+      { reason: 'Yanlış öğrenciye girildi' },
+      { 'if-match': `"${String(payment.version)}"`, ...key() },
+    )
+
+  test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan abonelik taksitine alınan tahsilat iptal edilir, taksit yeniden açılır', async () => {
+    const a = await institution({ contract: {} })
+    const meal = (await subscribe(a.cookie, MEAL)).json().data
+    const [september] = meal.invoices as { id: string }[]
+    assert.ok(september)
+    const withdrawn = await withdrawStudent(a.cookie)
+    assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+
+    clockNow = new Date(FIXED_NOW.getTime() + 60_000)
+    const late = await payInvoice(a.cookie, september.id, 500_000, 'TR-SVC-LATE')
+    assert.equal(late.statusCode, 201, late.body)
+    const paid = await findRecord(db, a.id, 'invoices', september.id)
+    assert.notEqual(paid?.data.paidAt, null)
+
+    const reversed = await reversePayment(a.cookie, late.json().data)
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const reopened = await findRecord(db, a.id, 'invoices', september.id)
+    assert.equal(reopened?.data.paidAt, null)
+    const read = (await send('GET', `${BASE}/${String(meal.id)}`, a.cookie)).json().data
+    assert.equal(read.paidCents, 0)
+    assert.equal(read.openCents, read.billedCents)
+    // Ayrılış kaydı değişmez: döküm bu tahsilata dayanmaz.
+    const row = await send(
+      'GET',
+      `/api/v1/withdrawals/${String(withdrawn.json().data.id)}`,
+      a.cookie,
+    )
+    assert.equal(row.json().data.refundCents, withdrawn.json().data.refundCents)
+    assert.equal(row.json().data.debtCents, withdrawn.json().data.debtCents)
+  })
+
+  test('DOM-FIN-041: ayrılıştan önce abonelik taksitine alınan tahsilat iptal edilemez, kayıt değişmez', async () => {
+    const a = await institution({ contract: {} })
+    const meal = (await subscribe(a.cookie, MEAL)).json().data
+    const [september] = meal.invoices as { id: string }[]
+    assert.ok(september)
+    const early = await payInvoice(a.cookie, september.id, 500_000, 'TR-SVC-EARLY')
+    assert.equal(early.statusCode, 201, early.body)
+    clockNow = new Date(FIXED_NOW.getTime() + 60_000)
+    assert.equal((await withdrawStudent(a.cookie)).statusCode, 201)
+
+    const before = await findRecord(db, a.id, 'invoices', september.id)
+    clockNow = new Date(FIXED_NOW.getTime() + 120_000)
+    assertError(await reversePayment(a.cookie, early.json().data), 409, 'payment_student_withdrawn')
+    const after = await findRecord(db, a.id, 'invoices', september.id)
+    assert.deepEqual(after?.data, before?.data)
   })
 })

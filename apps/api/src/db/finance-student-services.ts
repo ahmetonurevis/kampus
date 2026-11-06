@@ -177,6 +177,25 @@ export async function invoiceIdsOf(
   return links
 }
 
+/** Verilen taksitlerden abonelik taksiti olanlar; tahsilat iptali okur (DOM-FIN-041). */
+export async function serviceInvoiceIdsAmong(
+  db: Database,
+  institutionId: string,
+  invoiceIds: readonly string[],
+): Promise<string[]> {
+  if (invoiceIds.length === 0) return []
+  const rows = await db
+    .select({ invoiceId: studentServiceInvoices.invoiceId })
+    .from(studentServiceInvoices)
+    .where(
+      and(
+        eq(studentServiceInvoices.institutionId, institutionId),
+        inArray(studentServiceInvoices.invoiceId, [...invoiceIds]),
+      ),
+    )
+  return rows.map((row) => row.invoiceId)
+}
+
 export type StudentServiceStoredLine = StudentServiceInvoiceLine & { installment: number }
 
 /** Aboneliklerin taksitleri, sırayla; iptal edilen taksit arşivde olduğu için işaretli döner. */

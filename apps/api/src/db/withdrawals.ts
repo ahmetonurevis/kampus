@@ -87,7 +87,7 @@ export async function withdrawalsForReversal(
   studentId: string,
 ): Promise<ReversalWithdrawal[]> {
   const rows = await db
-    .select({ breakdown: studentWithdrawals.breakdown })
+    .select({ breakdown: studentWithdrawals.breakdown, createdAt: studentWithdrawals.createdAt })
     .from(studentWithdrawals)
     .where(
       and(
@@ -95,7 +95,10 @@ export async function withdrawalsForReversal(
         eq(studentWithdrawals.studentId, studentId),
       ),
     )
-  return rows.map((row) => ({ debtInvoiceId: row.breakdown.debtInvoiceId ?? null }))
+  return rows.map((row) => ({
+    debtInvoiceId: row.breakdown.debtInvoiceId ?? null,
+    recordedAt: row.createdAt.toISOString(),
+  }))
 }
 
 function statusFilter(status: RefundStatus | undefined): SQL | undefined {

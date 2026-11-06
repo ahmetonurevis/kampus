@@ -324,36 +324,57 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
 export interface ReversalWithdrawal {
   /** Ayrılışta kalan borç için açılan taksit; borç yoksa ya da eski kayıtta `null`. */
   debtInvoiceId: string | null
+  /** Ayrılışın kayıt anı; kullanıcının girdiği ayrılış günü değil. */
+  recordedAt: string
+}
+
+/** İptal denetiminin okuduğu tahsilat alanları. */
+export interface ReversalPayment {
+  reversedAt: string | null
+  /** Tahsilatın kayıt anı; geriye tarihli `paidAt` sırayı belirlemez. */
+  recordedAt: string
+  allocations: readonly PaymentAllocation[]
+  /** Öğrencinin ayrılış kayıtları; iade ya da borç hesabı ayrılış öncesi tahsilata dayanır. */
+  withdrawals?: readonly ReversalWithdrawal[]
+  /** Dağılımdaki ek hizmet aboneliği taksitleri (DOM-FIN-003). */
+  serviceInvoiceIds?: readonly string[]
 }
 
 /**
- * Tahsilat ayrılış hesabının dışında mı (DOM-FIN-041): yalnız ayrılışta açılan borç taksitlerine
- * dağıtılmış tahsilat ayrılıştan sonra alınmıştır, çünkü o taksitler ayrılıştan önce yoktu. Ayrılış
- * öncesi tahsilat dökümdeki ödenen tutara girer; iptali iadeyi ya da borcu geçersiz kılar.
+ * Tahsilat ayrılış hesabının dışında mı (DOM-FIN-041). Ayrılışta açılan borç taksitine dağıtılmış
+ * tahsilat ayrılıştan sonra alınmıştır, çünkü o taksit ayrılıştan önce yoktu. Abonelik taksiti
+ * ayrılıştan önce de vardır; o yüzden tahsilat bütün ayrılışlardan sonra kaydedilmiş olmalıdır, aynı
+ * an ya da önce kaydedilen dökümde gösterilecek tutardır (K-17) ve iptal edilmez. Ayrılış öncesi
+ * tahsilat dökümdeki ödenen tutara girer; iptali iadeyi ya da borcu geçersiz kılar.
  */
 function isAfterWithdrawal(
-  allocations: readonly PaymentAllocation[],
+  payment: ReversalPayment,
   withdrawals: readonly ReversalWithdrawal[],
 ): boolean {
   const debtIds = new Set(withdrawals.flatMap((item) => item.debtInvoiceId ?? []))
+  const recordedAt = Date.parse(payment.recordedAt)
+  const lateServiceIds = new Set(
+    withdrawals.every((item) => recordedAt > Date.parse(item.recordedAt))
+      ? (payment.serviceInvoiceIds ?? [])
+      : [],
+  )
   return (
-    allocations.length > 0 && allocations.every((allocation) => debtIds.has(allocation.invoiceId))
+    payment.allocations.length > 0 &&
+    payment.allocations.every(
+      ({ invoiceId }) => debtIds.has(invoiceId) || lateServiceIds.has(invoiceId),
+    )
   )
 }
 
 /**
  * Tahsilat iptali: dağıtıldığı taksitleri yeniden açar (DOM-FIN-033). Dağılım taksit tutarını
  * aşmadığı için iptalden sonra taksit tam ödenmiş kalamaz. Ayrılmış öğrencide yalnız ayrılıştan
- * sonra kalan borca alınan tahsilat iptal edilir; borç taksiti yeniden açılır (DOM-FIN-041).
+ * sonra kalan borca ya da abonelik taksitine alınan tahsilat iptal edilir; taksit yeniden açılır
+ * (DOM-FIN-041).
  */
 export function reversePayment(
   state: State,
-  payment: {
-    reversedAt: string | null
-    allocations: readonly PaymentAllocation[]
-    /** Öğrencinin ayrılış kayıtları; iade ya da borç hesabı ayrılış öncesi tahsilata dayanır. */
-    withdrawals?: readonly ReversalWithdrawal[]
-  },
+  payment: ReversalPayment,
   input: unknown,
 ): { reason: string } {
   const { reason } = reversePaymentSchema.parse(input)
@@ -362,10 +383,10 @@ export function reversePayment(
       kind: 'conflict',
     })
   const withdrawals = payment.withdrawals ?? []
-  if (withdrawals.length > 0 && !isAfterWithdrawal(payment.allocations, withdrawals))
+  if (withdrawals.length > 0 && !isAfterWithdrawal(payment, withdrawals))
     throw new DomainError(
       'payment_student_withdrawn',
-      'Ayrılış hesabına giren tahsilat iptal edilemez; yalnız ayrılıştan sonra kalan borca alınan tahsilat iptal edilebilir.',
+      'Ayrılış hesabına giren tahsilat iptal edilemez; yalnız ayrılıştan sonra kalan borca ya da ek hizmet taksitine alınan tahsilat iptal edilebilir.',
       { kind: 'conflict' },
     )
   const ids = new Set(payment.allocations.map((allocation) => allocation.invoiceId))

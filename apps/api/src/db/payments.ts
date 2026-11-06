@@ -36,6 +36,8 @@ export interface StoredPayment {
   bankAccountId: string | null
   bankAccountLabel: string | null
   mebbisRecordedAt: Date | null
+  /** Kayıt anı; `paidAt` geriye tarihli olabilir, iptal denetimi sırayı bundan okur (DOM-FIN-041). */
+  createdAt: Date
   version: number
   allocations: PaymentAllocation[]
 }
@@ -73,6 +75,7 @@ const COLUMNS = {
   bankName: bankAccounts.bankName,
   bankIban: bankAccounts.iban,
   mebbisRecordedAt: payments.mebbisRecordedAt,
+  createdAt: payments.createdAt,
   version: payments.version,
 }
 type Row = {
@@ -91,6 +94,7 @@ type Row = {
   bankName: string | null
   bankIban: string | null
   mebbisRecordedAt: Date | null
+  createdAt: Date
   version: number
 }
 

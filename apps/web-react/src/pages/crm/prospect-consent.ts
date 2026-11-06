@@ -2,6 +2,7 @@
 // Karar sunucudadır (`setProspectMarketingConsent`); burada yalnız mevcut durumu satıra çeviririz.
 import {
   hasMarketingConsent,
+  hasUnverifiedMarketingConsent,
   MARKETING_CHANNELS,
   type MarketingChannel,
   type MarketingConsentEvent,
@@ -15,10 +16,16 @@ export const CHANNEL_LABELS = {
   call: 'Arama',
 } as const satisfies Record<MarketingChannel, string>
 
+/** Web formundan gelen, kişiyle doğrulanmamış seçimin kartta gösterilen durumu (ON-133). */
+export const UNVERIFIED_CONSENT_LABEL = 'Formdan geldi, doğrulanmadı'
+
 export type ConsentRow = {
   channel: MarketingChannel
   label: string
+  /** Geçerli onay; doğrulanmamış form seçimi burada yoktur, `unverified` ayrı söyler. */
   granted: boolean
+  /** Formda işaretlendi, kişiyle doğrulanmadı: doğrulanabilir ya da geri alınabilir. */
+  unverified: boolean
   /** Güncel kararın verildiği an; hiç kaydı olmayan eski adayda `null`. */
   at: string | null
   /** Onay verilemiyor: e-posta onayı için adayın e-postası olmalıdır. */
@@ -35,6 +42,7 @@ export function consentRows(prospect: {
       channel,
       label: CHANNEL_LABELS[channel],
       granted,
+      unverified: hasUnverifiedMarketingConsent(prospect, channel),
       at: prospect.marketingConsent?.[channel]?.at ?? null,
       blocked:
         channel === 'email' && !granted && !prospect.email?.trim()
@@ -52,5 +60,9 @@ export function recentConsentEvents(
   return [...(events ?? [])].reverse().slice(0, limit)
 }
 
-export const consentEventLabel = (event: Pick<MarketingConsentEvent, 'channel' | 'granted'>) =>
-  `${CHANNEL_LABELS[event.channel]} onayı ${event.granted ? 'verildi' : 'geri alındı'}`
+export const consentEventLabel = (
+  event: Pick<MarketingConsentEvent, 'channel' | 'granted' | 'verified'>,
+) =>
+  `${CHANNEL_LABELS[event.channel]} onayı ${
+    event.verified === true ? 'doğrulandı' : event.granted ? 'verildi' : 'geri alındı'
+  }`

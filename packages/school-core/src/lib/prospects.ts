@@ -194,7 +194,18 @@ export type ProspectTrialLesson = {
   /** Öğretmenin deneme dersi sonrası yazdığı seviye uygunluğu (DOM-DIL-031); aşamayı değiştirmez. */
   result?: ProspectTrialResult
 }
-export type MarketingConsent = Record<MarketingChannel, { granted: boolean; at: string }>
+export type MarketingConsent = Record<
+  MarketingChannel,
+  {
+    granted: boolean
+    at: string
+    /**
+     * `false`: seçim web formundan geldi, kişiyle konuşulup doğrulanmadı; onay sayılmaz. Alan yoksa
+     * doğrulanmıştır: ön büronun yazdığı onaylar ve eski kayıtlar (ON-133; DOM-KAY-004).
+     */
+    verified?: false
+  }
+>
 /**
  * Ticari ileti onayı olayı (DOM-KAY-004): her verme ve geri alma ayrı satırdır, geçmiş silinmez;
  * güncel durum `marketingConsent`'tedir. İlk onay seçimi aday açılırken `marketingConsent`'e yazılır.
@@ -217,6 +228,8 @@ export type ProspectProfileEdit = {
 export type MarketingConsentEvent = {
   channel: MarketingChannel
   granted: boolean
+  /** Web formundan gelen doğrulanmamış onayı personel doğruladı (ON-133; DOM-KAY-004). */
+  verified?: true
   at: string
   by: RequestActor
 }
@@ -561,7 +574,8 @@ export function requireValidNewProspect(
 
 /**
  * Doğrulanmış girdiden `Yeni aday` kaydı; aydınlatma sürümü ve anı, kanal bazında ticari ileti onayı
- * ile (DOM-KAY-003, -004). `createdBy` açık başvuru formunda boştur: kaydı açan kullanıcı yoktur.
+ * ile (DOM-KAY-003, -004). `createdBy` açık başvuru formunda boştur: kaydı açan kullanıcı yoktur ve
+ * formda işaretlenen kanal kişiyle doğrulanmadığı için onay sayılmaz (`verified: false`, ON-133).
  */
 export function buildProspect(
   data: z.output<typeof createProspectSchema>,
@@ -571,6 +585,11 @@ export function buildProspect(
   createdBy?: RequestActor,
 ): ProspectRecord {
   const consent = data.marketingConsent ?? {}
+  const channelConsent = (granted: boolean | undefined) => ({
+    granted: granted ?? false,
+    at: now,
+    ...(granted === true && createdBy === undefined ? { verified: false as const } : {}),
+  })
   return {
     id: makeId('pr'),
     name: data.name,
@@ -590,9 +609,9 @@ export function buildProspect(
     ...(data.siblingOfId !== undefined ? { siblingOfId: data.siblingOfId } : {}),
     privacyNotice: { version: data.privacyNoticeVersion, shownAt: now },
     marketingConsent: {
-      sms: { granted: consent.sms ?? false, at: now },
-      email: { granted: consent.email ?? false, at: now },
-      call: { granted: consent.call ?? false, at: now },
+      sms: channelConsent(consent.sms),
+      email: channelConsent(consent.email),
+      call: channelConsent(consent.call),
     },
     ...(createdBy === undefined ? {} : { createdBy }),
   }
@@ -823,18 +842,32 @@ export function revertProspectStage(
   return prospect
 }
 
-/** Aday bu kanalda geçerli ticari ileti onayına sahip mi (DOM-KAY-004); onay yoksa tanıtım iletisi gitmez. */
-export function hasMarketingConsent(
-  prospect: { marketingConsent?: Partial<MarketingConsent> | undefined },
+type ConsentHolder = { marketingConsent?: Partial<MarketingConsent> | undefined }
+
+/**
+ * Aday bu kanalda geçerli ticari ileti onayına sahip mi (DOM-KAY-004); onay yoksa tanıtım iletisi
+ * gitmez. Web formundan gelen, kişiyle doğrulanmamış seçim onay sayılmaz (ON-133).
+ */
+export function hasMarketingConsent(prospect: ConsentHolder, channel: MarketingChannel): boolean {
+  const consent = prospect.marketingConsent?.[channel]
+  return consent?.granted === true && consent.verified !== false
+}
+
+/** Web formunda işaretlenmiş, kişiyle henüz doğrulanmamış seçim var mı (ON-133; DOM-KAY-004). */
+export function hasUnverifiedMarketingConsent(
+  prospect: ConsentHolder,
   channel: MarketingChannel,
 ): boolean {
-  return prospect.marketingConsent?.[channel]?.granted === true
+  const consent = prospect.marketingConsent?.[channel]
+  return consent?.granted === true && consent.verified === false
 }
 
 /**
  * Adayın kanal bazlı ticari ileti onayını verir ya da geri alır (DOM-KAY-004, ret hakkı). Geri
  * alma anında etkilidir ve aday aşamasından bağımsızdır (vazgeçen ve kayıtlı adayda da yapılır);
  * her değişiklik kalıcı olay olarak geçmişe eklenir. Aynı karara ikinci istek mükerrerdir (409).
+ * Web formundan gelen doğrulanmamış seçimde iki karar da değişikliktir: personel kişiyle konuşup
+ * onayı verirse işaret kalkar (`verified: true` olay), kişi istemiyorsa geri alınır (ON-133).
  * E-posta onayı için adayın e-postası olmalıdır. Randevu teyidi gibi hizmet iletileri onaya bağlı
  * değildir; yalnız tanıtım iletisi bu denetime girer.
  */
@@ -849,7 +882,8 @@ export function setProspectMarketingConsent(
   const data = setMarketingConsentSchema.parse(input)
   requireAuthorized(by, 'prospect.consent', {}, state, options)
   const prospect = requireProspect(state, prospectId)
-  if (hasMarketingConsent(prospect, data.channel) === data.granted)
+  const unverified = hasUnverifiedMarketingConsent(prospect, data.channel)
+  if (!unverified && hasMarketingConsent(prospect, data.channel) === data.granted)
     throw new DomainError(
       'marketing_consent_unchanged',
       data.granted ? 'Bu kanal için onay zaten verilmiş.' : 'Bu kanal için onay zaten yok.',
@@ -867,7 +901,13 @@ export function setProspectMarketingConsent(
   prospect.marketingConsent = { ...current, [data.channel]: { granted: data.granted, at: now } }
   prospect.marketingConsentHistory = [
     ...(prospect.marketingConsentHistory ?? []),
-    { channel: data.channel, granted: data.granted, at: now, by: actorOf(by) },
+    {
+      channel: data.channel,
+      granted: data.granted,
+      ...(unverified && data.granted ? { verified: true as const } : {}),
+      at: now,
+      by: actorOf(by),
+    },
   ]
   prospect.updatedAt = now
   return prospect
@@ -918,7 +958,12 @@ export function updateProspectDetails(
     throw new DomainError('guardian_not_applicable', 'Yetişkin adayda veli bilgisi tutulmaz.', {
       path: ['guardianName'],
     })
-  if (changed.includes('email') && next.email === '' && hasMarketingConsent(prospect, 'email'))
+  // Doğrulanmamış seçim de açıkça geri alınır: adresi silinmiş kanalda sahipsiz işaret kalmasın.
+  if (
+    changed.includes('email') &&
+    next.email === '' &&
+    (hasMarketingConsent(prospect, 'email') || hasUnverifiedMarketingConsent(prospect, 'email'))
+  )
     throw new DomainError(
       'consent_contact_in_use',
       'E-posta onayı varken e-posta silinemez; önce e-posta onayını geri alın.',

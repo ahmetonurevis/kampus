@@ -26,6 +26,7 @@ import {
   setProspectMarketingConsent,
   updateProspectDetails,
   hasMarketingConsent,
+  hasUnverifiedMarketingConsent,
   scheduleProspectMeeting,
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
@@ -1992,6 +1993,81 @@ test('DOM-KAY-004: yönetici ve ön büro işler; öğretmen, öğrenci ve veli 
   assert.equal(enrolled.marketingConsentHistory?.length, 2)
   // Onay yoksa tanıtım iletisi gitmez; alanı olmayan eski kayıtta da kapalıdır.
   assert.equal(hasMarketingConsent({}, 'sms'), false)
+})
+
+// Web formundan gelen doğrulanmamış seçim (ON-133).
+const unverifiedProspect = (overrides: Record<string, unknown> = {}) => {
+  const state = seed()
+  const created = createProspect(state, front, input(overrides), id, now)
+  created.marketingConsent = {
+    sms: { granted: true, at: now, verified: false },
+    email: { granted: false, at: now },
+    call: { granted: false, at: now },
+  }
+  return { state, created }
+}
+
+test('DOM-KAY-004: doğrulanmamış form seçimi onay sayılmaz; verified alanı olmayan eski onay geçerlidir', () => {
+  const { created } = unverifiedProspect()
+  assert.equal(hasMarketingConsent(created, 'sms'), false)
+  assert.equal(hasUnverifiedMarketingConsent(created, 'sms'), true)
+  const legacy = { marketingConsent: { sms: { granted: true, at: now } } }
+  assert.equal(hasMarketingConsent(legacy, 'sms'), true)
+  assert.equal(hasUnverifiedMarketingConsent(legacy, 'sms'), false)
+  // Ön büronun açtığı adayın onayı işaret taşımaz.
+  const state = seed()
+  const staff = createProspect(state, front, input({ marketingConsent: { sms: true } }), id, now)
+  assert.deepEqual(staff.marketingConsent?.sms, { granted: true, at: now })
+})
+
+test('DOM-KAY-004: personel doğrularsa işaret kalkar, olay doğrulama olarak yazılır; ikinci doğrulama 409', () => {
+  const { state, created } = unverifiedProspect()
+  const later = '2026-10-07T10:00:00.000Z'
+  setProspectMarketingConsent(state, front, created.id, consentInput('sms', true), later)
+  assert.deepEqual(created.marketingConsent?.sms, { granted: true, at: later })
+  assert.equal(hasMarketingConsent(created, 'sms'), true)
+  assert.equal(hasUnverifiedMarketingConsent(created, 'sms'), false)
+  const [event] = created.marketingConsentHistory ?? []
+  assert.equal(event?.verified, true)
+  assert.equal(event?.granted, true)
+  unchangedOnFailure(
+    state,
+    () => setProspectMarketingConsent(state, front, created.id, consentInput('sms', true), later),
+    fails('marketing_consent_unchanged', 'conflict', ['granted']),
+  )
+})
+
+test('DOM-KAY-004: kişi istemiyorsa doğrulanmamış seçim geri alınır (ret hakkı); ikinci geri alma 409', () => {
+  const { state, created } = unverifiedProspect()
+  const later = '2026-10-07T10:00:00.000Z'
+  setProspectMarketingConsent(state, front, created.id, consentInput('sms', false), later)
+  assert.deepEqual(created.marketingConsent?.sms, { granted: false, at: later })
+  assert.equal(hasUnverifiedMarketingConsent(created, 'sms'), false)
+  const [event] = created.marketingConsentHistory ?? []
+  assert.equal(event?.verified, undefined)
+  assert.equal(event?.granted, false)
+  unchangedOnFailure(
+    state,
+    () => setProspectMarketingConsent(state, front, created.id, consentInput('sms', false), later),
+    fails('marketing_consent_unchanged', 'conflict', ['granted']),
+  )
+})
+
+test('DOM-KAY-004: doğrulanmamış e-posta seçimi varken e-posta silinemez, önce geri alınır', () => {
+  const { state, created } = unverifiedProspect({ email: 'aday@kampus.example' })
+  created.marketingConsent = {
+    sms: { granted: false, at: now },
+    email: { granted: true, at: now, verified: false },
+    call: { granted: false, at: now },
+  }
+  unchangedOnFailure(
+    state,
+    () => updateProspectDetails(state, front, created.id, { email: '' }, now),
+    fails('consent_contact_in_use', 'rule', ['email']),
+  )
+  setProspectMarketingConsent(state, front, created.id, consentInput('email', false), now)
+  updateProspectDetails(state, front, created.id, { email: '' }, now)
+  assert.equal(created.email, '')
 })
 
 // --- Aday bilgisi düzeltme (DOM-KAY-003) -----------------------------------------------------

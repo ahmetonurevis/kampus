@@ -70,6 +70,7 @@ interface ProspectData {
   guardianName?: string
   notes?: object[]
   lostReason?: string
+  marketingConsent?: object
 }
 
 /** Kurulum kaydı; seed'deki aday biçimi (`notes` dizisi, kampüs b1). */
@@ -547,6 +548,46 @@ test.describe('ticari ileti onayı', () => {
         )
       })
       .toBe('2')
+  })
+
+  test('ON-133, DOM-KAY-004: formdan gelen onay doğrulanmadı görünür; ön büro doğrular ya da geri alır', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-o2',
+          name: 'Form Adayı',
+          phone: '05550300062',
+          marketingConsent: {
+            sms: { granted: true, at: at(-1, 9), verified: false },
+            email: { granted: false, at: at(-1, 9) },
+            call: { granted: true, at: at(-1, 9), verified: false },
+          },
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-o2'))
+    const panel = page.getByRole('region', { name: 'Ticari ileti onayı' })
+    const sms = panel.getByRole('listitem').filter({ hasText: 'SMS' })
+    const call = panel.getByRole('listitem').filter({ hasText: 'Arama' })
+    await expect(sms.getByText('Formdan geldi, doğrulanmadı')).toBeVisible()
+    await expect(sms.getByText('Onay var')).toHaveCount(0)
+    await expect(call.getByText('Formdan geldi, doğrulanmadı')).toBeVisible()
+
+    await panel.getByRole('button', { name: 'SMS onayını doğrula' }).click()
+    await expect(toast(page, 'SMS onayı doğrulandı.')).toBeVisible()
+    await expect(sms.getByText('Onay var')).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'SMS onayını doğrula' })).toHaveCount(0)
+    await expect(panel.getByText('SMS onayı doğrulandı ·', { exact: false })).toBeVisible()
+
+    await panel.getByRole('button', { name: 'Arama onayını geri al' }).click()
+    await expect(toast(page, 'Arama onayı geri alındı.')).toBeVisible()
+    await expect(call.getByText('Onay yok')).toBeVisible()
   })
 })
 

@@ -14,7 +14,11 @@ import {
   updateApplicationFormSchema,
   type ProspectApplicationOptions,
 } from '../packages/school-core/src/lib/prospect-application-form.ts'
-import { PROSPECT_NOTE_LIMIT } from '../packages/school-core/src/lib/prospects.ts'
+import {
+  hasMarketingConsent,
+  hasUnverifiedMarketingConsent,
+  PROSPECT_NOTE_LIMIT,
+} from '../packages/school-core/src/lib/prospects.ts'
 
 // Seed: pr1 Alara Güven (b1, Yeni aday), pr5 Vazgeçti. Her test kendi State'ini kurar.
 const now = '2026-10-06T10:00:00.000Z'
@@ -85,6 +89,17 @@ test('DOM-KAY-004: ticari ileti onayı varsayılan kapalı, kanal başına veril
   const chosen = firstProspect(granted).marketingConsent
   assert.equal(chosen?.sms.granted, true)
   assert.equal(chosen?.call.granted, false)
+})
+
+test('DOM-KAY-004: formda işaretlenen kanal doğrulanmamış yazılır ve onay sayılmaz; işaretlenmeyende işaret yok', () => {
+  const state = fresh()
+  submitProspectApplication(state, body({ marketingConsent: { sms: true } }), options())
+  const prospect = firstProspect(state)
+  assert.deepEqual(prospect.marketingConsent?.sms, { granted: true, at: now, verified: false })
+  assert.deepEqual(prospect.marketingConsent?.call, { granted: false, at: now })
+  assert.equal(hasMarketingConsent(prospect, 'sms'), false)
+  assert.equal(hasUnverifiedMarketingConsent(prospect, 'sms'), true)
+  assert.equal(hasUnverifiedMarketingConsent(prospect, 'call'), false)
 })
 
 test('DOM-KAY-009: kimlik no, doğum tarihi, adres, kaynak, referans ve kardeş alanı alınmaz', () => {

@@ -27,6 +27,8 @@ import {
  * - Yanıt kişi varlığını belli etmez: aynı iletişimli açık adayda yeni kayıt açılmaz, adayın kartına
  *   sabit metinli temas notu düşülür (DOM-KAY-002) ve dışarıya aynı başarı yanıtı döner. Mükerrer
  *   başvurunun ticari ileti onayı yazılmaz: doğrulanmamış bir gönderim başkasının onayını açamaz.
+ * - Yeni adayın formda işaretlediği kanal `verified: false` yazılır ve onay sayılmaz: formu kimin
+ *   doldurduğu bilinmez. Personel kişiyle konuşup doğrularsa işaret kalkar (DOM-KAY-004).
  * - Gizli alan (`website`) dolu gönderim hiçbir şey yazmaz, yine aynı yanıtı alır.
  */
 

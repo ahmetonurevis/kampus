@@ -4,6 +4,7 @@ import {
   consentEventLabel,
   consentRows,
   recentConsentEvents,
+  UNVERIFIED_CONSENT_LABEL,
 } from '../src/pages/crm/prospect-consent.ts'
 
 const AT = '2026-10-07T10:00:00.000Z'
@@ -17,6 +18,30 @@ test('DOM-KAY-004: onay satırları üç kanalı sırayla gösterir; kaydı olma
       ['email', 'E-posta', false, null, null],
       ['call', 'Arama', false, null, null],
     ],
+  )
+})
+
+test('DOM-KAY-004, ON-133: formdan gelen doğrulanmamış seçim onay değildir; satır ayrı işaretlenir, olay doğrulama yazar', () => {
+  const rows = consentRows({
+    email: 'aday@kampus.example',
+    marketingConsent: {
+      sms: { granted: true, at: AT, verified: false },
+      email: { granted: true, at: AT },
+      call: { granted: false, at: AT },
+    },
+  })
+  assert.deepEqual(
+    rows.map((row) => [row.channel, row.granted, row.unverified, row.blocked]),
+    [
+      ['sms', false, true, null],
+      ['email', true, false, null],
+      ['call', false, false, null],
+    ],
+  )
+  assert.equal(UNVERIFIED_CONSENT_LABEL, 'Formdan geldi, doğrulanmadı')
+  assert.equal(
+    consentEventLabel({ channel: 'sms', granted: true, verified: true }),
+    'SMS onayı doğrulandı',
   )
 })
 

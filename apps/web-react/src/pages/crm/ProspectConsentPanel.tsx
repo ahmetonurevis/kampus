@@ -8,6 +8,8 @@ import {
   consentEventLabel,
   consentRows,
   recentConsentEvents,
+  UNVERIFIED_CONSENT_LABEL,
+  type ConsentRow,
 } from './prospect-consent.ts'
 import { dateTimeLabel } from './prospect-rows.ts'
 
@@ -15,6 +17,7 @@ import { dateTimeLabel } from './prospect-rows.ts'
  * Ticari ileti onayı (DOM-KAY-004): kanal başına onay durumu; ön büro ve yönetici adayın talebiyle
  * onayı verir ya da tek tıkla geri alır (ret hakkı geciktirilemez). Her değişiklik geçmişe eklenir.
  * Randevu teyidi gibi hizmet iletileri onaya bağlı değildir. `If-Match` kartın okunan sürümüdür.
+ * Web formundan gelen seçim onay sayılmaz; personel kişiyle konuşunca doğrular ya da geri alır (ON-133).
  */
 export function ProspectConsentPanel({
   prospectId,
@@ -33,10 +36,40 @@ export function ProspectConsentPanel({
   const rows = consentRows(prospect)
   const history = recentConsentEvents(prospect.marketingConsentHistory)
 
-  async function change(channel: MarketingChannel, granted: boolean) {
+  async function change(channel: MarketingChannel, granted: boolean, done: string) {
     const outcome = await consent.submit({ prospectId, version, body: { channel, granted } })
-    if (outcome.status === 'success')
-      notify.success(`${CHANNEL_LABELS[channel]} onayı ${granted ? 'kaydedildi' : 'geri alındı'}.`)
+    if (outcome.status === 'success') notify.success(`${CHANNEL_LABELS[channel]} onayı ${done}.`)
+  }
+
+  function grantButton(row: ConsentRow) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={consent.isPending || row.blocked !== null}
+        title={row.blocked ?? undefined}
+        aria-label={`${row.label} onayını ${row.unverified ? 'doğrula' : 'kaydet'}`}
+        onClick={() => void change(row.channel, true, row.unverified ? 'doğrulandı' : 'kaydedildi')}
+      >
+        {row.unverified ? 'Onayı doğrula' : 'Onay kaydet'}
+      </Button>
+    )
+  }
+
+  function withdrawButton(row: ConsentRow) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={consent.isPending}
+        aria-label={`${row.label} onayını geri al`}
+        onClick={() => void change(row.channel, false, 'geri alındı')}
+      >
+        Onayı geri al
+      </Button>
+    )
   }
 
   return (
@@ -48,30 +81,32 @@ export function ProspectConsentPanel({
         Kampanya ve tanıtım iletileri yalnız onay varsa gönderilir; randevu ve sözleşme
         bilgilendirmesi onaya bağlı değildir.
       </p>
+      {rows.some((row) => row.unverified) ? (
+        <p className="text-xs text-muted-foreground">
+          Web formunda işaretlenen kanala kişiyle konuşup doğrulamadan tanıtım iletisi gönderilmez.
+        </p>
+      ) : null}
       <ul className="grid gap-2">
         {rows.map((row) => (
           <li key={row.channel} className="flex flex-wrap items-center justify-between gap-2">
             <span className="flex flex-wrap items-center gap-2 text-sm">
               <span>{row.label}</span>
-              <StatusBadge
-                text={row.granted ? 'Onay var' : 'Onay yok'}
-                tone={row.granted ? 'green' : 'gray'}
-              />
+              {row.unverified ? (
+                <StatusBadge text={UNVERIFIED_CONSENT_LABEL} tone="amber" />
+              ) : (
+                <StatusBadge
+                  text={row.granted ? 'Onay var' : 'Onay yok'}
+                  tone={row.granted ? 'green' : 'gray'}
+                />
+              )}
               {row.at ? (
                 <span className="text-xs text-muted-foreground">{dateTimeLabel(row.at)}</span>
               ) : null}
             </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={consent.isPending || row.blocked !== null}
-              title={row.blocked ?? undefined}
-              aria-label={`${row.label} onayını ${row.granted ? 'geri al' : 'kaydet'}`}
-              onClick={() => void change(row.channel, !row.granted)}
-            >
-              {row.granted ? 'Onayı geri al' : 'Onay kaydet'}
-            </Button>
+            <span className="flex flex-wrap gap-2">
+              {row.granted ? null : grantButton(row)}
+              {row.granted || row.unverified ? withdrawButton(row) : null}
+            </span>
           </li>
         ))}
       </ul>

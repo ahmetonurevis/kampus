@@ -275,9 +275,40 @@ describe('Ön başvuru formu (ON-133)', () => {
     )
     assert.equal(response.statusCode, 202, response.body)
     const created = (await prospectsOf(institution.id)).find((item) => item.phone === SECRET_PHONE)
-    const consent = created?.marketingConsent as Record<string, { granted: boolean }>
+    const consent = created?.marketingConsent as Record<string, Json>
     assert.equal(consent.email?.granted, true)
+    assert.equal(consent.email?.verified, false)
     assert.equal(consent.sms?.granted, false)
+    assert.equal('verified' in (consent.sms ?? {}), false)
+  })
+
+  test('DOM-KAY-004: formdan gelen onayı personel mevcut uçtan doğrular ya da geri alır; işaret kalkar', async () => {
+    const { institution, admin, form } = await world()
+    await submit(form.formKey, application({ marketingConsent: { sms: true, call: true } }))
+    const created = (await prospectsOf(institution.id)).find((item) => item.phone === SECRET_PHONE)
+    const id = String(created?.id)
+    const consent = async (body: Json) => {
+      const row = await findRecord(db, institution.id, 'prospects', id)
+      const url = `/api/v1/prospects/${id}/marketing-consent`
+      return adminCall('POST', url, admin, body, row?.version)
+    }
+
+    const verified = await consent({ channel: 'sms', granted: true })
+    assert.equal(verified.statusCode, 200, verified.body)
+    const withdrawn = await consent({ channel: 'call', granted: false })
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    const again = await consent({ channel: 'sms', granted: true })
+    assert.equal(again.statusCode, 409)
+    assert.equal(again.json().code, 'marketing_consent_unchanged')
+
+    const stored = await findRecord(db, institution.id, 'prospects', id)
+    const after = stored?.data.marketingConsent as Record<string, Json>
+    assert.equal(after.sms?.granted, true)
+    assert.equal('verified' in (after.sms ?? {}), false)
+    assert.equal(after.call?.granted, false)
+    const history = stored?.data.marketingConsentHistory as Json[]
+    assert.equal(history[0]?.verified, true)
+    assert.equal('verified' in (history[1] ?? {}), false)
   })
 
   test('DOM-KAY-009: 400 eksik ve yasak alanda; 422 velisiz ve pasif kampüste; 409 eski aydınlatma; kayıt değişmez', async () => {

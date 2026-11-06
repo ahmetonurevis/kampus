@@ -3,9 +3,11 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Locator, Page, Request } from '@playwright/test'
 
+import { createSeed } from '../../packages/school-core/src/data/seed.ts'
+
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
-import { seedScholarshipContract } from './support/finance-terms.ts'
+import { seedScholarshipContract, seedStudentServiceTariff } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
 import {
   expectContentInsideCards,
@@ -796,6 +798,65 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('heading', { name: 'Tahsilat geçmişi' })).toBeVisible()
     await page.getByRole('button', { name: /numaralı dekontu görüntüle/ }).click()
     await expect(page.getByRole('dialog', { name: /Tahsilat dekontu/ })).toBeVisible()
+  })
+
+  test('DOM-FIN-003: ön büro taksit panelinden ek hizmete yazar ve çıkarır; taksit ayrı açılır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s12'] })
+    await seedStudentServiceTariff({
+      institutionId: school.institutionId,
+      academicYear: createSeed(new Date()).academicYear,
+    })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+
+    await page.goto(FRONT_OFFICE_URL)
+    await page.getByLabel('Tabloda ara').fill('Ege Öztürk')
+    const row = bodyRows(page).filter({ hasText: '6. taksit' })
+    await row.getByRole('button', { name: 'Ege Öztürk 6. taksit detayını aç' }).click()
+    const detail = page.getByRole('dialog', { name: 'Taksit detayı' })
+    const section = detail.getByRole('region', { name: 'Ek hizmetler' })
+    await expect(section).toContainText('Ek hizmet aboneliği yok.')
+
+    const subscribe = async (kind: string) => {
+      await section.getByRole('button', { name: 'Ek hizmete yaz' }).click()
+      const dialog = page.getByRole('dialog', { name: 'Ek hizmete yaz' })
+      await dialog.getByLabel('Hizmet').selectOption({ label: kind })
+      await dialog.getByRole('button', { name: 'Yaz', exact: true }).click()
+      return dialog
+    }
+
+    // Tarifede ilan edilmeyen kalem alan hatasıyla reddedilir, pencere açık kalır.
+    const rejected = await subscribe('Kulüp')
+    await expect(rejected.getByText('Bu ek hizmet tarifede ilan edilmemiş.')).toBeVisible()
+    await rejected.getByRole('button', { name: 'Vazgeç' }).click()
+
+    const accepted = await subscribe('Servis')
+    await expect(page.getByText('Ek hizmet taksiti yazıldı.')).toBeVisible()
+    await expect(accepted).toBeHidden()
+    await expect(section).toContainText('Servis')
+    await expect(section).toContainText('Açık')
+
+    const listed = await client.get('/api/v1/finance/student-services?studentId=s12')
+    const service = (listed.body as { data: { invoices: { id: string; amountCents: number }[] }[] })
+      .data[0]
+    expect(service?.invoices).toHaveLength(1)
+    expect(service?.invoices[0]?.amountCents).toBe(4_000_000)
+    const created = await invoice(client, service?.invoices[0]?.id ?? '')
+    expect(created.amount).toBe(4_000_000)
+
+    await section.getByRole('button', { name: 'Servis hizmetinden çıkar' }).click()
+    const ending = page.getByRole('dialog', { name: 'Servis hizmetinden çıkar' })
+    await ending.getByRole('button', { name: 'Çıkışı kaydet' }).click()
+    await expect(page.getByText('Ek hizmet aboneliği kapatıldı.')).toBeVisible()
+    await expect(section).toContainText('Sona erdi')
+    // Tek taksitli kalem erken bitince kullanılmamış dönem için karar gerekir; iade yazılmaz.
+    await expect(section.getByRole('note')).toContainText('Karar gerekir')
+    await expect(section.getByRole('button', { name: 'Servis hizmetinden çıkar' })).toHaveCount(0)
   })
 
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {

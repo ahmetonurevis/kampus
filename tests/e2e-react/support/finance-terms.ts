@@ -95,6 +95,38 @@ export async function seedScholarshipContract(input: {
   }
 }
 
+/** Ek hizmet kalemli yayımlı tarife (DOM-FIN-003, ON-087): yıllık servis, aylık yemek. */
+export async function seedStudentServiceTariff(input: {
+  institutionId: string
+  academicYear: number
+}): Promise<void> {
+  const { db, close } = connectPostgres(e2e.databaseUrl)
+  const extra = (kind: 'transport' | 'meal', unit: 'year' | 'month', amountCents: number) => ({
+    kind,
+    level: null,
+    amountCents,
+    unit,
+    vatBasisPoints: 1000,
+    vatEffectiveDate: `${String(input.academicYear)}-01-01`,
+    announcedAmountCents: null,
+  })
+  try {
+    await db.insert(feeTariffs).values({
+      institutionId: input.institutionId,
+      id: randomUUID(),
+      academicYear: input.academicYear,
+      versionNumber: 1,
+      status: 'published',
+      items: [extra('transport', 'year', 4_000_000), extra('meal', 'month', 500_000)],
+      announcedDate: `${String(input.academicYear)}-05-01`,
+      publishedByUserId: 'e2e',
+      publishedAt: new Date(),
+    })
+  } finally {
+    await close()
+  }
+}
+
 /**
  * Önceki yılın tarifesi geçerli kalan kurum (DOM-FIN-002, K-11). Karar gerçek saate bağlı olduğu için
  * kurumun eğitim yılı geçmişe alınır: `tariffYear + 1` eğitim yılının ilan dönemi (o yılın mayıs

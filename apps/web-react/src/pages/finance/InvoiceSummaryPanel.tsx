@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading, SummaryMetrics } from '../management/SummaryParts.tsx'
 import { invoiceRow, type InvoiceRow } from './finance-rows.ts'
+import { StudentServicesSection } from './StudentServicesSection.tsx'
 import { StudentStatementDownload } from './StudentStatementSection.tsx'
 
 type Props = {
@@ -86,6 +87,7 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
           Ödeme planını bu ekrandan takip edebilirsiniz.
         </p>
       ) : null}
+      <StudentServicesSection studentId={row.studentId} />
     </>
   )
 }

@@ -233,6 +233,55 @@ export function quoteLines(quote: RenewalQuoteView) {
   }
 }
 
+// --- Yeni yılın toplu planı (IST-105, ON-086) ---------------------------------------------------
+
+export const renewalBulkFormSchema = z.object({
+  installmentCount: z
+    .string()
+    .trim()
+    .regex(/^(?:[1-9]|1[0-2])$/, 'Taksit sayısını 1 ile 12 arasında girin.'),
+  firstDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk taksit tarihini seçin.'),
+  discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
+  extras: z.array(z.enum(FEE_ITEM_KINDS)),
+  scholarshipProgramId: z.string(),
+})
+export type RenewalBulkFormValues = z.input<typeof renewalBulkFormSchema>
+
+export const renewalBulkDefaults = (): RenewalBulkFormValues => ({
+  installmentCount: '8',
+  firstDueDate: '',
+  discounts: [],
+  extras: [],
+  scholarshipProgramId: '',
+})
+
+/** Önizleme gövdesi; onay aynı gövdeye önizlemenin tarifesini ekler. */
+export function renewalBulkBody(
+  values: z.output<typeof renewalBulkFormSchema>,
+  academicYear: number,
+  rows: readonly { studentId: string; targetClassId: string }[],
+) {
+  return {
+    academicYear,
+    installmentCount: Number(values.installmentCount),
+    firstDueDate: values.firstDueDate,
+    discounts: [...values.discounts],
+    extras: [...values.extras],
+    rows: rows.map(({ studentId, targetClassId }) => ({ studentId, targetClassId })),
+    ...(values.scholarshipProgramId === ''
+      ? {}
+      : { scholarshipProgramId: values.scholarshipProgramId }),
+  }
+}
+
+/** Listedeki tavan hücresi: tutar ya da neden uygulanmadığı (DOM-FIN-005). */
+export function ceilingCell(ceiling: RenewalCeiling | null): string {
+  if (ceiling === null) return '—'
+  if (ceiling.status === 'entry_grade') return 'Uygulanmaz'
+  if (ceiling.status === 'no_base') return 'Hesaplanamadı'
+  return money(ceiling.ceilingCents)
+}
+
 export const RENEWAL_SERVER_FIELDS = [
   'studentId',
   'targetClassId',

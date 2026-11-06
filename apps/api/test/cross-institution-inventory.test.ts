@@ -922,6 +922,22 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-reconciliation.test.ts',
     'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
   ),
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/renewals/candidates', 'listOf(), a.admin'],
+        ['gövde', 'POST /api/v1/finance/renewals/bulk-preview', 'PREVIEW, a.admin'],
+        ['gövde', 'POST /api/v1/finance/renewals/bulk-plan', 'PLAN, a.admin'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-renewal-bulk.test.ts',
+        'başka kurumun öğrencisi listede yok, önizleme ve onayda not_found',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

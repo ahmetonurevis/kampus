@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
+  carriedOverTariffNote,
   FEE_DISCOUNT_KIND_LABELS,
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KIND_LABELS,
@@ -179,6 +180,8 @@ export function ceilingLines(ceiling: RenewalCeiling): string[] {
 }
 
 export type RenewalQuoteView = {
+  /** Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002, K-11). */
+  tariffCarriedOverFromYear: number | null
   announcedCents: number
   ceiling: RenewalCeiling
   tuitionCents: number
@@ -200,6 +203,9 @@ const extraLabel = (kind: string) => FEE_ITEM_KIND_LABELS[kind as FeeItemKind] ?
 export function quoteLines(quote: RenewalQuoteView) {
   return {
     pricing: [
+      ...(quote.tariffCarriedOverFromYear === null
+        ? []
+        : [carriedOverTariffNote(quote.tariffCarriedOverFromYear)]),
       `İlan edilen ücret: ${money(quote.announcedCents)}`,
       ...ceilingLines(quote.ceiling),
       `Öğrenim ücreti: ${money(quote.tuitionCents)}`,

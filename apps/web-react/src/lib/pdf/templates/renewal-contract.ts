@@ -210,6 +210,12 @@ export function renewalAppendix(
   doc.fields([
     ['İlan edilen ücret', money(pricing.announcedCents)],
     ['Tarife sürümü', String(pricing.tariffVersion)],
+    // Süresinde ilan yapılmadıysa uygulanan önceki yılın tarifesi (DOM-FIN-002, K-11).
+    ...(pricing.tariffCarriedOverFromYear
+      ? ([
+          ['Uygulanan tarife', `${periodLabel(pricing.tariffCarriedOverFromYear)} (önceki yıl)`],
+        ] as [string, string][])
+      : []),
     ['Uygulanan öğrenim ücreti', money(data.contract?.grossCents ?? maxCents)],
     ['Net öğrenim ücreti', money(data.contract?.netCents ?? data.contract?.amount ?? 0)],
   ])

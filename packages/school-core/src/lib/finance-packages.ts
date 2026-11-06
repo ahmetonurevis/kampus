@@ -18,6 +18,7 @@ import {
 } from './enrollment.ts'
 import { DomainError } from './errors.ts'
 import { FEE_DISCOUNT_KINDS, FEE_ITEM_KINDS } from './fee-tariffs.ts'
+import { packageHourBalance } from './finance-package-hours.ts'
 import { dayKey } from './format.ts'
 import { installmentAmounts } from './payments.ts'
 import { dueDateOf } from './renewals.ts'
@@ -521,22 +522,7 @@ export interface PackageHourBalance {
   remainingHours: number
 }
 
-/** Bakiye hesaplanır, saklanmaz: satın alınan − tüketilen − iade edilen (DOM-DIL-051). */
-export function packageHourBalance(
-  purchasedHours: number,
-  entries: readonly Pick<PackageHourEntry, 'kind' | 'hours'>[],
-): PackageHourBalance {
-  const total = (kind: PackageHourKind) =>
-    entries.reduce((sum, entry) => (entry.kind === kind ? sum + entry.hours : sum), 0)
-  const consumedHours = total('consumed')
-  const refundedHours = total('refunded')
-  return {
-    purchasedHours,
-    consumedHours,
-    refundedHours,
-    remainingHours: purchasedHours - consumedHours - refundedHours,
-  }
-}
+export { packageHourBalance }
 
 export const PACKAGE_SALE_STATUSES = ['active', 'expired', 'depleted'] as const
 export type PackageSaleStatus = (typeof PACKAGE_SALE_STATUSES)[number]

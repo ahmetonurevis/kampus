@@ -5,8 +5,9 @@ import type { InstitutionType } from '../modules/collection-modules.ts'
 import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { packageHourBalance, type PackageHourKind } from './finance-packages.ts'
-import { dayKey } from './format.ts'
+import { packageHourBalance } from './finance-package-hours.ts'
+import type { PackageHourKind } from './finance-packages.ts'
+import { dayKey, money } from './format.ts'
 
 /**
  * Ayrılış ve iade (docs/domain/finans.md DOM-FIN-040, -041; kayit-ve-crm.md DOM-KAY-024; IST-110;
@@ -433,6 +434,38 @@ export function contractLinesToShow<T extends { packageSaleId?: string | undefin
 ): readonly T[] {
   if (!lines) return []
   return lines.length > 1 || lines.some((line) => line.packageSaleId !== undefined) ? lines : []
+}
+
+/** Bir sözleşmenin ekran ve belge satırları; ikisi aynı dökümü aynı sözlerle gösterir (IST-110). */
+export function contractLineRows(
+  line: WithdrawalContractLine,
+  deductionBasisPoints: number,
+): readonly (readonly [string, string])[] {
+  const usage = `${String(line.attendedUnits)} / ${String(line.totalUnits)}`
+  return [
+    ['Hesap tabanı (net ücret)', money(line.baseCents)],
+    [`Kesinti (%${String(deductionBasisPoints / 100)})`, money(line.deductionCents)],
+    [
+      line.packageSaleId === undefined
+        ? `Kullanım (${usage})`
+        : `Kullanım (${usage} ders saati, kayıttan)`,
+      money(line.usageCents),
+    ],
+    ['Hak edilen', money(line.entitledCents)],
+    ...(line.scholarshipExempt
+      ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
+      : []),
+    ['Ödenen öğrenim ücreti', money(line.paidCents)],
+    ...(line.extraBalanceCents === 0
+      ? []
+      : ([['Ek hizmet bakiyesi', money(line.extraBalanceCents)]] as const)),
+    ...(line.returnedHours
+      ? ([['İade edilen kalan saat', `${String(line.returnedHours)} ders saati`]] as const)
+      : []),
+    line.balanceCents >= 0
+      ? ['Bu sözleşmeden iade', money(line.balanceCents)]
+      : ['Bu sözleşmeden borç', money(-line.balanceCents)],
+  ]
 }
 
 /** Ayrılıştan bir ay sonrası; o gün yoksa ayın son günü (DOM-FIN-040). */

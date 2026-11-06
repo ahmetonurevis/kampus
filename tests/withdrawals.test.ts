@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
+  contractLineRows,
   contractLinesToShow,
   isValidTurkishIban,
   payerNameOf,
@@ -726,6 +727,51 @@ test('IST-110: birden çok sözleşmede ve pakette döküm sözleşme sözleşme
   state.contracts = state.contracts.filter((item) => item.id === 'c-package')
   const only = quoteWithdrawal(state, studentId, AFTER, context({ packageSales: [sale([])] }))
   assert.equal(contractLinesToShow(only.breakdown.contracts).length, 1)
+})
+
+test('IST-110: sözleşme satırı burs, ek hizmet, kalan saat ve sonucu gösterir', () => {
+  const line = {
+    contractId: 'c1',
+    title: 'Sözleşme',
+    attendedUnits: 18,
+    totalUnits: 180,
+    scholarshipExempt: false,
+    baseCents: 100,
+    deductionCents: 10,
+    usageCents: 10,
+    entitledCents: 20,
+    paidCents: 50,
+    extraBalanceCents: 0,
+    balanceCents: 30,
+  }
+  const labels = (input: Parameters<typeof contractLineRows>[0]) =>
+    contractLineRows(input, 1_000).map(([label]) => label)
+  assert.deepEqual(labels(line), [
+    'Hesap tabanı (net ücret)',
+    'Kesinti (%10)',
+    'Kullanım (18 / 180)',
+    'Hak edilen',
+    'Ödenen öğrenim ücreti',
+    'Bu sözleşmeden iade',
+  ])
+  const rich = labels({
+    ...line,
+    packageSaleId: 's1',
+    attendedUnits: 10,
+    totalUnits: 40,
+    returnedHours: 30,
+    scholarshipExempt: true,
+    extraBalanceCents: -5,
+    balanceCents: -1,
+  })
+  assert.ok(rich.includes('Kullanım (10 / 40 ders saati, kayıttan)'))
+  for (const label of [
+    'Burslu istisnası',
+    'Ek hizmet bakiyesi',
+    'İade edilen kalan saat',
+    'Bu sözleşmeden borç',
+  ])
+    assert.ok(rich.includes(label), label)
 })
 
 test('DOM-FIN-041, DOM-KAY-012: iade hesap sahibi hesaba giren sözleşmelerden birinin ödeyicisi olabilir', () => {

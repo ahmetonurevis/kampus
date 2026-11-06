@@ -4,11 +4,14 @@ import {
   E_OZEL_ACADEMIC_KINDS,
   E_OZEL_KIND_LABELS,
   E_OZEL_KINDS,
+  E_OZEL_RECORD_STATUS_LABELS,
+  eOzelChangeNote,
   eOzelLearnerStatusLabel,
 } from '@kampus/school-core/lib/finance-e-ozel.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   useEOzelExport,
+  useEOzelIdentityReveal,
   useEOzelItems,
   useSetEOzelMark,
   type EOzelFileQuery,
@@ -30,14 +33,16 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 
 type Row = EOzelItemRow & { id: string }
+type IdentityReveal = ReturnType<typeof useEOzelIdentityReveal>
 
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['learnerName', 'kind', 'details', 'recordedAt']
 const ALL_KINDS = 'all'
 const BOM = '﻿'
 const STATUS_OPTIONS = [
-  { value: 'pending', label: 'İşlenmemiş' },
-  { value: 'recorded', label: 'İşlendi' },
+  { value: 'pending', label: 'Bekleyen' },
+  { value: 'needs_correction', label: E_OZEL_RECORD_STATUS_LABELS.needs_correction },
+  { value: 'recorded', label: E_OZEL_RECORD_STATUS_LABELS.recorded },
   { value: 'all', label: 'Tümü' },
 ] as const
 type StatusValue = (typeof STATUS_OPTIONS)[number]['value']
@@ -47,13 +52,66 @@ const statusOf = (value: unknown): StatusValue =>
 const dayFilter = (value: unknown) =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
 
+/**
+ * Maskeli numara ve satır başına "Göster": tam numara yalnız açıkken bellektedir, her açılış denetime
+ * yazılır (DOM-YTK-052). Yeniden giriş gerekirse pencereyi bölüm açar.
+ */
+function LearnerIdentity({ row, reveal }: { row: Row; reveal: IdentityReveal }) {
+  const masked = row.learner?.maskedIdentity ?? null
+  if (masked === null) return 'Kimlik kaydı yok'
+  const open = reveal.revealedFor === row.learnerId
+  const error = open ? reveal.query.error : null
+  const reauthRequired = error?.code === REAUTHENTICATION_CODE
+  const busy = open && reveal.query.isFetching
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="font-mono">
+        {(open && reveal.query.data?.data.identityNumber) || masked}
+      </span>
+      {open ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label={`${row.learnerName} kimlik numarasını gizle`}
+          onClick={reveal.hide}
+        >
+          <Icon name="EyeOff" size={15} aria-hidden="true" />
+          Gizle
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          aria-label={`${row.learnerName} kimlik numarasını göster`}
+          onClick={() => reveal.show(row.learnerId)}
+        >
+          <Icon name="Eye" size={15} aria-hidden="true" />
+          Göster
+        </Button>
+      )}
+      {busy ? (
+        <small role="status" className="text-xs text-muted-foreground">
+          Okunuyor…
+        </small>
+      ) : null}
+      {error && !reauthRequired && !busy ? (
+        <small role="alert" className="text-xs text-destructive">
+          {error.message}
+        </small>
+      ) : null}
+    </span>
+  )
+}
+
 /** Satırın türe özgü bilgisi; alan adları ister listesindeki e-Özel özetindendir. */
-function Details({ row }: { row: Row }) {
+function Details({ row, reveal }: { row: Row; reveal: IdentityReveal }) {
   if (row.learner)
     return (
       <span className="grid">
         <span>
-          {row.learner.maskedIdentity ?? 'Kimlik kaydı yok'}
+          <LearnerIdentity row={row} reveal={reveal} />
           {row.learner.birthDate
             ? ` · ${dateLabel(row.learner.birthDate, { year: 'numeric' })}`
             : ''}
@@ -100,10 +158,32 @@ function Details({ row }: { row: Row }) {
   return '—'
 }
 
+/** Satır durumu: düzeltilmeli satırda kaynakta ne değiştiği de yazar. */
+function RecordState({ row }: { row: Row }) {
+  const note = eOzelChangeNote(row)
+  return (
+    <span className="grid">
+      <StatusBadge
+        text={E_OZEL_RECORD_STATUS_LABELS[row.recordStatus]}
+        {...(row.recordStatus === 'needs_correction' ? { tone: 'amber' as const } : {})}
+      />
+      {row.recordedAt === null ? null : (
+        <small className="text-xs text-muted-foreground">
+          {dateLabel(row.recordedAt, { year: 'numeric' })}
+          {row.recordedByName ? ` · ${row.recordedByName}` : ''}
+        </small>
+      )}
+      {note ? <small className="text-xs text-muted-foreground">{note}</small> : null}
+    </span>
+  )
+}
+
 /**
  * e-Özel işlem listesi (IST-085, DOM-KAY-015): dil okulu ve kursta elle girilecek kayıtlar ve
  * "işlendi" işareti. Süzgeç ve sayfa sunucudadır. Ücret satırının işareti tahsilat geçmişindeki
- * MEBBİS işaretiyle aynı kayıttır. Devamsızlık ve kurs sonu `academic` kapalıyken seçilemez.
+ * MEBBİS işaretiyle aynı kayıttır. İşaretlendikten sonra kaynağı değişen satır "e-Özel'de
+ * düzeltilmeli" görünür, personel düzeltmeyi yapınca işaretler. Devamsızlık ve kurs sonu `academic`
+ * kapalıyken seçilemez.
  */
 export function EOzelSection({ academicEnabled }: { academicEnabled: boolean }) {
   const list = useListState('e-ozel')
@@ -133,6 +213,9 @@ export function EOzelSection({ academicEnabled }: { academicEnabled: boolean }) 
     () => items.data?.data.map((item): Row => ({ ...item, id: `${item.kind}:${item.sourceId}` })),
     [items.data],
   )
+  const reveal = useEOzelIdentityReveal(
+    rows?.flatMap((row) => (row.kind === 'learner' ? [row.learnerId] : [])),
+  )
 
   const columns = useMemo<DataColumn<Row>[]>(
     () => [
@@ -147,54 +230,45 @@ export function EOzelSection({ academicEnabled }: { academicEnabled: boolean }) 
         label: 'Gün',
         cell: (row) => (row.date ? dateLabel(row.date, { year: 'numeric' }) : '—'),
       },
-      { key: 'details', label: 'Bilgi', cell: (row) => <Details row={row} /> },
-      {
-        key: 'recordedAt',
-        label: 'e-Özel',
-        cell: (row) =>
-          row.recordedAt === null ? (
-            <StatusBadge text="İşlenmedi" />
-          ) : (
-            <span className="grid">
-              <StatusBadge text="İşlendi" />
-              <small className="text-xs text-muted-foreground">
-                {dateLabel(row.recordedAt, { year: 'numeric' })}
-                {row.recordedByName ? ` · ${row.recordedByName}` : ''}
-              </small>
-            </span>
-          ),
-      },
+      { key: 'details', label: 'Bilgi', cell: (row) => <Details row={row} reveal={reveal} /> },
+      { key: 'recordedAt', label: 'e-Özel', cell: (row) => <RecordState row={row} /> },
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) => {
+          // Kaynağı kalkmış işlenmiş satırda işaret kaldırılamaz (core `planEOzelMark`).
+          if (row.recordStatus === 'recorded' && row.sourceRemoved) return null
           const label = `${row.learnerName} ${E_OZEL_KIND_LABELS[row.kind]}`
+          const action = {
+            pending: { text: 'İşlendi', name: `${label} kaydını işlendi olarak işaretle` },
+            needs_correction: {
+              text: 'Düzeltildi',
+              name: `${label} kaydını e-Özel'de düzeltildi olarak işaretle`,
+            },
+            recorded: { text: 'İşareti kaldır', name: `${label} kaydının işaretini kaldır` },
+          }[row.recordStatus]
           return (
             <Button
               size="sm"
               variant="secondary"
               disabled={mark.isPending}
-              aria-label={
-                row.recordedAt === null
-                  ? `${label} kaydını işlendi olarak işaretle`
-                  : `${label} kaydının işaretini kaldır`
-              }
+              aria-label={action.name}
               onClick={() =>
                 void mark.submit({
                   kind: row.kind,
                   sourceId: row.sourceId,
                   version: row.version,
-                  recorded: row.recordedAt === null,
+                  recorded: row.recordStatus !== 'recorded',
                 })
               }
             >
-              {row.recordedAt === null ? 'İşlendi' : 'İşareti kaldır'}
+              {action.text}
             </Button>
           )
         },
       },
     ],
-    [mark],
+    [mark, reveal],
   )
 
   async function download() {
@@ -219,8 +293,11 @@ export function EOzelSection({ academicEnabled }: { academicEnabled: boolean }) 
         </h2>
         <p className="text-sm text-muted-foreground">
           {total} kayıt · Kampüs e-Özel&apos;e bağlanmaz; kaydı e-Özel&apos;e siz girersiniz, burada
-          işlendi olarak işaretlersiniz. Alanların e-Özel ekranıyla eşleşmesini kurumunuzla
-          doğrulayın. Kimlik numarası maskelidir.
+          işlendi olarak işaretlersiniz. İşaretlendikten sonra kaynağı değişen kayıt
+          &quot;e-Özel&apos;de düzeltilmeli&quot; görünür; düzeltmeyi yapınca yeniden işaretleyin.
+          Alanların e-Özel ekranıyla eşleşmesini kurumunuzla doğrulayın. Kimlik numarası maskelidir;
+          &quot;Göster&quot; tek satırın tam numarasını açar, her görüntüleme denetim kaydına
+          yazılır.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <label className="grid w-full max-w-xs gap-1 text-sm font-medium">
@@ -320,6 +397,9 @@ export function EOzelSection({ academicEnabled }: { academicEnabled: boolean }) 
             void download()
           }}
         />
+      ) : null}
+      {reveal.query.error?.code === REAUTHENTICATION_CODE ? (
+        <ReauthModal onCancel={reveal.hide} onDone={reveal.retry} />
       ) : null}
     </section>
   )

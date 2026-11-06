@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
 import type { Page } from '@playwright/test'
 
+import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -56,6 +58,144 @@ test.describe('e-Özel işlem listesi', () => {
     expect(csv.charCodeAt(0)).toBe(0xfeff)
     expect(csv).toContain('e-Özel durumu')
     expect(csv).toContain('İşlenmedi')
+  })
+
+  test('DOM-YTK-052: tek satırın tam kimliği "Göster" ile açılır, "Gizle" ile kapanır; dosya maskeli kalır', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      students: ['s16'],
+      birthDates: { s16: '2001-05-06' },
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(FRONT_OFFICE_URL)
+    const table = tableOf(page)
+    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('learner')
+    const show = table.getByRole('button', { name: /kimlik numarasını göster/ })
+    await expect(show).toHaveCount(1)
+    await expect(table.getByText(/^\*{7}/)).toBeVisible()
+    await expect(table.getByText(/E2E-.*-s16/)).toHaveCount(0)
+
+    const read = page.waitForResponse((response) =>
+      response.url().includes('/learners/s16/identity'),
+    )
+    await show.click()
+    expect((await read).headers()['cache-control']).toBe('no-store')
+    await expect(table.getByText(/E2E-.*-s16/)).toBeVisible()
+    await expect(table.getByText(/^\*{7}/)).toHaveCount(0)
+
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Listeyi indir' }).click()
+    const csv = await readFile(await (await download).path(), 'utf8')
+    expect(csv).not.toMatch(/E2E-.*-s16/)
+    expect(csv).toContain('*******')
+
+    await table.getByRole('button', { name: /kimlik numarasını gizle/ }).click()
+    await expect(table.getByText(/E2E-.*-s16/)).toHaveCount(0)
+    await expect(table.getByText(/^\*{7}/)).toBeVisible()
+    await expect(show).toHaveCount(1)
+  })
+
+  test('guvenlik-kvkk: eski oturumda tam kimlik parolayı sorar, doğrulanınca açılır; vazgeçilince maskeli kalır', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: [],
+      students: ['s16'],
+      birthDates: { s16: '2001-05-06' },
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    const table = tableOf(page)
+    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('learner')
+    let staleReads = 2
+    await page.route('**/learners/s16/identity', (route) => {
+      if (staleReads === 0) return route.continue()
+      staleReads -= 1
+      return route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'reauthentication_required',
+          message: 'Bu işlem için parolanızı yeniden girmeniz gerekiyor.',
+          requestId: 'e2e',
+        }),
+      })
+    })
+    const show = table.getByRole('button', { name: /kimlik numarasını göster/ })
+    const reauth = page.getByRole('dialog', { name: 'Parolanızı doğrulayın' })
+
+    await show.click()
+    await reauth.getByRole('button', { name: 'Vazgeç' }).click()
+    await expect(reauth).toBeHidden()
+    await expect(show).toBeVisible()
+    await expect(table.getByText(/E2E-.*-s16/)).toHaveCount(0)
+
+    await show.click()
+    await reauth.getByLabel('Parola').fill(e2e.password)
+    await reauth.getByRole('button', { name: 'Doğrula ve devam et' }).click()
+    await expect(reauth).toBeHidden()
+    await expect(table.getByText(/E2E-.*-s16/)).toBeVisible()
+  })
+
+  test("IST-085: işaretli tahsilat iptal edilince satır e-Özel'de düzeltilmeli kalır, düzeltilince işlenir", async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      students: ['s16'],
+    })
+    const client = await api(school.user('yonetici'))
+    const created = await client.post(
+      '/api/v1/payments',
+      {
+        studentId: 's16',
+        amountCents: 10_000,
+        method: 'Banka havalesi',
+        reference: `E2E-${randomUUID()}`,
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(created.status, 'tahsilat').toBe(201)
+    const paymentId = (created.body as { data: { id: string } }).data.id
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    const table = tableOf(page)
+    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('fee')
+    await table.getByRole('button', { name: /işlendi olarak işaretle/ }).click()
+    await expect(table.getByRole('button', { name: /işlendi olarak işaretle/ })).toHaveCount(0)
+
+    const reversed = await client.post(
+      `/api/v1/payments/${paymentId}/reverse`,
+      { reason: 'E2E iptal gerekçesi' },
+      { 'idempotency-key': randomUUID(), 'if-match': '"2"' },
+    )
+    expect(reversed.status, 'iptal').toBe(200)
+
+    await page.reload()
+    const state = page.getByRole('combobox', { name: /^e-Özel durumu/ })
+    await state.selectOption('needs_correction')
+    await expect(table.getByText("e-Özel'de düzeltilmeli", { exact: true })).toBeVisible()
+    await expect(table.getByText('Tahsilat iptal edildi')).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    await table.getByRole('button', { name: /düzeltildi olarak işaretle/ }).click()
+    await expect(table.getByRole('button', { name: /düzeltildi olarak işaretle/ })).toHaveCount(0)
+    await state.selectOption('recorded')
+    await expect(table.getByText('İşlendi', { exact: true })).toBeVisible()
+    await expect(table.getByRole('button', { name: /işaretini kaldır/ })).toHaveCount(0)
   })
 
   test('IST-085: ön büro listeyi süzer', async ({ page, loginAs, tenant }) => {

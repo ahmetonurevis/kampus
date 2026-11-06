@@ -36,6 +36,7 @@ import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
+import { registerProspectApplicationFormRoutes } from './routes/prospect-application-forms.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -395,6 +396,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
+  registerProspectApplicationFormRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

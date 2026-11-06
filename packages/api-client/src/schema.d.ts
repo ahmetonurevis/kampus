@@ -3112,6 +3112,110 @@ export interface paths {
         patch: operations["updateProspectDetails"];
         trace?: never;
     };
+    "/api/v1/prospects/application-form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Web başvuru formu ayarı
+         * @description Yönetici formun anahtarını, durumunu, site adresini ve yayımlı aday aydınlatma sürümünü görür (ON-133). Modül `crm`. Rol: `yonetici`.
+         */
+        get: operations["getProspectApplicationFormSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Web başvuru formunu aç, kapat ya da site adresini yaz
+         * @description Kapalı form açık uçta geçersiz anahtarla aynı 404 alır. Site adresi yalnız https kök adresidir (`frame-ancestors` değeri); `null` adresi kaldırır, form yalnız doğrudan bağlantıyla açılır. Aydınlatması yayımlanmamış form açılamaz: 422 `application_form_notice_missing` (DOM-KAY-003). İlk anahtar üretilmeden 404. Modül `crm`. Rol: `yonetici`.
+         */
+        patch: operations["updateProspectApplicationForm"];
+        trace?: never;
+    };
+    "/api/v1/prospects/application-form/rotate-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Web başvuru formu anahtarı üret ya da yenile
+         * @description İlk üretimde form kapalı başlar. Yenilemede eski anahtar hemen geçersiz olur, eski gömme kodu 404 alır; form varken `If-Match` zorunludur. Anahtar değeri denetime yazılmaz. Modül `crm`. Rol: `yonetici`.
+         */
+        post: operations["rotateProspectApplicationFormKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/application-forms/{formKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Başvuru formunun açık verisi
+         * @description Kimlik gerektirmez; kurum anahtardan çözülür. Yanıt kurum adı, aktif kampüsler, yaş grubu sorusu ve güncel aday aydınlatma metnidir. Biçimi bozuk, yenilenmiş ya da bilinmeyen anahtar, kapalı form, kapalı `crm` modülü, metni ya da kampüsü olmayan form aynı 404 `not_found`. IP başına dakikada 30 istek; aşılırsa 429 `rate_limited` ve `Retry-After`.
+         */
+        get: operations["getPublicProspectApplicationForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/application-forms/{formKey}/frame-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Başvuru sayfasının gömülebileceği site
+         * @description Sayfayı sunan vekil, `/basvuru/:anahtar` yanıtının `frame-ancestors` değerini buradan okur (`X-Frame-Ancestors` başlığı ve gövde). Hep 200'dür; geçersiz anahtar, kapalı form ve site adresi olmayan form `'none'` alır. IP başına dakikada 60 istek.
+         */
+        get: operations["getProspectApplicationFramePolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/application-forms/{formKey}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Başvuru gönder
+         * @description Kimlik gerektirmez. Aday `Yeni aday` aşamasında, `Web sitesi` kaynağıyla açılır (DOM-KAY-001, -007, -009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, 18 yaş altında veli adı, aydınlatma sürümü ve kanal bazında ticari ileti onayı (varsayılan kapalı, DOM-KAY-004); T.C. kimlik no, doğum tarihi, adres, kaynak, referans, kardeş, kurum kimliği ve bilinmeyen alan 400. Eski aydınlatma sürümü 409 `notice_outdated` (DOM-KAY-003). Yanıt kişi varlığını belli etmez: aynı iletişimli açık aday varsa yeni kayıt açılmaz, adayın kartına sabit metinli temas notu düşülür (24 saatte bir, DOM-KAY-002), onay yazılmaz ve aynı 202 döner; gizli alan (`website`) dolu gönderim de hiçbir şey yazmadan aynı 202'yi alır. Başka kökenden gönderim 403 `csrf_rejected`. Gövde en çok 4096 bayt (413). IP başına 10 dakikada 5 gönderim; aşılırsa 429 `rate_limited` ve `Retry-After`. Telefon, e-posta ve ad loglanmaz.
+         */
+        post: operations["submitProspectApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -33473,6 +33577,543 @@ export interface operations {
             };
             /** @description Default Response */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectApplicationFormSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            /** @description Henüz üretilmediyse boş */
+                            formKey: string | null;
+                            siteOrigin: string | null;
+                            /** @description İlk anahtar üretilmeden boş */
+                            version: number | null;
+                            /** @description Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz */
+                            noticeVersion: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProspectApplicationForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu iyimser kilit: formun okunan `version` değeri; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enabled?: boolean;
+                    siteOrigin?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            /** @description Henüz üretilmediyse boş */
+                            formKey: string | null;
+                            siteOrigin: string | null;
+                            /** @description İlk anahtar üretilmeden boş */
+                            version: number | null;
+                            /** @description Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz */
+                            noticeVersion: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rotateProspectApplicationFormKey: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Form varken zorunlu iyimser kilit; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. İlk anahtar üretiminde gönderilmez. */
+                "if-match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            /** @description Henüz üretilmediyse boş */
+                            formKey: string | null;
+                            siteOrigin: string | null;
+                            /** @description İlk anahtar üretilmeden boş */
+                            version: number | null;
+                            /** @description Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz */
+                            noticeVersion: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPublicProspectApplicationForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kurumun form anahtarı */
+                formKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            institutionName: string;
+                            /** @description Kurs türlerinde 18 yaş altı seçimi sorulur (DOM-KAY-009) */
+                            asksAgeGroup: boolean;
+                            /** @description Formun gömülebileceği tek site */
+                            siteOrigin: string | null;
+                            branches: {
+                                id: string;
+                                name: string;
+                            }[];
+                            notice: {
+                                /** @description Gönderimde `privacyNoticeVersion` olarak geri gelir */
+                                version: string;
+                                title: string;
+                                body: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectApplicationFramePolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kurumun form anahtarı */
+                formKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurum sitesinin kök adresi ya da `'none'` */
+                            frameAncestors: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitProspectApplication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kurumun form anahtarı */
+                formKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    phone: string;
+                    email?: "" | string;
+                    branchId: string;
+                    interest: string;
+                    minor?: boolean;
+                    guardianName?: string;
+                    privacyNoticeVersion: string;
+                    marketingConsent?: {
+                        sms?: boolean;
+                        email?: boolean;
+                        call?: boolean;
+                    };
+                    website?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {boolean} */
+                            received: true;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

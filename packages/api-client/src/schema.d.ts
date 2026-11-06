@@ -2397,7 +2397,7 @@ export interface paths {
         };
         /**
          * Muhasebe aktarım dosyası
-         * @description `kind` ile tahsilat, iade veya taksit satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
+         * @description `kind` ile tahsilat, iade veya taksit satırlarını döner. `format=csv` (varsayılan): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. `format=xlsx`: Excel dosyası (ikili gövde); metin alanları formül çalıştırmayan metin hücresi, tutar `#,##0.00` biçimli sayı hücresi, tarih Europe/Istanbul günü olarak profilin tarih biçimiyle tarih hücresidir; sütun adı ve sırası kurumun profilinden gelir, ayırıcı ve ondalık işareti yalnız CSV içindir. Belirli bir muhasebe programına uyum iddiası, hesap kodu ve KDV dökümü yoktur. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
          */
         get: operations["exportFinance"];
         put?: never;
@@ -28264,6 +28264,7 @@ export interface operations {
                 from: string;
                 to: string;
                 kind: "payments" | "refunds" | "invoices";
+                format?: "csv" | "xlsx";
             };
             header?: never;
             path?: never;
@@ -28271,7 +28272,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description CSV dosyası */
+            /** @description CSV metni ya da `.xlsx` dosyası */
             200: {
                 headers: {
                     [name: string]: unknown;

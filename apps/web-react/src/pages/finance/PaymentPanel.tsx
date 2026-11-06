@@ -10,10 +10,10 @@ import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   amountInputValue,
   bankAccountLabel,
-  parseAmountInput,
   paymentFormSchema,
   type PaymentFormValues,
 } from '@kampus/school-core/lib/payments.ts'
+import { recordPaymentBody } from '@kampus/react-shared/finance-model.ts'
 import {
   allocatedToInvoice,
   useBankAccounts,
@@ -123,45 +123,30 @@ function PaymentForm({
   const isCash = selectedMethod === CASH
   const isNote = selectedMethod === 'Senet'
 
-  const onSubmit = form.handleSubmit(
-    async ({ amount, method, reference, paidDate, bankAccountId }) => {
-      const amountCents = parseAmountInput(amount)
-      if (amountCents === null) return
-      const outcome = await pay.submit(
-        {
-          studentId: row.studentId,
-          invoiceId: row.id,
-          amountCents,
-          method,
-          ...(method === CASH ? {} : { reference }),
-          ...(!usesBankAccount(method) || bankAccountId === '' ? {} : { bankAccountId }),
-          // Bugün için gün gönderilmez: tahsilat kayıt anını taşır.
-          ...(paidDate === today ? {} : { paidDate }),
-        },
-        {
-          setError: (name, error) => {
-            if (name === 'amountCents') form.setError('amount', error)
-            else if (
-              name === 'reference' ||
-              name === 'paidDate' ||
-              name === 'method' ||
-              name === 'bankAccountId'
-            )
-              form.setError(name, error)
-            else form.setError('root.server', error)
-          },
-        },
-      )
-      if (outcome.status === 'success') {
-        notify.success('Tahsilat kaydedildi.')
-        onClose()
-      }
-      // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz. Kullanılmış
-      // referans da 409'dur ama düzeltilebilir: form açık kalır.
-      else if (outcome.status === 'failed' && outcome.error.code === 'invoice_already_paid')
-        onClose()
-    },
-  )
+  const onSubmit = form.handleSubmit(async (values) => {
+    const body = recordPaymentBody(row, values, today)
+    if (body === null) return
+    const outcome = await pay.submit(body, {
+      setError: (name, error) => {
+        if (name === 'amountCents') form.setError('amount', error)
+        else if (
+          name === 'reference' ||
+          name === 'paidDate' ||
+          name === 'method' ||
+          name === 'bankAccountId'
+        )
+          form.setError(name, error)
+        else form.setError('root.server', error)
+      },
+    })
+    if (outcome.status === 'success') {
+      notify.success('Tahsilat kaydedildi.')
+      onClose()
+    }
+    // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz. Kullanılmış
+    // referans da 409'dur ama düzeltilebilir: form açık kalır.
+    else if (outcome.status === 'failed' && outcome.error.code === 'invoice_already_paid') onClose()
+  })
 
   const errors = form.formState.errors
   const rootError = errors.root?.server

@@ -1,9 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { FINANCE_NOTIFICATION_TYPES } from '../packages/school-core/src/lib/finance-notifications.ts'
+import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import {
   INSTALLMENT_DUE_SOON_DAYS,
   installmentReminders,
+  manualInstallmentReminder,
+  scanReminderKey,
 } from '../packages/school-core/src/lib/installment-reminders.ts'
 import {
   notificationAudiences,
@@ -167,4 +170,64 @@ test('DOM-FIN-052: 18 yaş altında veliye, yetişkin kursiyerde kendisine; fina
     notificationEnabled('installment_due', { finance: true, communication: false }),
     false,
   )
+})
+
+const OVERDUE_DAY = '2026-10-05T09:00:00.000Z'
+const manual = (
+  extra: Record<string, unknown> = {},
+  allocated: ReadonlyMap<string, number> = new Map(),
+  scanSentAt: string | null = null,
+) =>
+  manualInstallmentReminder(
+    { ...invoice('inv-a', OVERDUE_DAY), ...extra },
+    allocated,
+    NOW,
+    scanSentAt,
+  )
+const rejectedWith = (code: string) => (error: unknown) =>
+  error instanceof DomainError && error.code === code && error.kind === 'rule'
+
+test('DOM-FIN-035, ON-113: gecikmiş taksitte elle hatırlatma gecikme bildirimi ve bugünün anahtarını verir', () => {
+  assert.deepEqual(manual(), {
+    reminder: {
+      type: 'installment_overdue',
+      invoiceId: 'inv-a',
+      studentId: 's1',
+      dedupeKey: 'inv-a:manual:2026-10-06',
+    },
+    reminderAt: NOW,
+  })
+})
+
+test('DOM-FIN-035, ON-113: kısmi ödenmiş gecikmiş taksit hatırlatılır, tam ödenmiş 422', () => {
+  assert.notEqual(manual({}, new Map([['inv-a', 4_000]])).reminder, null)
+  assert.throws(
+    () => manual({}, new Map([['inv-a', 10_000]])),
+    rejectedWith('invoice_already_paid'),
+  )
+  assert.throws(() => manual({ paidAt: NOW }), rejectedWith('invoice_already_paid'))
+})
+
+test('DOM-FIN-035, ON-113: vadesi bugün ya da ileride olan taksit elle hatırlatılamaz (422)', () => {
+  for (const dueDate of ['2026-10-06T20:59:00.000Z', '2026-10-20T09:00:00.000Z'])
+    assert.throws(() => manual({ dueDate }), rejectedWith('invoice_not_overdue'))
+})
+
+test('DOM-FIN-035, ON-113: aynı gün ikinci elle hatırlatma ve taramanın gönderdiği gün bildirim yazmaz', () => {
+  const earlier = '2026-10-06T06:00:00.000Z'
+  assert.deepEqual(manual({ reminderAt: earlier }), { reminder: null, reminderAt: earlier })
+  assert.deepEqual(manual({}, new Map(), earlier), { reminder: null, reminderAt: earlier })
+})
+
+test('DOM-FIN-035, ON-113: önceki gün hatırlatılan ya da taranan taksit bugün yeniden hatırlatılır', () => {
+  const yesterday = '2026-10-05T06:00:00.000Z'
+  assert.equal(manual({ reminderAt: yesterday }).reminderAt, NOW)
+  assert.equal(manual({}, new Map(), yesterday).reminderAt, NOW)
+})
+
+test('DOM-FIN-035, ON-113: tarama bugün elle hatırlatılan taksiti atlar, ertesi gün gönderir', () => {
+  const reminded = invoice('inv-a', OVERDUE_DAY, { reminderAt: '2026-10-06T07:00:00.000Z' })
+  assert.deepEqual(decide([reminded]).reminders, [])
+  const { reminders } = decide([reminded], new Map(), '2026-10-07T09:00:00.000Z')
+  assert.deepEqual(reminders[0]?.dedupeKey, scanReminderKey({ id: 'inv-a', dueDate: OVERDUE_DAY }))
 })

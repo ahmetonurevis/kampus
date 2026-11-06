@@ -108,6 +108,21 @@ export function useReversePayment() {
   })
 }
 
+/**
+ * Gecikmiş taksiti elle hatırlatır (DOM-FIN-035, ON-113): veliye bildirim gider, `reminderAt` yazılır.
+ * Bugün zaten hatırlatıldıysa yeni bildirim yazılmaz (`reminder: 'already_sent'`).
+ */
+export function useRemindInstallment() {
+  return useApiCommand({
+    request: (client, input: { invoiceId: string }, headers) =>
+      client.POST('/api/v1/finance/invoices/{invoiceId}/remind', {
+        params: { path: { invoiceId: input.invoiceId }, header: headers },
+        body: {},
+      }),
+    invalidates: [collectionKeyPrefix('invoices')],
+  })
+}
+
 /** Nakit tahsilat ayarı; yalnız yönetici ve ön büro okur (ADR 0006 karar 7). */
 export function usePaymentSettings(options: { enabled?: boolean } = {}) {
   const query = useApiQuery({

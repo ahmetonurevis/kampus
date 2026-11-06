@@ -241,6 +241,48 @@ test.describe('Finans: tahsilat', () => {
     expect((await invoice(client, 'inv-s14-5')).paidAt).not.toBeNull()
   })
 
+  test('DOM-FIN-035, ON-113: gecikmiş taksitte Hatırlat bildirim yazar, düğme Hatırlatıldı olur', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const late = 'e2e-inv-gecikmis'
+    const school = await tenant({
+      roles: [],
+      students: ['s17'],
+      records: [
+        {
+          collection: 'invoices' as const,
+          data: {
+            id: late,
+            studentId: 's17',
+            installment: 9,
+            amount: 100_000,
+            // Taksit tablosu vadeyi 09:00 UTC ister (`invoice-store.ts`).
+            dueDate: `${new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10)}T09:00:00.000Z`,
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+          },
+        },
+      ],
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?durum=gecikmis`)
+    const row = bodyRows(page).filter({ hasText: '9. taksit' })
+    const button = row.getByRole('button', { name: /9\. taksit: Hatırlat/ })
+    await expect(button).toHaveText('Hatırlat')
+    await button.click()
+    await expect(page.getByText('Hatırlatma veliye gönderildi.')).toBeVisible()
+    await expect(button).toHaveText('Hatırlatıldı')
+    await expect(button).toBeDisabled()
+    const client = await api(school.user('yonetici'))
+    const stored = await client.get(`/api/v1/collections/invoices/${late}`)
+    const record = (stored.body as { data: { record: { reminderAt: string | null } } }).data.record
+    expect(record.reminderAt).not.toBeNull()
+  })
+
   test('DOM-FIN-031: kullanılmış referans alanda gösterilir, form açık kalır', async ({
     page,
     loginAs,

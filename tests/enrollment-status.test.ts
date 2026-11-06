@@ -237,7 +237,7 @@ test('DOM-KAY-026: toplu durum haritası her öğrenciyi tek geçişte çözer',
 })
 
 test('DOM-KAY-026: durum etkileri; yalnız aktif öğrenci listede ve yoklamada, finans bildirimi sürer', () => {
-  assert.deepEqual(ENROLLMENT_STATUSES, ['active', 'withdrawn', 'graduated'])
+  assert.deepEqual(ENROLLMENT_STATUSES, ['active', 'frozen', 'withdrawn', 'graduated'])
   for (const status of ENROLLMENT_STATUSES) {
     const effects = ENROLLMENT_STATUS_EFFECTS[status]
     assert.equal(effects.roster, status === 'active')
@@ -252,5 +252,7 @@ test('DOM-KAY-026: durum etkileri; yalnız aktif öğrenci listede ve yoklamada,
     promoted: 'active',
     graduated: 'graduated',
     withdrawn: 'withdrawn',
+    frozen: 'frozen',
+    returned: 'active',
   })
 })

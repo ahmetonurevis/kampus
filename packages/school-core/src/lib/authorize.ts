@@ -53,6 +53,10 @@ type OnurWriteTargets = {
   'contract.approve': { studentId: string }
   'contract.amend': Record<string, never>
   'student.withdraw': Record<string, never>
+  // Kayıt dondurma (DOM-DIL-052): talep öğrenci/veli kapsamındadır; yaş kuralı `lib/enrollment-freezes.ts`.
+  'enrollment.freezeRequest': { studentId: string }
+  'enrollment.freezeDecide': Record<string, never>
+  'enrollment.freezeReturn': Record<string, never>
   'invoice.payOnline': { studentId: string }
   // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
   'prospect.create': Record<string, never>
@@ -121,6 +125,11 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'contract.amend': ['yonetici', 'onburo'],
   // Ayrılış onayı ve iade yöneticidedir (DOM-FIN-052, IST-110).
   'student.withdraw': ['yonetici'],
+  // Talebi kursiyer (18 yaş altında veli) ya da personel açar, kararı yönetici verir; dönüşü
+  // kayıtları yürüten personel işler (DOM-DIL-052, IST-084).
+  'enrollment.freezeRequest': ['yonetici', 'onburo', 'ogrenci', 'veli'],
+  'enrollment.freezeDecide': ['yonetici'],
+  'enrollment.freezeReturn': ['yonetici', 'onburo'],
   // Çevrim içi ödeme: veli yalnız bağlı çocuğunun taksiti için başlatır (DOM-FIN-052, DOM-YTK-025).
   'invoice.payOnline': ['veli'],
   // Aday ve tanışma görüşmesi kurum genelinde yönetici ve ön büronundur; öğretmen, öğrenci ve
@@ -288,7 +297,15 @@ function decide(
     case 'student.withdraw':
     case 'contract.sign':
     case 'contract.amend':
+    case 'enrollment.freezeDecide':
+    case 'enrollment.freezeReturn':
       return ALLOWED
+    case 'enrollment.freezeRequest':
+      // Kapsam dışı öğrenci yok sayılır; varlığı sızmaz (DOM-YTK-025).
+      return (actor.role !== 'veli' && actor.role !== 'ogrenci') ||
+        scope.studentIds.has(request.target.studentId)
+        ? ALLOWED
+        : deny('student_not_found', 'Öğrenci bulunamadı.', 'DOM-YTK-025', 'not_found')
     case 'contract.approve':
       // Kapsam dışı öğrencinin sözleşmesi yok sayılır; varlığı sızmaz (DOM-YTK-025, DOM-FIN-052).
       return actor.role !== 'veli' || scope.studentIds.has(request.target.studentId)

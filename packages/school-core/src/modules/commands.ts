@@ -84,6 +84,10 @@ export const ONUR_OPERATION_COMMANDS = {
     'clubMemberships',
     'tutorSessions',
   ]),
+  // Kayıt dondurma (`lib/enrollment-freezes.ts`, DOM-DIL-052): öğrencinin bayrağını yazar.
+  'enrollment.freezeRequest': spec('crm', [...SCOPE]),
+  'enrollment.freezeDecide': spec('crm', [...SCOPE]),
+  'enrollment.freezeReturn': spec('crm', [...SCOPE]),
   // Ödeme sağlayıcısı bağlanınca okuyacağı koleksiyonlar; şimdilik işlem çağırmaz (authorize.ts).
   'invoice.payOnline': spec('finance', [...SCOPE, 'invoices']),
   // Aday/CRM (`lib/prospects.ts`). Tekillik bütün adayları okur; görüşme çakışması diğer adayların

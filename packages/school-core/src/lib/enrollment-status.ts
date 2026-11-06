@@ -1,21 +1,25 @@
 /**
  * Öğrencinin kayıt durumu ve geçiş olayları (docs/domain/kayit-ve-crm.md DOM-KAY-026; DOM-KAY-001,
- * -020, -022, -024). Durum saklanmaz, her okumada var olan kayıtlardan türetilir (hesaplanabilen
- * değer saklanmaz): öğrencinin `isActive` bayrağı, dönem geçişi kayıtları (`renewals`) ve ayrılış
- * kaydı (`student_withdrawals`). Öğrenciyi pasifleştiren yalnız iki işlem vardır: ayrılış
+ * -020, -022, -024; dil-okulu.md DOM-DIL-052). Durum saklanmaz, her okumada var olan kayıtlardan
+ * türetilir (hesaplanabilen değer saklanmaz): öğrencinin `isActive` ve `frozenAt` bayrakları, dönem
+ * geçişi kayıtları (`renewals`), ayrılış kaydı (`student_withdrawals`) ve dondurma kaydı
+ * (`enrollment_freezes`). Öğrenciyi pasifleştiren yalnız iki işlem vardır: ayrılış
  * (`withdrawStudent`) ve mezuniyet geçişi (`renewal-activate`, `mode: 'graduate'`). Bu yüzden
  * pasif öğrencide uygulanmış mezuniyet varsa durum `graduated`, yoksa `withdrawn`'dır; ayrılış
- * kaydı yalnız olayın tarihini verir. Durumu belirleyen `isActive`'tir: işlemler bayrağı aynı
+ * kaydı yalnız olayın tarihini verir. Durumu belirleyen bayraklardır: işlemler bayrağı aynı
  * transaction'da yazar, iki kaynak ayrışırsa (ör. ayrılış kaydı olan aktif öğrenci) bayrak kazanır.
+ * Dondurma ayrılış değildir: `isActive` true kalır, `frozenAt` doluyken durum `frozen`'dır. Pasif
+ * öğrencide `frozenAt` yok sayılır.
  *
  * Saf modül: State'e bağlı değildir; API depodan okuduğu satırları, web/mobil State'i verir.
  */
 
-export const ENROLLMENT_STATUSES = ['active', 'withdrawn', 'graduated'] as const
+export const ENROLLMENT_STATUSES = ['active', 'frozen', 'withdrawn', 'graduated'] as const
 export type EnrollmentStatus = (typeof ENROLLMENT_STATUSES)[number]
 
 export const ENROLLMENT_STATUS_LABELS: Readonly<Record<EnrollmentStatus, string>> = {
   active: 'Aktif',
+  frozen: 'Dondurulmuş',
   withdrawn: 'Ayrıldı',
   graduated: 'Mezun',
 }
@@ -24,7 +28,8 @@ export const ENROLLMENT_STATUS_LABELS: Readonly<Record<EnrollmentStatus, string>
  * Durumun sonuçları; tüketiciler durumla `switch` yazmak yerine bunu okur. Sınıf listesi ve
  * kontenjan (DOM-KAY-010), yoklama, akademik bildirim ve mesaj yalnız aktif öğrenci içindir.
  * Ayrılan ve mezun öğrencinin finans bildirimi sürer: ayrılışta borç taksiti ve iade ödemesi,
- * mezuniyette kapanmamış borç olabilir (DOM-FIN-040, -041; DOM-KAY-022).
+ * mezuniyette kapanmamış borç olabilir (DOM-FIN-040, -041; DOM-KAY-022). Dondurulan kursiyer listede
+ * ve kontenjanda yer tutmaz, yoklaması beklenmez, finans bildirimi sürer (DOM-DIL-052).
  */
 export interface EnrollmentStatusEffects {
   /** Sınıf/grup listesinde görünür ve kontenjanda yer tutar. */
@@ -39,6 +44,7 @@ export interface EnrollmentStatusEffects {
 
 export const ENROLLMENT_STATUS_EFFECTS = {
   active: { roster: true, attendance: true, academicNotices: true, financeNotices: true },
+  frozen: { roster: false, attendance: false, academicNotices: false, financeNotices: true },
   withdrawn: { roster: false, attendance: false, academicNotices: false, financeNotices: true },
   graduated: { roster: false, attendance: false, academicNotices: false, financeNotices: true },
 } as const satisfies Record<EnrollmentStatus, EnrollmentStatusEffects>
@@ -49,6 +55,8 @@ export interface EnrollmentStudent {
   classId: string
   isActive?: boolean
   joinedAt?: string
+  /** Kaydın donduğu an (DOM-DIL-052); dönüşte temizlenir. */
+  frozenAt?: string | null
 }
 
 /** Yenileme ve dönem geçişi kaydı (`renewals`; `lib/school-workflows.ts` `Renewal`). */
@@ -71,10 +79,20 @@ export interface EnrollmentWithdrawal {
   withdrawalDate: string
 }
 
+/** Dondurma kaydı (`enrollment_freezes`; API `StoredFreeze`). */
+export interface EnrollmentFreeze {
+  id: string
+  studentId: string
+  startedAt: string | null
+  endedDate: string | null
+}
+
 export interface EnrollmentRecords {
   renewals: readonly EnrollmentRenewal[]
   /** Çevrimdışı State'te ayrılış kaydı yoktur; verilmezse ayrılış olayı tarihsiz döner. */
   withdrawals?: readonly EnrollmentWithdrawal[]
+  /** Çevrimdışı State'te dondurma kaydı yoktur; verilmezse dondurma olayı üretilmez. */
+  freezes?: readonly EnrollmentFreeze[]
 }
 
 const GRADUATED = 'Mezun'
@@ -93,7 +111,7 @@ export function enrollmentStatus(
   student: EnrollmentStudent,
   records: Pick<EnrollmentRecords, 'renewals'>,
 ): EnrollmentStatus {
-  if (student.isActive !== false) return 'active'
+  if (student.isActive !== false) return student.frozenAt ? 'frozen' : 'active'
   return records.renewals.some((item) => item.studentId === student.id && isGraduation(item))
     ? 'graduated'
     : 'withdrawn'
@@ -110,7 +128,13 @@ export function enrollmentStatuses(
   return new Map(
     students.map((student) => [
       student.id,
-      student.isActive !== false ? 'active' : graduated.has(student.id) ? 'graduated' : 'withdrawn',
+      student.isActive === false
+        ? graduated.has(student.id)
+          ? 'graduated'
+          : 'withdrawn'
+        : student.frozenAt
+          ? 'frozen'
+          : 'active',
     ]),
   )
 }
@@ -125,6 +149,8 @@ export function enrollmentStatuses(
  * | `promoted`  | dönem geçişi `POST /finance/renewals/:id/activate` (`mode: 'renew'`)     | active    |
  * | `graduated` | dönem geçişi `POST /finance/renewals/:id/activate` (`mode: 'graduate'`)  | graduated |
  * | `withdrawn` | ayrılış `POST /students/:id/withdraw` (`withdrawStudent`)                | withdrawn |
+ * | `frozen`    | onay `POST /finance/enrollment-freezes/:id/approve` ya da günlük iş      | frozen    |
+ * | `returned`  | dönüş `POST /finance/enrollment-freezes/:id/return`                      | active    |
  *
  * Ayrılış öğrencinin planlanmış yenilemesini iptal eder (`İptal`); iptal edilen yenileme hiç
  * yürürlüğe girmediği için olay üretmez. Planlanmış mezuniyet de uygulanana kadar olay değildir.
@@ -142,6 +168,8 @@ export type EnrollmentEvent =
     }
   | { kind: 'graduated'; at: string; renewalId: string; fromClassId: string }
   | { kind: 'withdrawn'; at: string | null; withdrawalId: string | null }
+  | { kind: 'frozen'; at: string; freezeId: string }
+  | { kind: 'returned'; at: string; freezeId: string }
 export type EnrollmentEventKind = EnrollmentEvent['kind']
 
 /** Olayın kayıt durumuna etkisi; `null` durumu değiştirmez. */
@@ -153,6 +181,8 @@ export const ENROLLMENT_EVENT_STATUS: Readonly<
   promoted: 'active',
   graduated: 'graduated',
   withdrawn: 'withdrawn',
+  frozen: 'frozen',
+  returned: 'active',
 }
 
 const DAY_START = 'T00:00:00.000Z'
@@ -205,6 +235,12 @@ export function enrollmentEvents(
         renewalId: renewal.id,
         fromClassId: renewal.fromClassId,
       })
+  }
+  for (const freeze of records.freezes ?? []) {
+    if (freeze.studentId !== student.id || freeze.startedAt === null) continue
+    events.push({ kind: 'frozen', at: freeze.startedAt, freezeId: freeze.id })
+    if (freeze.endedDate !== null)
+      events.push({ kind: 'returned', at: freeze.endedDate, freezeId: freeze.id })
   }
   if (enrollmentStatus(student, records) === 'withdrawn') {
     const withdrawal = records.withdrawals?.find((item) => item.studentId === student.id)

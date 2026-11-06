@@ -317,7 +317,11 @@ type StatePatches = OnurStatePatches & PlatformStatePatches<SeedState>
 type OnurStatePatches = {
   // Arayüzden kaydedilen öğrenciye okul numarası verilmez. Kimlik no ve doğum tarihi
   // `records.data`'ya yazılmaz; API'de `student_identities` tablosundadır (DOM-KAY-012).
-  students: (Patch<SeedItem<'students'>, { number?: string }> & { academicYear?: number })[]
+  students: (Patch<SeedItem<'students'>, { number?: string }> & {
+    academicYear?: number
+    /** Kaydın donduğu an (DOM-DIL-052); `isActive` değişmez, durum bundan türetilir (DOM-KAY-026). */
+    frozenAt?: string | null
+  })[]
   invoices: (SeedItem<'invoices'> &
     Timestamps & {
       /** Okunurken eklenen kısmi ödeme tutarı (API, DOM-FIN-030); saklanmaz. */

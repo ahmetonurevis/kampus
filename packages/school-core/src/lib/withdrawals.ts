@@ -368,6 +368,8 @@ export function withdrawStudent(
 
   for (const renewal of planned) renewal.status = 'İptal'
   student.isActive = false
+  // Dondurma süresi dolan kursiyer ayrılabilir (DOM-DIL-052); açık dondurma kaydını servis kapatır.
+  if (student.frozenAt) student.frozenAt = null
 
   const now = context.now
   state.transportAssignments = state.transportAssignments.filter(

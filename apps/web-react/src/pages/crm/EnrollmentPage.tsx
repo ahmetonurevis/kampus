@@ -57,6 +57,7 @@ import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
 import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
+import { EnrollmentFreezesSection } from './EnrollmentFreezesSection.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
 import { enrollmentParentId } from './enrollment-guardian-account.ts'
@@ -209,6 +210,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
         />
       )}
       <GuardianInvitationsSection />
+      {institutionType === 'language_school' ? <EnrollmentFreezesSection /> : null}
     </>
   )
 }

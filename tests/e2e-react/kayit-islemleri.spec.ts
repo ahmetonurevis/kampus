@@ -1374,6 +1374,101 @@ async function enrollThroughApi(
   expect(result.status, JSON.stringify(result.body)).toBe(201)
 }
 
+test.describe('kayıt dondurma', () => {
+  const FREEZE_URL = '/yonetici/kayit-islemleri'
+  const section = (page: Page) => page.getByRole('region', { name: 'Kayıt dondurma' })
+  const dayAfter = (days: number) => new Date(Date.now() + days * DAY).toISOString().slice(0, 10)
+
+  test('DOM-DIL-052, DOM-KAY-026: talep, yönetici onayı, dondurulmuş durum ve dönüş', async ({
+    page,
+    tenant,
+    loginAs,
+    api,
+  }) => {
+    const school = await tenant({ type: 'language_school', roles: ['onburo'], students: ['s1'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(FREEZE_URL)
+
+    const area = section(page)
+    await area.getByRole('button', { name: 'Dondurma talebi aç' }).click()
+    const form = page.getByRole('dialog', { name: 'Dondurma talebi aç' })
+    await form.getByLabel('Kursiyer').selectOption('s1')
+    await form.getByLabel('Dondurma nedeni').selectOption('relocation')
+    await form.getByLabel('Gerekçe').fill('Başka ile taşınıyorum')
+    await form.getByLabel('Planlanan dönüş').fill(dayAfter(60))
+    await form.getByRole('button', { name: 'Talebi aç' }).click()
+    await expect(toast(page, 'Dondurma talebi açıldı.')).toBeVisible()
+    await expect(form).toBeHidden()
+    await expect(area.getByText('Onay bekliyor')).toBeVisible()
+
+    await area.getByRole('button', { name: /dondurmasını onayla$/ }).click()
+    const decision = page.getByRole('dialog', { name: 'Dondurmayı onayla' })
+    // Gerekçesiz karar verilmez.
+    await decision.getByRole('button', { name: 'Onayla' }).click()
+    await expect(decision.getByRole('alert')).toBeVisible()
+    await decision.getByLabel('Karar gerekçesi').fill('Belgeler uygun')
+    await decision.getByRole('button', { name: 'Onayla' }).click()
+    await expect(toast(page, 'Dondurma onaylandı.')).toBeVisible()
+    await expect(area.getByText('Dondurulmuş')).toBeVisible()
+
+    // Durum öğrenci kaydından türetilir; dondurma ayrılış değildir.
+    const admin = await api(school.user('yonetici'))
+    const student = await admin.get('/api/v1/collections/students/s1')
+    expect(student.status).toBe(200)
+    const record = (student.body as { data: { record: { isActive: boolean; frozenAt?: string } } })
+      .data.record
+    expect(record.isActive).toBe(true)
+    expect(record.frozenAt).toBeTruthy()
+
+    await area.getByRole('button', { name: /dönüşünü işle$/ }).click()
+    const back = page.getByRole('dialog', { name: 'Dönüşü işle' })
+    await back.getByRole('button', { name: 'Dönüşü işle' }).click()
+    await expect(toast(page, 'Dönüş işlendi. Kursiyer yeniden aktif.')).toBeVisible()
+    await expect(area.getByText('Sona erdi')).toBeVisible()
+  })
+
+  test('DOM-DIL-052: ön büro talep açar ama karar veremez; yanlış tarih alanda gösterilir', async ({
+    page,
+    tenant,
+    loginAs,
+  }) => {
+    const school = await tenant({ type: 'language_school', roles: ['onburo'], students: ['s1'] })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    const area = section(page)
+    await area.getByRole('button', { name: 'Dondurma talebi aç' }).click()
+    const form = page.getByRole('dialog', { name: 'Dondurma talebi aç' })
+    await form.getByLabel('Kursiyer').selectOption('s1')
+    await form.getByLabel('Gerekçe').fill('Askerlik sevki')
+    await form.getByLabel('Başlangıç').fill(dayAfter(30))
+    await form.getByLabel('Planlanan dönüş').fill(dayAfter(10))
+    await form.getByRole('button', { name: 'Talebi aç' }).click()
+    await expect(form.getByText('Dönüş tarihi başlangıçtan sonra olmalıdır.')).toBeVisible()
+    await form.getByLabel('Planlanan dönüş').fill(dayAfter(60))
+    await form.getByRole('button', { name: 'Talebi aç' }).click()
+    await expect(toast(page, 'Dondurma talebi açıldı.')).toBeVisible()
+    await expect(area.getByText('Onay bekliyor')).toBeVisible()
+    await expect(area.getByRole('button', { name: /dondurmasını onayla$/ })).toHaveCount(0)
+  })
+
+  test('DOM-DIL-052: okulda kayıt dondurma bölümü yoktur', async ({ page, tenant, loginAs }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s1'] })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(page.getByRole('heading', { name: 'Kayıt İşlemleri' })).toBeVisible()
+    await expect(section(page)).toHaveCount(0)
+  })
+
+  test('DOM-DIL-052: bölüm 390 px genişlikte yatay taşmaz', async ({ page, tenant, loginAs }) => {
+    const school = await tenant({ type: 'language_school', roles: ['onburo'], students: ['s1'] })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(section(page)).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+})
+
 /** Aynı kurumda iki öğrenci aynı kimlikle kaydedilemez; veli telefonuna göre geçerli T.C. no. */
 const TC_NUMBERS: Readonly<Record<string, string>> = {
   '05559990082': '10000000214',

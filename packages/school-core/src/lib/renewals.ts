@@ -82,7 +82,10 @@ export const renewalPlanSchema = z.discriminatedUnion('mode', [
 export type RenewalPlanInput = z.input<typeof renewalPlanSchema>
 
 export interface RenewalContext {
+  /** Sözleşmeye esas tarife; servis `resolveEffectiveTariff` ile çözer (DOM-FIN-002, K-11). */
   tariff: EnrollmentTariff | null
+  /** `tariff` önceki yıldan taşındıysa o yıl; hedef yılın kendi tarifesinde boş. */
+  tariffCarriedOverFromYear?: number | null
   /** Önceki yılın yayımlı tarifesi; sözleşmesi olmayan öğrencide tavanın bazıdır (DOM-FIN-005). */
   previousTariff: Pick<EnrollmentTariff, 'items'> | null
   priceIndexes: readonly PriceIndexEntry[]
@@ -100,6 +103,8 @@ export interface RenewalContext {
 export interface RenewalPrice {
   tariffId: string
   tariffVersion: number
+  /** Süresinde ilan yapılmadıysa tarifenin taşındığı yıl; hedef yılın kendi tarifesinde `null`. */
+  tariffCarriedOverFromYear: number | null
   /** Hedef düzeyin ilan edilen öğrenim ücreti. */
   announcedCents: number
   ceiling: RenewalCeiling
@@ -213,6 +218,7 @@ function priceRenewal(
   const result: RenewalPrice = {
     tariffId: context.tariff.id,
     tariffVersion: context.tariff.versionNumber,
+    tariffCarriedOverFromYear: context.tariffCarriedOverFromYear ?? null,
     announcedCents,
     ceiling,
     maxTuitionCents,
@@ -433,6 +439,7 @@ export function planRenewal(
     pricing: {
       tariffId: price.tariffId,
       tariffVersion: price.tariffVersion,
+      tariffCarriedOverFromYear: price.tariffCarriedOverFromYear,
       announcedCents: price.announcedCents,
       ceiling: price.ceiling,
       discounts: price.discounts,

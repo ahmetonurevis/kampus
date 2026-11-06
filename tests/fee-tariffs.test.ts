@@ -2,13 +2,16 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  carriedOverTariffNote,
   emptyTariffForm,
   feeTariffFormSchema,
   freeQuotaCount,
+  isAnnouncementPeriodOver,
   isOutsideAnnouncementPeriod,
   planTariffCreate,
   planTariffPublish,
   planTariffUpdate,
+  resolveEffectiveTariff,
   tariffFormToBody,
   tariffItemExceedsAnnounced,
   nextYearTariffForm,
@@ -221,6 +224,61 @@ test('DOM-FIN-002: okulda ilan dönemi ocak–mayıstır, dil okulu bağlı değ
   assert.equal(isOutsideAnnouncementPeriod('2026-06-01', 'school'), true)
   assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'school'), true)
   assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'language_school'), false)
+})
+
+test('DOM-FIN-002: ilan dönemi eğitim yılının başladığı yılın mayıs sonunda biter (İstanbul günü)', () => {
+  // 31 Mayıs 23:59 İstanbul hâlâ süre içinde, 1 Haziran 00:00 İstanbul süre bitmiş.
+  assert.equal(isAnnouncementPeriodOver(2026, 'school', '2026-05-31T20:59:59.000Z'), false)
+  assert.equal(isAnnouncementPeriodOver(2026, 'school', '2026-05-31T21:00:00.000Z'), true)
+  assert.equal(isAnnouncementPeriodOver(2026, 'school', new Date('2026-10-06T09:00:00.000Z')), true)
+  assert.equal(isAnnouncementPeriodOver(2027, 'school', '2026-10-06T09:00:00.000Z'), false)
+  assert.equal(isAnnouncementPeriodOver(2027, 'school', '2027-01-15T09:00:00.000Z'), false)
+  assert.equal(isAnnouncementPeriodOver(2026, 'language_school', '2030-01-01T09:00:00.000Z'), false)
+})
+
+test('DOM-FIN-002, K-11: hedef yılın yayımlı tarifesi varsa o, yoksa dönem bitince önceki yılınki geçerlidir', () => {
+  const inPeriod = '2026-03-01T09:00:00.000Z'
+  const afterPeriod = '2026-06-01T09:00:00.000Z'
+  const base = {
+    academicYear: 2026,
+    institutionType: 'school',
+    published: null,
+    previousPublished: 'tarife-2025',
+    now: afterPeriod,
+  } as const
+  assert.deepEqual(resolveEffectiveTariff(base), {
+    tariff: 'tarife-2025',
+    carriedOverFromYear: 2025,
+  })
+  // Süre sonrası yayımlanmış olsa da hedef yılın kendi tarifesi önceliklidir.
+  assert.deepEqual(resolveEffectiveTariff({ ...base, published: 'tarife-2026' }), {
+    tariff: 'tarife-2026',
+    carriedOverFromYear: null,
+  })
+  // Dönem sürerken hedef yılın kendi tarifesi yine kullanılır.
+  assert.deepEqual(resolveEffectiveTariff({ ...base, published: 'tarife-2026', now: inPeriod }), {
+    tariff: 'tarife-2026',
+    carriedOverFromYear: null,
+  })
+  assert.equal(resolveEffectiveTariff({ ...base, now: inPeriod }), null)
+  assert.equal(resolveEffectiveTariff({ ...base, previousPublished: null }), null)
+})
+
+test('DOM-FIN-002, K-11: ilan dönemi olmayan kurum türünde önceki yılın tarifesi taşınmaz', () => {
+  assert.equal(
+    resolveEffectiveTariff({
+      academicYear: 2026,
+      institutionType: 'language_school',
+      published: null,
+      previousPublished: 'tarife-2025',
+      now: '2026-10-06T09:00:00.000Z',
+    }),
+    null,
+  )
+})
+
+test('DOM-FIN-002, K-11: taşınan tarife açıklaması kaynak eğitim yılını yazar', () => {
+  assert.match(carriedOverTariffNote(2025), /2025–2026/)
 })
 
 // --- Mevzuat hesapları -----------------------------------------------------------------------

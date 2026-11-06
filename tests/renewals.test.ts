@@ -150,6 +150,57 @@ test('DOM-FIN-002: yayımlı tarife yoksa plan ve önizleme reddedilir; tarife d
   )
 })
 
+test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulanınca önizleme ve kayıt bunu söyler; sözleşme o tarifeyi taşır, yıl hedef yıl kalır', () => {
+  const state = seeded()
+  const carried: EnrollmentTariff = { ...TARIFF, id: 'test-tariff-2026', versionNumber: 5 }
+  const context: RenewalContext = {
+    ...CONTEXT,
+    tariff: carried,
+    tariffCarriedOverFromYear: YEAR - 1,
+    previousTariff: carried,
+  }
+  const quote = quoteRenewal(state, ADMIN, QUOTE, context)
+  assert.equal(quote.tariffId, carried.id)
+  assert.equal(quote.tariffVersion, 5)
+  assert.equal(quote.tariffCarriedOverFromYear, YEAR - 1)
+  // Plan gövdesi önizlemenin tarifesiyle uyumlu olmalı: hedef yılın tarifesi sonradan yayımlandıysa 409.
+  unchangedOnFailure(state, () => plan(state, PLAN, context), 'tariff_changed', 'conflict')
+  const { renewal, contractId } = plan(state, { ...PLAN, tariffId: carried.id }, context)
+  const contract = state.contracts.find((item) => item.id === contractId)
+  assert.equal(contract?.tariffId, carried.id)
+  assert.equal(contract?.tariffVersion, 5)
+  assert.equal(contract?.academicYear, YEAR)
+  assert.equal(renewal.year, YEAR)
+  assert.equal(renewal.pricing?.tariffCarriedOverFromYear, YEAR - 1)
+})
+
+test('DOM-FIN-002, K-11: hedef yılın kendi tarifesinde taşınma işareti yoktur', () => {
+  const state = seeded()
+  assert.equal(quoteRenewal(state, ADMIN, QUOTE, CONTEXT).tariffCarriedOverFromYear, null)
+  assert.equal(plan(state).renewal.pricing?.tariffCarriedOverFromYear, null)
+})
+
+test('DOM-FIN-005, K-11: taşınan tarife tavan bazını değiştirmez; baz önceki yılın ilan ücretidir', () => {
+  const state = seeded()
+  state.contracts = state.contracts.filter((item) => item.studentId !== 's3')
+  const previous: EnrollmentTariff = {
+    ...TARIFF,
+    id: 'test-tariff-2026',
+    items: [item({ amountCents: 4_000_000, announcedAmountCents: 5_000_000 })],
+  }
+  const quote = quoteRenewal(state, ADMIN, QUOTE, {
+    ...CONTEXT,
+    tariff: previous,
+    tariffCarriedOverFromYear: YEAR - 1,
+    previousTariff: previous,
+  })
+  assert.equal(quote.announcedCents, 4_000_000)
+  assert.ok(quote.ceiling.status === 'applied')
+  assert.equal(quote.ceiling.baseSource, 'previous_tariff')
+  assert.equal(quote.ceiling.baseCents, 5_000_000)
+  assert.equal(quote.maxTuitionCents, 4_000_000)
+})
+
 test('DOM-FIN-005: oran girilmemiş yılda plan reddedilir; yıl atlanmışsa her yılın oranı sırayla uygulanır', () => {
   const state = seeded({ academicYear: 2025, grossCents: 5_000_000 })
   unchangedOnFailure(state, () => plan(state), 'price_index_missing')

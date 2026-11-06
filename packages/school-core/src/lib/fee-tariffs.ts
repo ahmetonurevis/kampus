@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { dayKey } from './format.ts'
 import { amountInputValue, parseAmountInput } from './payments.ts'
 
 /**
@@ -112,18 +113,70 @@ export const updateFeeTariffSchema = z.strictObject({
 export type UpdateFeeTariffInput = z.input<typeof updateFeeTariffSchema>
 
 /**
- * Okulda ücret ocak başı–mayıs sonu arasında ilan edilir (DOM-FIN-002, 5580 md. 13/1). Dönem dışı
- * yayım engellenmez: ek sınıf veya yeni kurum gibi meşru durumlar vardır, ekran uyarır. Dil okulu
- * bu kurala bağlı değildir.
+ * İlan dönemi profil parametresidir (DOM-FIN-002): okulda ücret ocak başı–mayıs sonu arasında ilan
+ * edilir (5580 md. 13/1). Kaydı olmayan kurum türü (dil okulu, kurs) bu kurala bağlı değildir.
+ */
+const ANNOUNCEMENT_PERIODS: Partial<
+  Readonly<Record<InstitutionType, { firstMonth: number; lastMonth: number }>>
+> = {
+  school: { firstMonth: 1, lastMonth: 5 },
+}
+
+/**
+ * Dönem dışı yayım engellenmez: ek sınıf veya yeni kurum gibi meşru durumlar vardır, ekran uyarır.
  */
 export function isOutsideAnnouncementPeriod(
   announcedDate: string,
   institutionType: InstitutionType,
 ): boolean {
-  if (institutionType !== 'school') return false
+  const period = ANNOUNCEMENT_PERIODS[institutionType]
+  if (period === undefined) return false
   const month = Number(announcedDate.slice(5, 7))
-  return month < 1 || month > 5
+  return month < period.firstMonth || month > period.lastMonth
 }
+
+/**
+ * Eğitim yılının ilan dönemi bitti mi: 2026–2027 ücreti 2026 ocak–mayısında ilan edilir, dönemin son
+ * günü de süre içindedir. Gün Europe/Istanbul'a göredir. İlan dönemi olmayan kurum türünde süre de
+ * dolmaz.
+ */
+export function isAnnouncementPeriodOver(
+  academicYear: number,
+  institutionType: InstitutionType,
+  now: string | Date,
+): boolean {
+  const period = ANNOUNCEMENT_PERIODS[institutionType]
+  if (period === undefined) return false
+  const lastMonth = `${String(academicYear)}-${String(period.lastMonth).padStart(2, '0')}`
+  return dayKey(now).slice(0, 7) > lastMonth
+}
+
+/**
+ * Sözleşmeye esas tarife (DOM-FIN-002, K-11): hedef yılın yayımlı tarifesi varsa odur; yoksa ve ilan
+ * dönemi bittiyse önceki yılın yayımlı tarifesi geçerli kalır. Dönem sürüyorsa, kurum türünün ilan
+ * dönemi yoksa ya da önceki yılın da tarifesi yoksa `null`: çağıran `tariff_not_published` verir.
+ * Zincirleme taşıma yoktur, yalnız bir önceki yıla bakılır. `carriedOverFromYear` tarifenin taşındığı
+ * yıldır; hedef yılın kendi tarifesinde `null`.
+ */
+export function resolveEffectiveTariff<TTariff>(input: {
+  academicYear: number
+  institutionType: InstitutionType
+  published: TTariff | null
+  previousPublished: TTariff | null
+  now: string | Date
+}): { tariff: TTariff; carriedOverFromYear: number | null } | null {
+  if (input.published !== null) return { tariff: input.published, carriedOverFromYear: null }
+  if (
+    input.previousPublished === null ||
+    !isAnnouncementPeriodOver(input.academicYear, input.institutionType, input.now)
+  )
+    return null
+  return { tariff: input.previousPublished, carriedOverFromYear: input.academicYear - 1 }
+}
+
+/** Önceki yılın tarifesi uygulandığında kullanıcıya gösterilen açıklama (DOM-FIN-002, K-11). */
+export const carriedOverTariffNote = (fromYear: number) =>
+  `Bu eğitim yılının ücreti süresinde ilan edilmediği için önceki yılın (${String(fromYear)}–${String(fromYear + 1)}) tarifesi uygulanır.`
 
 export const publishFeeTariffSchema = z.strictObject({
   announcedDate: daySchema,

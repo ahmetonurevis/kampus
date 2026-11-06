@@ -193,6 +193,10 @@ Migration `0029_create_groups`; şema `apps/api/src/db/schema/language-groups.ts
 - `language_group_waitlist`: öğrenci ya da aday (`language_group_waitlist_learner_check` tam biri), kur ve isteğe bağlı grup sırası, istek anı, durum (`waiting`/`offered`/`accepted`/`expired`/`withdrawn`) ve teklif alanları (teklif grubu, an ve bitiş birlikte). Bekleyen ya da teklifli satırda kur başına tekil öğrenci/aday (kısmi tekil indeksler). Sıra indeksi `(institution_id, course_id, requested_at)`.
 - Kurumun grupları dönem başına onlarcadır: çakışma ve ad tekilliği kurumun bütün kapanmamış gruplarıyla kurum kilidi altında core'da denetlenir, okuma süzgeci serviste yapılır (`TODO(grup-yukleme)`: grup sayısı binleri bulursa yükleme `end_date` ile daraltılır).
 
+### Kayıt dondurma (DOM-DIL-052; IST-084)
+
+Migration `0065_enrollment_freezes`; şema `apps/api/src/db/schema/enrollment-freezes.ts`, depo `apps/api/src/db/enrollment-freezes.ts`, kural core `lib/enrollment-freezes.ts`. `enrollment_freezes` talep, karar, etki ve dönüşü tek satırda tutar; `student_id` `records` kimliğidir. `enrollment_freezes_open_key` kursiyerin tek açık (`requested`, `approved`) kaydını güvenceye alır. Aşama saklanmaz; kayıt durumu öğrencinin `frozenAt` bayrağındandır ve `started_at` ile aynı transaction'da yazılır. Kayıt akışı `language_group_members.status`'u `frozen`/`active` yapar, dönüşte eski gruba geçemeyen satırı arşivler.
+
 ### CEFR tabloları (ADR 0004 karar 8; IST-058, IST-060, IST-062)
 
 Migration `0034_create_cefr_decisions`; şema `apps/api/src/db/schema/cefr.ts`, depo `apps/api/src/db/cefr.ts`, kurallar core `cefr/placement.ts`, `cefr/progression.ts`, `cefr/suggestion.ts`. Öneri, geçerlilik, devam oranı ve geçiş koşulları saklanmaz; karar satırı yalnız karar anının kopyasını taşır (`jsonb`, `schemaVersion` `check`'i; yapı core şemasıyla doğrulanır).

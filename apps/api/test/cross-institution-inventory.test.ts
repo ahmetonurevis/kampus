@@ -905,6 +905,23 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: finans uçları (ON-113, ON-140; #54 izni)
+  'POST /api/v1/finance/invoices/:invoiceId/remind': kayit(
+    'installment-reminders.test.ts',
+    'başka kurumun taksiti olmayan kimlikle aynı 404, B değişmez',
+  ),
+  'GET /api/v1/prospects/loss-breakdown': liste(
+    'prospects.test.ts',
+    'başka kurumun vazgeçen adayı kırılımda görünmez',
+  ),
+  'GET /api/v1/finance/reconciliation': liste(
+    'finance-reconciliation.test.ts',
+    'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
+  ),
+  'GET /api/v1/finance/reconciliation/export': liste(
+    'finance-reconciliation.test.ts',
+    'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
+  ),
 }
 
 /**

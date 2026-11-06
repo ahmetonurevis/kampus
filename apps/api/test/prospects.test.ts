@@ -596,6 +596,144 @@ describe('aday uçları', () => {
     assert.equal(audit.length, 2)
   })
 
+  const LOSS_URL = '/api/v1/prospects/loss-breakdown'
+  const lossOf = (cookie: string | null) =>
+    app.inject({
+      method: 'GET',
+      url: LOSS_URL,
+      headers: { origin: TEST_ORIGIN, 'x-forwarded-for': nextIp(), ...(cookie ? { cookie } : {}) },
+    })
+
+  test('DOM-KAY-005, ON-140: tercih edilen kurum saklanır, öğretmene gitmez, denetime değeri yazılmaz, loglanmaz', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs, clock: () => FIXED_NOW })
+    try {
+      const a = await institution({ type: 'language_school' })
+      const cookie = await frontDesk(a.id)
+      const body = {
+        stage: 'Vazgeçti',
+        lostReason: 'other_school',
+        lostToInstitution: 'Kvkk İzleme Koleji',
+      }
+      const lost = await send(
+        'PATCH',
+        '/api/v1/prospects/pr1',
+        cookie,
+        body,
+        ifMatch(await versionOf(a.id, 'pr1')),
+        logged,
+      )
+      assert.equal(lost.statusCode, 200, lost.body)
+      const record = await findRecord(db, a.id, 'prospects', 'pr1')
+      assert.equal(record?.data.lostToInstitution, 'Kvkk İzleme Koleji')
+      assert.equal(logs.join('\n').includes('Kvkk İzleme Koleji'), false)
+      const audit = await db
+        .select({ changes: auditLog.changes, reason: auditLog.reason })
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'prospect.stage')))
+      assert.equal(JSON.stringify(audit).includes('Kvkk İzleme Koleji'), false)
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('DOM-KAY-005, ON-140: tercih edilen kurum sınırı aşarsa ya da başka aşamada verilirse 400; aday değişmez', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    await unchanged(a.id, 'pr1', async () => {
+      assertError(
+        await stage(
+          cookie,
+          'pr1',
+          { stage: 'Vazgeçti', lostReason: 'price', lostToInstitution: 'x'.repeat(121) },
+          version,
+        ),
+        400,
+        'validation_failed',
+      )
+      assertError(
+        await stage(
+          cookie,
+          'pr1',
+          { stage: 'Teklif verildi', lostToInstitution: 'Rakip' },
+          version,
+        ),
+        400,
+        'validation_failed',
+      )
+    })
+  })
+
+  test('IST-117, ON-140: kayıp kırılımı neden ve kurumu sayar; yönetici ve ön büro okur, aday kimliği dönmez', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    for (const [id, institutionName] of [
+      ['pr1', 'Rakip Koleji'],
+      ['pr2', ' rakip  koleji'],
+      ['pr3', undefined],
+    ] as const) {
+      const response = await stage(
+        cookie,
+        id,
+        {
+          stage: 'Vazgeçti',
+          lostReason: 'price',
+          ...(institutionName ? { lostToInstitution: institutionName } : {}),
+        },
+        await versionOf(a.id, id),
+      )
+      assert.equal(response.statusCode, 200, response.body)
+    }
+    for (const reader of [cookie, a.adminCookie]) {
+      const response = await lossOf(reader)
+      assert.equal(response.statusCode, 200, response.body)
+      // pr5 örnek veride nedensiz vazgeçmiştir.
+      assert.deepEqual(response.json().data, {
+        total: 4,
+        reasons: [
+          { reason: 'price', count: 3 },
+          { reason: null, count: 1 },
+        ],
+        institutions: [{ name: 'Rakip Koleji', count: 2 }],
+        otherInstitutions: 0,
+        unnamed: 2,
+      })
+      assert.equal(response.body.includes('pr1'), false)
+    }
+  })
+
+  test('IST-117, ON-140: başka kurumun vazgeçen adayı kırılımda görünmez; oturumsuz 401, yetkisiz rol 403, modül kapalı 403', async () => {
+    const a = await institution()
+    const b = await institution()
+    const bCookie = await frontDesk(b.id)
+    const lost = await stage(
+      bCookie,
+      'pr1',
+      { stage: 'Vazgeçti', lostReason: 'price', lostToInstitution: 'B Kurumunun Rakibi' },
+      await versionOf(b.id, 'pr1'),
+    )
+    assert.equal(lost.statusCode, 200, lost.body)
+    const own = await lossOf(a.adminCookie)
+    assert.equal(own.statusCode, 200, own.body)
+    assert.equal(own.body.includes('B Kurumunun Rakibi'), false)
+    assert.equal(own.json().data.total, 1)
+
+    assert.equal((await lossOf(null)).statusCode, 401)
+    for (const role of ['ogretmen', 'ogrenci', 'veli'] as const) {
+      const user = await member(a.id, role)
+      assertError(await lossOf(user.cookie), 403)
+    }
+    const closed = await institution({ enabledModules: { crm: false } })
+    assertError(await lossOf(closed.adminCookie), 403, 'module_disabled')
+    const unknown = await app.inject({
+      method: 'GET',
+      url: `${LOSS_URL}?institutionId=${b.id}`,
+      headers: { origin: TEST_ORIGIN, 'x-forwarded-for': nextIp(), cookie: a.adminCookie },
+    })
+    assertError(unknown, 400)
+  })
+
   test('DOM-KAY-030, DOM-KAY-031: vazgeçen aday yeniden açılırken iletişimi paylaşan açık aday varsa kardeş ister', async () => {
     const a = await institution()
     const cookie = await frontDesk(a.id)

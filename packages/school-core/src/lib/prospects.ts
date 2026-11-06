@@ -115,6 +115,8 @@ export const PROSPECT_LOST_REASON_LABELS = {
   academic_fit: 'Akademik uygunsuzluk',
   other: 'Diğer',
 } as const satisfies Record<ProspectLostReason, string>
+/** Tercih edilen kurum adının üst sınırı: serbest metin kısa tutulur (DOM-KAY-005). */
+export const PROSPECT_LOST_INSTITUTION_MAX = 120
 
 /** Ticari ileti kanalları (DOM-KAY-004). */
 export const MARKETING_CHANNELS = ['sms', 'email', 'call'] as const
@@ -238,6 +240,9 @@ export type ProspectFields = {
   /** Aday bilgisi düzeltmeleri, eskiden yeniye; yalnız dokunulan alan adları saklanır (DOM-KAY-003). */
   profileEdits?: ProspectProfileEdit[]
   lostReason?: ProspectLostReason
+  // kvkk: K — serbest metin kişi adı taşıyabilir; loglanmaz, denetime yalnız alan adı düşer.
+  /** Vazgeçen adayın tercih ettiği kurum; isteğe bağlı (DOM-KAY-005). */
+  lostToInstitution?: string
   lostAt?: string
   /** Planlanan tanışma görüşmesi; `trialAt` eski okuyucular için görüşme anını taşır. */
   meeting?: ProspectMeeting
@@ -323,6 +328,15 @@ export const changeProspectStageSchema = z
   .strictObject({
     stage: z.enum(PROSPECT_STAGES, 'Aşamayı seçin.'),
     lostReason: z.enum(PROSPECT_LOST_REASONS, 'Vazgeçme nedenini seçin.').optional(),
+    // kvkk: K — serbest metin kişi adı taşıyabilir; boş metin "yok" sayılır, loglanmaz.
+    lostToInstitution: z
+      .string()
+      .trim()
+      .max(
+        PROSPECT_LOST_INSTITUTION_MAX,
+        `En fazla ${PROSPECT_LOST_INSTITUTION_MAX} karakter girebilirsiniz.`,
+      )
+      .optional(),
     /**
      * Vazgeçen aday yeniden açılırken iletişimi paylaşan kardeş aday (açık veya kayıtlı;
      * DOM-KAY-031). Yalnız `Vazgeçti` adayın yeniden açılışında geçerlidir.
@@ -332,6 +346,10 @@ export const changeProspectStageSchema = z
   .refine((data) => data.stage === 'Vazgeçti' || data.lostReason === undefined, {
     message: 'Vazgeçme nedeni yalnız "Vazgeçti" aşamasında seçilir.',
     path: ['lostReason'],
+  })
+  .refine((data) => data.stage === 'Vazgeçti' || data.lostToInstitution === undefined, {
+    message: 'Tercih edilen kurum yalnız "Vazgeçti" aşamasında yazılır.',
+    path: ['lostToInstitution'],
   })
   .refine((data) => data.stage !== 'Vazgeçti' || data.siblingOfId === undefined, {
     message: 'Kardeş aday yalnız adayı yeniden açarken seçilir.',
@@ -703,15 +721,83 @@ export function changeProspectStage(
     }
     if (future(prospect.trialLesson?.date)) delete prospect.trialLesson
     prospect.lostReason = data.lostReason
+    if (data.lostToInstitution) prospect.lostToInstitution = data.lostToInstitution
     prospect.lostAt = now
   } else {
     delete prospect.lostReason
+    delete prospect.lostToInstitution
     delete prospect.lostAt
     if (data.siblingOfId !== undefined) prospect.siblingOfId = data.siblingOfId
   }
   prospect.stage = data.stage
   prospect.updatedAt = now
   return prospect
+}
+
+/** Raporda adıyla gösterilen en çok kurum sayısı; kalanı toplu sayılır. */
+export const PROSPECT_LOSS_INSTITUTION_LIMIT = 50
+
+export type ProspectLossBreakdown = {
+  /** Vazgeçen aday sayısı. */
+  total: number
+  /** Neden başına sayı, çoktan aza; nedeni olmayan ya da tanınmayan eski kayıt `null`. */
+  reasons: { reason: ProspectLostReason | null; count: number }[]
+  /** Tercih edilen kurum başına sayı, çoktan aza; en çok `PROSPECT_LOSS_INSTITUTION_LIMIT` satır. */
+  institutions: { name: string; count: number }[]
+  /** Sınırın dışında kalan kurumlara giden aday sayısı. */
+  otherInstitutions: number
+  /** Kurumu yazılmamış aday sayısı. */
+  unnamed: number
+}
+
+const isLostReason = (value: unknown): value is ProspectLostReason =>
+  (PROSPECT_LOST_REASONS as readonly unknown[]).includes(value)
+
+/**
+ * Kayıp aday kırılımı (IST-117, DOM-KAY-005): yalnız sayı ve kurum adı çıkar, aday kimliği çıkmaz.
+ * Kurum serbest metindir: boşluk ve büyük/küçük harf farkı aynı kurum sayılır, ilk yazılış gösterilir.
+ */
+export function prospectLossBreakdown(
+  lost: readonly { lostReason?: unknown; lostToInstitution?: unknown }[],
+): ProspectLossBreakdown {
+  const reasons = new Map<ProspectLostReason | null, number>()
+  const institutions = new Map<string, { name: string; count: number }>()
+  let unnamed = 0
+  for (const prospect of lost) {
+    const reason = isLostReason(prospect.lostReason) ? prospect.lostReason : null
+    reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
+    const name =
+      typeof prospect.lostToInstitution === 'string'
+        ? prospect.lostToInstitution.trim().replace(/\s+/g, ' ')
+        : ''
+    if (name === '') {
+      unnamed += 1
+      continue
+    }
+    const key = name.toLocaleLowerCase('tr')
+    const entry = institutions.get(key) ?? { name, count: 0 }
+    entry.count += 1
+    institutions.set(key, entry)
+  }
+  const ranked = [...institutions.values()].sort(
+    (a, b) => b.count - a.count || a.name.localeCompare(b.name, 'tr'),
+  )
+  const shown = ranked.slice(0, PROSPECT_LOSS_INSTITUTION_LIMIT)
+  return {
+    total: lost.length,
+    // `null` (nedensiz eski kayıt) eşitlikte sonda kalır.
+    reasons: [...reasons]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort(
+        (a, b) =>
+          b.count - a.count || (a.reason ?? '\uffff').localeCompare(b.reason ?? '\uffff', 'en'),
+      ),
+    institutions: shown,
+    otherInstitutions: ranked
+      .slice(PROSPECT_LOSS_INSTITUTION_LIMIT)
+      .reduce((total, entry) => total + entry.count, 0),
+    unnamed,
+  }
 }
 
 /** Adayın planlı bir görüşmesi ya da deneme dersi var mı (gerçekleşmiş olan dahil). */

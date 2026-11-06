@@ -102,11 +102,52 @@ export function useStudentStatement(studentId: string, options: { enabled?: bool
   })
 }
 
+/**
+ * Yıl sonu mutabakatı (ON-085, IST-111): öğrenci satırları ve yıl toplamları; yalnız yönetici okur.
+ * Ödeme sonrası tazelenir. Yıl kapatmaz.
+ */
+export function useFinanceReconciliation(query: {
+  year: number
+  status: 'all' | 'mismatch'
+  page: number
+  pageSize: number
+}) {
+  return useApiQuery({
+    key: ['payments', 'finance-reconciliation', query],
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/reconciliation', { params: { query }, signal }),
+  })
+}
+
+/** Mutabakat dosyasını metin olarak alır; taze oturum ister, denetime düşer. */
+export function useFinanceReconciliationExport() {
+  return useApiCommand({
+    request: (client, query: { year: number }) =>
+      client.GET('/api/v1/finance/reconciliation/export', {
+        params: { query },
+        parseAs: 'text',
+      }),
+    invalidates: [],
+  })
+}
+
 /** Dosyayı metin olarak alır; yazma değildir, sorgu tazelenmez. Hata mesajı toast olur. */
 export function useFinanceExport() {
   return useApiCommand({
     request: (client, query: FinancePeriod & { kind: FinanceExportKind }) =>
       client.GET('/api/v1/finance/exports', { params: { query }, parseAs: 'text' }),
+    invalidates: [],
+  })
+}
+
+/** Aynı dosyanın Excel biçimi (ON-094): sunucuda üretilir, istemciye yalnız ikili gövde gelir. */
+export function useFinanceWorkbookExport() {
+  return useApiCommand({
+    request: (client, query: FinancePeriod & { kind: FinanceExportKind }) =>
+      client.GET('/api/v1/finance/exports', {
+        params: { query: { ...query, format: 'xlsx' } },
+        parseAs: 'blob',
+      }),
     invalidates: [],
   })
 }

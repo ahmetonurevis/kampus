@@ -5,13 +5,17 @@ import {
   planTariffCreate,
   planTariffPublish,
   planTariffUpdate,
+  resolveEffectiveTariff,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 
 import type { Database } from '../db/client.ts'
 import {
   applyFeeTariffPublish,
   findFeeTariff,
+  findPublishedTariff,
   insertFeeTariff,
   listFeeTariffs,
   tariffVersionsOfYear,
@@ -22,13 +26,57 @@ import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getInstitutionModules } from './modules.ts'
-import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import {
+  runCommand,
+  type CommandResponse,
+  type IdempotencyRequest,
+  type OperationResponse,
+} from './operation-runner.ts'
 
 /**
  * Ücret tarifesi servisi (ADR 0006 karar 8; docs/domain/finans.md DOM-FIN-002, -006; IST-104).
  * Kural core `lib/fee-tariffs.ts`'tedir; burada yükleme, sürüm denetimi ve tek transaction'da
  * yazım vardır. Denetim kaydına yalnız alan adları düşer (DOM-FIN-053).
  */
+
+/**
+ * Eğitim yılının sözleşmeye esas tarifesi (DOM-FIN-002, K-11): hedef yılın yayımlı tarifesi, yoksa
+ * core kuralıyla önceki yılınki; ikisi de geçerli değilse `null`. Karar `ctx.now` gününe bağlıdır.
+ */
+export async function loadEffectiveTariff(
+  tx: Database,
+  ctx: ServiceContext,
+  academicYear: number,
+  institutionType: InstitutionType,
+) {
+  const published = await findPublishedTariff(tx, ctx.institutionId, academicYear)
+  return resolveEffectiveTariff({
+    academicYear,
+    institutionType,
+    published,
+    previousPublished:
+      published === null
+        ? await findPublishedTariff(tx, ctx.institutionId, academicYear - 1)
+        : null,
+    now: ctx.now,
+  })
+}
+
+/**
+ * Önceki yılın tarifesi uygulandıysa komut yanıtına kaynak yılı ekler; kullanıcı fark etmeden
+ * geçmesin (DOM-FIN-002, K-11). Hedef yılın kendi tarifesinde yanıt değişmez.
+ */
+export function withTariffCarryOver(
+  response: OperationResponse,
+  carriedOverFromYear: number | null | undefined,
+): OperationResponse {
+  if (carriedOverFromYear === null || carriedOverFromYear === undefined) return response
+  const { data } = response.body as { data: Record<string, unknown> }
+  return {
+    ...response,
+    body: { data: { ...data, tariffCarriedOverFromYear: carriedOverFromYear } },
+  }
+}
 
 export interface FeeTariffView extends Omit<StoredFeeTariff, 'publishedAt'> {
   publishedAt: string | null
@@ -108,7 +156,12 @@ export function createFeeTariffCommand(
       },
       after: async (tx, plan) => {
         await insertFeeTariff(tx, ctx.institutionId, { id, ...plan, now: ctx.now })
-        await audit(tx, ctx, 'tariff.create', id, ['academicYear', 'items', 'discounts'])
+        await audit(tx, ctx, 'tariff.create', id, [
+          'academicYear',
+          'items',
+          'discounts',
+          'paymentTerms',
+        ])
         result = await reload(tx, ctx, id)
       },
     },
@@ -144,10 +197,11 @@ export function updateFeeTariffCommand(
           expectedVersion,
           items: plan.items,
           discounts: plan.discounts,
+          paymentTerms: plan.paymentTerms,
           now: ctx.now,
         })
         if (!saved) throw new ConflictError()
-        await audit(tx, ctx, 'tariff.update', id, ['items', 'discounts'])
+        await audit(tx, ctx, 'tariff.update', id, ['items', 'discounts', 'paymentTerms'])
         result = await reload(tx, ctx, id)
       },
     },

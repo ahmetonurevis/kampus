@@ -222,6 +222,18 @@ test('DOM-FIN-002: yayımlanmış tarife yoksa kayıt oluşmaz', () => {
   rejectsUnchanged({}, { tariff: null }, 'tariff_not_published')
 })
 
+test('DOM-FIN-002, K-11: önceki yılın tarifesiyle kayıtta sözleşme o tarifeyi taşır, eğitim yılı hedef yıl kalır', () => {
+  const carried: EnrollmentTariff = { ...TARIFF, id: 'test-tariff-2025', versionNumber: 4 }
+  const { contract } = enroll(
+    { tariffId: carried.id },
+    { tariff: carried, academicYear: 2026 },
+  ).result
+  assert.equal(contract.tariffId, 'test-tariff-2025')
+  assert.equal(contract.tariffVersion, 4)
+  assert.equal(contract.academicYear, 2026)
+  rejectsUnchanged({ tariffId: TARIFF.id }, { tariff: carried }, 'tariff_changed', 'conflict')
+})
+
 test('DOM-KAY-011: aynı kimlikle ikinci kayıt reddedilir, geçersiz doğum tarihi reddedilir', () => {
   const active = createSeed(new Date(NOW)).students.find((student) => student.isActive)!.id
   rejectsUnchanged({}, { identityHolderId: active }, 'student_identity_duplicate', 'conflict')

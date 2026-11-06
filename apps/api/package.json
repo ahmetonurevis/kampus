@@ -36,12 +36,14 @@
     "file-type": "22.2.0",
     "pg": "8.23.1",
     "pg-boss": "12.38.0",
+    "write-excel-file": "4.1.1",
     "zod": "4.6.6"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.10",
     "@types/pg": "8.23.1",
     "auth": "1.7.10",
-    "drizzle-kit": "0.31.11"
+    "drizzle-kit": "0.31.11",
+    "fflate": "0.8.3"
   }
 }

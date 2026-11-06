@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { use, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import type { z } from 'zod'
-import { useFeeTariffs } from '@kampus/react-shared/use-fee-tariffs.ts'
+import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
 import {
   useActivateRenewal,
   useCreatePriceIndex,
@@ -17,12 +17,18 @@ import {
 } from '@kampus/react-shared/use-finance-renewals.ts'
 import { useScholarshipPrograms } from '@kampus/react-shared/use-finance-scholarships.ts'
 import {
+  carriedOverTariffNote,
   FEE_DISCOUNT_KIND_LABELS,
   FEE_ITEM_KIND_LABELS,
   type FeeDiscountKind,
   type FeeItemKind,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import {
+  announcedPaymentTermLabel,
+  contractPaymentTermLabel,
+} from '@kampus/school-core/lib/payment-terms.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
@@ -33,9 +39,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
@@ -71,7 +75,9 @@ import {
   type RenewalFormValues,
   type RenewalQuoteView,
 } from './renewal-forms.ts'
+import { ChoiceFieldset } from './RenewalChoices.tsx'
 import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
+import { RenewalYearSection } from './RenewalYearSection.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -134,8 +140,8 @@ function toRow(item: RenewalItem): RenewalRow {
 
 /**
  * Kayıt Yenileme (yönetici, ön büro, veli; IST-100). Liste ve ayrıntı `/finance/renewals`'tan,
- * ücret önizlemesi sunucudan: tutar yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002,
- * -005), indirim tarifedeki türden, burs bildirilmiş programdan (DOM-FIN-020, -025). Yenileme
+ * ücret önizlemesi sunucudan: tutar yayımlı tarifeden (süresinde ilan yoksa önceki yılınkinden,
+ * K-11) ve artış tavanından çıkar (DOM-FIN-002, -005), indirim tarifedeki türden, burs bildirilmiş programdan (DOM-FIN-020, -025). Yenileme
  * planlamak sınıfı değiştirmez; dönem geçişi ayrı işlemdir (DOM-KAY-020). Veli yalnız seçili
  * çocuğunun kaydını görür, işlem yapmaz.
  */
@@ -272,12 +278,20 @@ export function RenewalsPage({ page }: { page: NavPage }) {
         />
       </section>
       {staff ? (
+        <RenewalYearSection
+          academicYear={academicYear}
+          institutionType={session?.institution?.type ?? 'school'}
+          canApprove={role === 'yonetici'}
+        />
+      ) : null}
+      {staff ? (
         <PriceIndexSection canManage={role === 'yonetici'} academicYear={academicYear} />
       ) : null}
       <RenewalDetail renewalId={panel.selectedId} canAct={staff} onClose={panel.close} />
       {planning ? (
         <PlanModal
           academicYear={academicYear}
+          institutionType={session?.institution?.type ?? 'school'}
           canAward={role === 'yonetici'}
           onClose={() => setPlanning(false)}
         />
@@ -330,10 +344,16 @@ function RenewalDetail({
             <DetailSection
               title="Ücret"
               lines={[
+                ...(data.pricing?.tariffCarriedOverFromYear
+                  ? [carriedOverTariffNote(data.pricing.tariffCarriedOverFromYear)]
+                  : []),
                 ...(data.pricing
                   ? [`İlan edilen ücret: ${money(data.pricing.announcedCents)}`]
                   : []),
                 ...(data.pricing ? ceilingLines(data.pricing.ceiling) : []),
+                ...(data.pricing?.paymentTerm
+                  ? [`Ödeme koşulu: ${contractPaymentTermLabel(data.pricing.paymentTerm)}`]
+                  : []),
                 ...(data.tuitionCents === null
                   ? []
                   : [`Öğrenim ücreti: ${money(data.tuitionCents)}`]),
@@ -467,17 +487,19 @@ function ActivateModal({
 
 function PlanModal({
   academicYear,
+  institutionType,
   canAward,
   onClose,
 }: {
   academicYear: number
+  institutionType: InstitutionType
   canAward: boolean
   onClose: () => void
 }) {
   const students = useCoreAll('students')
   const classes = useCoreAll('classes')
   const branches = useCoreAll('branches')
-  const tariffs = useFeeTariffs({ page: 1, pageSize: 20, academicYear })
+  const tariffs = useEffectiveFeeTariff({ academicYear, institutionType, pageSize: 20 })
   const programs = useScholarshipPrograms({ academicYear }, { enabled: canAward })
   const quote = useQuoteRenewal()
   const plan = usePlanRenewal()
@@ -506,7 +528,7 @@ function PlanModal({
     branchNames,
     student?.classId,
   )
-  const tariff = tariffs.data?.data.find((item) => item.status === 'published')
+  const tariff = tariffs.tariff
   const discountKinds = tariff?.discounts.map((item) => item.kind) ?? []
   const extraKinds = [
     ...new Set(tariff?.items.filter((item) => item.kind !== 'tuition').map((item) => item.kind)),
@@ -674,7 +696,18 @@ function PlanModal({
                   />
                 )}
               </FormField>
-              <FormField id="yenileme-taksit" label="Taksit sayısı" error={errors.installmentCount}>
+              <FormField
+                id="yenileme-taksit"
+                label="Taksit sayısı"
+                error={errors.installmentCount}
+                {...(tariff?.paymentTerms.length
+                  ? {
+                      description: `İlan edilen koşullar: ${tariff.paymentTerms
+                        .map(announcedPaymentTermLabel)
+                        .join('; ')}`,
+                    }
+                  : {})}
+              >
                 {(control) => (
                   <Input
                     {...control}
@@ -696,11 +729,15 @@ function PlanModal({
               </FormField>
             </div>
             {tariffs.error ? (
-              <QueryError error={tariffs.error} onRetry={() => void tariffs.refetch()} />
+              <QueryError error={tariffs.error} onRetry={tariffs.refetch} />
             ) : !tariffs.isPending && !tariff ? (
               <p role="alert" className="text-sm text-danger">
                 {periodOf(academicYear)} için yayımlanmış ücret tarifesi yok; önce tarifeyi
                 yayımlayın.
+              </p>
+            ) : tariffs.carriedOverFromYear !== null ? (
+              <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
+                {carriedOverTariffNote(tariffs.carriedOverFromYear)}
               </p>
             ) : null}
             <ChoiceGroup
@@ -832,45 +869,22 @@ function ChoiceGroup({
   >['control']
   disabled: boolean
 }) {
-  if (options.length === 0) return null
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">{legend}</legend>
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => {
-          const selected = field.value as readonly string[]
-          return (
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {options.map((option) => {
-                const id = `yenileme-${name}-${option.value}`
-                return (
-                  <div key={option.value} className="flex items-center gap-2.5">
-                    <Checkbox
-                      id={id}
-                      checked={selected.includes(option.value)}
-                      disabled={disabled}
-                      onCheckedChange={(checked) =>
-                        field.onChange(
-                          checked === true
-                            ? [...selected, option.value]
-                            : selected.filter((value) => value !== option.value),
-                        )
-                      }
-                    />
-                    <Label htmlFor={id} className="font-normal">
-                      {option.label}
-                    </Label>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        }}
-      />
-    </fieldset>
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <ChoiceFieldset
+          legend={legend}
+          hint={hint}
+          idPrefix={`yenileme-${name}`}
+          options={options}
+          selected={field.value as readonly string[]}
+          onChange={field.onChange}
+          disabled={disabled}
+        />
+      )}
+    />
   )
 }
 

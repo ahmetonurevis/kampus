@@ -1,12 +1,80 @@
 import { randomUUID } from 'node:crypto'
 
 import { createSeed } from '../../../packages/school-core/src/data/seed.ts'
+import { setInstitutionAcademicYear } from '../../../apps/api/src/db/academic-years.ts'
 import { connectPostgres } from '../../../apps/api/src/db/client.ts'
 import { insertFeeTariff } from '../../../apps/api/src/db/fee-tariffs.ts'
 import { insertScholarshipProgram } from '../../../apps/api/src/db/finance-scholarships.ts'
 import { insertMissingRecords } from '../../../apps/api/src/db/records.ts'
+import { feeTariffs } from '../../../apps/api/src/db/schema/fee-tariffs.ts'
 
 import { e2e } from './env.ts'
+
+/**
+ * İkinci, ödeyicisi öğrenci olan sözleşme (K-12): tarifeli, taksitsiz. Öğrencinin seed sözleşmesiyle
+ * birlikte hesaba girer ve ödeyiciler farklı olur.
+ */
+export async function seedStudentPayerContract(input: {
+  institutionId: string
+  studentId: string
+  contractId: string
+  title: string
+}): Promise<void> {
+  const { db, close } = connectPostgres(e2e.databaseUrl)
+  const now = new Date()
+  const academicYear = createSeed(now).academicYear
+  const tariffId = randomUUID()
+  const amountCents = 100_000
+  try {
+    await insertFeeTariff(db, input.institutionId, {
+      id: tariffId,
+      academicYear,
+      versionNumber: 1,
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: `${String(academicYear)}-01-01`,
+          announcedAmountCents: amountCents,
+        },
+      ],
+      discounts: [],
+      now,
+    })
+    await insertMissingRecords(
+      db,
+      input.institutionId,
+      [
+        {
+          collection: 'contracts',
+          id: input.contractId,
+          data: {
+            id: input.contractId,
+            studentId: input.studentId,
+            date: now.toISOString(),
+            amount: amountCents,
+            title: input.title,
+            invoiceIds: [],
+            tariffId,
+            tariffVersion: 1,
+            grossCents: amountCents,
+            netCents: amountCents,
+            discounts: [],
+            extras: [],
+            approvedByUserId: 'e2e-yonetici',
+            payer: 'student',
+          },
+        },
+      ],
+      now,
+    )
+  } finally {
+    await close()
+  }
+}
 
 /**
  * Tarifeli ve burslu sözleşme (ON-046f; ADR 0010 adım 4). Taksit ve sözleşmenin kaynağı
@@ -88,6 +156,111 @@ export async function seedScholarshipContract(input: {
       ],
       now,
     )
+  } finally {
+    await close()
+  }
+}
+
+/**
+ * Önceki yılın tarifesi geçerli kalan kurum (DOM-FIN-002, K-11). Karar gerçek saate bağlı olduğu için
+ * kurumun eğitim yılı geçmişe alınır: `tariffYear + 1` eğitim yılının ilan dönemi (o yılın mayıs
+ * sonu) test hangi gün koşarsa koşsun bitmiştir. Tarife yalnız `tariffYear` için yayımlıdır.
+ */
+export async function seedCarriedOverTariff(input: {
+  institutionId: string
+  /** Kurumun güncel eğitim yılı: kesin kayıtta hedef yıl, yenilemede hedef yılın bir öncesi. */
+  academicYear: number
+  tariffYear: number
+  amountCents: number
+}): Promise<void> {
+  const { db, close } = connectPostgres(e2e.databaseUrl)
+  try {
+    await setInstitutionAcademicYear(db, input.institutionId, input.academicYear, new Date())
+    await db.insert(feeTariffs).values({
+      institutionId: input.institutionId,
+      id: randomUUID(),
+      academicYear: input.tariffYear,
+      versionNumber: 1,
+      status: 'published',
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: input.amountCents,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: `${String(input.tariffYear)}-01-01`,
+          announcedAmountCents: input.amountCents,
+        },
+      ],
+      announcedDate: `${String(input.tariffYear)}-05-01`,
+      publishedByUserId: 'e2e',
+      publishedAt: new Date(),
+    })
+  } finally {
+    await close()
+  }
+}
+
+/**
+ * Dil okulu paket satışı için yayımlı tarife (IST-078, DOM-FIN-013): saat ücreti 500 ₺, kırtasiye,
+ * peşin ve kardeş indirimi, peşin koşulu ile %3 indirimli 2–4 taksit. Tarifenin kendisi burada
+ * denenmez; doğrudan veritabanına konur.
+ */
+export async function seedPackageTariff(institutionId: string): Promise<void> {
+  const { db, close } = connectPostgres(e2e.databaseUrl)
+  const now = new Date()
+  const academicYear = createSeed(now).academicYear
+  const vat = { vatBasisPoints: 1000, vatEffectiveDate: `${String(academicYear)}-01-01` }
+  try {
+    await db.insert(feeTariffs).values({
+      institutionId,
+      id: randomUUID(),
+      academicYear,
+      versionNumber: 1,
+      status: 'published',
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: 50_000,
+          unit: 'lesson_hour',
+          announcedAmountCents: 50_000,
+          ...vat,
+        },
+        {
+          kind: 'stationery',
+          level: null,
+          amountCents: 75_000,
+          unit: 'item',
+          announcedAmountCents: null,
+          ...vat,
+        },
+      ],
+      discounts: [
+        { kind: 'early_payment', percentBasisPoints: 1_000, amountCents: null },
+        { kind: 'corporate', percentBasisPoints: 500, amountCents: null },
+      ],
+      paymentTerms: [
+        {
+          kind: 'upfront',
+          minInstallments: 1,
+          maxInstallments: 1,
+          discountPercentBasisPoints: null,
+          discountAmountCents: null,
+        },
+        {
+          kind: 'installment',
+          minInstallments: 2,
+          maxInstallments: 4,
+          discountPercentBasisPoints: 300,
+          discountAmountCents: null,
+        },
+      ],
+      announcedDate: `${String(academicYear)}-05-01`,
+      publishedByUserId: 'e2e',
+      publishedAt: now,
+    })
   } finally {
     await close()
   }

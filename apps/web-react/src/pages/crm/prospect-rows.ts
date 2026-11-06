@@ -5,6 +5,8 @@ import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import {
   nextProspectStages,
   OPEN_PROSPECT_STAGES,
+  PROSPECT_LOST_REASON_LABELS,
+  PROSPECT_LOST_REASONS,
   PROSPECT_SOURCES,
   PROSPECT_STAGES,
   prospectStageLabel,
@@ -37,6 +39,12 @@ export const STAGE_TONES = {
 export function stageTone(stage: string): BadgeTone {
   const known = PROSPECT_STAGES.find((item) => item === stage)
   return known ? STAGE_TONES[known] : 'gray'
+}
+
+/** Vazgeçme nedeninin etiketi (DOM-KAY-005); tanınmayan eski kayıt olduğu gibi gösterilir. */
+export function lostReasonLabel(reason: string): string {
+  const known = PROSPECT_LOST_REASONS.find((item) => item === reason)
+  return known ? PROSPECT_LOST_REASON_LABELS[known] : reason
 }
 
 /** Aşama süzgeci: sabit seçenekler, dil okulunda görüşme aşaması seviye tespiti/deneme dersidir. */

@@ -1,5 +1,5 @@
 {
-  "id": "b5e94813-b479-4be4-b9be-1d92dab5b2cb",
+  "id": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "prevId": "f58a7c9e-ac9b-4263-a179-40ad00d6e517",
   "version": "7",
   "dialect": "postgresql",
@@ -4109,6 +4109,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_term": {
+          "name": "payment_term",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "signatory_name": {
           "name": "signatory_name",
           "type": "text",
@@ -4523,6 +4529,10 @@
         "contracts_scholarship_check": {
           "name": "contracts_scholarship_check",
           "value": "(\"contracts\".\"scholarship_program_id\" is null) = (\"contracts\".\"scholarship_cents\" is null) and (\"contracts\".\"scholarship_program_id\" is null or \"contracts\".\"tariff_id\" is not null)"
+        },
+        "contracts_payment_term_check": {
+          "name": "contracts_payment_term_check",
+          "value": "\"contracts\".\"payment_term\" is null or \"contracts\".\"tariff_id\" is not null"
         },
         "contracts_signatory_check": {
           "name": "contracts_signatory_check",
@@ -5102,6 +5112,13 @@
         },
         "discounts": {
           "name": "discounts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "payment_terms": {
+          "name": "payment_terms",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
@@ -5756,256 +5773,6 @@
         "files_superseded_storage_key_check": {
           "name": "files_superseded_storage_key_check",
           "value": "\"files\".\"superseded_storage_key\" is null or \"files\".\"superseded_storage_key\" <> \"files\".\"storage_key\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.finance_day_closings": {
-      "name": "finance_day_closings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "closing_date": {
-          "name": "closing_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "method_totals": {
-          "name": "method_totals",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "collected_count": {
-          "name": "collected_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "collected_cents": {
-          "name": "collected_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reversed_count": {
-          "name": "reversed_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reversed_cents": {
-          "name": "reversed_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "net_cents": {
-          "name": "net_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "opening_cash_cents": {
-          "name": "opening_cash_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "counted_cash_cents": {
-          "name": "counted_cash_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expected_cash_cents": {
-          "name": "expected_cash_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cash_difference_cents": {
-          "name": "cash_difference_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reopened_at": {
-          "name": "reopened_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reopened_by_user_id": {
-          "name": "reopened_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reopen_reason": {
-          "name": "reopen_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "finance_day_closings_closing_date_key": {
-          "name": "finance_day_closings_closing_date_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "closing_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"finance_day_closings\".\"reopened_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "finance_day_closings_closing_date_idx": {
-          "name": "finance_day_closings_closing_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "closing_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "closed_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "finance_day_closings_institution_id_institutions_id_fk": {
-          "name": "finance_day_closings_institution_id_institutions_id_fk",
-          "tableFrom": "finance_day_closings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "finance_day_closings_pkey": {
-          "name": "finance_day_closings_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "finance_day_closings_currency_check": {
-          "name": "finance_day_closings_currency_check",
-          "value": "\"finance_day_closings\".\"currency\" = 'TRY'"
-        },
-        "finance_day_closings_net_check": {
-          "name": "finance_day_closings_net_check",
-          "value": "\"finance_day_closings\".\"net_cents\" = \"finance_day_closings\".\"collected_cents\" - \"finance_day_closings\".\"reversed_cents\""
-        },
-        "finance_day_closings_cash_check": {
-          "name": "finance_day_closings_cash_check",
-          "value": "(\"finance_day_closings\".\"counted_cash_cents\" is null and \"finance_day_closings\".\"opening_cash_cents\" is null and \"finance_day_closings\".\"expected_cash_cents\" is null and \"finance_day_closings\".\"cash_difference_cents\" is null) or (\"finance_day_closings\".\"counted_cash_cents\" is not null and \"finance_day_closings\".\"opening_cash_cents\" is not null and \"finance_day_closings\".\"expected_cash_cents\" is not null and \"finance_day_closings\".\"cash_difference_cents\" = \"finance_day_closings\".\"counted_cash_cents\" - \"finance_day_closings\".\"expected_cash_cents\")"
-        },
-        "finance_day_closings_reopen_check": {
-          "name": "finance_day_closings_reopen_check",
-          "value": "(\"finance_day_closings\".\"reopened_at\" is null and \"finance_day_closings\".\"reopened_by_user_id\" is null and \"finance_day_closings\".\"reopen_reason\" is null) or (\"finance_day_closings\".\"reopened_at\" is not null and \"finance_day_closings\".\"reopened_by_user_id\" is not null and \"finance_day_closings\".\"reopen_reason\" is not null)"
         }
       },
       "isRLSEnabled": false

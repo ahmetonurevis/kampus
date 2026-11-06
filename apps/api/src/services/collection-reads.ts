@@ -12,6 +12,12 @@ import {
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName, RecordData } from '../db/collections.ts'
+import {
+  findFinanceRecord,
+  isFinanceTableCollection,
+  loadFinanceReadCandidates,
+  loadFinanceRecordPage,
+} from '../db/finance-mirror-store.ts'
 import { allocatedForInvoices } from '../db/payments.ts'
 import {
   findRecord,
@@ -751,11 +757,19 @@ async function readRows(
       return undefined
     return { needle, exclude: unsearchable, keys }
   }
-  const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
-    includeArchived: query.archived !== undefined,
-    match: [...(prefilter ? [prefilter] : []), ...filters, ...settledFilters(ctx, collection)],
-    ...(search ? { search } : {}),
-  })
+  const match = [...(prefilter ? [prefilter] : []), ...filters, ...settledFilters(ctx, collection)]
+  // Taksit ve sözleşme tablolardandır (ON-046g); arama ve kolonu olmayan süzgeç aşağıda bellekte
+  // karara bağlanır (`narrowed`), kapsamı `canRead` verir.
+  const loaded = isFinanceTableCollection(collection)
+    ? await loadFinanceReadCandidates(ctx.db, ctx.institutionId, collection, {
+        includeArchived: query.archived !== undefined,
+        match,
+      })
+    : await loadRecords(ctx.db, ctx.institutionId, [collection], {
+        includeArchived: query.archived !== undefined,
+        match,
+        ...(search ? { search } : {}),
+      })
   // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
   // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
   // Bağlı kimlik alanları ayıklanmaz; ham kayıttaki bağlı eşleşme de yalnız adaydır.
@@ -811,12 +825,17 @@ async function sqlPage(
   assertReadable(ctx, scope, collection)
   if (!scope.readsWhole(collection)) return null
   // Süren quiz denemesi (`transientRow`) sayfada ve toplamda yoktur: koşul SQL'dedir.
-  const { rows, total } = await loadRecordPage(ctx.db, ctx.institutionId, collection, {
+  const paging = {
     archived: query.archived,
     offset: (query.page - 1) * query.pageSize,
     limit: query.pageSize,
-    match: settledFilters(ctx, collection),
-  })
+  }
+  const { rows, total } = isFinanceTableCollection(collection)
+    ? await loadFinanceRecordPage(ctx.db, ctx.institutionId, collection, paging)
+    : await loadRecordPage(ctx.db, ctx.institutionId, collection, {
+        ...paging,
+        match: settledFilters(ctx, collection),
+      })
   if (
     !rows.every(
       (row) => scope.canRead(collection, row.data) && !transientRow(ctx, collection, row.data),
@@ -1012,9 +1031,10 @@ export async function getCollectionItem(
   const collection = readableCollection(name)
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
-  const row = await findRecord(ctx.db, ctx.institutionId, collection, id, {
-    includeArchived: options.archived === 'include',
-  })
+  const includeArchived = options.archived === 'include'
+  const row = isFinanceTableCollection(collection)
+    ? await findFinanceRecord(ctx.db, ctx.institutionId, collection, id, { includeArchived })
+    : await findRecord(ctx.db, ctx.institutionId, collection, id, { includeArchived })
   if (!row || !scope.canRead(collection, row.data) || transientRow(ctx, collection, row.data))
     throw new NotFoundError()
   const redact = await redactorFor(ctx, scope, collection, [row])

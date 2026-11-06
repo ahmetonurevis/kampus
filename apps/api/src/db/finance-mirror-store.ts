@@ -1,10 +1,16 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNotNull, isNull, sql, type SQL } from 'drizzle-orm'
 
 import { ConflictError } from '../errors.ts'
 import type { Database } from './client.ts'
 import type { CollectionName } from './collections.ts'
-import { contractRecordSchema, loadContracts, writeContractsAndInvoices } from './contract-store.ts'
 import {
+  contractFilter,
+  contractRecordSchema,
+  loadContracts,
+  writeContractsAndInvoices,
+} from './contract-store.ts'
+import {
+  invoiceFilter,
   invoiceRecordSchema,
   loadInvoices,
   programmingError,
@@ -16,6 +22,7 @@ import {
   RECORDS_STORE,
   writeRecords,
   type CollectionStore,
+  type RecordFilter,
   type RecordWrite,
   type StoredRecord,
   type StoreScope,
@@ -47,6 +54,83 @@ export function loadFinanceRecords(
   return financeCollection(collection) === 'contracts'
     ? loadContracts(db, institutionId, options)
     : loadInvoices(db, institutionId, options)
+}
+
+/** Genel okumada taksit ve sözleşme tablo kaynaklıdır (ADR 0010 adım 4; ON-046g). */
+export const isFinanceTableCollection = (collection: CollectionName): boolean =>
+  collection === 'contracts' || collection === 'invoices'
+
+const translatesToColumns = (collection: FinanceCollection, filter: RecordFilter): boolean => {
+  try {
+    if (collection === 'contracts') contractFilter(filter)
+    else invoiceFilter(filter)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Genel okuma adayları (ON-046g): kolona çevrilebilen süzgeç SQL'de uygulanır, çevrilemeyen (genel
+ * liste alanları, arama) atlanır ve son kararı çağıran kayıt üzerinde bellekte verir. Depo
+ * yüklemesinin katı davranışı (çevrilemeyen süzgeç 500) çalıştırıcı kapsamları içindir; genel
+ * listenin süzgeç alanları ise beyaz listeden gelir ve kolonu olmayabilir.
+ */
+export function loadFinanceReadCandidates(
+  db: Database,
+  institutionId: string,
+  collection: CollectionName,
+  options: { includeArchived?: boolean; match?: readonly RecordFilter[] } = {},
+): Promise<StoredRecord[]> {
+  const name = financeCollection(collection)
+  return loadFinanceRecords(db, institutionId, name, {
+    ...(options.includeArchived ? { includeArchived: true } : {}),
+    match: (options.match ?? []).filter((filter) => translatesToColumns(name, filter)),
+  })
+}
+
+/** Tek kayıt; arşivli kayıt yalnız istenirse döner (`findRecord` karşılığı). */
+export async function findFinanceRecord(
+  db: Database,
+  institutionId: string,
+  collection: CollectionName,
+  id: string,
+  options: { includeArchived?: boolean } = {},
+): Promise<StoredRecord | null> {
+  const [row] = await loadFinanceRecords(db, institutionId, collection, {
+    ids: [id],
+    ...(options.includeArchived ? { includeArchived: true } : {}),
+  })
+  return row ?? null
+}
+
+/** Sayfa ve toplam tablodan (`loadRecordPage` karşılığı); sıra core dizisidir (`position`, kimlik). */
+export async function loadFinanceRecordPage(
+  db: Database,
+  institutionId: string,
+  collection: CollectionName,
+  options: { archived?: 'include' | 'only' | undefined; offset: number; limit: number },
+): Promise<{ rows: StoredRecord[]; total: number }> {
+  const table = financeCollection(collection) === 'contracts' ? contracts : invoices
+  const filters: (SQL | undefined)[] = [eq(table.institutionId, institutionId)]
+  if (options.archived === undefined) filters.push(isNull(table.archivedAt))
+  if (options.archived === 'only') filters.push(isNotNull(table.archivedAt))
+  const where = and(...filters)
+  const [page, [counted]] = await Promise.all([
+    db
+      .select({ id: table.id })
+      .from(table)
+      .where(where)
+      .orderBy(asc(table.position), asc(table.id))
+      .limit(options.limit)
+      .offset(options.offset),
+    db.select({ total: count() }).from(table).where(where),
+  ])
+  const rows = await loadFinanceRecords(db, institutionId, collection, {
+    ids: page.map((row) => row.id),
+    includeArchived: true,
+  })
+  return { rows, total: counted?.total ?? 0 }
 }
 
 const scopeOptions = (scope: StoreScope): StoreLoadOptions =>

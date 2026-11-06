@@ -560,7 +560,9 @@ test.describe('Finans: tahsilat', () => {
     await expect(nextYear.getByLabel('MEBBİS onaylı tutar (₺)')).toHaveValue('')
     await expect(nextYear.getByLabel('Tutar (₺)', { exact: true })).toHaveValue('300000,00')
     await nextYear.getByRole('button', { name: 'Taslağı kaydet' }).click()
-    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    // Hızlı koşuda ilk taslağın aynı metinli bildirimi henüz kapanmamış olabilir.
+    await expect(page.getByText('Tarife kaydedildi.').last()).toBeVisible()
+    await expect(nextYear).toBeHidden()
     await expect(table).toContainText(String(year + 1))
     await expect(table).toContainText('Taslak')
 

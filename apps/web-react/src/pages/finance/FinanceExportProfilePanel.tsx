@@ -8,7 +8,14 @@ import {
   FIXED_COLUMN_SOURCE,
   type FinanceExportProfile,
 } from '@kampus/school-core/lib/finance-export-profile.ts'
-import type { FinanceExportKind } from '@kampus/school-core/lib/finance-export.ts'
+import {
+  FINANCE_EXPORT_KINDS,
+  type FinanceExportKind,
+} from '@kampus/school-core/lib/finance-export.ts'
+import {
+  FINANCE_EXPORT_TEMPLATES,
+  financeExportTemplate,
+} from '@kampus/school-core/lib/finance-export-templates.ts'
 import {
   useFinanceExportProfile,
   useSetFinanceExportProfile,
@@ -90,6 +97,7 @@ function ProfileForm({
   onClose: () => void
 }) {
   const save = useSetFinanceExportProfile()
+  const [templateId, setTemplateId] = useState(FINANCE_EXPORT_TEMPLATES[0]?.id ?? '')
   const form = useForm<FinanceExportProfile>({
     resolver: zodResolver(financeExportProfileSchema),
     defaultValues: profile ?? defaultFinanceExportProfile(),
@@ -109,6 +117,16 @@ function ProfileForm({
     }
   }
   const onSubmit = form.handleSubmit((values) => submit(values, 'Dosya sütunları kaydedildi.'))
+
+  /** Yalnız sütunları değiştirir; biçim seçimleri kalır, kaydedilmeden dosya değişmez. */
+  function applyTemplate() {
+    const template = financeExportTemplate(templateId)
+    if (!template) return
+    for (const kind of FINANCE_EXPORT_KINDS)
+      form.setValue(`columns.${kind}`, [...template.columns[kind]], { shouldDirty: true })
+    form.clearErrors('columns')
+    notify.success(`${template.label} şablonu forma uygulandı. Geçerli olması için kaydedin.`)
+  }
 
   return (
     <Modal
@@ -142,6 +160,33 @@ function ProfileForm({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
+        <div className="grid grid-cols-[1fr_auto] items-start gap-3 max-[650px]:grid-cols-1">
+          <FormField
+            id="profil-sablon"
+            label="Hazır sütun şablonu"
+            description={`${financeExportTemplate(templateId)?.description ?? ''} Şablonlar geneldir; belirli bir muhasebe programının biçimi değildir.`}
+          >
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={templateId}
+                disabled={busy}
+                onChange={(event) => setTemplateId(event.target.value)}
+              >
+                {FINANCE_EXPORT_TEMPLATES.map((template) => (
+                  <NativeSelectOption key={template.id} value={template.id}>
+                    {template.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+          <div className="pt-7 max-[650px]:pt-0">
+            <Button type="button" variant="secondary" disabled={busy} onClick={applyTemplate}>
+              Şablonu uygula
+            </Button>
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-3 max-[650px]:grid-cols-1">
           <FormField id="profil-ayirici" label="Sütun ayırıcı" error={errors.separator}>
             {(control) => (

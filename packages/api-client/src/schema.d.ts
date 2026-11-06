@@ -2131,7 +2131,7 @@ export interface paths {
         put?: never;
         /**
          * Tarife taslağı aç
-         * @description Eğitim yılı için yeni taslak sürüm açar. Kalem türü sabit listedendir; serbest adlı borç yoktur (DOM-FIN-004). Aynı tür ve düzey 422 `tariff_item_duplicate`; açık taslak varken 409 `open_tariff_draft`. KDV oranı kalem başına ve tarihlidir, yayımlanan sürüm değişmediği için geçmiş kayıtlar eski oranla kalır (IST-104). Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Eğitim yılı için yeni taslak sürüm açar. Kalem türü sabit listedendir; serbest adlı borç yoktur (DOM-FIN-004). Aynı tür ve düzey 422 `tariff_item_duplicate`; taksit aralığı çakışan ödeme koşulları 422 `tariff_payment_term_overlap`; açık taslak varken 409 `open_tariff_draft`. KDV oranı kalem başına ve tarihlidir, yayımlanan sürüm değişmediği için geçmiş kayıtlar eski oranla kalır (IST-104). Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["createFeeTariff"];
         delete?: never;
@@ -2159,7 +2159,7 @@ export interface paths {
         head?: never;
         /**
          * Tarife taslağını düzenle
-         * @description Verilen `items` veya `discounts` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.
+         * @description Verilen `items`, `discounts` veya `paymentTerms` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.
          */
         patch: operations["updateFeeTariff"];
         trace?: never;
@@ -2175,7 +2175,7 @@ export interface paths {
         put?: never;
         /**
          * Tarifeyi yayımla
-         * @description Taslağı yayımlar; aynı yılın önceki yayındaki sürümü aynı işlemde kalkar (DOM-FIN-002). Öğrenim ücreti yoksa 422 `tariff_tuition_required`; birim kurum türüne uymuyorsa 422 `tariff_unit_mismatch` (okulda `year`, dil okulunda `lesson_hour`, DOM-FIN-006); okulda onaylı tutar yoksa 422 `tariff_announced_required`; ücret onaylı tutarı aşarsa 422 `tariff_amount_exceeds_announced`. İleri tarih 422. İlan tarihi, MEBBİS tarihi ve yayımlayan kişi saklanır. `If-Match` zorunludur. Rol: `yonetici`.
+         * @description Taslağı yayımlar; aynı yılın önceki yayındaki sürümü aynı işlemde kalkar (DOM-FIN-002). Öğrenim ücreti yoksa 422 `tariff_tuition_required`; birim kurum türüne uymuyorsa 422 `tariff_unit_mismatch` (okulda `year`, dil okulunda `lesson_hour`, DOM-FIN-006); okulda onaylı tutar yoksa 422 `tariff_announced_required`; ücret onaylı tutarı aşarsa 422 `tariff_amount_exceeds_announced`; ödeme koşulu yoksa 422 `tariff_payment_terms_required`, peşin indirimi peşin koşulsuz ilan edildiyse 422 `tariff_early_payment_without_upfront` (DOM-FIN-013). Yayımlanan koşullar sürümle donar. İleri tarih 422. İlan tarihi, MEBBİS tarihi ve yayımlayan kişi saklanır. `If-Match` zorunludur. Rol: `yonetici`.
          */
         post: operations["publishFeeTariff"];
         delete?: never;
@@ -2235,7 +2235,7 @@ export interface paths {
         put?: never;
         /**
          * Ek protokol hazırla
-         * @description Onaylı sözleşmenin yeni sürümünü taslak açar (IST-092, DOM-FIN-010): tahsilat görmüş öğrenim taksitleri ve ek hizmetler korunur, kalan net yeni plana dağıtılır. Önceki sürüm ve taksitler onaya kadar değişmez; yeni sürüm imza ve onayı yeniden ister. `discounts` verilirse indirim sözleşmenin tarifesinden yeniden hesaplanır (DOM-FIN-020, -021). Onaysız sözleşmede 422 `contract_not_approved`, açık ek protokol varken 409 `contract_amendment_open`, yerini ek protokole bırakan sürümde 409 `contract_superseded`, değişiklik yoksa 422 `contract_amendment_no_change`. `Idempotency-Key` ve `If-Match` (önceki sürüm) zorunlu. Roller: `yonetici`, `onburo`.
+         * @description Onaylı sözleşmenin yeni sürümünü taslak açar (IST-092, DOM-FIN-010): tahsilat görmüş öğrenim taksitleri ve ek hizmetler korunur, kalan net yeni plana dağıtılır. Önceki sürüm ve taksitler onaya kadar değişmez; yeni sürüm imza ve onayı yeniden ister. `discounts` verilirse indirim sözleşmenin tarifesinden yeniden hesaplanır (DOM-FIN-020, -021). Onaysız sözleşmede 422 `contract_not_approved`, açık ek protokol varken 409 `contract_amendment_open`, yerini ek protokole bırakan sürümde 409 `contract_superseded`, değişiklik yoksa 422 `contract_amendment_no_change`. `Idempotency-Key` ve `If-Match` (önceki sürüm) zorunlu. Roller: `yonetici`, `onburo`. Toplam taksit sayısı (korunan öğrenim taksitleri + yeni plan) tarifedeki ödeme koşulunda olmalıdır: değilse 422 `payment_term_not_in_tariff`; koşul değişirse indirimler yeniden hesaplanır (DOM-FIN-013).
          */
         post: operations["amendContract"];
         delete?: never;
@@ -2397,7 +2397,7 @@ export interface paths {
         };
         /**
          * Muhasebe aktarım dosyası
-         * @description `kind` ile tahsilat, iade veya taksit satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
+         * @description `kind` ile tahsilat, iade veya taksit satırlarını döner. `format=csv` (varsayılan): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. `format=xlsx`: Excel dosyası (ikili gövde); metin alanları formül çalıştırmayan metin hücresi, tutar `#,##0.00` biçimli sayı hücresi, tarih Europe/Istanbul günü olarak profilin tarih biçimiyle tarih hücresidir; sütun adı ve sırası kurumun profilinden gelir, ayırıcı ve ondalık işareti yalnız CSV içindir. Belirli bir muhasebe programına uyum iddiası, hesap kodu ve KDV dökümü yoktur. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
          */
         get: operations["exportFinance"];
         put?: never;
@@ -2443,7 +2443,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt yenileme planla
-         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005); süresinde ilan yapılmadıysa önceki yılın tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, `academicYear` hedef yıl kalır, yanıtta `tariffCarriedOverFromYear` döner. İndirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); gövdedeki `tariffId` geçerli tarifeden farklıysa (yeni sürüm ya da hedef yılın tarifesi sonradan yayımlandı) 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005); süresinde ilan yapılmadıysa önceki yılın tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, `academicYear` hedef yıl kalır, yanıtta `tariffCarriedOverFromYear` döner. İndirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); gövdedeki `tariffId` geçerli tarifeden farklıysa (yeni sürüm ya da hedef yılın tarifesi sonradan yayımlandı) 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["planRenewal"];
         delete?: never;
@@ -2463,7 +2463,7 @@ export interface paths {
         put?: never;
         /**
          * Yenileme ücretini önizle
-         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Hedef yılın yayımlı tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu) önceki yılın yayımlı tarifesi uygulanır, `tariffCarriedOverFromYear` o yılı söyler (DOM-FIN-002); dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Hedef yılın yayımlı tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu) önceki yılın yayımlı tarifesi uygulanır, `tariffCarriedOverFromYear` o yılı söyler (DOM-FIN-002); dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["quoteRenewal"];
         delete?: never;
@@ -2983,7 +2983,7 @@ export interface paths {
         put?: never;
         /**
          * Adayı kesin kayda al
-         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002). O yılın tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu; dil okulu ve kursta ilan dönemi yoktur) önceki yılın yayımlı tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, eğitim yılı değişmez, yanıtta `tariffCarriedOverFromYear` döner. Dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Gövdedeki `tariffId` geçerli tarifeden farklıysa 409 `tariff_changed`. Düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
+         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002). O yılın tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu; dil okulu ve kursta ilan dönemi yoktur) önceki yılın yayımlı tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, eğitim yılı değişmez, yanıtta `tariffCarriedOverFromYear` döner. Dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Gövdedeki `tariffId` geçerli tarifeden farklıysa 409 `tariff_changed`. Düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["enrollProspect"];
         delete?: never;
@@ -26268,6 +26268,15 @@ export interface operations {
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
                             }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                            }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
                             /** @description MEBBİS'e işlendiği gün (YYYY-MM-DD) */
@@ -26387,6 +26396,15 @@ export interface operations {
                         percentBasisPoints: number | null;
                         amountCents: number | null;
                     }[];
+                    /** @default [] */
+                    paymentTerms?: {
+                        /** @enum {string} */
+                        kind: "upfront" | "installment";
+                        minInstallments: number;
+                        maxInstallments: number;
+                        discountPercentBasisPoints: number | null;
+                        discountAmountCents: number | null;
+                    }[];
                 };
             };
         };
@@ -26422,6 +26440,15 @@ export interface operations {
                                 kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
+                            }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -26552,6 +26579,15 @@ export interface operations {
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
                             }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                            }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
                             /** @description MEBBİS'e işlendiği gün (YYYY-MM-DD) */
@@ -26672,6 +26708,14 @@ export interface operations {
                         percentBasisPoints: number | null;
                         amountCents: number | null;
                     }[];
+                    paymentTerms?: {
+                        /** @enum {string} */
+                        kind: "upfront" | "installment";
+                        minInstallments: number;
+                        maxInstallments: number;
+                        discountPercentBasisPoints: number | null;
+                        discountAmountCents: number | null;
+                    }[];
                 };
             };
         };
@@ -26707,6 +26751,15 @@ export interface operations {
                                 kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
+                            }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -26848,6 +26901,15 @@ export interface operations {
                                 kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
+                            }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -28242,6 +28304,7 @@ export interface operations {
                 from: string;
                 to: string;
                 kind: "payments" | "refunds" | "invoices";
+                format?: "csv" | "xlsx";
             };
             header?: never;
             path?: never;
@@ -28249,7 +28312,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description CSV dosyası */
+            /** @description CSV metni ya da `.xlsx` dosyası */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -28566,6 +28629,16 @@ export interface operations {
                                     programId: string;
                                     amountCents: number;
                                 } | null;
+                                /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013) */
+                                paymentTerm?: {
+                                    /** @enum {string} */
+                                    kind: "upfront" | "installment";
+                                    minInstallments: number;
+                                    maxInstallments: number;
+                                    discountPercentBasisPoints: number | null;
+                                    discountAmountCents: number | null;
+                                    installmentCount: number;
+                                };
                             } | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
@@ -28889,6 +28962,16 @@ export interface operations {
                             }[];
                             /** @description Öğrenim taksitleri, kuruş */
                             installments: number[];
+                            /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`, ilanda olmayan taksit sayısı 422 `payment_term_not_in_tariff` */
+                            paymentTerm: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                                installmentCount: number;
+                            } | null;
                             /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister */
                             outstandingTuitionCents: number;
                         };
@@ -29403,6 +29486,16 @@ export interface operations {
                                     programId: string;
                                     amountCents: number;
                                 } | null;
+                                /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013) */
+                                paymentTerm?: {
+                                    /** @enum {string} */
+                                    kind: "upfront" | "installment";
+                                    minInstallments: number;
+                                    maxInstallments: number;
+                                    discountPercentBasisPoints: number | null;
+                                    discountAmountCents: number | null;
+                                    installmentCount: number;
+                                };
                             } | null;
                             invoices: {
                                 id: string;

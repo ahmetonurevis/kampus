@@ -110,3 +110,15 @@ export function useFinanceExport() {
     invalidates: [],
   })
 }
+
+/** Aynı dosyanın Excel biçimi (ON-094): sunucuda üretilir, istemciye yalnız ikili gövde gelir. */
+export function useFinanceWorkbookExport() {
+  return useApiCommand({
+    request: (client, query: FinancePeriod & { kind: FinanceExportKind }) =>
+      client.GET('/api/v1/finance/exports', {
+        params: { query: { ...query, format: 'xlsx' } },
+        parseAs: 'blob',
+      }),
+    invalidates: [],
+  })
+}

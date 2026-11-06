@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import type { FeeDiscount, FeeItem } from '@kampus/school-core/lib/fee-tariffs.ts'
+import type { FeePaymentTerm } from '@kampus/school-core/lib/payment-terms.ts'
 
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
@@ -35,6 +36,8 @@ export const feeTariffs = pgTable(
     status: text('status').notNull(),
     items: jsonb('items').$type<FeeItem[]>().notNull(),
     discounts: jsonb('discounts').$type<FeeDiscount[]>().notNull().default([]),
+    // Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu kolondan önce yayımlanmış tarifede boş.
+    paymentTerms: jsonb('payment_terms').$type<FeePaymentTerm[]>().notNull().default([]),
     announcedDate: date('announced_date'),
     mebbisRecordedDate: date('mebbis_recorded_date'),
     // kvkk: K

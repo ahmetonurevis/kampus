@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Locator, Page, Request } from '@playwright/test'
 
+import { readWorkbook } from '../../apps/api/test/support/finance-workbook.ts'
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
 import { seedScholarshipContract } from './support/finance-terms.ts'
@@ -556,6 +557,53 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Yeni burs programı' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-013: yönetici peşin ve süreli koşulu ilan eder; görüntülemede görünür, koşulsuz yayım reddedilir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s19'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tarife`)
+    await page.getByRole('button', { name: 'Yeni tarife' }).click()
+    const editor = page.getByRole('dialog', { name: 'Yeni tarife' })
+    await editor.getByLabel('Tutar (₺)', { exact: true }).fill('300.000,00')
+    await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('300.000,00')
+    // Koşul satırları dar ekranda taşmaz; satırlar tek sütuna iner.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expectNoHorizontalOverflow(page)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await editor.getByRole('button', { name: '1. ödeme koşulunu kaldır' }).click()
+    await editor.getByRole('button', { name: '1. ödeme koşulunu kaldır' }).click()
+    await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    const publish = page.getByRole('dialog', { name: 'Tarifeyi yayımla' })
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(
+      page.getByText('Tarifede peşin ya da süreli en az bir ödeme koşulu ilan edilmelidir.'),
+    ).toBeVisible()
+    await publish.getByRole('button', { name: 'Vazgeç' }).click()
+
+    await page.getByRole('button', { name: /taslağını düzenle/ }).click()
+    const draft = page.getByRole('dialog', { name: 'Tarife taslağını düzenle' })
+    await draft.getByRole('button', { name: 'Koşul ekle' }).click()
+    await draft.getByLabel('1. koşul en çok taksit').fill('4')
+    await draft.getByLabel('1. koşul fiyat farkı').selectOption('percent')
+    await draft.getByLabel('1. koşul indirim değeri').fill('3')
+    await draft.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.').last()).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(page.getByText('Tarife yayımlandı.')).toBeVisible()
+
+    await page.getByRole('button', { name: /tarifesini görüntüle/ }).click()
+    const view = page.getByRole('dialog', { name: /tarifesi$/ })
+    await expect(view.getByRole('list', { name: 'İlan edilen ödeme koşulları' })).toHaveText(
+      'Süreli · 2–4 taksit · %3 indirim',
+    )
+  })
+
   test('DOM-FIN-002: yönetici tarife taslağı açar ve yayımlar; yayımlanan düzenlenemez; ön büro yalnız görür', async ({
     page,
     loginAs,
@@ -650,6 +698,44 @@ test.describe('Finans: tahsilat', () => {
     await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
     await expect(page.getByLabel('Dönem toplamları').or(page.getByRole('main'))).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dosya sütunları' })).toHaveCount(0)
+  })
+
+  test('ON-094: yönetici hazır şablonu uygular; Excel dosyası profilin sütunlarıyla iner', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s23'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s23-5', 'Kredi kartı')
+    const amount = (await invoice(client, 'inv-s23-5')).amount
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    await page.getByRole('button', { name: 'Dosya sütunları' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dosya sütunları' })
+    await dialog.getByLabel('Hazır sütun şablonu').selectOption({ label: 'Kısa liste' })
+    await dialog.getByRole('button', { name: 'Şablonu uygula' }).click()
+    await expect(dialog.getByLabel('Tahsilat dosyası 2. sütun başlığı')).toHaveValue('Ad soyad')
+    await expect(dialog.getByLabel('Tahsilat dosyası 4. sütun başlığı')).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Dosya sütunları kaydedildi.')).toBeVisible()
+
+    await page.getByLabel('Dosya biçimi').selectOption('xlsx')
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Tahsilat dosyası' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toMatch(/^tahsilatlar-.*\.xlsx$/)
+    const workbook = readWorkbook(await readFile(await file.path()))
+    expect(workbook.row(1)).toEqual(['Tarih', 'Ad soyad', 'Tutar'])
+    expect(workbook.hasFormula).toBe(false)
+    expect(workbook.cells.get('C2')).toMatchObject({
+      type: 'n',
+      value: amount / 100,
+      format: '#,##0.00',
+    })
+    expect(workbook.cells.get('B2')).toMatchObject({ type: 's', format: '@' })
   })
 
   test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({

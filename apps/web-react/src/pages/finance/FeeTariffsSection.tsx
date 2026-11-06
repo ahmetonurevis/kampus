@@ -21,6 +21,12 @@ import {
   type FeeTariffFormValues,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import {
+  announcedPaymentTermLabel,
+  FEE_PAYMENT_TERM_KIND_LABELS,
+  FEE_PAYMENT_TERM_KINDS,
+  type FeePaymentTerm,
+} from '@kampus/school-core/lib/payment-terms.ts'
+import {
   useCreateFeeTariff,
   useFeeTariffs,
   usePublishFeeTariff,
@@ -47,6 +53,7 @@ type TariffRecord = {
   status: 'draft' | 'published' | 'superseded'
   items: FeeItem[]
   discounts: FeeDiscount[]
+  paymentTerms: FeePaymentTerm[]
   announcedDate: string | null
   mebbisRecordedDate: string | null
   version: number
@@ -63,7 +70,7 @@ type Editor =
   { mode: 'new'; from?: TariffRecord; nextYear?: boolean } | { mode: 'edit'; tariff: TariffRecord }
 
 /**
- * Ücret tarifesi (ADR 0006 karar 8; DOM-FIN-002, -004, -006; IST-104): eğitim yılı başına sürümlü.
+ * Ücret tarifesi (ADR 0006 karar 8; DOM-FIN-002, -004, -006, -013; IST-104): eğitim yılı başına sürümlü.
  * Yönetici taslak açar, düzenler, yayımlar; yayımlanan sürüm değişmez, yeni sürüm öncekini kaldırır.
  * Ön büro yalnız görür. Kesin kayıt tutarı yayımdaki sürümden hesaplanır.
  */
@@ -260,6 +267,20 @@ function TariffView({ tariff, onClose }: { tariff: TariffRecord; onClose: () => 
           </ul>
         </>
       ) : null}
+      <h3 className="mt-5 mb-1 font-semibold">İlan edilen ödeme koşulları</h3>
+      {tariff.paymentTerms.length > 0 ? (
+        <ul aria-label="İlan edilen ödeme koşulları" className="divide-y text-sm">
+          {tariff.paymentTerms.map((term) => (
+            <li key={`${term.kind}-${String(term.minInstallments)}`} className="py-2">
+              {announcedPaymentTermLabel(term)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Bu sürümde ödeme koşulu ilan edilmemiş; taksit sayısı sınırlanmaz.
+        </p>
+      )}
     </Modal>
   )
 }
@@ -286,6 +307,8 @@ function TariffEditor({
   })
   const items = useFieldArray({ control: form.control, name: 'items' })
   const discounts = useFieldArray({ control: form.control, name: 'discounts' })
+  const terms = useFieldArray({ control: form.control, name: 'paymentTerms' })
+  const termValues = useWatch({ control: form.control, name: 'paymentTerms' })
   const itemValues = useWatch({ control: form.control, name: 'items' })
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -302,7 +325,11 @@ function TariffEditor({
             {
               tariffId: editor.tariff.id,
               version: editor.tariff.version,
-              body: { items: body.items, discounts: body.discounts },
+              body: {
+                items: body.items,
+                discounts: body.discounts,
+                paymentTerms: body.paymentTerms,
+              },
             },
             toRoot,
           )
@@ -592,6 +619,141 @@ function TariffEditor({
             >
               <Icon name="Plus" size={17} aria-hidden="true" />
               İndirim ekle
+            </Button>
+          </div>
+        </fieldset>
+        <fieldset className="grid gap-4">
+          <legend className="mb-2 font-semibold">Ödeme koşulları</legend>
+          <p className="text-sm text-muted-foreground">
+            Kayıt ve yenileme yalnız burada ilan edilen taksit sayılarıyla yapılır. Fiyat farkı ilan
+            ücretinden düşer, ilan ücretinin üstüne çıkılamaz. Peşin indirimi yukarıdaki &quot;Peşin
+            ödeme&quot; indirim satırıyla ilan edilir.
+          </p>
+          {terms.fields.map((field, index) => {
+            const termErrors = errors.paymentTerms?.[index]
+            const value = termValues[index]
+            const upfront = value?.kind === 'upfront'
+            const position = String(index + 1)
+            return (
+              <div
+                key={field.id}
+                className="grid grid-cols-3 items-end gap-3 rounded-card border p-3 max-[650px]:grid-cols-1"
+              >
+                <FormField
+                  id={`kosul-${String(index)}-tur`}
+                  label={`${position}. ödeme koşulu`}
+                  error={termErrors?.kind}
+                >
+                  {(control) => (
+                    <NativeSelect
+                      {...control}
+                      {...form.register(`paymentTerms.${index}.kind`)}
+                      disabled={busy}
+                    >
+                      {FEE_PAYMENT_TERM_KINDS.map((kind) => (
+                        <NativeSelectOption key={kind} value={kind}>
+                          {FEE_PAYMENT_TERM_KIND_LABELS[kind]}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  )}
+                </FormField>
+                {upfront ? (
+                  <p className="self-center text-sm text-muted-foreground">Tek ödeme.</p>
+                ) : (
+                  <>
+                    <FormField
+                      id={`kosul-${String(index)}-en-az`}
+                      label={`${position}. koşul en az taksit`}
+                      error={termErrors?.minInstallments}
+                    >
+                      {(control) => (
+                        <Input
+                          {...control}
+                          {...form.register(`paymentTerms.${index}.minInstallments`)}
+                          inputMode="numeric"
+                          disabled={busy}
+                        />
+                      )}
+                    </FormField>
+                    <FormField
+                      id={`kosul-${String(index)}-en-cok`}
+                      label={`${position}. koşul en çok taksit`}
+                      error={termErrors?.maxInstallments}
+                    >
+                      {(control) => (
+                        <Input
+                          {...control}
+                          {...form.register(`paymentTerms.${index}.maxInstallments`)}
+                          inputMode="numeric"
+                          disabled={busy}
+                        />
+                      )}
+                    </FormField>
+                    <FormField
+                      id={`kosul-${String(index)}-fark`}
+                      label={`${position}. koşul fiyat farkı`}
+                      error={termErrors?.mode}
+                    >
+                      {(control) => (
+                        <NativeSelect
+                          {...control}
+                          {...form.register(`paymentTerms.${index}.mode`)}
+                          disabled={busy}
+                        >
+                          <NativeSelectOption value="none">Yok</NativeSelectOption>
+                          <NativeSelectOption value="percent">İndirim oranı (%)</NativeSelectOption>
+                          <NativeSelectOption value="amount">İndirim tutarı (₺)</NativeSelectOption>
+                        </NativeSelect>
+                      )}
+                    </FormField>
+                    {value?.mode === 'none' ? null : (
+                      <FormField
+                        id={`kosul-${String(index)}-deger`}
+                        label={`${position}. koşul indirim değeri`}
+                        error={termErrors?.value}
+                      >
+                        {(control) => (
+                          <Input
+                            {...control}
+                            {...form.register(`paymentTerms.${index}.value`)}
+                            inputMode="decimal"
+                            disabled={busy}
+                          />
+                        )}
+                      </FormField>
+                    )}
+                  </>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  aria-label={`${position}. ödeme koşulunu kaldır`}
+                  onClick={() => terms.remove(index)}
+                >
+                  Kaldır
+                </Button>
+              </div>
+            )
+          })}
+          <div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() =>
+                terms.append({
+                  kind: 'installment',
+                  minInstallments: '2',
+                  maxInstallments: '12',
+                  mode: 'none',
+                  value: '',
+                })
+              }
+            >
+              <Icon name="Plus" size={17} aria-hidden="true" />
+              Koşul ekle
             </Button>
           </div>
         </fieldset>

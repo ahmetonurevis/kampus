@@ -480,11 +480,18 @@ describe('0061: taksit ve sözleşme tabloları', () => {
   })
 
   test('ON-316, DOM-FIN-004: kalem türü core FEE_ITEM_KINDS anahtarıdır ya da boştur; etiket 23514', async () => {
-    const [constraint] = await rows<{ definition: string; comment: string | null }>(
-      sql`select pg_get_constraintdef(oid) as definition, obj_description(oid, 'pg_constraint') as comment
+    const [constraint] = await rows<{
+      definition: string
+      comment: string | null
+      validated: boolean
+    }>(
+      sql`select pg_get_constraintdef(oid) as definition, obj_description(oid, 'pg_constraint') as comment,
+                 convalidated as validated
             from pg_constraint where conname = 'invoices_fee_kind_check'`,
     )
     assert.ok(constraint, 'invoices_fee_kind_check yok')
+    // ON-318: 0072 `not valid` ekler, 0073 doğrular.
+    assert.equal(constraint.validated, true)
     const listed = [...constraint.definition.matchAll(/'([^']+)'/g)].map((match) => match[1])
     assert.deepEqual(listed.toSorted(), [...FEE_ITEM_KINDS].toSorted())
     assert.match(constraint.comment ?? '', /FEE_ITEM_KINDS/)

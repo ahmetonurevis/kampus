@@ -440,6 +440,33 @@ test('DOM-KAY-007: kaynak sabit listedendir; veli referansında referans veren �
   assert.equal(referred.source, 'Veli referansı')
 })
 
+test('DOM-KAY-007, DOM-KAY-012: referans iletileri dil okulunda "kursiyer", okulda ve tür bilinmezken "öğrenci" der; kod değişmez', () => {
+  for (const [options, noun, accusative] of [
+    [undefined, 'öğrenci', 'öğrenciyi'],
+    [{ institutionType: 'school' }, 'öğrenci', 'öğrenciyi'],
+    [language, 'kursiyer', 'kursiyeri'],
+  ] as const) {
+    const state = seed()
+    const referral = { source: 'Veli referansı', minor: true }
+    assert.throws(() => createProspect(state, front, input(referral), id, now, options), {
+      code: 'referrer_required',
+      message: `Referans veren ${accusative} seçin.`,
+    })
+    assert.throws(
+      () =>
+        createProspect(
+          state,
+          front,
+          input({ ...referral, referrerStudentId: 's-yok' }),
+          id,
+          now,
+          options,
+        ),
+      { code: 'referrer_not_found', message: `Referans veren ${noun} bulunamadı.` },
+    )
+  }
+})
+
 test('DOM-KAY-004, DOM-ILT-022: ticari ileti onayı kanal bazında, varsayılan onaysız saklanır', () => {
   const state = seed()
   const none = createProspect(state, front, input(), id, now)

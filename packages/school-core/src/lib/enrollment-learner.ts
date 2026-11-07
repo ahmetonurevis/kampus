@@ -19,6 +19,8 @@ export type LearnerWords = {
   titleGenitive: 'Öğrencinin' | 'Kursiyerin'
   /** Yönelme: "öğrenciye" / "kursiyere". */
   dative: 'öğrenciye' | 'kursiyere'
+  /** Cümle başında yönelme: "Öğrenciye" / "Kursiyere". */
+  titleDative: 'Öğrenciye' | 'Kursiyere'
   /** Belirtme: "öğrenciyi" / "kursiyeri". */
   accusative: 'öğrenciyi' | 'kursiyeri'
 }
@@ -30,6 +32,7 @@ const STUDENT_WORDS: LearnerWords = {
   genitive: 'öğrencinin',
   titleGenitive: 'Öğrencinin',
   dative: 'öğrenciye',
+  titleDative: 'Öğrenciye',
   accusative: 'öğrenciyi',
 }
 
@@ -40,6 +43,7 @@ const LEARNER_WORDS: LearnerWords = {
   genitive: 'kursiyerin',
   titleGenitive: 'Kursiyerin',
   dative: 'kursiyere',
+  titleDative: 'Kursiyere',
   accusative: 'kursiyeri',
 }
 

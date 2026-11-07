@@ -386,6 +386,41 @@ test('IST-106: senet numara ister, banka hesabına bağlanmaz, burslu öğrencid
   )
 })
 
+test('DOM-KAY-012: tahsilat iletileri dil okulunda "kursiyer", okulda ve tür bilinmezken "öğrenci" der; kod değişmez', () => {
+  for (const [institutionType, title, noun, genitive] of [
+    [undefined, 'Öğrenci', 'öğrenci', 'öğrencinin'],
+    ['school', 'Öğrenci', 'öğrenci', 'öğrencinin'],
+    ['language_school', 'Kursiyer', 'kursiyer', 'kursiyerin'],
+  ] as const) {
+    const options = context(institutionType === undefined ? {} : { institutionType })
+    const { state, studentId } = fixture()
+    assert.throws(
+      () => planPayment(state, { studentId: 'yok', amountCents: 100, ...bank }, options),
+      {
+        code: 'student_not_found',
+        message: `${title} bulunamadı.`,
+      },
+    )
+    state.contracts = [
+      { ...state.contracts[0]!, studentId, scholarship: { programId: 'p1', amountCents: 100 } },
+    ]
+    assert.throws(
+      () =>
+        planPayment(
+          state,
+          { studentId, amountCents: 100, method: 'Senet', reference: 'SNT-1' },
+          options,
+        ),
+      { code: 'scholarship_promissory_note', message: `Burslu ${noun}den senet alınamaz.` },
+    )
+    for (const invoice of state.invoices) invoice.paidAt = NOW
+    assert.throws(() => planPayment(state, { studentId, amountCents: 100, ...bank }, options), {
+      code: 'no_open_installments',
+      message: `Bu ${genitive} açık taksiti bulunmuyor.`,
+    })
+  }
+})
+
 test('DOM-FIN-032: hesap tanımlıysa nakit dışı tahsilat hesap ister, nakit istemez', () => {
   const { state, studentId } = fixture()
   const accounts = { bankAccountIds: ['a1'] }

@@ -312,7 +312,8 @@ function requireSaleable(state: State, data: PriceInput, context: PackageSaleCon
     throw new DomainError('package_not_found', 'Paket bulunamadı.', { kind: 'not_found' })
   const student = state.students.find((item) => item.id === data.studentId)
   if (!student)
-    throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
+    // Paket yalnız dil okulundadır; kayıtlı kişi her zaman kursiyerdir (DOM-KAY-012).
+    throw new DomainError('student_not_found', 'Kursiyer bulunamadı.', { kind: 'not_found' })
   if (!student.isActive)
     throw new DomainError('student_inactive', 'Pasif kursiyere paket satılamaz.', {
       path: ['studentId'],

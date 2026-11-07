@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
+import type { InstitutionType } from '../modules/collection-modules.ts'
 import { daySchema } from './domain.ts'
+import { learnerWords } from './enrollment-learner.ts'
 import { DomainError } from './errors.ts'
 
 /**
@@ -114,7 +116,8 @@ export function scholarshipAmount(
  * yöneticidedir, program bu eğitim yılının olmalı, bildirilmiş olmalı, öğrencinin o yıl başka bursu
  * olmamalı ve burslu sayısı dolmamış olmalıdır. `studentAwarded` öğrencinin bu eğitim yılında
  * arşivlenmemiş ataması olup olmadığıdır; servis kurum kilidi altında yükler, veritabanındaki
- * `scholarship_awards_student_year_key` yalnız yarışta tetiklenir.
+ * `scholarship_awards_student_year_key` yalnız yarışta tetiklenir. `institutionType` yalnız iletinin
+ * sözüdür (DOM-KAY-012): dil okulu ve kursta "kursiyer", verilmezse okul metni; kod değişmez.
  */
 export function requireAwardableProgram(
   program: ScholarshipProgram | null,
@@ -123,6 +126,7 @@ export function requireAwardableProgram(
     awardedCount: number
     canApprove: boolean
     studentAwarded: boolean
+    institutionType?: InstitutionType
   },
 ): ScholarshipProgram {
   const path = ['scholarshipProgramId']
@@ -142,7 +146,7 @@ export function requireAwardableProgram(
   if (context.studentAwarded)
     throw new DomainError(
       'scholarship_already_awarded',
-      'Öğrenciye bu eğitim yılında zaten burs atanmış.',
+      `${learnerWords(context.institutionType).titleDative} bu eğitim yılında zaten burs atanmış.`,
       { kind: 'conflict', path },
     )
   if (context.awardedCount >= program.capacity)

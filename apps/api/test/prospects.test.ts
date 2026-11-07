@@ -1232,10 +1232,16 @@ describe('aday uçları', () => {
     )
     assert.equal(published.statusCode, 200, published.body)
   }
-  async function publishTariffForYear(cookie: string, academicYear: number, unit = 'year') {
+  async function publishTariffForYear(
+    cookie: string,
+    academicYear: number,
+    unit = 'year',
+    discounts: unknown[] = [],
+  ) {
     const draft = await send('POST', '/api/v1/fee-tariffs', cookie, {
       academicYear,
       items: [{ ...TUITION, unit }],
+      discounts,
       paymentTerms: PAYMENT_TERMS,
     })
     assert.equal(draft.statusCode, 201, draft.body)
@@ -1727,6 +1733,61 @@ describe('aday uçları', () => {
       await a_get((await member(a.id, 'veli')).cookie, `/api/v1/prospects/pr2/guardian-matches`),
       403,
     )
+  })
+
+  test('DOM-FIN-022, K-22: kesin kayıtta kardeşin bu yıl kaydı yoksa indirim uygulanmaz; ücreti düşükse aday ilk çocuktur', async () => {
+    const discounts = [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }]
+    const a = await pricedInstitution(
+      {},
+      {
+        items: [{ ...TUITION, amountCents: 5_000_000, announcedAmountCents: 5_000_000 }],
+        discounts,
+      },
+    )
+    const cookie = await frontDesk(a.id)
+    const phone = String((await findRecord(db, a.id, 'prospects', 'pr1'))?.data.phone)
+    const sibling = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Kardeş',
+      phone,
+      email: '',
+      siblingOfId: 'pr1',
+    })
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elder = await findRecord(db, a.id, 'students', first.json().data.entity.id)
+    const body = {
+      ...ENROLLMENT,
+      identity: { ...ENROLLMENT.identity, number: '11111111110' },
+      guardian: { existingParentId: String(elder?.data.parentId) },
+      discounts: ['sibling'],
+    }
+    // Bu yıl tarife değişti: adayın ilan ücreti kardeşin sözleşmesinden yüksek, aday ilk çocuktur.
+    const year = FIXED_NOW.getUTCFullYear()
+    await db
+      .update(feeTariffs)
+      .set({ items: [TUITION] as never })
+      .where(and(eq(feeTariffs.institutionId, a.id), eq(feeTariffs.id, tariffId)))
+    await noEnrollment(a.id, sibling.id, async () => {
+      assertError(
+        await enroll(cookie, sibling.id, body, sibling.version),
+        422,
+        'sibling_discount_ineligible',
+      )
+    })
+    // Eğitim yılı ilerledi; kardeşin yalnız önceki yıl sözleşmesi var, bu yıl kaydı yoktur.
+    await db
+      .update(institutionSettings)
+      .set({ academicYear: year + 1 })
+      .where(eq(institutionSettings.institutionId, a.id))
+    await publishTariffForYear(a.adminCookie, year + 1, 'year', discounts)
+    await noEnrollment(a.id, sibling.id, async () => {
+      assertError(
+        await enroll(cookie, sibling.id, body, sibling.version),
+        422,
+        'sibling_discount_ineligible',
+      )
+    })
   })
 
   test('DOM-KAY-013, ON-128: hesabı olan veliye bağlanan kardeş hesapta da görünür', async () => {

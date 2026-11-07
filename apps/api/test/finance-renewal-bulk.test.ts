@@ -664,12 +664,11 @@ describe('IST-105: yeni yılın toplu yenileme uçları', () => {
     assert.deepEqual(awards, [{ studentId: 's3', amountCents: 750_000 }])
   })
 
-  test('DOM-FIN-022: kardeş indirimi toplu yolda tek öğrenci planıyla aynı kararı verir; kardeşi olmayan satır reddedilir', async () => {
-    const a = await ready()
-    await addStudents(a.id, 'test-yalniz')
+  /** s3'ün aynı veliye bağlı kardeşi; sözleşmesi verilen yılda ve ücrette. */
+  async function addSibling(institutionId: string, academicYear: number, amount: number) {
     await insertMissingRecords(
       db,
-      a.id,
+      institutionId,
       [
         {
           collection: 'students',
@@ -688,22 +687,48 @@ describe('IST-105: yeni yılın toplu yenileme uçları', () => {
             id: 'test-contract-kardes',
             studentId: 'test-kardes',
             date: FIXED_NOW.toISOString(),
-            amount: BASE_CENTS / 2,
+            amount,
             title: 'Özel okul eğitim sözleşmesi',
-            academicYear: 2026,
+            academicYear,
           },
         },
       ],
       FIXED_NOW,
     )
-    const single = await post(`${BASE}/quote`, a.admin, {
+  }
+  const siblingQuote = (a: { admin: string }) =>
+    post(`${BASE}/quote`, a.admin, {
       ...S3,
       academicYear: YEAR,
       installmentCount: 3,
       discounts: ['sibling'],
     })
+
+  test('DOM-FIN-022, K-22: kardeşin bu yıl kaydı yoksa yenilemede indirim yok; önizleme ve onay aynı kararı verir', async () => {
+    const a = await ready()
+    await addSibling(a.id, YEAR - 1, ANNOUNCED_CENTS * 2)
+    assertError(await siblingQuote(a), 422, 'sibling_discount_ineligible')
+    const rows = ROWS('s3', 'test-kardes')
+    const preview = await post(PREVIEW, a.admin, previewBody(rows, { discounts: ['sibling'] }))
+    assert.deepEqual(
+      preview
+        .json()
+        .data.rows.map((row: { problem: { code: string } | null }) => row.problem?.code),
+      ['sibling_discount_ineligible', 'sibling_discount_ineligible'],
+    )
+    const before = await counts(a.id)
+    const made = await post(PLAN, a.admin, a.planBody(rows, { discounts: ['sibling'] }), key())
+    assert.deepEqual(made.json().data.summary, { planned: 0, skipped: 0, failed: 2 })
+    assert.deepEqual(await counts(a.id), before)
+  })
+
+  test('DOM-FIN-022, K-22: kardeş bu yıl kayıtlı ve ücreti yüksekse indirim uygulanır; kardeşi olmayan satır reddedilir', async () => {
+    const a = await ready()
+    await addStudents(a.id, 'test-yalniz')
+    await addSibling(a.id, YEAR, ANNOUNCED_CENTS * 2)
+    const single = await siblingQuote(a)
     assert.equal(single.statusCode, 200, single.body)
-    const rows = ROWS('s3', 'test-kardes', 'test-yalniz')
+    const rows = ROWS('s3', 'test-yalniz')
     const preview = await post(PREVIEW, a.admin, previewBody(rows, { discounts: ['sibling'] }))
     const previewed = preview.json().data.rows
     assert.deepEqual(previewed[0].price, single.json().data)
@@ -714,13 +739,42 @@ describe('IST-105: yeni yılın toplu yenileme uçları', () => {
       ]),
       [
         ['ready', null],
-        ['ready', null],
         ['failed', 'sibling_discount_ineligible'],
       ],
     )
     const made = await post(PLAN, a.admin, a.planBody(rows, { discounts: ['sibling'] }), key())
-    assert.deepEqual(made.json().data.summary, { planned: 2, skipped: 0, failed: 1 })
-    assert.equal(made.json().data.rows[2].problem.code, 'sibling_discount_ineligible')
+    assert.deepEqual(made.json().data.summary, { planned: 1, skipped: 0, failed: 1 })
+    assert.equal(made.json().data.rows[1].problem.code, 'sibling_discount_ineligible')
+  })
+
+  test('DOM-FIN-022, K-22: bu yıl kayıtlı kardeşin ücreti düşükse çocuk ilk çocuktur, indirim almaz', async () => {
+    const a = await ready()
+    await addSibling(a.id, YEAR, BASE_CENTS / 2)
+    assertError(await siblingQuote(a), 422, 'sibling_discount_ineligible')
+    const made = await post(
+      PLAN,
+      a.admin,
+      a.planBody(ROWS('s3'), { discounts: ['sibling'] }),
+      key(),
+    )
+    assert.equal(made.json().data.rows[0].problem.code, 'sibling_discount_ineligible')
+  })
+
+  test('DOM-FIN-022, K-22: kardeşin planı bu yılın kaydıdır; sonra düşük ücretli çocuk indirim alır', async () => {
+    const a = await ready()
+    await addSibling(a.id, YEAR - 1, BASE_CENTS)
+    const elder = await post(PLAN, a.admin, a.planBody(ROWS('test-kardes')), key())
+    assert.deepEqual(elder.json().data.summary, { planned: 1, skipped: 0, failed: 0 })
+    // İkisi de tavana kalır (28.000 ₺): eşit ücrette kaydı önce olan s3 ilk çocuktur.
+    assertError(await siblingQuote(a), 422, 'sibling_discount_ineligible')
+    const lower = await post(`${BASE}/quote`, a.admin, {
+      ...S3,
+      academicYear: YEAR,
+      installmentCount: 3,
+      tuitionCents: CEILING_CENTS - 1,
+      discounts: ['sibling'],
+    })
+    assert.equal(lower.statusCode, 200, lower.body)
   })
 
   test('DOM-FIN-013: ilanda olmayan taksit sayısı satırda reddedilir; ödeme koşulu sözleşmeye yazılır', async () => {

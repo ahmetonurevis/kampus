@@ -36,6 +36,7 @@ import {
 } from '../db/finance-scholarships.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { findReferralReward } from '../db/finance-referrals.ts'
+import { loadStudentFamilies } from '../db/finance-renewal-candidates.ts'
 import { allocatedForInvoices } from '../db/payments.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -183,6 +184,19 @@ async function renewalContext(
 }
 
 /**
+ * Sözleşmesi yüklenecek öğrenciler: kardeş indirimi kardeşin o yılki kaydına ve ücretine baktığı için
+ * velinin öteki öğrencileri de okunur (DOM-FIN-022, K-22); indirim yoksa yalnız kendileri.
+ */
+export const renewalContractStudents = (
+  ctx: ServiceContext,
+  studentIds: readonly string[],
+  discounts: readonly string[],
+): Promise<readonly string[]> =>
+  discounts.includes('sibling')
+    ? loadStudentFamilies(ctx.db, ctx.institutionId, studentIds)
+    : Promise.resolve(studentIds)
+
+/**
  * Öğrencinin sözleşmeleri tavanın bazıdır; taksitler okunmaz, yeni kayıtlar sona eklenir. Kurumun
  * bütün finans kaydı her yenilemede yüklenmez.
  */
@@ -194,13 +208,14 @@ export const renewalLoadScope = (contractStudentIds: readonly string[]) => ({
 })
 
 /** Formun ücret özeti: hiçbir kayıt yazılmaz (DOM-FIN-005). Kapsam ve rol planla aynıdır. */
-export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
+export async function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
   const data = renewalQuoteSchema.parse(input)
+  const contractStudents = await renewalContractStudents(ctx, [data.studentId], data.discounts)
   return runReadOnly(ctx, {
     action: 'renewal.quote',
     collections: SPEC.collections,
     stores: FINANCE_TABLE_STORES,
-    loadScope: renewalLoadScope([data.studentId]),
+    loadScope: renewalLoadScope(contractStudents),
     load: async (tx) => {
       const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
       const context = await renewalContext(tx, ctx, institutionType, data)
@@ -213,19 +228,24 @@ export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
  * Yenilemeyi planlar; 201 ve konu yenileme kaydıdır. Burs ataması aynı işlemdedir (öğrenci yılda en
  * çok bir burs alır, kısmi benzersiz indeks). Mezuniyet sözleşme ve taksit açmaz.
  */
-export function planRenewalCommand(
+export async function planRenewalCommand(
   ctx: ServiceContext,
   input: unknown,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const data = renewalPlanSchema.parse(input)
+  const contractStudents = await renewalContractStudents(
+    ctx,
+    [data.studentId],
+    data.mode === 'renew' ? data.discounts : [],
+  )
   return runCommand(
     ctx,
     {
       action: 'renewal.plan',
       collections: SPEC.collections,
       stores: FINANCE_TABLE_STORES,
-      loadScope: renewalLoadScope([data.studentId]),
+      loadScope: renewalLoadScope(contractStudents),
       entity: (result: { renewal: { id: string } }) => ({
         type: 'renewals',
         id: result.renewal.id,

@@ -812,6 +812,8 @@ test('DOM-FIN-022: sıra son yürürlükteki sözleşmenin ilan ücreti, eşitli
       studentId,
       siblingIds: [elder.id, younger.id],
       tuitionCents,
+      academicYear: state.academicYear,
+      currentAcademicYear: state.academicYear,
     })
   state.contracts = [
     contract(elder.id, '2025-09-01T09:00:00.000Z', 10_000_000),
@@ -831,6 +833,45 @@ test('DOM-FIN-022: sıra son yürürlükteki sözleşmenin ilan ücreti, eşitli
   // Pasif kardeş sayılmaz.
   younger.isActive = false
   assert.throws(check(elder.id, 1), isDomainError('sibling_discount_ineligible'))
+})
+
+test('DOM-FIN-022, K-22: kardeş indirimin yılında kayıtlı olmalıdır; eski sözleşme cari yıla, sözleşmesiz öğrenci yalnız cari yıla sayılır', () => {
+  const state = createSeed(new Date(NOW))
+  const [child, sibling] = state.students
+  assert.ok(child && sibling)
+  const current = state.academicYear
+  const check = (academicYear: number) => () =>
+    requireSiblingDiscountEligible(state, {
+      studentId: child.id,
+      siblingIds: [sibling.id],
+      tuitionCents: 1,
+      academicYear,
+      currentAcademicYear: current,
+    })
+  const contract = (academicYear?: number) => ({
+    id: 'test-c-kardes',
+    studentId: sibling.id,
+    date: NOW,
+    amount: 9_000_000,
+    title: 'Sözleşme',
+    ...(academicYear === undefined ? {} : { academicYear }),
+  })
+  // Sözleşmesiz etkin kardeş (dosyadan aktarılan): cari yılda kayıtlı, sonraki yılda değil.
+  state.contracts = []
+  assert.doesNotThrow(check(current))
+  assert.throws(check(current + 1), isDomainError('sibling_discount_ineligible'))
+  // Yılı yazılmamış eski sözleşme cari yıla aittir.
+  state.contracts = [contract()]
+  assert.doesNotThrow(check(current))
+  assert.throws(check(current + 1), isDomainError('sibling_discount_ineligible'))
+  // Kardeşin yalnız önceki yıl sözleşmesi var: cari yılda da kaydı yoktur.
+  state.contracts = [contract(current - 1)]
+  assert.throws(check(current), isDomainError('sibling_discount_ineligible'))
+  state.contracts = [contract(current)]
+  assert.doesNotThrow(check(current))
+  // Dondurulan kardeş aktif kayıt sayılmaz; öğrenci `isActive` kalır (DOM-KAY-024).
+  Object.assign(sibling, { frozenAt: NOW })
+  assert.throws(check(current), isDomainError('sibling_discount_ineligible'))
 })
 
 test('DOM-KAY-013: telefon eşleşmesi öneri döndürür, boş telefon eşleşmez', () => {

@@ -343,7 +343,8 @@ test('DOM-FIN-022, DOM-FIN-013: kardeş ve peşin indirimi tek öğrenci kuralı
   assert.deepEqual(paid?.price?.installments, [6_000_000])
 })
 
-test('DOM-FIN-022: kardeşler aynı istekte seçilse de her satır tek öğrenci planıyla aynı kararı verir', () => {
+/** s3'ün kardeşi; sözleşmesi verilen yıldadır. */
+function withSibling(academicYear: number, grossCents: number) {
   const state = seeded()
   const student = state.students.find((s) => s.id === 's3')
   assert.ok(student)
@@ -352,25 +353,62 @@ test('DOM-FIN-022: kardeşler aynı istekte seçilse de her satır tek öğrenci
     id: 'test-sibling-contract',
     studentId: 'test-sibling',
     date: NOW,
-    amount: 4_000_000,
+    amount: grossCents,
     title: 'Özel okul eğitim sözleşmesi',
-    academicYear: 2026,
-    grossCents: 4_000_000,
+    academicYear,
+    grossCents,
   })
-  const before = state.contracts.length
+  return state
+}
+
+const SIBLING_ROW = { studentId: 'test-sibling', targetClassId: 'c1' }
+
+test('DOM-FIN-022, K-22: kardeşin bu yılki kaydı yoksa kardeşler birlikte seçilse de indirim uygulanmaz', () => {
   const rows = previewRenewalBulk(
-    state,
+    withSibling(YEAR - 1, 4_000_000),
     ADMIN,
-    body([S3, { studentId: 'test-sibling', targetClassId: 'c1' }], { discounts: ['sibling'] }),
+    body([S3, SIBLING_ROW], { discounts: ['sibling'] }),
     makeIds(),
     NOW,
     CONTEXT,
   )
   assert.deepEqual(
-    rows.map((row) => row.outcome),
-    ['ready', 'ready'],
+    rows.map((row) => [row.outcome, row.problem?.code]),
+    [
+      ['failed', 'sibling_discount_ineligible'],
+      ['failed', 'sibling_discount_ineligible'],
+    ],
   )
-  assert.equal(state.contracts.length, before)
+})
+
+test('DOM-FIN-022, K-22: satır tek öğrenci planıyla aynı kararı verir; ücret sırası toplu yolda da korunur', () => {
+  const state = withSibling(YEAR, 90_000_000)
+  const single = quoteRenewal(
+    withSibling(YEAR, 90_000_000),
+    ADMIN,
+    { ...S3, academicYear: YEAR, installmentCount: 7, discounts: ['sibling'] },
+    CONTEXT,
+  )
+  const [row] = previewRenewalBulk(
+    state,
+    ADMIN,
+    body([S3], { discounts: ['sibling'] }),
+    makeIds(),
+    NOW,
+    CONTEXT,
+  )
+  assert.equal(row?.outcome, 'ready')
+  assert.deepEqual(row?.price, single)
+  // Kardeşin ücreti düşükse s3 ilk çocuktur.
+  const [first] = previewRenewalBulk(
+    withSibling(YEAR, 1_000_000),
+    ADMIN,
+    body([S3], { discounts: ['sibling'] }),
+    makeIds(),
+    NOW,
+    CONTEXT,
+  )
+  assert.equal(first?.problem?.code, 'sibling_discount_ineligible')
 })
 
 test('DOM-KAY-021: planı olan öğrenci atlanır, başka yılda açık planı olan başarısızdır', () => {

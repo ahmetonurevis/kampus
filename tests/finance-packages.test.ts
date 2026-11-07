@@ -325,6 +325,26 @@ test('DOM-FIN-022: kardeş indirimi ilk çocuğa uygulanmaz, ikinci çocukta ge�
   )
 })
 
+test('DOM-FIN-022, K-22: paket satışında kardeşin bu yıl kaydı yoksa indirim uygulanmaz', () => {
+  const state = seed()
+  const siblings = state.students.filter((s) => s.parentId === 'p1')
+  state.contracts = state.contracts.filter((c) => !siblings.some((s) => s.id === c.studentId))
+  state.contracts.push({
+    id: 'test-c-gecen-yil',
+    studentId: 's1',
+    date: NOW,
+    amount: 9_000_000,
+    title: 'Sözleşme',
+    academicYear: CONTEXT.academicYear - 1,
+    grossCents: 9_000_000,
+  } as State['contracts'][number])
+  const quote = () =>
+    quotePackageSale(state, { ...QUOTE, studentId: 's2', discounts: ['sibling'] }, NOW, CONTEXT)
+  assert.throws(quote, isDomainError('sibling_discount_ineligible'))
+  state.contracts.at(-1)!.academicYear = CONTEXT.academicYear
+  assert.equal(quote().discountCents, 600_000)
+})
+
 test('DOM-FIN-002, DOM-FIN-003: tarife, düzey ve ek kalem ilanda yoksa satış yok', () => {
   assert.throws(
     () => quotePackageSale(seed(), QUOTE, NOW, { ...CONTEXT, tariff: null }),

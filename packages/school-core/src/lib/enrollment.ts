@@ -711,6 +711,7 @@ export function enrollProspectWithTariff(
           canApprove: context.canApproveCapException,
           // Kesin kayıt her zaman yeni öğrenci kimliği açar; bu kimliğin önceki ataması olamaz.
           studentAwarded: false,
+          institutionType: context.institutionType,
         })
   const scholarshipCents =
     program === null ? 0 : scholarshipAmount(program, price.grossCents, price.netCents)

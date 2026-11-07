@@ -2,7 +2,9 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import { csvAmount } from './csv.ts'
+import type { InstitutionType } from '../modules/collection-modules.ts'
 import { daySchema, requiredText } from './domain.ts'
+import { learnerWords } from './enrollment-learner.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
 import { isValidTurkishIban } from './withdrawals.ts'
@@ -215,6 +217,11 @@ export interface PaymentContext {
   /** Kurumun arşivlenmemiş bildirilmiş hesapları. */
   bankAccountIds: readonly string[]
   now: string
+  /**
+   * Kurum türü yalnız iletinin sözüdür (DOM-KAY-012, ADR 0008 karar 1): okulda "öğrenci", dil okulu
+   * ve kursta "kursiyer"; verilmezse okul metni. Hata kodu türden bağımsızdır.
+   */
+  institutionType?: InstitutionType
 }
 
 export interface PaymentPlan {
@@ -286,6 +293,7 @@ function resolveBankAccount(
 
 export function planPayment(state: State, input: unknown, context: PaymentContext): PaymentPlan {
   const data = recordPaymentSchema.parse(input)
+  const learner = learnerWords(context.institutionType)
   const reference = data.reference ?? null
   if (data.method === CASH && !context.cashEnabled)
     throw new DomainError('cash_payment_disabled', 'Bu kurumda nakit tahsilat kapalıdır.', {
@@ -297,9 +305,11 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
     })
   const bankAccountId = usesBankAccount(data.method) ? resolveBankAccount(data, context) : null
   if (data.method === PROMISSORY_NOTE && hasScholarshipContract(state.contracts, data.studentId))
-    throw new DomainError('scholarship_promissory_note', 'Burslu öğrenciden senet alınamaz.', {
-      path: ['method'],
-    })
+    throw new DomainError(
+      'scholarship_promissory_note',
+      `Burslu ${learner.noun}den senet alınamaz.`,
+      { path: ['method'] },
+    )
   if (reference !== null && context.referenceInUse)
     throw new DomainError('payment_reference_used', 'Bu işlem referansı daha önce kaydedilmiş.', {
       kind: 'conflict',
@@ -307,7 +317,9 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
     })
   const paidAt = paidAtOf(data.paidDate, context.now)
   if (!state.students.some((student) => student.id === data.studentId))
-    throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
+    throw new DomainError('student_not_found', `${learner.title} bulunamadı.`, {
+      kind: 'not_found',
+    })
   const invoices = state.invoices.filter((invoice) => invoice.studentId === data.studentId)
   if (data.invoiceId !== undefined) {
     const target = invoices.find((invoice) => invoice.id === data.invoiceId)
@@ -333,9 +345,13 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
     }
   }
   if (allocations.length === 0)
-    throw new DomainError('no_open_installments', 'Bu öğrencinin açık taksiti bulunmuyor.', {
-      kind: 'conflict',
-    })
+    throw new DomainError(
+      'no_open_installments',
+      `Bu ${learner.genitive} açık taksiti bulunmuyor.`,
+      {
+        kind: 'conflict',
+      },
+    )
   return {
     studentId: data.studentId,
     amountCents: data.amountCents,

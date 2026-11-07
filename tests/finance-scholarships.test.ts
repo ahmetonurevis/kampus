@@ -136,7 +136,7 @@ test('DOM-FIN-025, DOM-FIN-052: atama yönetici onayı, doğru yıl, bildirim ve
   )
 })
 
-test('DOM-FIN-025: öğrenciye aynı eğitim yılında ikinci burs atanmaz; özgül kod kontenjandan önce gelir', () => {
+test('DOM-FIN-025, DOM-KAY-012: öğrenciye aynı eğitim yılında ikinci burs atanmaz; özgül kod kontenjandan önce gelir, dil okulunda ileti kursiyer der', () => {
   assert.throws(
     () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true }),
     isDomainError('scholarship_already_awarded', 'conflict'),
@@ -145,6 +145,21 @@ test('DOM-FIN-025: öğrenciye aynı eğitim yılında ikinci burs atanmaz; özg
     () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true, awardedCount: 2 }),
     isDomainError('scholarship_already_awarded', 'conflict'),
   )
+  // İleti kurum türünün sözünü kullanır, kod aynı kalır (DOM-KAY-012); tür yoksa okul metni.
+  for (const [institutionType, message] of [
+    [undefined, 'Öğrenciye bu eğitim yılında zaten burs atanmış.'],
+    ['school', 'Öğrenciye bu eğitim yılında zaten burs atanmış.'],
+    ['language_school', 'Kursiyere bu eğitim yılında zaten burs atanmış.'],
+  ] as const)
+    assert.throws(
+      () =>
+        requireAwardableProgram(PROGRAM, {
+          ...CONTEXT,
+          studentAwarded: true,
+          ...(institutionType === undefined ? {} : { institutionType }),
+        }),
+      { code: 'scholarship_already_awarded', message },
+    )
   // Onay ve program denetimleri önce gelir: yetkisiz kullanıcı başka öğrencinin bursunu öğrenmez.
   assert.throws(
     () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true, canApprove: false }),

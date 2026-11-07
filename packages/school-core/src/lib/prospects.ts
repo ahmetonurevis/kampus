@@ -4,6 +4,7 @@ import type { InstitutionType } from '../modules/collection-modules.ts'
 import { requireAuthorized } from './authorize.ts'
 import type { Participant } from './communication.ts'
 import { requiredText, type MakeId } from './domain.ts'
+import { learnerWords } from './enrollment-learner.ts'
 import { DomainError } from './errors.ts'
 import type { RequestActor } from './requests.ts'
 import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
@@ -539,6 +540,8 @@ export function createProspect(
   const data = createProspectSchema.parse(input)
   requireAuthorized(by, 'prospect.create', {}, state, options)
   const institutionType = options.institutionType ?? 'school'
+  // Referans iletileri kurum türünün sözünü kullanır (DOM-KAY-012); kod türden bağımsızdır.
+  const learner = learnerWords(institutionType)
   if (!state.branches.some((b) => b.id === data.branchId && b.isActive))
     throw new DomainError('branch_unavailable', 'Seçilen kampüs kullanılamıyor.', {
       path: ['branchId'],
@@ -567,11 +570,11 @@ export function createProspect(
     data.referrerStudentId !== undefined &&
     !state.students.some((s) => s.id === data.referrerStudentId && s.isActive)
   )
-    throw new DomainError('referrer_not_found', 'Referans veren öğrenci bulunamadı.', {
+    throw new DomainError('referrer_not_found', `Referans veren ${learner.noun} bulunamadı.`, {
       path: ['referrerStudentId'],
     })
   if (data.source === REFERRAL_SOURCE && data.referrerStudentId === undefined)
-    throw new DomainError('referrer_required', 'Referans veren öğrenciyi seçin.', {
+    throw new DomainError('referrer_required', `Referans veren ${learner.accusative} seçin.`, {
       path: ['referrerStudentId'],
     })
   const email = data.email ?? ''

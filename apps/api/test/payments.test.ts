@@ -380,6 +380,19 @@ describe('tahsilat uçları', () => {
     )
   })
 
+  test('DOM-FIN-031, DOM-KAY-012: açık taksit kalmayınca ileti dil okulunda kursiyer, okulda öğrenci der; kod aynı', async () => {
+    for (const [type, message] of [
+      ['school', 'Bu öğrencinin açık taksiti bulunmuyor.'],
+      ['language_school', 'Bu kursiyerin açık taksiti bulunmuyor.'],
+    ] as const) {
+      const a = await institution({ type })
+      assert.equal((await record(a.adminCookie, payment(30_000))).statusCode, 201)
+      const closed = await record(a.adminCookie, payment(100, { reference: 'TR-0002' }))
+      assertError(closed, 409, 'no_open_installments')
+      assert.equal(closed.json().message, message)
+    }
+  })
+
   test('DOM-FIN-031: aynı Idempotency-Key ikinci tahsilat açmaz, ilk yanıtı döner', async () => {
     const a = await institution()
     const headers = key()

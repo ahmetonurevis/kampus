@@ -12,6 +12,7 @@ test('DOM-KAY-012: okulda kayıtlı kişi öğrencidir; tür bilinmiyorsa okul s
       genitive: 'öğrencinin',
       titleGenitive: 'Öğrencinin',
       dative: 'öğrenciye',
+      titleDative: 'Öğrenciye',
       accusative: 'öğrenciyi',
     })
   }
@@ -25,6 +26,7 @@ test('DOM-KAY-012, ADR 0008: dil okulu ve kursta kayıtlı kişi kursiyerdir; ek
     genitive: 'kursiyerin',
     titleGenitive: 'Kursiyerin',
     dative: 'kursiyere',
+    titleDative: 'Kursiyere',
     accusative: 'kursiyeri',
   })
 })

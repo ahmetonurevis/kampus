@@ -404,7 +404,7 @@ test('DOM-FIN-002, DOM-FIN-003: tarife, düzey ve ek kalem ilanda yoksa satış 
   )
 })
 
-test('DOM-YTK-012: paket yalnız dil okulunda; olmayan paket ve öğrenci 404, pasif kursiyer 422', () => {
+test('DOM-YTK-012, DOM-KAY-012: paket yalnız dil okulunda; olmayan paket ve kursiyer 404, pasif kursiyer 422', () => {
   for (const institutionType of INSTITUTION_TYPES.filter((item) => item !== 'language_school'))
     assert.throws(
       () => quotePackageSale(seed(), QUOTE, NOW, { ...CONTEXT, institutionType }),
@@ -418,6 +418,11 @@ test('DOM-YTK-012: paket yalnız dil okulunda; olmayan paket ve öğrenci 404, p
     () => quotePackageSale(seed(), { ...QUOTE, studentId: 'yok' }, NOW, CONTEXT),
     isDomainError('student_not_found', 'not_found'),
   )
+  // Paket yalnız dil okulundadır; ileti kursiyer der, kod değişmez (DOM-KAY-012).
+  assert.throws(() => quotePackageSale(seed(), { ...QUOTE, studentId: 'yok' }, NOW, CONTEXT), {
+    code: 'student_not_found',
+    message: 'Kursiyer bulunamadı.',
+  })
   const state = seed()
   const student = state.students.find((s) => s.id === 's3')
   assert.ok(student)

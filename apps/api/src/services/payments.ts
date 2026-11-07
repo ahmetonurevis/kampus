@@ -198,6 +198,7 @@ export function recordPaymentCommand(
               referenceInUse,
               bankAccountIds,
               now,
+              institutionType,
             })
           },
         }

@@ -3728,6 +3728,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/payer-children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Velinin ödeyicisi olduğu çocuklar
+         * @description Veli finans sayfalarının çocuk seçicisi için ödeyicisi olunan öğrenciler (K-04, DOM-FIN-052, DOM-ILT-074). Velayeti olmayan ödeyici veli çocuğu `/me` çocuk listesinde görmez; finans sayfaları bu listeyle o çocuğun taksit, dekont ve sözleşmesini açar. Akademik ve iletişim ekranları bu listeyi kullanmaz. Velayetli ödeyicinin çocuğu da listededir. İletişim kısıtlı veli ödeyici olamaz, listesi boştur. Yalnız ad ve güncel sınıf adı döner (KVKK asgarisi); sıralama ada göre. Başka kurumun öğrencisi listede yoktur. Rol: `veli`; diğer roller 403, modül kapalı 403.
+         */
+        get: operations["listFinancePayerChildren"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -39496,6 +39516,89 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFinancePayerChildren: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Öğrenci kimliği */
+                            id: string;
+                            /** @description Öğrencinin adı */
+                            name: string;
+                            /** @description Güncel sınıf ya da kur grubu adı */
+                            className: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

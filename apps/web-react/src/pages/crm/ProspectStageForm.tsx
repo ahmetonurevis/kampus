@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { useChangeProspectStage } from '@kampus/react-shared/use-prospect-commands.ts'
 import {
   OPEN_PROSPECT_STAGES,
+  PROSPECT_LOST_INSTITUTION_MAX,
   PROSPECT_LOST_REASON_LABELS,
   PROSPECT_LOST_REASONS,
   prospectStageLabel,
@@ -12,6 +13,7 @@ import {
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
@@ -26,7 +28,7 @@ import {
 import { stageTargets } from './prospect-rows.ts'
 
 type Output = z.output<typeof stageFormSchema>
-const FIELDS = ['stage', 'lostReason', 'siblingOfId'] as const
+const FIELDS = ['stage', 'lostReason', 'lostToInstitution', 'siblingOfId'] as const
 
 /**
  * Aşama değiştirme (DOM-KAY-005, DOM-KAY-030): yalnız geçerli hedefler sunulur; ileri gidilir,
@@ -132,6 +134,24 @@ export function ProspectStageForm({
                 </NativeSelectOption>
               ))}
             </NativeSelect>
+          )}
+        </FormField>
+      ) : null}
+      {selected === 'Vazgeçti' ? (
+        <FormField
+          id="aday-tercih-kurum"
+          label="Tercih ettiği kurum"
+          description="İsteğe bağlı. Yalnız kurum adını yazın; kişi bilgisi yazmayın."
+          error={errors.lostToInstitution}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              {...form.register('lostToInstitution')}
+              maxLength={PROSPECT_LOST_INSTITUTION_MAX}
+              autoComplete="off"
+              disabled={busy}
+            />
           )}
         </FormField>
       ) : null}

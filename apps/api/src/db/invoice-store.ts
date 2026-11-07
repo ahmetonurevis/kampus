@@ -2,7 +2,8 @@ import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
-import { PAYMENT_METHODS, type PaymentMethod } from '@kampus/school-core/lib/payments.ts'
+import { FEE_ITEM_KINDS, type FeeItemKind } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { INVOICE_METHODS, type InvoiceMethod } from '@kampus/school-core/lib/payments.ts'
 
 import { AppError, MESSAGES } from '../errors.ts'
 import type { Database } from './client.ts'
@@ -15,14 +16,15 @@ import type {
   StoredRecord,
 } from './records.ts'
 import { invoices } from './schema/invoices.ts'
-import { PAYMENT_METHOD_KEYS } from './schema/payments.ts'
+import { INVOICE_METHOD_KEYS } from './schema/payments.ts'
 
 /**
  * Taksit deposu (ADR 0010 karar 3, 8; ON-046d): `invoices` satırı ↔ core taksit kaydı
  * (`State['invoices'][number]`) dönüşümü, `loadScope` süzgeçlerinin kolon koşuluna çevrilmesi ve
  * yükleme. Yazma, sözleşme ve bağ satırlarıyla birlikte bağımlılık sırasıyla
- * `contract-store.ts` `writeContractsAndInvoices`'tadır. Henüz çalıştırıcıya bağlı değildir
- * (ON-046b); kaynak `records`'tır.
+ * `contract-store.ts` `writeContractsAndInvoices`'tadır. Çift yazma süresince (ON-046e) kaynak
+ * `records`'tır ve ayna SQL'de eşitlenir (`finance-mirror-store.ts`); bu depo okuma geçişinde
+ * (046f) çalıştırıcıya bağlanır.
  *
  * Dönüşüm birebirdir: core kaydı → satır → core kaydı aynı kayıttır (alanların varlığı dahil).
  * Şemaya uymayan kayıt programlama hatasıdır (500, işlem geri alınır); `paidCents` gibi okumada
@@ -65,9 +67,10 @@ export const invoiceRecordSchema = z
     amount: z.number().int().positive(),
     dueDate: dueDateSchema,
     paidAt: instantSchema.nullable(),
-    method: z.enum(PAYMENT_METHODS).nullable(),
+    method: z.enum(INVOICE_METHODS).nullable(),
     reminderAt: instantSchema.nullable(),
-    feeKind: z.string().min(1).optional(),
+    /** Core yalnız kalem türü anahtarı yazar (DOM-FIN-004); tablo kısıtı `invoices_fee_kind_check`. */
+    feeKind: z.enum(FEE_ITEM_KINDS).optional(),
     contractId: idSchema.optional(),
     academicYear: z.number().int().optional(),
     createdAt: instantSchema.optional(),
@@ -85,8 +88,8 @@ export type InvoiceColumns = Omit<
   'institutionId' | 'position' | 'createdAt' | 'updatedAt' | 'archivedAt' | 'version' | 'currency'
 >
 
-const METHOD_LABELS = new Map<string, PaymentMethod>(
-  Object.entries(PAYMENT_METHOD_KEYS).map(([label, key]) => [key, label as PaymentMethod]),
+const METHOD_LABELS = new Map<string, InvoiceMethod>(
+  Object.entries(INVOICE_METHOD_KEYS).map(([label, key]) => [key, label as InvoiceMethod]),
 )
 
 /** Core kaydını doğrular; uymayan kayıt programlama hatasıdır. */
@@ -115,12 +118,15 @@ export function invoiceToColumns(data: RecordData, rootContractId: string | null
     amountCents: invoice.amount,
     dueDate: invoice.dueDate.slice(0, 10),
     paidAt: invoice.paidAt === null ? null : new Date(invoice.paidAt),
-    paymentMethod: invoice.method === null ? null : PAYMENT_METHOD_KEYS[invoice.method],
+    paymentMethod: invoice.method === null ? null : INVOICE_METHOD_KEYS[invoice.method],
     reminderAt: invoice.reminderAt === null ? null : new Date(invoice.reminderAt),
     coreCreatedAt: invoice.createdAt === undefined ? null : new Date(invoice.createdAt),
     coreUpdatedAt: invoice.updatedAt === undefined ? null : new Date(invoice.updatedAt),
   }
 }
+
+const isFeeItemKind = (value: string): value is FeeItemKind =>
+  (FEE_ITEM_KINDS as readonly string[]).includes(value)
 
 const iso = (value: Date | null) => (value === null ? null : value.toISOString())
 
@@ -128,6 +134,9 @@ const iso = (value: Date | null) => (value === null ? null : value.toISOString()
 export function rowToInvoice(row: InvoiceRow): InvoiceRecord {
   const method = row.paymentMethod === null ? null : METHOD_LABELS.get(row.paymentMethod)
   if (method === undefined) throw programmingError(`unknown payment method ${row.paymentMethod}`)
+  const feeKind = row.feeKind
+  if (feeKind !== null && !isFeeItemKind(feeKind))
+    throw programmingError(`unknown fee kind ${feeKind}`)
   return {
     id: row.id,
     studentId: row.studentId,
@@ -137,7 +146,7 @@ export function rowToInvoice(row: InvoiceRow): InvoiceRecord {
     paidAt: iso(row.paidAt),
     method,
     reminderAt: iso(row.reminderAt),
-    ...(row.feeKind === null ? {} : { feeKind: row.feeKind }),
+    ...(feeKind === null ? {} : { feeKind }),
     ...(row.contractId === null ? {} : { contractId: row.contractId }),
     ...(row.academicYear === null ? {} : { academicYear: row.academicYear }),
     ...(row.coreCreatedAt === null ? {} : { createdAt: row.coreCreatedAt.toISOString() }),

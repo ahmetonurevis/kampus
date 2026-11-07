@@ -22,6 +22,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /** Muhasebe dışa aktarımı (IST-111). Her test kendi kurumunu kurar. FIXED_NOW 2026-10-06. */
 
@@ -47,6 +48,8 @@ describe('muhasebe dışa aktarımı', () => {
   let app: App
   let serial = 0
   const key = () => ({ 'idempotency-key': `test-fx-${String(++serial).padStart(5, '0')}` })
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(STUDENT)
@@ -491,6 +494,7 @@ describe('muhasebe dışa aktarımı', () => {
       studentId,
       totalCents: NET,
       paidCents: 1_000_000,
+      openingImportCents: 0,
       openCents: NET - 1_000_000,
       overdueCents: 0,
       overdueCount: 0,

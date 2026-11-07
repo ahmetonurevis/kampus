@@ -19,6 +19,8 @@ import {
   type EnrollmentTariff,
 } from '@kampus/school-core/lib/enrollment.ts'
 import {
+  carriedOverTariffNote,
+  DISCOUNT_LINE_LABELS,
   FEE_DISCOUNT_KIND_LABELS,
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
@@ -26,7 +28,14 @@ import {
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
-import { useFeeTariffs } from '@kampus/react-shared/use-fee-tariffs.ts'
+import {
+  contractPaymentTermLabel,
+  defaultInstallmentCount,
+  installmentOptionLabel,
+  offeredInstallmentCounts,
+} from '@kampus/school-core/lib/payment-terms.ts'
+import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
+import { useAvailableReferralRewards } from '@kampus/react-shared/use-finance-referrals.ts'
 import {
   useEnrollProspect,
   useGuardianMatches,
@@ -50,7 +59,10 @@ import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
+import { EnrollmentCertificateButton } from './EnrollmentCertificateButton.tsx'
+import { EnrollmentCertificateSection } from './EnrollmentCertificateSection.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
+import { StudentImportSection } from './StudentImportSection.tsx'
 import { enrollmentParentId } from './enrollment-guardian-account.ts'
 import {
   ENROLLMENT_CONSENT_NOTE,
@@ -62,9 +74,13 @@ import {
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
+  interestGrade,
   paymentPlanHref,
   prospectChangeValues,
+  seatsTaken,
+  suggestedClassOrder,
 } from './enrollment-form.ts'
+import { ReferralRewardField } from '../finance/ReferralRewardField.tsx'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
@@ -91,13 +107,16 @@ type Done = {
   adult: boolean
   /** Veli hesabı açılacak veli kaydı (ON-290); kursiyerin kendisi seçildiyse yok. */
   parentId: string | null
+  /** Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002, K-11); sunucu yanıtından. */
+  tariffCarriedOverFromYear: number | null
 }
 
 /**
  * Kayıt İşlemleri (ön büro `/kayit-islemleri`; DOM-KAY-001, -011…-013, -035, DOM-FIN-002, -003,
  * -010, -011, -020…-022): adımlı kesin kayıt. Tutar girilmez, yayındaki tarifeden hesaplanır;
  * önizleme sunucuyla aynı core kuralıdır, kesin hesabı sunucu yapar. Kimlik yanıtta ve listelerde
- * dönmez. Yayımlanmış tarife yoksa form açılmaz. Rıza alınmaz: personel rıza veremez, kayıttan
+ * dönmez. Süresinde ilan yoksa önceki yılın tarifesi geçerlidir ve ekranda yazar (K-11); geçerli
+ * tarife yoksa form açılmaz. Rıza alınmaz: personel rıza veremez, kayıttan
  * sonra beklenen rızalar bildirilir (IST-017, DOM-YTK-057).
  */
 export function EnrollmentPage({ page }: { page: NavPage }) {
@@ -106,17 +125,21 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const institutionType = session?.institution.type ?? 'school'
   const year = session?.institution.academicYear ?? Number(dayKey().slice(0, 4))
-  const tariffs = useFeeTariffs({ page: 1, pageSize: TARIFF_PAGE_SIZE, academicYear: year })
+  const tariffs = useEffectiveFeeTariff({
+    academicYear: year,
+    institutionType,
+    pageSize: TARIFF_PAGE_SIZE,
+  })
   const paymentsHref = paymentPlanHref(session?.role)
   const [done, setDone] = useState<Done | null>(null)
   const [round, setRound] = useState(0)
-  const published = tariffs.data?.data.find((tariff) => tariff.status === 'published')
+  const published = tariffs.tariff
 
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
       {tariffs.error ? (
-        <QueryError error={tariffs.error} onRetry={() => void tariffs.refetch()} />
+        <QueryError error={tariffs.error} onRetry={tariffs.refetch} />
       ) : tariffs.isPending ? (
         <SummaryLoading />
       ) : !published ? (
@@ -135,6 +158,11 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
           <p className="text-sm text-muted-foreground">
             Öğrenci, veli, sözleşme ve taksit planı oluşturuldu.
           </p>
+          {done.tariffCarriedOverFromYear === null ? null : (
+            <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
+              {carriedOverTariffNote(done.tariffCarriedOverFromYear)}
+            </p>
+          )}
           {done.studentId ? (
             <EnrollmentConsentNotice studentId={done.studentId} adult={done.adult} />
           ) : (
@@ -156,6 +184,12 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
                 recordId={done.contractId}
                 label="Sözleşmeyi görüntüle"
                 ariaLabel={`${done.studentName} sözleşmesini görüntüle`}
+              />
+            ) : null}
+            {done.studentId ? (
+              <EnrollmentCertificateButton
+                studentId={done.studentId}
+                studentName={done.studentName}
               />
             ) : null}
             {paymentsHref ? (
@@ -180,21 +214,27 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
         <EnrollmentForm
           key={round}
           tariff={published}
+          carriedOverFromYear={tariffs.carriedOverFromYear}
           institutionType={institutionType}
           onDone={setDone}
         />
       )}
+      <EnrollmentCertificateSection />
       <GuardianInvitationsSection />
+      <StudentImportSection />
     </>
   )
 }
 
 function EnrollmentForm({
   tariff,
+  carriedOverFromYear,
   institutionType,
   onDone,
 }: {
   tariff: EnrollmentTariff
+  /** Önceki yılın tarifesi uygulanıyorsa o yıl (DOM-FIN-002, K-11). */
+  carriedOverFromYear: number | null
   institutionType: InstitutionType
   onDone: (done: Done) => void
 }) {
@@ -232,12 +272,13 @@ function EnrollmentForm({
       guardianPhone: '',
       relationship: 'mother',
       existingParentId: '',
+      referralRewardId: '',
       studentPhone: '',
       studentEmail: '',
       lessonHours: '',
       discounts: [],
       extras: [],
-      installmentCount: '8',
+      installmentCount: String(defaultInstallmentCount(tariff.paymentTerms)),
       firstDueDate: today,
       allCampuses: false,
       confirmOtherCampus: false,
@@ -265,8 +306,17 @@ function EnrollmentForm({
   const campusName = (id: string) => branches.data?.find((row) => row.id === id)?.record.name ?? ''
   const occupancy = useCoreCounts('students', OCCUPANCY_QUERY)
   const occupied = (classId: string) =>
-    occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0
+    seatsTaken(
+      classId,
+      occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0,
+      (plannedRenewals.data ?? []).map((row) => row.record),
+    )
+  // Adayın ilgi metnindeki düzeye uyan sınıflar önce gelir (DOM-KAY-014, ON-120); yalnız okulda.
+  const targetGrade = institutionType === 'school' ? interestGrade(prospect?.record.interest) : null
+  const classOptions = suggestedClassOrder(activeClasses, targetGrade)
   const room = activeClasses.find((row) => row.id === values.classId)
+  const gradeMismatch =
+    targetGrade !== null && room !== undefined && room.record.grade !== targetGrade
   // Veli seçimleri doğum tarihine göre: "kendisi" yalnız kursta 18 yaş ve üstünde (DOM-KAY-012).
   const guardianModes = allowedGuardianModes(institutionType, values.birthDate)
   // Kurs adayının yaş grubu doğum tarihiyle uyuşmazsa sunucu 422 `birth_date_minor_mismatch`
@@ -278,6 +328,12 @@ function EnrollmentForm({
   )
   const otherCampus = Boolean(room && branchId && room.record.branchId !== branchId)
   const { session } = useAuth()
+  // Planlanmış yenilemeler de yer tutar (DOM-KAY-010, ON-116); yenileme modülü kapalıysa plan yoktur.
+  const plannedRenewals = useCoreAll(
+    'renewals',
+    { filters: { status: ['Planlandı'] } },
+    { enabled: session?.modules.renewal === true },
+  )
   // Bursu yalnız yönetici atar (DOM-FIN-052); ön büroya seçenek gösterilmez.
   const scholarshipPrograms = useScholarshipPrograms(
     {
@@ -287,12 +343,22 @@ function EnrollmentForm({
     { enabled: session?.role === 'yonetici' },
   )
   const awardable = awardablePrograms(scholarshipPrograms.data?.data ?? [])
+  // Referans kalemi hakkın sabit tutarıyla önizlenir; alan da aynı sorguyu okur (DOM-FIN-024).
+  const referralOwner =
+    values.discounts?.includes('referral') &&
+    values.guardianMode === 'existing' &&
+    values.existingParentId
+      ? { parentId: values.existingParentId }
+      : null
+  const { items: referralRewards } = useAvailableReferralRewards(referralOwner)
   const preview = previewEnrollment(tariff, values, {
     institutionType,
     level:
       institutionType === 'language_school'
         ? (room?.record.level ?? '')
         : String(room?.record.grade ?? ''),
+    referralRewardCents: referralRewards.find((item) => item.id === values.referralRewardId)
+      ?.amountCents,
   })
   // Burs indirim değildir, netten düşer; kesin hesabı sunucu yapar (DOM-FIN-025).
   const selectedProgram = awardable.find((item) => item.id === values.scholarshipProgramId)
@@ -384,6 +450,7 @@ function EnrollmentForm({
           data.existingParentId,
           outcome.data.data.records,
         ),
+        tariffCarriedOverFromYear: outcome.data.data.tariffCarriedOverFromYear ?? null,
       })
     }
   })
@@ -422,6 +489,12 @@ function EnrollmentForm({
           : values.guardianName,
     ],
     ['Taksit', `${values.installmentCount} taksit · İlk vade ${values.firstDueDate}`],
+    ...(preview.ok && preview.price.paymentTerm
+      ? ([['Ödeme koşulu', contractPaymentTermLabel(preview.price.paymentTerm)]] as [
+          string,
+          string,
+        ][])
+      : []),
     ['Aday aydınlatması', prospectNoticeLabel(prospect?.record.privacyNotice)],
   ]
 
@@ -434,6 +507,11 @@ function EnrollmentForm({
         <h2 id="kayit-formu" className="mb-3 text-lg font-semibold">
           Öğrenci kayıt bilgileri
         </h2>
+        {carriedOverFromYear === null ? null : (
+          <p role="note" className="mb-3 rounded-md border bg-warning-soft p-3 text-sm">
+            {carriedOverTariffNote(carriedOverFromYear)}
+          </p>
+        )}
         <FormSteps steps={STEPS} current={step} onBack={goToStep} />
         <form
           noValidate
@@ -486,7 +564,7 @@ function EnrollmentForm({
                     })}
                   >
                     <NativeSelectOption value="">Sınıf seçin</NativeSelectOption>
-                    {activeClasses.map((row) => (
+                    {classOptions.map((row) => (
                       <NativeSelectOption
                         key={row.id}
                         value={row.id}
@@ -495,11 +573,20 @@ function EnrollmentForm({
                         {row.record.name}
                         {values.allCampuses ? ` · ${campusName(row.record.branchId)}` : ''} (
                         {occupied(row.id)}/{row.record.capacity})
+                        {targetGrade !== null && row.record.grade === targetGrade
+                          ? ' · önerilen'
+                          : ''}
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>
                 )}
               </FormField>
+              {gradeMismatch ? (
+                <p role="note" className="text-sm text-muted-foreground">
+                  Seçilen sınıf adayın ilgilendiği düzeyden ({targetGrade}. sınıf) farklı; naklen ya
+                  da farklı düzeye kayıt değilse önerilen sınıflardan birini seçin.
+                </p>
+              ) : null}
               <label className="flex min-h-6 items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -693,7 +780,13 @@ function EnrollmentForm({
                   description="Kardeş adayın velisi ve adayın telefonuyla eşleşen veliler önerilir."
                 >
                   {(control) => (
-                    <NativeSelect {...control} {...form.register('existingParentId')}>
+                    <NativeSelect
+                      {...control}
+                      {...form.register('existingParentId', {
+                        // Hak velinindir; veli değişince önceki velinin hakkı seçili kalmaz.
+                        onChange: () => form.setValue('referralRewardId', ''),
+                      })}
+                    >
                       <NativeSelectOption value="">
                         {matches.data?.data.length ? 'Veli seçin' : 'Eşleşen veli yok'}
                       </NativeSelectOption>
@@ -734,6 +827,14 @@ function EnrollmentForm({
                     </label>
                   ))}
                 </fieldset>
+              ) : null}
+              {values.discounts?.includes('referral') ? (
+                <ReferralRewardField
+                  id="kayit-referans-hakki"
+                  query={referralOwner}
+                  error={errors.referralRewardId}
+                  register={form.register('referralRewardId')}
+                />
               ) : null}
               {awardable.length > 0 ? (
                 <FormField
@@ -781,9 +882,9 @@ function EnrollmentForm({
                 <FormField id="kayit-taksit" label="Taksit sayısı" error={errors.installmentCount}>
                   {(control) => (
                     <NativeSelect {...control} {...form.register('installmentCount')}>
-                      {Array.from({ length: 12 }, (_, index) => index + 1).map((count) => (
+                      {offeredInstallmentCounts(tariff.paymentTerms).map((count) => (
                         <NativeSelectOption key={count} value={String(count)}>
-                          {count} taksit
+                          {installmentOptionLabel(count, tariff.paymentTerms)}
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>
@@ -846,11 +947,23 @@ function EnrollmentForm({
             Ödeme planı önizlemesi
           </h2>
           <dl className="grid gap-1 text-sm">
+            {carriedOverFromYear === null ? null : (
+              <Line
+                label="Uygulanan tarife"
+                value={`${String(carriedOverFromYear)}–${String(carriedOverFromYear + 1)} (önceki yıl)`}
+              />
+            )}
+            {preview.price.paymentTerm ? (
+              <Line
+                label="Ödeme koşulu"
+                value={contractPaymentTermLabel(preview.price.paymentTerm)}
+              />
+            ) : null}
             <Line label="İlan ücreti" value={money(preview.price.grossCents)} />
             {preview.price.discounts.map((line) => (
               <Line
                 key={line.kind}
-                label={`${FEE_DISCOUNT_KIND_LABELS[line.kind]} indirimi`}
+                label={`${DISCOUNT_LINE_LABELS[line.kind]} indirimi`}
                 value={`-${money(line.amountCents)}`}
               />
             ))}

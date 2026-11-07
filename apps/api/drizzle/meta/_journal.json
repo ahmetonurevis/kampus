@@ -442,6 +442,83 @@
       "when": 1793807265780,
       "tag": "0062_rename_parent_relationship_legal_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1793829455744,
+      "tag": "0063_copy_contracts_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793975109233,
+      "tag": "0064_add_payment_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793996569232,
+      "tag": "0065_create_lesson_packages",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794007757919,
+      "tag": "0066_create_finance_day_closings",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794008483348,
+      "tag": "0067_create_referral_rewards",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794009338752,
+      "tag": "0068_create_e_ozel_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794010120010,
+      "tag": "0069_allow_opening_import_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794018634230,
+      "tag": "0070_allow_manual_package_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794029549348,
+      "tag": "0071_withdrawal_reason_documented",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794081978238,
+      "tag": "0072_invoices_fee_kind_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794083288309,
+      "tag": "0073_validate_fee_kind_scrub_health_replays",
+      "breakpoints": true
     }
   ]
 }

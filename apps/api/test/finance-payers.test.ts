@@ -24,6 +24,7 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { SEED, sampleRows } from './support/collections-sample.ts'
+import { contractTerms, insertTestTariff } from './support/finance-terms.ts'
 
 /**
  * Yetişkin kursiyerin ayrı ödeyicisi (ON-124; DOM-KAY-012, DOM-ILT-074, ADR 0008 karar 5;
@@ -42,9 +43,11 @@ const OPEN_INVOICE = {
   studentId: 's1',
   installment: 9,
   amount: 10_000,
-  dueDate: '2026-11-15T00:00:00.000Z',
+  dueDate: '2026-11-15T09:00:00.000Z',
   paidAt: null,
   method: null,
+  reminderAt: null,
+  feeKind: 'tuition',
 }
 const PAYER = { name: 'Test Ödeyici Anne', phone: '05559990124', relationship: 'mother' }
 
@@ -103,6 +106,8 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
    */
   async function world(overrides: Partial<InstitutionOverrides> = {}, adult = true) {
     const institution = await createInstitution(app, overrides)
+    // Fikstür sözleşmesinin tarife grubu kurumun tarifesine bağlıdır (`contractTerms`).
+    await insertTestTariff(db, institution.id)
     await insertMissingRecords(
       db,
       institution.id,
@@ -239,11 +244,7 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
             title: 'Dil kursu eğitim sözleşmesi',
             invoiceIds: [],
             academicYear: 2026,
-            grossCents: 10_000,
-            netCents: 10_000,
-            discounts: [],
-            extras: [],
-            payer: 'student',
+            ...contractTerms({ grossCents: 10_000, netCents: 10_000, payer: 'student' }),
           },
         },
       ],

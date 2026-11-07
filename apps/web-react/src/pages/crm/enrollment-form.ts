@@ -37,6 +37,7 @@ export type ProspectChangeValues = Pick<
   | 'identityNumber'
   | 'birthDate'
   | 'existingParentId'
+  | 'referralRewardId'
   | 'guardianName'
   | 'guardianPhone'
   | 'relationship'
@@ -63,6 +64,7 @@ export function prospectChangeValues(
     identityNumber: '',
     birthDate: '',
     existingParentId: '',
+    referralRewardId: '',
     guardianName: '',
     guardianPhone: '',
     relationship: 'mother',
@@ -110,6 +112,7 @@ const SERVER_FIELDS: Readonly<Record<string, { field: FormField; step: number }>
   'studentContact.phone': { field: 'studentPhone', step: 1 },
   'studentContact.email': { field: 'studentEmail', step: 1 },
   scholarshipProgramId: { field: 'scholarshipProgramId', step: 2 },
+  referralRewardId: { field: 'referralRewardId', step: 2 },
 }
 
 /** Veli kuralı reddinde sunucu iletisi yerine formun yönlendiren iletisi (DOM-KAY-012). */
@@ -160,4 +163,48 @@ export function paymentPlanHref(role: string | undefined): string | null {
   if (role === 'onburo') return '/onburo/tahsilat-takip'
   if (role === 'yonetici') return '/yonetici/finans'
   return null
+}
+
+/**
+ * Adayın ilgi metninden hedef düzey (DOM-KAY-014, ON-120): aday formu düzeyi serbest metinle
+ * alır ("7. Sınıf · Ortaokul", "9. sınıf"). Okul düzeyleri 1–12 dışındaki sayı ya da düzeysiz
+ * metin `null`dur; öneri yalnız bilgi verir, seçimi kısıtlamaz.
+ */
+export function interestGrade(interest: string | undefined): number | null {
+  const match = /(\d{1,2})\s*\.?\s*s[ıi]n[ıi]f/iu.exec(interest ?? '')
+  const grade = match ? Number(match[1]) : NaN
+  return Number.isInteger(grade) && grade >= 1 && grade <= 12 ? grade : null
+}
+
+/**
+ * Sınıf listesinin sırası: hedef düzeydeki sınıflar önce, kalanlar özgün sırasıyla (kararlı).
+ * Düzey bilinmiyorsa liste değişmez.
+ */
+export function suggestedClassOrder<T extends { record: { grade?: number } }>(
+  rows: readonly T[],
+  grade: number | null,
+): T[] {
+  if (grade === null) return [...rows]
+  return [
+    ...rows.filter((row) => row.record.grade === grade),
+    ...rows.filter((row) => row.record.grade !== grade),
+  ]
+}
+
+/**
+ * Sınıfın dolu yeri: aktif öğrenciler ve aynı sınıfa planlanmış yenilemeler (DOM-KAY-010,
+ * ON-116; sunucunun kesin kayıt sayımıyla aynı). Sınıfta zaten olan öğrencinin planı bir kez
+ * sayılmaz; sayımlar ayrı okunduğu için yenilemenin öğrencisi aktif sayımda varsa düşülür.
+ */
+export function seatsTaken(
+  classId: string,
+  activeCount: number,
+  plannedRenewals: readonly { targetClassId: string; fromClassId: string }[],
+): number {
+  return (
+    activeCount +
+    plannedRenewals.filter(
+      (renewal) => renewal.targetClassId === classId && renewal.fromClassId !== classId,
+    ).length
+  )
 }

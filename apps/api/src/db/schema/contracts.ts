@@ -24,6 +24,7 @@ import {
   type ContractProposedPlan,
 } from '@kampus/school-core/lib/contract-status.ts'
 import type { ContractTerms } from '@kampus/school-core/lib/domain.ts'
+import type { ContractPaymentTerm } from '@kampus/school-core/lib/payment-terms.ts'
 
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
@@ -51,8 +52,9 @@ function allOrNone(columns: readonly AnyPgColumn[]): SQL {
  * protokol yeni satırdır ve önceki sürüme `amends_contract_id` ile bağlanır. Kimlik `records`
  * kimliğidir (`text`, ADR 0004 `uuid` kuralına bilinçli istisna). `student_id` ve `class_id`
  * `records` kimlikleridir, yabancı anahtar değildir. Onaylı ya da iptal edilmiş satırın koşulları
- * tetikleyiciyle donar (migration 0061). Taksit bağı `contract_invoices`'tadır. ON-046e'ye kadar
- * hiçbir kod bu tabloya yazmaz ya da onu okumaz.
+ * tetikleyiciyle donar (migration 0061). Taksit bağı `contract_invoices`'tadır. ON-046e'den beri
+ * `records`'un aynasıdır (migration 0063, `db/finance-mirror-store.ts`); okuma geçişine (046f) kadar
+ * uygulama bu tablodan okumaz.
  */
 export const contracts = pgTable(
   'contracts',
@@ -90,6 +92,9 @@ export const contracts = pgTable(
     scholarshipProgramId: uuid('scholarship_program_id'),
     // kvkk: Ç
     scholarshipCents: bigint('scholarship_cents', { mode: 'number' }),
+    // Sözleşmenin dayandığı ilanlı ödeme koşulunun kopyası (DOM-FIN-013); eski kayıtta boş.
+    // kvkk: Ç
+    paymentTerm: jsonb('payment_term').$type<ContractPaymentTerm>(),
     // İmza yetkilisi (ÖÖKY m.31/4).
     // kvkk: K
     signatoryName: text('signatory_name'),
@@ -177,6 +182,10 @@ export const contracts = pgTable(
     check(
       'contracts_scholarship_check',
       sql`(${table.scholarshipProgramId} is null) = (${table.scholarshipCents} is null) and (${table.scholarshipProgramId} is null or ${table.tariffId} is not null)`,
+    ),
+    check(
+      'contracts_payment_term_check',
+      sql`${table.paymentTerm} is null or ${table.tariffId} is not null`,
     ),
     check(
       'contracts_signatory_check',

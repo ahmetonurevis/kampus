@@ -26,7 +26,9 @@ import {
   meetingView,
   meetingWeek,
   meetingWeekStart,
+  meetingWeekQueries,
   meetingWeekTitle,
+  mergeProspectPages,
   stageTone,
   type MeetingEvent,
   type MeetingView,
@@ -45,18 +47,16 @@ const PLAN_MEETING = 'gorusme'
  * yaklaşanlar önce gelir; tür ve görüşme günü (başlangıç/bitiş) süzgeci, arama ve sıralama
  * tarayıcıdadır. Ad adayın detayına bağlanır (`/onburo/aday/:id`). "Tanışma görüşmesi planla"
  * sağ panelde aday seçtirir (`?planlama=gorusme`, DOM-KAY-033). Aday sayısı pipeline ile
- * sınırlıdır, bu yüzden açık adaylar bir kez çekilir; sunucuda "görüşmesi olan aday" süzgeci yoktur.
- * TODO(api-prospect-meeting-filter): görüşme ve deneme dersi tarihi sunucuda süzülünce liste
- * sayfalı okunur (`trialLesson` tarihi `dateField` listesinde yok; iş isteği #13).
+ * sınırlıdır, bu yüzden liste açık adayları bir kez çeker. Haftalık takvim yalnız o haftayı okur:
+ * `trialAt` ve (dil okulunda) `trialLesson.date` gün aralığı sunucuda süzülür, iki sorgu birleşir
+ * (`meetingWeekQueries`, ON-111). Sunucu bir sorguda tek tarih alanı süzdüğü için iki türü bir
+ * arada sıralayıp sayfalayan liste ucu yoktur; liste tarayıcıda süzülür.
  */
 export function MeetingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
   const role = session?.role ?? 'onburo'
   const type = session?.institution.type ?? 'school'
-  const prospects = useCoreAll('prospects', { filters: { stage: [...OPEN_PROSPECT_STAGES] } })
-  const branches = useCoreAll('branches')
-  const classes = useCoreAll('classes', {}, { enabled: type === 'language_school' })
   const [now] = useState(() => Date.now())
   const [params, setParams] = useSearchParams()
   const view = meetingView(params.get(VIEW_PARAM))
@@ -64,10 +64,38 @@ export function MeetingsPage({ page }: { page: NavPage }) {
   const thisWeek = meetingWeekStart(null, today)
   const start = meetingWeekStart(params.get(WEEK_PARAM), today)
   const plan = useDetailPanel(PLAN_PARAM)
+  const planning = plan.selectedId === PLAN_MEETING
+  // Liste ve planlama paneli bütün açık adayları okur; haftalık takvim yalnız o haftanın
+  // görüşme ve deneme dersi günlerini sunucuda süzer (ON-111).
+  const prospects = useCoreAll(
+    'prospects',
+    { filters: { stage: [...OPEN_PROSPECT_STAGES] } },
+    { enabled: view === 'liste' || planning },
+  )
+  const [meetingQuery, trialQuery] = meetingWeekQueries(start, type)
+  const weekMeetings = useCoreAll('prospects', meetingQuery?.query ?? {}, {
+    enabled: view === 'hafta',
+  })
+  const weekTrials = useCoreAll('prospects', trialQuery?.query ?? {}, {
+    enabled: view === 'hafta' && trialQuery !== undefined,
+  })
+  const source =
+    view === 'hafta'
+      ? {
+          data:
+            weekMeetings.data && (trialQuery === undefined || weekTrials.data)
+              ? mergeProspectPages([weekMeetings.data, weekTrials.data])
+              : undefined,
+          error: weekMeetings.error ?? weekTrials.error,
+          refetch: () => Promise.all([weekMeetings.refetch(), weekTrials.refetch()]),
+        }
+      : prospects
+  const branches = useCoreAll('branches')
+  const classes = useCoreAll('classes', {}, { enabled: type === 'language_school' })
   const rows = useMemo(
     () =>
       meetingEvents(
-        (prospects.data ?? []).map((item) => item.record),
+        (source.data ?? []).map((item) => item.record),
         type,
         {
           now,
@@ -77,7 +105,7 @@ export function MeetingsPage({ page }: { page: NavPage }) {
           classes: new Map((classes.data ?? []).map((item) => [item.record.id, item.record.name])),
         },
       ),
-    [prospects.data, branches.data, classes.data, type, now],
+    [source.data, branches.data, classes.data, type, now],
   )
   const columns = useMemo<DataColumn<MeetingEvent>[]>(
     () => [
@@ -150,7 +178,7 @@ export function MeetingsPage({ page }: { page: NavPage }) {
         title={page.title}
         description={page.description}
         actions={
-          <Button onClick={() => plan.open(PLAN_MEETING)} disabled={!prospects.data}>
+          <Button onClick={() => plan.open(PLAN_MEETING)}>
             <Icon name="CalendarDays" size={17} aria-hidden="true" />
             Tanışma görüşmesi planla
           </Button>
@@ -171,11 +199,11 @@ export function MeetingsPage({ page }: { page: NavPage }) {
         <div className="px-6 max-[650px]:px-4">
           <LineTabs label="Görünüm" value={view} options={MEETING_VIEWS} onChange={changeView} />
         </div>
-        {prospects.error ? (
+        {source.error ? (
           <div role="alert" className="p-6">
-            <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
+            <QueryError error={source.error} onRetry={() => void source.refetch()} />
           </div>
-        ) : prospects.isPending ? (
+        ) : !source.data ? (
           <p role="status" className="p-6 text-sm text-muted-foreground">
             Görüşmeler yükleniyor…
           </p>
@@ -204,7 +232,7 @@ export function MeetingsPage({ page }: { page: NavPage }) {
         )}
       </section>
       <MeetingPlanPanel
-        open={plan.selectedId === PLAN_MEETING}
+        open={planning}
         prospects={prospects.data ?? []}
         canPickTeacher={role === 'yonetici'}
         onClose={plan.close}

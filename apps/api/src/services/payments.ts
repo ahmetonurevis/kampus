@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
+import {
+  assertPaymentDayOpen,
+  assertReversalDayOpen,
+} from '@kampus/school-core/lib/finance-day-closings.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
@@ -35,14 +39,23 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
+import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { notifyFinance } from './finance-payers.ts'
-import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import {
+  FINANCE_TABLE_STORES,
+  runCommand,
+  type CommandResponse,
+  type IdempotencyRequest,
+  type LoadScope,
+} from './operation-runner.ts'
+import { earnReferralRewardOnPayment, revertReferralRewardOnReversal } from './finance-referrals.ts'
 import { readScope } from './read-scope.ts'
+import { dayRange } from './list-filters.ts'
 
 /**
  * Tahsilat servisi (ADR 0006; docs/domain/finans.md DOM-FIN-030…033, DOM-FIN-052). Kural core
@@ -57,6 +70,16 @@ import { readScope } from './read-scope.ts'
  */
 
 const SPEC = OPERATION_COMMANDS['invoice.pay']
+
+/**
+ * Öğrencinin taksit ve sözleşmeleri (ADR 0010 karar 8, ölçüt 4; ON-046f). Tahsilat, iptal ve ayrılış
+ * yalnız o öğrencinin taksit ve sözleşmelerine bakar ve yazar; kurum kilidi altında kurumun bütün
+ * taksitlerini yüklemek gerekmez. `studentId` eşitliği tablo indeksine (`invoices_student_due_idx`,
+ * `contracts_student_idx`) iner.
+ */
+export const studentFinanceScope = (studentId: string): LoadScope => ({
+  match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
+})
 const STAFF_ROLES: ReadonlySet<string> = new Set(['yonetici', 'onburo'])
 
 export interface PaymentView {
@@ -137,6 +160,12 @@ export function recordPaymentCommand(
     {
       action: 'payment.invoices',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
+      // Core yalnız bu öğrencinin taksitlerini dağıtır ve burslu sözleşmesine bakar (DOM-FIN-030).
+      loadScope: {
+        invoices: studentFinanceScope(data.studentId),
+        contracts: studentFinanceScope(data.studentId),
+      },
       entity: { type: 'payments', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
@@ -149,6 +178,12 @@ export function recordPaymentCommand(
           reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
         const accounts = await listBankAccounts(tx, ctx.institutionId)
         const bankAccountIds = accounts.map((account) => account.id)
+        // Kurum kilidi altında: kapanışla aynı anda güne tahsilat yazılamaz (DOM-FIN-036).
+        const dayClosed = await isFinanceDayClosed(
+          tx,
+          ctx.institutionId,
+          data.paidDate ?? dayKey(ctx.now),
+        )
         return {
           scalars,
           run: (state, { now }) => {
@@ -156,6 +191,7 @@ export function recordPaymentCommand(
               now,
               institutionType,
             })
+            assertPaymentDayOpen(dayClosed)
             return planPayment(state, data, {
               allocated,
               cashEnabled,
@@ -189,6 +225,7 @@ export function recordPaymentCommand(
           data: { paymentId: id },
           dedupeKey: id,
         })
+        await earnReferralRewardOnPayment(tx, ctx, plan.studentId)
       },
     },
     () => {
@@ -200,7 +237,7 @@ export function recordPaymentCommand(
 }
 
 /** Tahsilatı gerekçeyle iptal eder, taksitleri yeniden açar; yalnız yönetici (DOM-FIN-033). */
-export function reversePaymentCommand(
+export async function reversePaymentCommand(
   ctx: ServiceContext,
   paymentId: string,
   input: unknown,
@@ -209,11 +246,18 @@ export function reversePaymentCommand(
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['payment.reverse']
   let view: PaymentView | undefined
+  // Tahsilatın öğrencisi değişmez; kurum kilidinden önce okunabilir. Yok ya da başka kurumun
+  // tahsilatıysa hiçbir taksit yüklenmez, 404 eskisi gibi kilit altındaki okumadan gelir.
+  const owner = await findPayment(ctx.db, ctx.institutionId, paymentId)
   return runCommand(
     ctx,
     {
       action: 'payment.invoices',
       collections: spec.collections,
+      stores: FINANCE_TABLE_STORES,
+      loadScope: {
+        invoices: owner === null ? { ids: [] } : studentFinanceScope(owner.studentId),
+      },
       entity: { type: 'payments', id: paymentId },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
@@ -221,10 +265,13 @@ export function reversePaymentCommand(
         if (payment === null) throw new NotFoundError()
         if (payment.version !== expectedVersion) throw new ConflictError()
         const withdrawals = await withdrawalsForReversal(tx, ctx.institutionId, payment.studentId)
+        // İptal iptal gününe yazılır: tahsilatın günü kapalı olabilir, bugün kapalıysa olmaz.
+        const todayClosed = await isFinanceDayClosed(tx, ctx.institutionId, dayKey(ctx.now))
         return {
           scalars,
           run: (state, { now }) => {
             requireAuthorized(actor, 'payment.reverse', {}, state, { now, institutionType })
+            assertReversalDayOpen(todayClosed)
             return reversePayment(
               state,
               {
@@ -253,6 +300,7 @@ export function reversePaymentCommand(
         const payment = await findPayment(tx, ctx.institutionId, paymentId)
         if (payment === null) throw new NotFoundError()
         view = paymentView(payment, true)
+        await revertReferralRewardOnReversal(tx, ctx, payment.studentId)
       },
     },
     () => {
@@ -416,14 +464,20 @@ export async function listPaymentsFor(
     q?: string | undefined
     mebbis?: 'pending' | undefined
     method?: PaymentMethod | undefined
+    dateFrom?: string | undefined
+    dateTo?: string | undefined
     page: number
     pageSize: number
   },
 ): Promise<{ items: PaymentView[]; total: number }> {
   const studentIds = await visibleStudents(ctx)
   if (studentIds !== null && studentIds.length === 0) return { items: [], total: 0 }
+  // Gün aralığı Europe/Istanbul günüdür; uçlar dahil (ON-118).
+  const range = dayRange('paidAt', query.dateFrom, query.dateTo)
   const { items, total } = await listPayments(ctx.db, ctx.institutionId, {
     ...query,
+    paidFrom: range?.fromInstant ? new Date(range.fromInstant) : undefined,
+    paidBefore: range?.toInstant ? new Date(range.toInstant) : undefined,
     studentIds,
     // MEBBİS takibi personelindir: veli ve öğrencide süzgeç bilgi sızdırmasın diye yok sayılır.
     mebbisPending: query.mebbis === 'pending' && studentIds === null,

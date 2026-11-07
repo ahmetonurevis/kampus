@@ -17,6 +17,7 @@ import {
   addProspectNote,
   changeProspectStage,
   createProspect,
+  prospectLossBreakdown,
   scheduleProspectMeeting,
   recordTrialResult,
   revertProspectStage,
@@ -29,13 +30,13 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
-import { loadParentBonds } from '../db/enrollment-bonds.ts'
-import { findPublishedTariff } from '../db/fee-tariffs.ts'
+import { findParentAccount, linkChildToAccount, loadParentBonds } from '../db/enrollment-bonds.ts'
 import {
   countScholarshipAwards,
   findScholarshipProgram,
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
+import { findReferralReward } from '../db/finance-referrals.ts'
 import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -52,12 +53,15 @@ import { withLearnerAge } from './finance-payers.ts'
 import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { loadEffectiveTariff, withTariffCarryOver } from './fee-tariffs.ts'
+import { settleEnrollmentReferral } from './finance-referrals.ts'
 import { auditWork } from './task-work.ts'
 import {
   runCommand,
   type CommandResponse,
   type LoadScope,
   type OperationTools,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 
 /**
@@ -264,7 +268,8 @@ export function enrollProspectCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['prospect.enroll']
-  const { identity, scholarshipProgramId, guardian, payer } = enrollProspectSchema.parse(input)
+  const { identity, scholarshipProgramId, guardian, payer, referralRewardId, discounts } =
+    enrollProspectSchema.parse(input)
   // Seçilen mevcut velinin bağları: kısıtlı ya da velayetsiz veli kesin kayıtta bağlanamaz
   // (core `parent_not_guardian`; DOM-ILT-070, -074).
   const existingParentId =
@@ -272,12 +277,20 @@ export function enrollProspectCommand(
   // Yetişkin kursiyerin ödeyicisi olarak seçilen mevcut kayıt: kısıtlı kişi ödeyici olamaz (ON-124).
   const payerParentId =
     payer !== undefined && 'existingParentId' in payer ? payer.existingParentId : null
+  // Yükleme kurum kilidi altında okur, kayıt sonrası yazma (`after`) aynı işlemde kullanır.
+  let parentAccountId: string | null = null
+  let tariffCarriedOverFromYear: number | null = null
   return runCommand(
     ctx,
     {
       action: 'prospect.enroll',
       collections: spec.collections,
-      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
+      stores: FINANCE_TABLE_STORES,
+      // Yeni sözleşme sona eklenir; yalnız kardeş sırası öteki sözleşmeleri okur (DOM-FIN-022, K-22).
+      loadScope: {
+        invoices: APPEND_ONLY,
+        ...(discounts.includes('sibling') ? {} : { contracts: APPEND_ONLY }),
+      },
       ...(options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -297,7 +310,9 @@ export function enrollProspectCommand(
           .where(eq(institutionSettings.institutionId, ctx.institutionId))
           .limit(1)
         const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
-        const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
+        // Süresinde ilan yoksa önceki yılın tarifesi geçerli kalır (DOM-FIN-002, K-11).
+        const effective = await loadEffectiveTariff(tx, ctx, academicYear, institutionType)
+        tariffCarriedOverFromYear = effective?.carriedOverFromYear ?? null
         const identityHolderId = await findIdentityHolder(tx, ctx.institutionId, identity.number)
         const guardianBonds =
           existingParentId === null
@@ -311,6 +326,11 @@ export function enrollProspectCommand(
           payerParentId === null
             ? []
             : await loadParentBonds(tx, ctx.institutionId, [payerParentId])
+        // Veli kaydının hesabı varsa yeni çocuk aynı hesaba bağlanır (DOM-KAY-013, ON-128).
+        parentAccountId =
+          existingParentId === null
+            ? null
+            : await findParentAccount(tx, ctx.institutionId, existingParentId)
         // Kontenjan kurum kilidi altında sayılır: iki eşzamanlı kayıt son yeri birlikte alamaz.
         const [scholarshipProgram, scholarshipAwardedCount] =
           scholarshipProgramId === undefined
@@ -319,13 +339,17 @@ export function enrollProspectCommand(
                 await findScholarshipProgram(tx, ctx.institutionId, scholarshipProgramId),
                 await countScholarshipAwards(tx, ctx.institutionId, scholarshipProgramId),
               ]
+        const referralReward =
+          referralRewardId === undefined
+            ? null
+            : await findReferralReward(tx, ctx.institutionId, referralRewardId)
         return {
           scalars,
           run: (state, { now, makeId }) => {
             requireAuthorized(actor, 'prospect.enroll', {}, state, { now, institutionType })
             return enrollProspectWithTariff(state, prospectId, input, makeId, now, {
               institutionType,
-              tariff,
+              tariff: effective?.tariff ?? null,
               academicYear,
               identityHolderId,
               approvedByUserId: ctx.actor.userId,
@@ -333,6 +357,7 @@ export function enrollProspectCommand(
               today: dayKey(ctx.now),
               scholarshipProgram,
               scholarshipAwardedCount,
+              referralReward,
               guardianBonds,
               payerBonds,
             })
@@ -369,16 +394,21 @@ export function enrollProspectCommand(
             ['programId', 'studentId', 'amountCents'],
           )
         }
+        await settleEnrollmentReferral(tx, ctx, result)
         // Veli–öğrenci bağı: veli velayet sahibi ve ödeyici olarak kurulur (DOM-ILT-070, -074);
         // yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Kuralı core `planGuardianLink`
         // verir; yeni öğrencinin başka bağı olmadığı için değişmezler boş kümeye uygulanır.
         if (result.guardianBond !== null) {
+          // Hesap yalnız mevcut veli kaydından gelir; yeni veli kaydının hesabı henüz yoktur.
+          const accountId =
+            result.guardianBond.parentId === existingParentId ? parentAccountId : null
           const draft = planGuardianLink({
             studentId: result.student.id,
             links: [],
-            account: null,
+            account: accountId === null ? null : { role: 'veli' },
             input: {
               parentId: result.guardianBond.parentId,
+              ...(accountId === null ? {} : { membershipId: accountId }),
               relationship: result.guardianBond.relationship,
               custody: 'full',
               isPayer: result.guardianBond.isPayer,
@@ -393,6 +423,8 @@ export function enrollProspectCommand(
             { type: 'student_guardian', id: linkId },
             Object.keys(draft),
           )
+          if (accountId !== null)
+            await linkChildToAccount(tx, ctx.institutionId, accountId, result.student.id, ctx.now)
         }
         // Yetişkin kursiyerin ayrı ödeyicisi (ON-124): velayetsiz ödeyici bağı; kuralı core
         // `attachAdultPayer` verdi (yeni öğrencinin bağ kümesi boş).
@@ -421,7 +453,14 @@ export function enrollProspectCommand(
       },
     },
     (outcome) =>
-      commandBody({ collection: 'students', id: outcome.result.student.id }, outcome.changes, 201),
+      withTariffCarryOver(
+        commandBody(
+          { collection: 'students', id: outcome.result.student.id },
+          outcome.changes,
+          201,
+        ),
+        tariffCarriedOverFromYear,
+      ),
     options.idempotency,
   )
 }
@@ -449,6 +488,14 @@ const PROSPECT_MATCH = z.object({
  * Adayın telefonuyla ya da kardeş adayının kesin kaydıyla eşleşen veliler; ön büroya öneridir,
  * birleştirmez (DOM-KAY-013).
  */
+/** Kayıp aday kırılımı (IST-117, DOM-KAY-005); arşivlenen aday sayılmaz, rol denetimi rotadadır. */
+export async function prospectLossBreakdownFor(ctx: ServiceContext) {
+  const lost = await loadRecords(ctx.db, ctx.institutionId, ['prospects'], {
+    match: [{ kind: 'equals', field: 'stage', values: ['Vazgeçti'] }],
+  })
+  return prospectLossBreakdown(lost.map((row) => row.data))
+}
+
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()
@@ -482,16 +529,32 @@ export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string
   return findParentMatches(state, phone, { prospectId, bonds })
 }
 
-/** Kimlik yalnız personele ve maskeli döner (guvenlik-kvkk.md Ç sınıfı). */
+const IDENTITY_READ_FIELDS = ['kind', 'maskedNumber', 'birthDate', 'academicYear']
+
+/**
+ * Kimlik yalnız personele ve maskeli döner (guvenlik-kvkk.md Ç sınıfı). Her başarılı okuma aynı
+ * transaction'da denetime yazılır (`student_identity.read`, ON-063; DOM-YTK-052): kimi, hangi
+ * öğrencinin kimliğine baktı. Denetime numara ve doğum tarihi değil, dönen alanların adları gider;
+ * denetim yazılamazsa yanıt dönmez.
+ */
 export async function studentIdentityFor(ctx: ServiceContext, studentId: string) {
-  const row = await findStudentIdentity(ctx.db, ctx.institutionId, studentId)
-  if (row === null) throw new NotFoundError()
-  return {
-    kind: row.kind,
-    maskedNumber: `*******${row.number.slice(-4)}`,
-    birthDate: row.birthDate,
-    academicYear: row.academicYear,
-  }
+  return ctx.db.transaction(async (tx) => {
+    const row = await findStudentIdentity(tx, ctx.institutionId, studentId)
+    if (row === null) throw new NotFoundError()
+    await auditWork(
+      tx,
+      ctx,
+      'student_identity.read',
+      { type: 'students', id: studentId },
+      IDENTITY_READ_FIELDS,
+    )
+    return {
+      kind: row.kind,
+      maskedNumber: `*******${row.number.slice(-4)}`,
+      birthDate: row.birthDate,
+      academicYear: row.academicYear,
+    }
+  })
 }
 
 /** Dil okulunda deneme dersi planlar (DOM-DIL-030, DOM-KAY-034). 200. */

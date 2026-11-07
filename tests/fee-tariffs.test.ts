@@ -2,15 +2,19 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  carriedOverTariffNote,
   emptyTariffForm,
   feeTariffFormSchema,
   freeQuotaCount,
+  isAnnouncementPeriodOver,
   isOutsideAnnouncementPeriod,
   planTariffCreate,
   planTariffPublish,
   planTariffUpdate,
+  resolveEffectiveTariff,
   tariffFormToBody,
   tariffItemExceedsAnnounced,
+  nextYearTariffForm,
   tariffToForm,
   tuitionAfterDiscountLoss,
   tuitionIncreaseCeiling,
@@ -40,6 +44,15 @@ const school = { institutionType: 'school', today: TODAY } as const
 const language = { institutionType: 'language_school', today: TODAY } as const
 
 const draftRow = { status: 'draft', items: [tuition], discounts: [] } as const
+const paymentTerms = [
+  {
+    kind: 'upfront',
+    minInstallments: 1,
+    maxInstallments: 1,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+] as const
 
 test('DOM-FIN-002: yeni taslak sürüm numarası artar, yılda tek açık taslak olur', () => {
   const plan = planTariffCreate({ academicYear: 2026, items: [tuition] }, [
@@ -85,7 +98,7 @@ test('DOM-FIN-002: yayımlanmış tarife düzenlenemez ve yeniden yayımlanamaz'
 })
 
 test('DOM-FIN-002: öğrenim ücreti olmadan ve onaylı tutarsız okul tarifesi yayımlanmaz', () => {
-  const draft = (items: FeeItem[]) => ({ status: 'draft', items }) as const
+  const draft = (items: FeeItem[]) => ({ status: 'draft', items, paymentTerms }) as const
   assert.throws(
     () => planTariffPublish(draft([meal]), publishInput, school),
     isDomainError('tariff_tuition_required'),
@@ -121,7 +134,11 @@ test('IST-104: ilan tutarını aşan fiyat girilince uyarı koşulu doğar', () 
 
 test('DOM-FIN-006: öğrenim ücreti birimi kurum türüne uyar', () => {
   const draft = (unit: FeeItem['unit']) =>
-    ({ status: 'draft', items: [{ ...tuition, unit, announcedAmountCents: null }] }) as const
+    ({
+      status: 'draft',
+      items: [{ ...tuition, unit, announcedAmountCents: null }],
+      paymentTerms,
+    }) as const
   assert.throws(
     () => planTariffPublish(draft('lesson_hour'), publishInput, school),
     isDomainError('tariff_unit_mismatch'),
@@ -134,7 +151,7 @@ test('DOM-FIN-006: öğrenim ücreti birimi kurum türüne uyar', () => {
 })
 
 test('DOM-FIN-002: ilan ve MEBBİS tarihi ileri gün olamaz', () => {
-  const draft = { status: 'draft', items: [tuition] } as const
+  const draft = { status: 'draft', items: [tuition], paymentTerms } as const
   assert.throws(
     () => planTariffPublish(draft, { ...publishInput, announcedDate: '2026-10-07' }, school),
     isDomainError('tariff_announced_in_future'),
@@ -166,6 +183,7 @@ test('IST-104: tarife formu kuruşa çevrilir, kayıtlı tarife forma kayıpsız
       { kind: 'sibling', percentBasisPoints: 1_250, amountCents: null },
       { kind: 'corporate', percentBasisPoints: null, amountCents: 100_050 },
     ] as const,
+    paymentTerms: [],
   }
   const form = tariffToForm(stored)
   assert.equal(form.items[0]?.amount, '300000,00')
@@ -173,6 +191,28 @@ test('IST-104: tarife formu kuruşa çevrilir, kayıtlı tarife forma kayıpsız
   assert.equal(form.discounts[0]?.value, '12,50')
   assert.equal(feeTariffFormSchema.safeParse(form).success, true)
   assert.deepEqual(tariffFormToBody(form), stored)
+})
+
+test('ON-055, DOM-FIN-002: sonraki yıl taslağı kalemleri ve indirimleri taşır, yılı artırır, ilan tutarını boşaltır', () => {
+  const stored = {
+    academicYear: 2026,
+    items: [tuition, meal],
+    discounts: [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }] as const,
+  }
+  const before = JSON.stringify(stored)
+  const form = nextYearTariffForm(stored)
+  assert.equal(form.academicYear, '2027')
+  assert.deepEqual(
+    form.items.map((item) => [item.kind, item.amount, item.announcedAmount]),
+    [
+      ['tuition', '300000,00', ''],
+      ['meal', '40000,00', ''],
+    ],
+  )
+  assert.deepEqual(form.discounts, tariffToForm(stored).discounts)
+  assert.equal(feeTariffFormSchema.safeParse(form).success, true)
+  assert.equal(tariffFormToBody(form).academicYear, 2027)
+  assert.equal(JSON.stringify(stored), before)
 })
 
 test('IST-104: tarife formu geçersiz tutar, oran ve yılı reddeder', () => {
@@ -198,6 +238,61 @@ test('DOM-FIN-002: okulda ilan dönemi ocak–mayıstır, dil okulu bağlı değ
   assert.equal(isOutsideAnnouncementPeriod('2026-06-01', 'school'), true)
   assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'school'), true)
   assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'language_school'), false)
+})
+
+test('DOM-FIN-002: ilan dönemi eğitim yılının başladığı yılın mayıs sonunda biter (İstanbul günü)', () => {
+  // 31 Mayıs 23:59 İstanbul hâlâ süre içinde, 1 Haziran 00:00 İstanbul süre bitmiş.
+  assert.equal(isAnnouncementPeriodOver(2026, 'school', '2026-05-31T20:59:59.000Z'), false)
+  assert.equal(isAnnouncementPeriodOver(2026, 'school', '2026-05-31T21:00:00.000Z'), true)
+  assert.equal(isAnnouncementPeriodOver(2026, 'school', new Date('2026-10-06T09:00:00.000Z')), true)
+  assert.equal(isAnnouncementPeriodOver(2027, 'school', '2026-10-06T09:00:00.000Z'), false)
+  assert.equal(isAnnouncementPeriodOver(2027, 'school', '2027-01-15T09:00:00.000Z'), false)
+  assert.equal(isAnnouncementPeriodOver(2026, 'language_school', '2030-01-01T09:00:00.000Z'), false)
+})
+
+test('DOM-FIN-002, K-11: hedef yılın yayımlı tarifesi varsa o, yoksa dönem bitince önceki yılınki geçerlidir', () => {
+  const inPeriod = '2026-03-01T09:00:00.000Z'
+  const afterPeriod = '2026-06-01T09:00:00.000Z'
+  const base = {
+    academicYear: 2026,
+    institutionType: 'school',
+    published: null,
+    previousPublished: 'tarife-2025',
+    now: afterPeriod,
+  } as const
+  assert.deepEqual(resolveEffectiveTariff(base), {
+    tariff: 'tarife-2025',
+    carriedOverFromYear: 2025,
+  })
+  // Süre sonrası yayımlanmış olsa da hedef yılın kendi tarifesi önceliklidir.
+  assert.deepEqual(resolveEffectiveTariff({ ...base, published: 'tarife-2026' }), {
+    tariff: 'tarife-2026',
+    carriedOverFromYear: null,
+  })
+  // Dönem sürerken hedef yılın kendi tarifesi yine kullanılır.
+  assert.deepEqual(resolveEffectiveTariff({ ...base, published: 'tarife-2026', now: inPeriod }), {
+    tariff: 'tarife-2026',
+    carriedOverFromYear: null,
+  })
+  assert.equal(resolveEffectiveTariff({ ...base, now: inPeriod }), null)
+  assert.equal(resolveEffectiveTariff({ ...base, previousPublished: null }), null)
+})
+
+test('DOM-FIN-002, K-11: ilan dönemi olmayan kurum türünde önceki yılın tarifesi taşınmaz', () => {
+  assert.equal(
+    resolveEffectiveTariff({
+      academicYear: 2026,
+      institutionType: 'language_school',
+      published: null,
+      previousPublished: 'tarife-2025',
+      now: '2026-10-06T09:00:00.000Z',
+    }),
+    null,
+  )
+})
+
+test('DOM-FIN-002, K-11: taşınan tarife açıklaması kaynak eğitim yılını yazar', () => {
+  assert.match(carriedOverTariffNote(2025), /2025–2026/)
 })
 
 // --- Mevzuat hesapları -----------------------------------------------------------------------

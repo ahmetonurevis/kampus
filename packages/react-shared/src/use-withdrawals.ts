@@ -32,6 +32,8 @@ export function useWithdrawals(query: {
   page: number
   pageSize: number
   refundStatus?: RefundStatus
+  /** Öğrenci adında arama (en az 2 karakter; ON-118). */
+  q?: string
 }) {
   return useApiQuery({
     key: [...WITHDRAWALS_KEY, query],

@@ -905,6 +905,146 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: finans uçları (ON-113, ON-140; #54 izni)
+  'POST /api/v1/finance/invoices/:invoiceId/remind': kayit(
+    'installment-reminders.test.ts',
+    'başka kurumun taksiti olmayan kimlikle aynı 404, B değişmez',
+  ),
+  'GET /api/v1/prospects/loss-breakdown': liste(
+    'prospects.test.ts',
+    'başka kurumun vazgeçen adayı kırılımda görünmez',
+  ),
+  'GET /api/v1/finance/reconciliation': liste(
+    'finance-reconciliation.test.ts',
+    'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
+  ),
+  'GET /api/v1/finance/reconciliation/export': liste(
+    'finance-reconciliation.test.ts',
+    'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
+  ),
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/renewals/candidates', 'listOf(), a.admin'],
+        ['gövde', 'POST /api/v1/finance/renewals/bulk-preview', 'PREVIEW, a.admin'],
+        ['gövde', 'POST /api/v1/finance/renewals/bulk-plan', 'PLAN, a.admin'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-renewal-bulk.test.ts',
+        'başka kurumun öğrencisi listede yok, önizleme ve onayda not_found',
+        marker,
+      ),
+    ]),
+  ),
+  'GET /api/v1/prospects/funnel': liste(
+    'enrollment-funnel.test.ts',
+    'başka kurumun adayı huniye girmez',
+  ),
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/packages', 'get(PACKAGES, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/packages', "name: 'Yeni', institutionId: b.id"],
+        ['kayıt', 'GET /api/v1/finance/packages/:packageId', 'get(bPackage, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/packages/:packageId', "send('PATCH', bPackage"],
+        ['kayıt', 'DELETE /api/v1/finance/packages/:packageId', "send('DELETE', bPackage"],
+        ['gövde', 'POST /api/v1/finance/package-sales/quote', 'a.quote, institutionId: b.id'],
+        ['gövde', 'POST /api/v1/finance/package-sales', 'a.sale, institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/package-sales', 'get(SALES, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/package-sales/:saleId', 'get(bSaleUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/package-sales/:saleId/extend', '`${bSaleUrl}/extend`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-packages.test.ts',
+        'başka kurumun paketi ve satışı 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  'GET /api/v1/finance/day-closings/:closingDate': kayit(
+    'finance-day-closings.test.ts',
+    'başka kurumun gün sonu görünmez',
+  ),
+  'POST /api/v1/finance/day-closings/:closingDate/close': kayit(
+    'finance-day-closings.test.ts',
+    'başka kurumun gün sonu görünmez',
+  ),
+  'POST /api/v1/finance/day-closings/:closingDate/reopen': kayit(
+    'finance-day-closings.test.ts',
+    'başka kurumun gün sonu görünmez',
+  ),
+  'GET /api/v1/finance/referral-rewards': liste(
+    'finance-referrals.test.ts',
+    'DOM-FIN-024: başka kurumun hakkı listede yok',
+  ),
+  'GET /api/v1/finance/e-ozel/items': liste(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: B kaydı',
+  ),
+  'GET /api/v1/finance/e-ozel/export': liste(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: B kaydı',
+  ),
+  'POST /api/v1/finance/e-ozel/items/:kind/:sourceId/record': kayit(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: B kaydı',
+    '/record',
+  ),
+  'GET /api/v1/finance/e-ozel/learners/:studentId/identity': kayit(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: tam kimlik',
+  ),
+  'POST /api/v1/prospects/student-imports': govde(
+    'enrollment-import.test.ts',
+    'başka kurumun sınıfı, velisi ve kimliği bu kurumu etkilemez',
+  ),
+  'POST /api/v1/finance/installment-imports': govde(
+    'finance-installment-import.test.ts',
+    'başka kurumun öğrencisi ve sözleşmesi bu kurumu etkilemez',
+  ),
+  'POST /api/v1/finance/package-sales/:saleId/set-used-hours': kayit(
+    'finance-packages.test.ts',
+    'başka kurumun satışında kullanılan saat 404, B değişmez',
+    'usedUrl(bSale.id)',
+  ),
+  'GET /api/v1/prospects/students/:studentId/enrollment-certificate': kayit(
+    'enrollment-certificates.test.ts',
+    'DOM-KAY-027: başka kurumun öğrencisi 404, denetim yazılmaz; olmayan öğrenci 404',
+    "get(url('cert-other'), a.cookie)",
+  ),
+  'GET /api/v1/finance/students/:studentId/enrollment-certificate': kayit(
+    'enrollment-certificates.test.ts',
+    'K-32, DOM-KAY-027: başka kurumun öğrencisi aile ucunda 404, B denetimi yazılmaz',
+    "get(familyUrl('cert-other'), parent.cookie)",
+  ),
+  'GET /api/v1/finance/course-offers': liste(
+    'finance-course-offers.test.ts',
+    'DOM-YTK-001: başka kurumun kursiyeri listede yok, studentId ile 404',
+  ),
+  // Onur: paket saat bakiyesi ve raporu (ON-074, IST-114).
+  'GET /api/v1/finance/students/:studentId/package-balance': kayit(
+    'finance-package-report.test.ts',
+    'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
+    'get(balanceUrl(randomUUID()), a.admin)',
+  ),
+  'GET /api/v1/finance/package-report': liste(
+    'finance-package-report.test.ts',
+    'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
+  ),
+  // Onur: ödeyicisi olunan çocuklar (ON-313, K-04).
+  'GET /api/v1/finance/payer-children': liste(
+    'finance-payer-children.test.ts',
+    'başka kurumun öğrencisi listede yok, finans okuması 404',
+  ),
+  // Onur: yetişkin kursiyerin ayrı ödeyicisi (ON-124, #45).
+  'POST /api/v1/finance/students/:studentId/payers': kayit(
+    'finance-payers.test.ts',
+    'ON-124 uç: oturumsuz 401, yetkisiz rol 403, finans kapalı 403, başka kurumun öğrencisi 404',
+  ),
 }
 
 /**

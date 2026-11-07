@@ -173,6 +173,25 @@ describe('ON-046d: taksit ve sözleşme depoları', () => {
 
     const tariffId = randomUUID()
     const programId = randomUUID()
+    // DOM-FIN-013: ödeme koşulu kopyası sözleşmeyle gidip döner; eski kayıtta alan oluşmaz.
+    const withTerm = {
+      id: 'contract-kosul',
+      studentId: 's1',
+      date: at(1),
+      amount: 3_000_000,
+      title: 'Özel okul eğitim sözleşmesi',
+      invoiceIds: [],
+      ...terms(tariffId, programId),
+      paymentTerm: {
+        kind: 'installment',
+        minInstallments: 2,
+        maxInstallments: 4,
+        discountPercentBasisPoints: 300,
+        discountAmountCents: null,
+        installmentCount: 3,
+      },
+    }
+    assert.deepEqual(contractRoundTrip(withTerm, 'contract-kosul'), withTerm)
     const cases: [RecordData, string | null][] = [
       [legacyInvoice, null],
       [{ ...legacyInvoice, id: 'inv-eski', paidAt: null, method: null, reminderAt: at(9) }, null],
@@ -263,8 +282,18 @@ describe('ON-046d: taksit ve sözleşme depoları', () => {
       { ...legacyInvoice, dueDate: '2026-10-10' },
       { ...legacyInvoice, amount: 0 },
       { ...legacyInvoice, deletedAt: at(1) },
+      // ON-316, DOM-FIN-004: kalem türü core anahtarıdır; etiket ya da boş metin değildir.
+      { ...legacyInvoice, feeKind: 'Öğrenim ücreti' },
+      { ...legacyInvoice, feeKind: '' },
     ]
     for (const invoice of bad) rejectsProgramming(() => invoiceToColumns(invoice, null))
+    rejectsProgramming(() =>
+      rowToInvoice({
+        ...SYSTEM,
+        ...invoiceToColumns(legacyInvoice, null),
+        feeKind: 'kayit_ucreti',
+      } as InvoiceRow),
+    )
     // Kök sözleşme bağıyla tutarlı olmalı.
     rejectsProgramming(() => invoiceToColumns(renewalInvoice('inv-r1', 1), null))
     rejectsProgramming(() => invoiceToColumns(legacyInvoice, 'contract-r1'))

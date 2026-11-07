@@ -70,6 +70,12 @@ export function StudentStatementSection({ studentId }: { studentId: string }) {
               tutardan düşülmemiştir.
             </p>
           ) : null}
+          {statement.openingImportCents > 0 ? (
+            <p role="note" className="mb-4 rounded-card border bg-surface-soft px-4 py-3 text-sm">
+              Ödenen tutarın {money(statement.openingImportCents)} kısmı açılış aktarımıdır: önceki
+              kayıtlardan aktarılmıştır, Kampüs tahsilatı ve dekontu yoktur.
+            </p>
+          ) : null}
           <DataTable
             listKey={`cari-ekstre-${studentId}`}
             rows={rows}

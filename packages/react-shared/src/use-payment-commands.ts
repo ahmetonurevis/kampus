@@ -53,6 +53,9 @@ export function usePaymentList(query: {
   q?: string
   mebbis?: 'pending'
   method?: PaymentMethodValue
+  /** Ödeme günü aralığı (Europe/Istanbul, `YYYY-MM-DD`, uçlar dahil; ON-118). */
+  dateFrom?: string
+  dateTo?: string
 }) {
   return useApiQuery({
     key: [...PAYMENTS_KEY, 'list', query],
@@ -102,6 +105,21 @@ export function useReversePayment() {
     version: (input) => input.version,
     messages: { version_conflict: PAYMENT_CHANGED_MESSAGE },
     exclusive: true,
+  })
+}
+
+/**
+ * Gecikmiş taksiti elle hatırlatır (DOM-FIN-035, ON-113): veliye bildirim gider, `reminderAt` yazılır.
+ * Bugün zaten hatırlatıldıysa yeni bildirim yazılmaz (`reminder: 'already_sent'`).
+ */
+export function useRemindInstallment() {
+  return useApiCommand({
+    request: (client, input: { invoiceId: string }, headers) =>
+      client.POST('/api/v1/finance/invoices/{invoiceId}/remind', {
+        params: { path: { invoiceId: input.invoiceId }, header: headers },
+        body: {},
+      }),
+    invalidates: [collectionKeyPrefix('invoices')],
   })
 }
 

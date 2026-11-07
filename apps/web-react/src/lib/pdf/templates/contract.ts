@@ -13,10 +13,8 @@ import { contractParty, type ContractPartyKind } from '@kampus/school-core/lib/f
 import { money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
-import {
-  FEE_DISCOUNT_KIND_LABELS,
-  FEE_ITEM_KIND_LABELS,
-} from '@kampus/school-core/lib/fee-tariffs.ts'
+import { DISCOUNT_LINE_LABELS, FEE_ITEM_KIND_LABELS } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
 import { INSTALLMENT_COLUMNS, learnerTerm, studentFields } from './finance-shared.ts'
 import {
@@ -44,7 +42,7 @@ export type ContractTemplateOptions = TemplateOptions & {
 }
 
 const LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
-const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND_LABELS }
+const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...DISCOUNT_LINE_LABELS }
 const extraLabel = (kind: string) => LABELS[kind] ?? kind
 const discountLabel = (kind: string) => DISCOUNT_LABELS[kind] ?? kind
 
@@ -194,6 +192,9 @@ export function contractDocument(
         money(line.amountCents),
       ]),
       ['Tarife sürümü', String(contract.tariffVersion ?? '—')],
+      ...(contract.paymentTerm
+        ? [['Ödeme koşulu', contractPaymentTermLabel(contract.paymentTerm)] as [string, string]]
+        : []),
       // Öğrenci ödeyici yalnız kursta olur (DOM-KAY-012); imza satırıyla aynı terim kullanılır.
       ['Ödeyici', PARTY_LABELS[partyOf(contract, options)]],
     ])

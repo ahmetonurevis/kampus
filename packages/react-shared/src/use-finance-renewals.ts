@@ -5,6 +5,7 @@ import { CollectionTooLargeError, collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { REFERRAL_REWARDS_KEY } from './use-finance-referrals.ts'
 import { useKampusClient } from './kampus-context.ts'
 
 // Kayıt yenileme kancaları (`/finance/renewals`; IST-100, DOM-FIN-005, DOM-KAY-020). Önizleme
@@ -22,6 +23,11 @@ export type PlanRenewalBody = JsonBody<'planRenewal'>
 export type CreatePriceIndexBody = JsonBody<'createPriceIndex'>
 export type UpdatePriceIndexBody = JsonBody<'updatePriceIndex'>
 export type RenewalListQuery = NonNullable<operations['listRenewals']['parameters']['query']>
+export type RenewalCandidateQuery = NonNullable<
+  operations['listRenewalCandidates']['parameters']['query']
+>
+export type RenewalBulkPreviewBody = JsonBody<'previewRenewalBulk'>
+export type RenewalBulkPlanBody = JsonBody<'bulkPlanRenewals'>
 
 export const RENEWAL_CHANGED_MESSAGE =
   'Kayıt başka biri tarafından değiştirildi. Liste güncellendi.'
@@ -36,6 +42,7 @@ const RENEWAL_WRITES = [
   collectionKeyPrefix('invoices'),
   collectionKeyPrefix('students'),
   ['scholarships'],
+  REFERRAL_REWARDS_KEY,
 ]
 
 export function useRenewals(query: RenewalListQuery, options: { enabled?: boolean } = {}) {
@@ -100,6 +107,42 @@ export function usePlanRenewal() {
   return useApiCommand({
     request: (client, body: PlanRenewalBody, headers: CommandHeaders) =>
       client.POST('/api/v1/finance/renewals', {
+        params: { header: { 'idempotency-key': headers['idempotency-key'] } },
+        body,
+      }),
+    invalidates: RENEWAL_WRITES,
+    exclusive: true,
+  })
+}
+
+/** Yeni yılın yenilenecek öğrencileri (IST-105, ON-086); yazmaz. */
+export function useRenewalCandidates(
+  query: RenewalCandidateQuery,
+  options: { enabled?: boolean } = {},
+) {
+  return useApiQuery({
+    key: [...RENEWALS_KEY, 'candidates', query],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/renewals/candidates', { params: { query }, signal }),
+  })
+}
+
+/** Toplu önizleme; yazma değildir, sorgu tazelenmez. */
+export function usePreviewRenewalBulk() {
+  return useApiCommand({
+    request: (client, body: RenewalBulkPreviewBody) =>
+      client.POST('/api/v1/finance/renewals/bulk-preview', { body }),
+    invalidates: [],
+    exclusive: true,
+  })
+}
+
+/** Toplu onay; kısmi başarıda da 200 döner, sonuç satır satırdır. */
+export function useBulkPlanRenewals() {
+  return useApiCommand({
+    request: (client, body: RenewalBulkPlanBody, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/renewals/bulk-plan', {
         params: { header: { 'idempotency-key': headers['idempotency-key'] } },
         body,
       }),

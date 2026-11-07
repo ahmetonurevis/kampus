@@ -26,6 +26,7 @@ import type { CommandResponse } from '../../src/services/operation-runner.ts'
 import { recordPaymentCommand, reversePaymentCommand } from '../../src/services/payments.ts'
 import { payRefundCommand, withdrawStudentCommand } from '../../src/services/withdrawals.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from '../support/app.ts'
+import { contractTerms, insertTestTariff } from '../support/finance-terms.ts'
 import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
 
 /**
@@ -262,7 +263,20 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
     })
     const created = await createFeeTariffCommand(
       ctx,
-      { academicYear: YEAR, items: [{ ...TUITION, amountCents: 95_000 }], discounts: [] },
+      {
+        academicYear: YEAR,
+        items: [{ ...TUITION, amountCents: 95_000 }],
+        discounts: [],
+        paymentTerms: [
+          {
+            kind: 'installment',
+            minInstallments: 2,
+            maxInstallments: 12,
+            discountPercentBasisPoints: null,
+            discountAmountCents: null,
+          },
+        ],
+      },
       keyed(),
     )
     assert.equal(created.statusCode, 201)
@@ -402,6 +416,8 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
       reminderAt: null,
       feeKind: 'tuition',
     })
+    // Taksit ve sözleşme tablodan okunur (ON-046f): sözleşme core biçiminde, kurumun tarifesine bağlı.
+    await insertTestTariff(db, ctx.institutionId)
     await insertMissingRecords(
       db,
       ctx.institutionId,
@@ -425,10 +441,9 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
             studentId: STUDENT.id,
             date: '2026-01-01T09:00:00.000Z',
             amount: NET,
-            netCents: NET,
             title: 'Sözleşme',
             invoiceIds: ['pg-fin-inv-1', 'pg-fin-inv-2'],
-            payer: 'guardian',
+            ...contractTerms({ grossCents: NET, netCents: NET }),
           },
         },
         { collection: 'invoices' as const, id: 'pg-fin-inv-1', data: invoice('pg-fin-inv-1', 1) },

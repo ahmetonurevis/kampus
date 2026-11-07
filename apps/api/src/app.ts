@@ -28,10 +28,20 @@ import { genRequestId, registerRequestContext } from './plugins/request-context.
 import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/platform-routes.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
+import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
+import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
+import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
+import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
+import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinancePayerRoutes } from './routes/finance-payers.ts'
+import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
+import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
+import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
+import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-children.ts'
+import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
@@ -91,6 +101,9 @@ export const REDACTED_PATHS = [
   '*.phone',
   'guardianName',
   '*.guardianName',
+  // kvkk: K — vazgeçen adayın tercih ettiği kurum, serbest metin (DOM-KAY-005).
+  'lostToInstitution',
+  '*.lostToInstitution',
   // kvkk: Ç — kesin kayıtta öğrencinin kimliği, kimlik numarası ve doğum tarihi (DOM-KAY-012).
   'identity',
   '*.identity',
@@ -100,6 +113,9 @@ export const REDACTED_PATHS = [
   '*.nationalId',
   'birthDate',
   '*.birthDate',
+  // kvkk: Ç — pilot aktarım dosyası (IST-007): içerik hiçbir koşulda loglanmaz.
+  'fileBase64',
+  '*.fileBase64',
   // Finans: dekont/havale referansı, iade IBAN'ı ve hesap sahibi, nakil okulu, iptal gerekçesi.
   'reference',
   '*.reference',
@@ -111,15 +127,32 @@ export const REDACTED_PATHS = [
   '*.targetSchool',
   'reversalReason',
   '*.reversalReason',
+  // kvkk: Ç — kapatılmış günü yeniden açma gerekçesi (DOM-FIN-036); kapanış açıklaması `note`'tadır.
+  'reopenReason',
+  '*.reopenReason',
   // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
   'signatory',
   '*.signatory',
   'payerName',
   '*.payerName',
+  // Ayrılışta iade kararı ve gerekçesi (K-12).
+  'payerDecision',
+  '*.payerDecision',
   'amendmentReason',
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
+  // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
+  // (DOM-KAY-009); veli telefonu `*.phone` ile gizlenir.
+  'signatoryName',
+  '*.signatoryName',
+  'guardian.name',
+  '*.guardian.name',
+  // Aday `interest` ve imza yetkilisi ucunun üst düzey `name` alanı yalnız istek gövdesinde gelir;
+  // gövde loglanmadığından maske yok, genel `name` de başka kayıtların adıdır (ON-315, testte).
+  // Paket uzatma ve kullanılan saat düzeltmesi (ON-300, DOM-DIL-051), ek protokol, tahsilat ters
+  // kaydı ve gün sonu yeniden açma gövdesindeki gerekçe `reason` adıyla gelir: aşağıdaki
+  // `reason`/`*.reason` gizler (finance-log-redaction.test.ts).
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
@@ -390,13 +423,23 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Onur: kayıt ve finans
   registerFeeTariffRoutes(app)
   registerFinanceContractRoutes(app)
+  registerFinanceEOzelRoutes(app)
+  registerFinanceDayClosingRoutes(app)
   registerFinanceExportRoutes(app)
   registerFinancePayerRoutes(app)
+  registerFinancePackageRoutes(app)
+  registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
+  registerEnrollmentImportRoutes(app)
+  registerFinanceInstallmentImportRoutes(app)
+  registerEnrollmentFunnelRoutes(app)
+  registerEnrollmentCertificateRoutes(app)
+  registerFinancePayerChildrenRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

@@ -2131,7 +2131,7 @@ export interface paths {
         put?: never;
         /**
          * Tarife taslağı aç
-         * @description Eğitim yılı için yeni taslak sürüm açar. Kalem türü sabit listedendir; serbest adlı borç yoktur (DOM-FIN-004). Aynı tür ve düzey 422 `tariff_item_duplicate`; açık taslak varken 409 `open_tariff_draft`. KDV oranı kalem başına ve tarihlidir, yayımlanan sürüm değişmediği için geçmiş kayıtlar eski oranla kalır (IST-104). Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Eğitim yılı için yeni taslak sürüm açar. Kalem türü sabit listedendir; serbest adlı borç yoktur (DOM-FIN-004). Aynı tür ve düzey 422 `tariff_item_duplicate`; taksit aralığı çakışan ödeme koşulları 422 `tariff_payment_term_overlap`; açık taslak varken 409 `open_tariff_draft`. KDV oranı kalem başına ve tarihlidir, yayımlanan sürüm değişmediği için geçmiş kayıtlar eski oranla kalır (IST-104). Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["createFeeTariff"];
         delete?: never;
@@ -2159,7 +2159,7 @@ export interface paths {
         head?: never;
         /**
          * Tarife taslağını düzenle
-         * @description Verilen `items` veya `discounts` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.
+         * @description Verilen `items`, `discounts` veya `paymentTerms` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.
          */
         patch: operations["updateFeeTariff"];
         trace?: never;
@@ -2175,7 +2175,7 @@ export interface paths {
         put?: never;
         /**
          * Tarifeyi yayımla
-         * @description Taslağı yayımlar; aynı yılın önceki yayındaki sürümü aynı işlemde kalkar (DOM-FIN-002). Öğrenim ücreti yoksa 422 `tariff_tuition_required`; birim kurum türüne uymuyorsa 422 `tariff_unit_mismatch` (okulda `year`, dil okulunda `lesson_hour`, DOM-FIN-006); okulda onaylı tutar yoksa 422 `tariff_announced_required`; ücret onaylı tutarı aşarsa 422 `tariff_amount_exceeds_announced`. İleri tarih 422. İlan tarihi, MEBBİS tarihi ve yayımlayan kişi saklanır. `If-Match` zorunludur. Rol: `yonetici`.
+         * @description Taslağı yayımlar; aynı yılın önceki yayındaki sürümü aynı işlemde kalkar (DOM-FIN-002). Öğrenim ücreti yoksa 422 `tariff_tuition_required`; birim kurum türüne uymuyorsa 422 `tariff_unit_mismatch` (okulda `year`, dil okulunda `lesson_hour`, DOM-FIN-006); okulda onaylı tutar yoksa 422 `tariff_announced_required`; ücret onaylı tutarı aşarsa 422 `tariff_amount_exceeds_announced`; ödeme koşulu yoksa 422 `tariff_payment_terms_required`, peşin indirimi peşin koşulsuz ilan edildiyse 422 `tariff_early_payment_without_upfront` (DOM-FIN-013). Yayımlanan koşullar sürümle donar. İleri tarih 422. İlan tarihi, MEBBİS tarihi ve yayımlayan kişi saklanır. `If-Match` zorunludur. Rol: `yonetici`.
          */
         post: operations["publishFeeTariff"];
         delete?: never;
@@ -2235,7 +2235,7 @@ export interface paths {
         put?: never;
         /**
          * Ek protokol hazırla
-         * @description Onaylı sözleşmenin yeni sürümünü taslak açar (IST-092, DOM-FIN-010): tahsilat görmüş öğrenim taksitleri ve ek hizmetler korunur, kalan net yeni plana dağıtılır. Önceki sürüm ve taksitler onaya kadar değişmez; yeni sürüm imza ve onayı yeniden ister. `discounts` verilirse indirim sözleşmenin tarifesinden yeniden hesaplanır (DOM-FIN-020, -021). Onaysız sözleşmede 422 `contract_not_approved`, açık ek protokol varken 409 `contract_amendment_open`, yerini ek protokole bırakan sürümde 409 `contract_superseded`, değişiklik yoksa 422 `contract_amendment_no_change`. `Idempotency-Key` ve `If-Match` (önceki sürüm) zorunlu. Roller: `yonetici`, `onburo`.
+         * @description Onaylı sözleşmenin yeni sürümünü taslak açar (IST-092, DOM-FIN-010): tahsilat görmüş öğrenim taksitleri ve ek hizmetler korunur, kalan net yeni plana dağıtılır. Önceki sürüm ve taksitler onaya kadar değişmez; yeni sürüm imza ve onayı yeniden ister. `discounts` verilirse indirim sözleşmenin tarifesinden yeniden hesaplanır (DOM-FIN-020, -021). Onaysız sözleşmede 422 `contract_not_approved`, açık ek protokol varken 409 `contract_amendment_open`, yerini ek protokole bırakan sürümde 409 `contract_superseded`, değişiklik yoksa 422 `contract_amendment_no_change`. `Idempotency-Key` ve `If-Match` (önceki sürüm) zorunlu. Roller: `yonetici`, `onburo`. Toplam taksit sayısı (korunan öğrenim taksitleri + yeni plan) tarifedeki ödeme koşulunda olmalıdır: değilse 422 `payment_term_not_in_tariff`; koşul değişirse indirimler yeniden hesaplanır (DOM-FIN-013).
          */
         post: operations["amendContract"];
         delete?: never;
@@ -2258,6 +2258,146 @@ export interface paths {
          * @description Onaylanmamış ek protokolü gerekçeyle kapatır (IST-092); kayıt silinmez, önceki sürüm yürürlükte kalır. Onaylanmış sürümde 409 `contract_already_approved`, ek protokol olmayan sözleşmede 422 `contract_not_amendment`. `Idempotency-Key` ve `If-Match` zorunlu. Roller: `yonetici`, `onburo`.
          */
         post: operations["cancelContractAmendment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * e-Özel'e işlenecek kayıtlar
+         * @description e-Özel'e elle girilecek kursiyer, ücret/dekont, devamsızlık ve kurs sonu satırları (IST-085, DOM-KAY-015); varsayılan iş bekleyenler (işlenmemiş ve düzeltilmeli). İşaretlendikten sonra kaynağı değişen satır (tahsilat iptali, yoklama düzeltmesi, kayıt iptali, kur sonu kararı düzeltmesi) listeden düşmez, `recordStatus` `needs_correction` olur; işaretlendiği anki kişisel veri içermeyen parmak izi karşılaştırılarak bulunur. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Kimlik numarası yalnız maskeli döner; bu bilgiyi içeren sayfa denetime yazılır (`finance.e_ozel_read`, yalnız alan adları). Devamsızlık ve kurs sonu `academic` modülünün verisidir: modül kapalıyken genel listede yer almaz, `kind` ile istenirse 403 `module_disabled`. `crm` kapalıyken kimlik alanları boş döner. Ters gün aralığı ve bilinmeyen parametre 400. Sayfalıdır, `pageSize` en çok 100. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listEOzelItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * e-Özel işlem listesi dosyası
+         * @description Listeyle aynı süzgeçle bütün satırları CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı (IST-085). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Düzeltilmeli satır durum ve değişiklik sütunlarında görünür. Tam kimlik numarası dosyaya yazılmaz. Her aktarım denetime yazılır (`finance.e_ozel_export`, DOM-YTK-052). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["exportEOzelItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/learners/{studentId}/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kursiyerin tam kimlik numarası
+         * @description e-Özel'e elle giriş için tek kursiyerin tam kimlik numarasını döner (IST-085). Liste ve dosya maskeli kalır. Her görüntüleme aynı transaction'da denetime yazılır (`student_identity.read_full`; numara değil alan adları, DOM-YTK-052); denetim yazılamazsa yanıt dönmez. Yanıt `Cache-Control: no-store` taşır, numara loglanmaz. Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 30/dk. Kimlik `crm` modülünün verisidir: kapalıyken 403 `module_disabled`. Kimliği olmayan, arşivlenmiş ya da başka kurumun kursiyeri 404. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getEOzelLearnerIdentity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/items/{kind}/{sourceId}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * e-Özel "işlendi" işaretini yaz ya da geri al
+         * @description `recorded: true` satırı işlendi olarak işaretler, kim ve ne zaman saklanır; `false` işareti geri alır (IST-085, DOM-KAY-015). `needs_correction` satırda `recorded: true` düzeltmenin e-Özel'de yapıldığını yazar, parmak izi yenilenir. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Ücret satırı tahsilatın MEBBİS işaretidir, ikisi aynı kayıttır (DOM-FIN-032). İşlenmiş satırı yeniden işlemek 409 `e_ozel_already_recorded`, işlenmemiş satırın işaretini kaldırmak 409 `e_ozel_not_recorded`, kaynağı kalkmış satırın işaretini kaldırmak 409 `e_ozel_source_removed`, sürüm tutmazsa 409. Olmayan, listeye girmeyen (hiç işaretlenmemiş iptal tahsilat ya da düzeltilmiş yoklama) ya da başka kurumun kaydı 404. Denetime yalnız alan adı düşer. `If-Match` ve `Idempotency-Key` zorunludur. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["setEOzelMark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/day-closings/{closingDate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gün sonu raporu
+         * @description Günün tahsilatları yöntem bazında, iptaller, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe yazılır; geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceDayReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/day-closings/{closingDate}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Günü kapat
+         * @description Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["closeFinanceDay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/day-closings/{closingDate}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kapatılmış günü yeniden aç
+         * @description Gün yeniden açılır, eski kapanış gerekçesiyle kayıtta kalır ve silinmez; yeni kapanış yeni kayıttır (IST-113, DOM-FIN-036). Kapanışı hiç olmayan gün ve başka kurumun günü 404; daha önce yeniden açılmış gün 409 `finance_day_not_closed`. `If-Match` kapanış sürümüdür: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunludur. Rol: `yonetici`.
+         */
+        post: operations["reopenFinanceDay"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2333,7 +2473,7 @@ export interface paths {
         };
         /**
          * Öğrencinin cari ekstresi
-         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
+         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Dosyadan aktarılan geçmiş ödeme `opening_import` satırıdır: borcu kapatır, tahsilat değildir, dekontu yoktur (DOM-FIN-014). Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
          */
         get: operations["getStudentStatement"];
         put?: never;
@@ -2397,9 +2537,49 @@ export interface paths {
         };
         /**
          * Muhasebe aktarım dosyası
-         * @description `kind` ile tahsilat, iade veya taksit satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
+         * @description `kind` ile tahsilat, iade veya taksit satırlarını döner. `format=csv` (varsayılan): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. `format=xlsx`: Excel dosyası (ikili gövde); metin alanları formül çalıştırmayan metin hücresi, tutar `#,##0.00` biçimli sayı hücresi, tarih Europe/Istanbul günü olarak profilin tarih biçimiyle tarih hücresidir; sütun adı ve sırası kurumun profilinden gelir, ayırıcı ve ondalık işareti yalnız CSV içindir. Belirli bir muhasebe programına uyum iddiası, hesap kodu ve KDV dökümü yoktur. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
          */
         get: operations["exportFinance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yıl sonu mutabakatı
+         * @description Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Dosyadan aktarılan geçmiş ödeme tahsilat sayılmaz, ödeme gününde `openingImportCents` alanına yazılır (DOM-FIN-014). Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.
+         */
+        get: operations["getFinanceReconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/reconciliation/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yıl sonu mutabakat dosyası
+         * @description Mutabakatın öğrenci satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; kurumun aktarım profili varsa onun biçimi ve sütunları. Satır ve toplam kuralı `GET /finance/reconciliation` ile aynıdır. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Rol: `yonetici`.
+         */
+        get: operations["exportFinanceReconciliation"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2428,6 +2608,242 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paketleri listele
+         * @description Etkin paketler, ada göre (DOM-DIL-050). `q` adda arar, `kind` ve `courseId` süzer; arşivli paket görünmez. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listLessonPackages"];
+        put?: never;
+        /**
+         * Paket tanımla
+         * @description Kur ücreti, saat paketi ya da özel ders paketi (IST-078). Paket tutar taşımaz: fiyat satışta yayımlı tarifeden hesaplanır; `hourlyCents` yalnız ilan altı saat ücretidir (DOM-DIL-050). Kur ücretinde saat ve seviye kurdan gelir (DOM-DIL-006). `validityDays` kullanım süresidir, boşsa son kullanma tarihi yoktur (DOM-DIL-051). Aynı ad 409 `package_name_exists`; olmayan kur 404, arşivli kur 422 `package_course_inactive`. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`.
+         */
+        post: operations["createLessonPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/packages/{packageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paket ayrıntısı
+         * @description Olmayan, arşivli ya da başka kurumun paketi 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getLessonPackage"];
+        put?: never;
+        post?: never;
+        /**
+         * Paketi arşivle
+         * @description Arşivli paket satılamaz; geçmiş satışlar ve bakiyeleri kalır. Olmayan paket 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`.
+         */
+        delete: operations["archiveLessonPackage"];
+        options?: never;
+        head?: never;
+        /**
+         * Paketi düzelt
+         * @description Yalnız sonraki satışları etkiler; satış satırı kopyadır. Tür ve kur bağı değişmez. Kur ücreti paketinde saat 422 `package_hours_from_course`, kura bağlı pakette seviye 422 `package_level_from_course`. Olmayan paket 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`.
+         */
+        patch: operations["updateLessonPackage"];
+        trace?: never;
+    };
+    "/api/v1/finance/package-sales/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Paket satışını önizle
+         * @description Hiçbir kayıt yazmaz; satışla aynı kuralları çalıştırır (DOM-DIL-050). Saat × saat ücreti − ilanlı indirimler, taksitler, ödeme koşulu ve son kullanma günü döner. İlanda olmayan taksit sayısı 422 `payment_term_not_in_tariff`, peşin koşulu dışında peşin indirimi 422 `early_payment_requires_upfront` (DOM-FIN-013). Yayımlı tarife yoksa 422 `tariff_not_published`, ilan üstü saat ücreti 422 `package_above_tariff`, indirim ve ilan altı fiyat toplamı %50'yi aşarsa 422 `discount_cap_exceeded`, kur etkin değilse 422 `package_course_inactive`. Olmayan paket ya da öğrenci 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["quotePackageSale"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/package-sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paket satışlarını listele
+         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır (K-40). İç kimlikler (`version`, `packageId`, `courseId`, `studentId`, `contractId`, `tariffId`, `tariffVersion`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Sorgudaki `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         */
+        get: operations["listPackageSales"];
+        put?: never;
+        /**
+         * Paket sat
+         * @description Satış satırını, sözleşmeyi ve taksitleri tek işlemde yazar (IST-078, DOM-FIN-010). Tutar girdi değildir, yayımlı tarifeden hesaplanır (DOM-FIN-002); saat ve seviye satışa kopyalanır (DOM-DIL-006). Ek kalem ayrı taksittir (DOM-FIN-003). Son kullanma günü paketin kullanım süresinden çıkar. Tarife değiştiyse 409 `tariff_changed`, pasif kursiyer 422 `student_inactive`; öteki ret kodları önizlemeyle aynıdır. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["sellPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/package-sales/{saleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paket satışı ayrıntısı
+         * @description Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Tutar alanları ve taksitler (`invoices`) yalnız `yonetici` ve `onburo` yanıtındadır; taksit ailede kendi bölümünde görünür (K-40). İç kimlikler (`version`, `packageId`, `courseId`, `studentId`, `contractId`, `tariffId`, `tariffVersion`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         */
+        get: operations["getPackageSale"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/package-sales/{saleId}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Son kullanma tarihini uzat
+         * @description Kursiyerin seçimiyle kullanım süresini uzatır (DOM-DIL-051); gerekçe yalnız denetim kaydına yazılır. Süresiz paket 422 `package_no_expiry`, saati biten paket 422 `package_depleted`, mevcut günden sonra olmayan ya da geçmiş gün 422 `package_extension_not_later`. Olmayan ya da başka kurumun satışı 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["extendPackageSale"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/package-sales/{saleId}/set-used-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kullanılan saati elle gir
+         * @description Yoklama bağı (OG-116, OG-144) gelene kadar personel satışın o güne kadar kullanılan toplam saatini girer; ayrılıştaki iade bu saate dayanır (K-21, DOM-DIL-051, DOM-FIN-040). Azaltılabilir; gerekçe zorunludur ve yalnız denetim kaydına yazılır, eski değer arşivli saat hareketinde kalır. Alınan saati aşarsa 422 `package_used_exceeds_purchased`, derslerden yazılan saatin altına inerse 422 `package_used_below_lessons`, aynı değer 422 `package_used_hours_unchanged`, ayrılış hesabına girmiş satış 422 `package_sale_closed`. Olmayan ya da başka kurumun satışı 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["setPackageSaleUsedHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/course-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kur yenileme ve üst kur tekliflerini listele
+         * @description Son kurunun geçerli kur sonu kararı onaylı kursiyerler, ada göre (IST-088; DOM-DIL-070, DOM-DIL-071). Karar `geçti` ise teklif zincirdeki sonraki kura ya da üst seviyeye, `tekrar` ve `devamsızlıktan tamamlamadı` ise aynı kura açılır; üst seviye ya da sonraki kur yoksa satır `no_next_level` olur ve teklif açılmaz. Onay bekleyen, reddedilmiş ya da hiç verilmemiş karar ve pasif kursiyer listede yoktur. `options` teklife uyan etkin paketlerin kurum tarifesinden indirimsiz fiyatıdır (DOM-DIL-050); tarife, paket ya da tarife kalemi yoksa `problem` nedeni söyler. Teklif paket satışıyla (`POST /api/v1/finance/package-sales`) açılır; indirim yalnız tarifede ilanlı türden seçilir (DOM-FIN-020). `saleId` karar onayından sonra teklif edilen kur ya da seviyede yapılan satıştır. Kararın gerekçesi, dayanağı ve öğretmen notu dönmez. `q` kursiyer adında arar, `outcome` süzer; `studentId` tek kursiyeri verir, olmayan ya da başka kurumun öğrencisi 404. Hiçbir şey yazılmaz. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listCourseOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/students/{studentId}/package-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin paket saat bakiyesi
+         * @description Satılan, kullanılan, iade edilen, kalan ve süresi dolan saat; satış başına ve toplam (IST-114, DOM-DIL-051, DOM-FIN-058). Bakiye saklanmaz, saat hareketlerinden hesaplanır; süresi dolan saat kalan saatin içindedir, silinmez. Ücret payları (`amounts`: net ücret, tanınan gelir, iade edilen saat payı, ertelenmiş gelir) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yanıtında alan yoktur. Kullanılan saat yoklamaya bağlanana kadar elle girilir (K-21); hiç girilmediyse `usedHoursRecorded: false`. Kapsam `/finance/students/:id/balance` ile aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         */
+        get: operations["getStudentPackageBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/package-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paket saat raporu
+         * @description Dönemde satılan, kullanılan, iade edilen ve süresi dolan saat ile gelir tanıma dökümü (IST-114, DOM-FIN-058). Satış başına satır, ay dökümü ve toplam döner; eşitlik: açılış kalan + satılan − kullanılan − iade = kapanış kalan, saatte ve kuruşta. Toplam ve ay dökümü bütün satırlardandır, sayfaya bağlı değildir; dönem bugüne kadar alınırsa kapanış öğrenci bakiyelerinin toplamına eşittir. Gelir, net ücretin kullanılan saat payıdır (birikimli, aşağı yuvarlanır); süresi dolan saat gelir sayılmaz, ertelenmiş gelirde kalır (DOM-DIL-051, H-19). İade payı net ücretin saat oranıdır, ödenen iade ve kesinti ayrılış kaydındadır. Elle girilen kullanılan saatin (K-21) değişikliği giriş gününe fark olarak düşer; geçmiş dönem değişmez. Hesap kodu ve KDV dökümü yoktur (M-12 doğrulanmalı). Satır: dönemde hareketi ya da dönem sonunda kalanı olan satış, yeni satış önce. Başlangıç bitişten sonra 422 `export_period_invalid`, bir yıldan uzun 422 `export_period_too_long`. `Accept: text/csv` ile sayfa yok sayılır, bütün satırlar CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetime yazılır (`finance.package_report_export`). Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Rol: `yonetici`.
+         */
+        get: operations["getPackageHourReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{invoiceId}/remind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gecikmiş taksiti elle hatırlat
+         * @description Gecikmiş taksitte veliye (yetişkin kursiyerde kendisine) `installment_overdue` bildirimi yazar ve taksitin `reminderAt` alanını günceller (DOM-FIN-035). Aynı taksite günde en çok bir hatırlatma gider: bugün elle hatırlatıldıysa ya da tarama bugün gönderdiyse yeni bildirim yazılmaz, yanıt 200 `reminder: already_sent`. Tam ödenmiş taksit 422 `invoice_already_paid`, vadesi geçmemiş taksit 422 `invoice_not_overdue`, arşivlenmiş öğrenci 422 `invoice_student_archived`, bildirim merkezi kapalıysa 422 `notifications_disabled`. Başka kurumun taksiti 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["remindInstallment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/renewals": {
         parameters: {
             query?: never;
@@ -2443,9 +2859,69 @@ export interface paths {
         put?: never;
         /**
          * Kayıt yenileme planla
-         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005), indirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); tarife sürümü değiştiyse 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005); süresinde ilan yapılmadıysa önceki yılın tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, `academicYear` hedef yıl kalır, yanıtta `tariffCarriedOverFromYear` döner. İndirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); gövdedeki `tariffId` geçerli tarifeden farklıysa (yeni sürüm ya da hedef yılın tarifesi sonradan yayımlandı) 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Dil okulunda son kurun onaylı kur sonu kararı gerekir (DOM-DIL-070): onay bekleyen karar 422 `course_decision_pending`, karar yok 422 `course_decision_missing`, üst seviye yok 422 `course_next_level_missing`; teklif dayanağı `pricing.courseOffer`ta kalır. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["planRenewal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewals/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yeni yılın yenilenecek öğrencilerini listele
+         * @description Hedef yıl için etkin ve son düzeyde olmayan öğrenciler (IST-105): sınıf, önerilen hedef sınıf, önceki sözleşme, ilan ücreti, artış tavanı, önerilen ücret, borç ve plan durumu; hiçbir şey yazmaz. Ücret tek öğrenci planıyla aynı kuraldan gelir. Tavan oranı ya da tarife eksikse satır düşmez, `problem` nedenini söyler. Mezuniyet ve yenileme daveti bu listede yoktur. Geçmiş yıl 422 `renewal_year_invalid`. Modüller `finance` ve `renewal`. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listRenewalCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewals/bulk-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toplu yenileme planını önizle
+         * @description Hiçbir kayıt yazmaz. Her satır tek öğrenci önizleme ve planını sırayla çalıştırır: tavan (DOM-FIN-005), ödeme koşulu (DOM-FIN-013), indirim (DOM-FIN-020…-022), burs (DOM-FIN-025) ve kuruş dağıtımı aynı kuraldır; öndeki satır sınıf ve burs kontenjanını doldurur. Bir satırın reddi öteki satırı etkilemez: `outcome` `ready`, `skipped` (borçlu öğrenci "yönetici onayı gerekir", ya da planı zaten var) ya da `failed`, neden `problem`te. En çok 100 öğrenci; aşılırsa, öğrenci yinelenirse ya da `debtApproved` gönderilirse 400. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["previewRenewalBulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewals/bulk-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toplu yenileme planını onayla
+         * @description Seçili öğrenciler için tek öğrenci planını çalıştırır; her öğrenci kendi işlemindedir, biri reddedilirse öteki geri alınmaz ve rapor satır satır söyler (`planned`, `skipped`, `failed`). Yanıt kısmi başarıda da 200'dür. Borçlu öğrenci atlanır, kod `renewal_debt_unapproved`, ileti "yönetici onayı gerekir"; toplu yolda borç onayı yoktur, karar `POST /api/v1/finance/renewals` `debtApproved` ile verilir (DOM-KAY-025). Planı olan öğrenci `renewal_already_exists` ile atlanır. Tarife değiştiyse satır kodu `tariff_changed` olur. `Idempotency-Key` zorunludur: aynı anahtar + aynı gövde ilk raporu döner, yarıda kalan istek planlananları yinelemez, farklı gövde 422 `idempotency_key_reused`. En çok 100 öğrenci. Roller: `yonetici`.
+         */
+        post: operations["bulkPlanRenewals"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2463,7 +2939,7 @@ export interface paths {
         put?: never;
         /**
          * Yenileme ücretini önizle
-         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Yayımlı tarife yoksa 422 `tariff_not_published`, oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Hedef yılın yayımlı tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu) önceki yılın yayımlı tarifesi uygulanır, `tariffCarriedOverFromYear` o yılı söyler (DOM-FIN-002); dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Dil okulunda `courseOffer` son kurun kur sonu kararını taşır (DOM-DIL-070): `ready` teklifin seviyesi ve kurudur; onay bekleyen karar (`pending`), karar yok (`missing`) ya da üst seviye yok (`no_next_level`) önizlemeyi engellemez, uyarıdır. Okulda `courseOffer` `null`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["quoteRenewal"];
         delete?: never;
@@ -2640,6 +3116,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/referral-rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Referans indirimi haklarını listele
+         * @description Yeni hak önce (DOM-FIN-024). `status`, `parentId` (hak sahibi veli) ve `familyOfStudentId` (öğrencinin velisinin hakları) süzer. Roller: `yonetici` ve `onburo` kurum geneli; `veli` ve `ogrenci` yalnız finans kapsamındaki öğrencinin hakkını görür, yanıtta aday ve referansla gelen öğrenci bulunmaz, doğmamış hak listelenmez.
+         */
+        get: operations["listReferralRewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments": {
         parameters: {
             query?: never;
@@ -2649,7 +3145,7 @@ export interface paths {
         };
         /**
          * Tahsilatları listele
-         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız finans kapsamındaki öğrencileri görür (veli velayetli çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi; K-04, DOM-ILT-074); iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
+         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız finans kapsamındaki öğrencileri görür (veli velayetli çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi; K-04, DOM-ILT-074); iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer; `dateFrom`/`dateTo` ödeme gününü (Europe/Istanbul, uçlar dahil) süzer, ters aralık 400. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
          */
         get: operations["listPayments"];
         put?: never;
@@ -2803,7 +3299,7 @@ export interface paths {
         put?: never;
         /**
          * Ayrılış ve iade hesabını önizle
-         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteWithdrawal"];
         delete?: never;
@@ -2823,7 +3319,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrencinin ayrılışını onayla
-         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["withdrawStudent"];
         delete?: never;
@@ -2841,7 +3337,7 @@ export interface paths {
         };
         /**
          * Ayrılış ve iadeleri listele
-         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.
+         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.
          */
         get: operations["listWithdrawals"];
         put?: never;
@@ -2861,7 +3357,7 @@ export interface paths {
         };
         /**
          * Ayrılış ve iade ayrıntısı
-         * @description Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.
+         * @description Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.
          */
         get: operations["getWithdrawal"];
         put?: never;
@@ -2927,7 +3423,7 @@ export interface paths {
         head?: never;
         /**
          * Adayın aşamasını değiştir
-         * @description Açık aşamalar arasında yalnız ileri gidilir, aşama atlanabilir (core `changeProspectStage`, DOM-KAY-005, DOM-KAY-030). Geri dönüş 422 `prospect_stage_backward`; `Görüşme planlandı` yalnız planlamayla (422 `prospect_meeting_required`), `Kayıt oldu` yalnız kesin kayıtla girilir (422 `prospect_enroll_required`). `Vazgeçti` nedenle girilir (422 `prospect_lost_reason_required`) ve ileri tarihli görüşmeyi ve deneme dersini kaldırır. Vazgeçen aday yalnız `İletişime geçildi` ile yeniden açılır ve tekillik denetiminden geçer (409 `prospect_duplicate`, `prospect_contact_shared`); iletişimi paylaşan açık aday varsa `siblingOfId` ile kardeş seçilir (DOM-KAY-031, 422 `sibling_not_found`). Aynı aşama 409 `prospect_stage_unchanged`, kayıtlı aday 409 `prospect_enrolled`. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Roller: `yonetici`, `onburo`.
+         * @description Açık aşamalar arasında yalnız ileri gidilir, aşama atlanabilir (core `changeProspectStage`, DOM-KAY-005, DOM-KAY-030). Geri dönüş 422 `prospect_stage_backward`; `Görüşme planlandı` yalnız planlamayla (422 `prospect_meeting_required`), `Kayıt oldu` yalnız kesin kayıtla girilir (422 `prospect_enroll_required`). `Vazgeçti` nedenle girilir (422 `prospect_lost_reason_required`) ve ileri tarihli görüşmeyi ve deneme dersini kaldırır. Vazgeçen aday yalnız `İletişime geçildi` ile yeniden açılır ve tekillik denetiminden geçer (409 `prospect_duplicate`, `prospect_contact_shared`); iletişimi paylaşan açık aday varsa `siblingOfId` ile kardeş seçilir (DOM-KAY-031, 422 `sibling_not_found`). İsteğe bağlı `lostToInstitution` tercih edilen kurumdur (en çok 120 karakter, yalnız `Vazgeçti`te, yeniden açılışta silinir, loglanmaz). Aynı aşama 409 `prospect_stage_unchanged`, kayıtlı aday 409 `prospect_enrolled`. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Roller: `yonetici`, `onburo`.
          */
         patch: operations["changeProspectStage"];
         trace?: never;
@@ -2983,9 +3479,29 @@ export interface paths {
         put?: never;
         /**
          * Adayı kesin kayda al
-         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 `tariff_not_published`, düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. Yetişkin kursiyerin ücretini başka biri ödüyorsa isteğe bağlı `payer` (mevcut veli kaydı `existingParentId` ya da yeni kişi `name`, `phone`, `relationship`) velayetsiz ödeyici bağı olarak aynı işlemde yazılır (ON-124): ödeyici yalnız finansı görür; sözleşmenin tarafı ve onaylayanı ödeyicidir (`payer: 'guardian'`, öğrencinin veli kaydı ödeyicinin kaydı; kullanıcı kararı 2026-11-04); okulda ve 18 yaş altında 422 `payer_not_applicable`, kursiyerin kendi satırı ya da iletişim kısıtlı kişi 422 `payer_not_eligible`, olmayan kayıt 404 `not_found`. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
+         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002). O yılın tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu; dil okulu ve kursta ilan dönemi yoktur) önceki yılın yayımlı tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, eğitim yılı değişmez, yanıtta `tariffCarriedOverFromYear` döner. Dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Gövdedeki `tariffId` geçerli tarifeden farklıysa 409 `tariff_changed`. Düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. Yetişkin kursiyerin ücretini başka biri ödüyorsa isteğe bağlı `payer` (mevcut veli kaydı `existingParentId` ya da yeni kişi `name`, `phone`, `relationship`) velayetsiz ödeyici bağı olarak aynı işlemde yazılır (ON-124): ödeyici yalnız finansı görür; sözleşmenin tarafı ve onaylayanı ödeyicidir (`payer: 'guardian'`, öğrencinin veli kaydı ödeyicinin kaydı; kullanıcı kararı 2026-11-04); okulda ve 18 yaş altında 422 `payer_not_applicable`, kursiyerin kendi satırı ya da iletişim kısıtlı kişi 422 `payer_not_eligible`, olmayan kayıt 404 `not_found`. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["enrollProspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/loss-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıp aday kırılımı
+         * @description Vazgeçen adayların neden ve tercih ettiği kurum kırılımı (IST-117, DOM-KAY-005). Yalnız sayı ve kurum adı döner, aday kimliği dönmez; kurum adı serbest metindir, loglanmaz. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getProspectLossBreakdown"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3021,7 +3537,7 @@ export interface paths {
         };
         /**
          * Öğrencinin kimlik özeti
-         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.
+         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Her başarılı okuma denetim kaydına `student_identity.read` olarak yazılır (yalnız alan adları; DOM-YTK-052). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.
          */
         get: operations["getStudentIdentity"];
         put?: never;
@@ -3130,6 +3646,126 @@ export interface paths {
          * @description Adayın adını, telefonunu, e-postasını, ilgisini ve 18 yaş altında veli adını düzeltir (core `updateProspectDetails`, DOM-KAY-003, KVKK md. 11 düzeltme hakkı). Yalnız gönderilen alanlar değişir; hiçbiri farklı değilse 409 `prospect_unchanged`. Açık adayda ad, telefon ve e-posta mükerrer denetiminden yeniden geçer (409 `prospect_duplicate`, `prospect_contact_shared`; kardeş seçilmiş adayda ortak iletişim kabul edilir). Onayı verilmiş e-posta silinemez (422 `consent_contact_in_use`), yetişkin adayda veli adı 422 `guardian_not_applicable`. Aşamayı ve ticari ileti onayını değiştirmez; kayda yalnız düzeltilen alan adları yazılır, denetim kaydına iletişim yazılmaz. Kesin kayda dönmüş adayın düzeltmesi öğrenci ve veli kaydına yansımaz. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Roller: `yonetici`, `onburo`.
          */
         patch: operations["updateProspectDetails"];
+        trace?: never;
+    };
+    "/api/v1/prospects/student-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğrenci ve veliyi dosyadan aktar
+         * @description Okul canlıya geçerken mevcut öğrenci ve velileri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-KAY-012, DOM-KAY-013). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 1.000 veri satırı. Sütunlar: `öğrenci adı`, `sınıf`, `kimlik no`, `doğum tarihi`, `veli adı`, `veli telefonu`, `yakınlık`; isteğe bağlı `kampüs`, `kimlik türü`, `öğrenci telefonu`. `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz; kimlik ve telefon maskelidir. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `student_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. Aynı telefon ve aynı veli adı kardeşleri aynı veli kaydına bağlar; önizleme eşleşmeyi gösterir, onay öneriyi kabul eder (DOM-KAY-013). Telefon aynı, ad farklıysa satır hatalıdır (`guardian_phone_conflict`). Kurumda kayıtlı kimlikte aynı adlı etkin öğrencinin satırı atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz. Dosya düzeyindeki sorun 422 ve sorunun kodu (ör. `csv_too_many_rows`, `import_file_legacy_excel`). `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importStudents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/installment-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taksitleri dosyadan aktar
+         * @description Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: `kimlik no`, `taksit no`, `tutar` (TL; `1.234,56` ya da `1234.56`, belirsiz biçim ve kuruştan küçük kesir satır hatasıdır, yuvarlanmaz) ya da `tutar kuruş` (tamsayı kuruş), ikisi birden doluysa tutmalıdır (`amount_mismatch`), `vade`; isteğe bağlı `öğrenci adı` (verilirse kayıtla eşleşmeli), `ödeme tarihi`, `ödeme yöntemi` (kabul edilir, saklanmaz), `eğitim yılı` (boşsa kurumun etkin yılı). `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `installment_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (`contract_approved`), plan toplamı sözleşmeyi aşamaz (`contract_total_exceeded`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz, kasa ve dönem tahsilatı değişmez: yöntemi `Açılış aktarımı`dır (`invoices.payment_method = opening_import`), ekstre ve dışa aktarım ödendi gösterip bu etiketle ayırır (DOM-FIN-014). `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importInstallments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt hunisi
+         * @description Aday → görüşme → deneme dersi (yalnız dil okulu) → kesin kayıt dönüşümü; toplam, kaynak ve danışman kırılımıyla (core `enrollmentFunnel`, DOM-KAY-040, IST-117). Kohort adayın açılış günüdür (`dateFrom`/`dateTo`, Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar). Huni birikimlidir: ileri adıma ulaşan aday önceki adımları geçmiş sayılır. Oranlar yüzde, bir ondalık; payda 0 ise `null`. Danışman adayı açan personeldir; adı yalnız kurum üyesi için döner. Arşivlenen aday sayılmaz. Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz. Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectFunnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrenci belgesi verisi
+         * @description Okulda öğrenci, dil okulunda kursiyer belgesinin içeriği: kurum adı, ad, okul numarası, sınıf, sürmekte olan kurlar, eğitim yılı, düzenleme anı ve belge kimliği (core `buildEnrollmentCertificate`, DOM-KAY-027). Kimlik numarası, doğum tarihi, veli, sağlık, ücret, borç ve disiplin bilgisi yanıtta yoktur; borç belgeyi engellemez (DOM-KAY-025). Belge resmî değildir, e-Okul ve e-Özel belgesinin yerine geçmez. Her başarılı istek yeni belge kimliği üretir ve denetim kaydına `enrollment_certificate.issue` olarak yazılır (yalnız alan adları; DOM-YTK-052); belge kimliği denetim satırının kimliğidir. Ayrılan ve mezun öğrenci 422 `enrollment_certificate_inactive`. Olmayan, arşivlenmiş ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getEnrollmentCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/students/{studentId}/enrollment-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Velinin çocuğu ya da öğrencinin kendisi için öğrenci belgesi verisi
+         * @description Personel ucuyla aynı belgeyi düzenler (DOM-KAY-027, K-32): içerik izin listesidir, her başarılı istek yeni belge kimliği üretir ve aktör rolüyle denetim kaydına `enrollment_certificate.issue` olarak yazılır. Veli velayetli ve iletişim kısıtı olmayan bağlı çocuğunu, öğrenci kendisini alır (DOM-ILT-070, DOM-ILT-074); ödeyici bağı belge açmaz. Kapsam dışı, olmayan, arşivlenmiş ya da başka kurumun öğrencisi aynı 404. Ayrılan ve mezun öğrenci 422 `enrollment_certificate_inactive`. Roller: `veli`, `ogrenci` (diğerleri 403); `crm` modülü kapalı olsa da çalışır, `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFamilyEnrollmentCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payer-children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Velinin ödeyicisi olduğu çocuklar
+         * @description Veli finans sayfalarının çocuk seçicisi için ödeyicisi olunan öğrenciler (K-04, DOM-FIN-052, DOM-ILT-074). Velayeti olmayan ödeyici veli çocuğu `/me` çocuk listesinde görmez; finans sayfaları bu listeyle o çocuğun taksit, dekont ve sözleşmesini açar. Akademik ve iletişim ekranları bu listeyi kullanmaz. Velayetli ödeyicinin çocuğu da listededir. İletişim kısıtlı veli ödeyici olamaz, listesi boştur. Yalnız ad ve güncel sınıf adı döner (KVKK asgarisi); sıralama ada göre. Başka kurumun öğrencisi listede yoktur. Rol: `veli`; diğer roller 403, modül kapalı 403.
+         */
+        get: operations["listFinancePayerChildren"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/questions": {
@@ -7170,7 +7806,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -10095,6 +10731,167 @@ export interface components {
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearnerInput"][];
         };
+        ImportIssueInput: {
+            line: number;
+            field: string | null;
+            code: string;
+            message: string;
+        };
+        ImportNoticeInput: {
+            code: string;
+            message: string;
+        };
+        StudentImportRowInput: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            name: string;
+            className: string;
+            campus: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            guardianName: string;
+            /** @description Veli telefonu maskeli */
+            guardianPhoneMasked: string;
+            relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+            /** @description `new` yeni veli, `file` dosyanın önceki satırıyla aynı veli, `existing` kurumda kayıtlı veli (DOM-KAY-013), `self` yetişkin kursiyerin kendisi */
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        StudentImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) öğrenci sayısı */
+            readyCount: number;
+            /** @description Kimliği kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["StudentImportRowInput"][];
+        };
+        EnrollmentFunnelStepInput: {
+            /**
+             * @description Huni adımı; `trial` yalnız dil okulunda
+             * @enum {string}
+             */
+            step: "prospect" | "meeting" | "trial" | "enrolled";
+            /** @description Bu adıma ulaşan aday (birikimli) */
+            count: number;
+            /** @description Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null` */
+            rate: number | null;
+        };
+        EnrollmentFunnelStageInput: {
+            /** @enum {string} */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
+            count: number;
+        };
+        EnrollmentFunnelRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        EnrollmentFunnelSourceRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null` */
+            source: string | null;
+        };
+        EnrollmentFunnelCounselorRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null` */
+            counselorId: string | null;
+            /** @description Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null` */
+            counselorName: string | null;
+        };
+        EnrollmentFunnelInput: {
+            /**
+             * @description Adımları belirleyen kurum türü
+             * @enum {string}
+             */
+            institutionType: "school" | "language_school";
+            total: components["schemas"]["EnrollmentFunnelRowInput"];
+            /** @description Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız */
+            bySource: components["schemas"]["EnrollmentFunnelSourceRowInput"][];
+            /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
+            byCounselor: components["schemas"]["EnrollmentFunnelCounselorRowInput"][];
+        };
+        InstallmentImportRowInput: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            /** @description Kimlikle bulunan öğrencinin kayıtlı adı */
+            studentName: string | null;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            installment: number | null;
+            /** @description Tutar, kuruş */
+            amountCents: number | null;
+            /** @description Vade, `YYYY-MM-DD` */
+            dueDate: string | null;
+            /** @description Ödeme günü, `YYYY-MM-DD`; açık taksitte `null` */
+            paidDate: string | null;
+            /** @description Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null` */
+            method: "Açılış aktarımı" | null;
+            academicYear: number | null;
+            /** @description Taksit öğrencinin sözleşmesine bağlanacak mı */
+            contractLinked: boolean;
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        InstallmentImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) taksit sayısı */
+            readyCount: number;
+            /** @description Kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Sözleşmeye bağlanan taksit sayısı */
+            linkedCount: number;
+            /** @description Yazılacak taksitlerin toplamı, kuruş */
+            totalCents: number;
+            /** @description Bunların ödenmiş olanlarının toplamı, kuruş */
+            paidCents: number;
+            /** @description Yalnız önizlemede dolu; kimlik maskeli */
+            rows: components["schemas"]["InstallmentImportRowInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -11377,7 +12174,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -14299,6 +15096,167 @@ export interface components {
             /** @description Kişi ek süre verebilir mi (atayan öğretmen veya yönetici) */
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearner"][];
+        };
+        ImportIssue: {
+            line: number;
+            field: string | null;
+            code: string;
+            message: string;
+        };
+        ImportNotice: {
+            code: string;
+            message: string;
+        };
+        StudentImportRow: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            name: string;
+            className: string;
+            campus: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            guardianName: string;
+            /** @description Veli telefonu maskeli */
+            guardianPhoneMasked: string;
+            relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+            /** @description `new` yeni veli, `file` dosyanın önceki satırıyla aynı veli, `existing` kurumda kayıtlı veli (DOM-KAY-013), `self` yetişkin kursiyerin kendisi */
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        StudentImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) öğrenci sayısı */
+            readyCount: number;
+            /** @description Kimliği kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["StudentImportRow"][];
+        };
+        EnrollmentFunnelStep: {
+            /**
+             * @description Huni adımı; `trial` yalnız dil okulunda
+             * @enum {string}
+             */
+            step: "prospect" | "meeting" | "trial" | "enrolled";
+            /** @description Bu adıma ulaşan aday (birikimli) */
+            count: number;
+            /** @description Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null` */
+            rate: number | null;
+        };
+        EnrollmentFunnelStage: {
+            /** @enum {string} */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
+            count: number;
+        };
+        EnrollmentFunnelRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        EnrollmentFunnelSourceRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null` */
+            source: string | null;
+        };
+        EnrollmentFunnelCounselorRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null` */
+            counselorId: string | null;
+            /** @description Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null` */
+            counselorName: string | null;
+        };
+        EnrollmentFunnel: {
+            /**
+             * @description Adımları belirleyen kurum türü
+             * @enum {string}
+             */
+            institutionType: "school" | "language_school";
+            total: components["schemas"]["EnrollmentFunnelRow"];
+            /** @description Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız */
+            bySource: components["schemas"]["EnrollmentFunnelSourceRow"][];
+            /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
+            byCounselor: components["schemas"]["EnrollmentFunnelCounselorRow"][];
+        };
+        InstallmentImportRow: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            /** @description Kimlikle bulunan öğrencinin kayıtlı adı */
+            studentName: string | null;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            installment: number | null;
+            /** @description Tutar, kuruş */
+            amountCents: number | null;
+            /** @description Vade, `YYYY-MM-DD` */
+            dueDate: string | null;
+            /** @description Ödeme günü, `YYYY-MM-DD`; açık taksitte `null` */
+            paidDate: string | null;
+            /** @description Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null` */
+            method: "Açılış aktarımı" | null;
+            academicYear: number | null;
+            /** @description Taksit öğrencinin sözleşmesine bağlanacak mı */
+            contractLinked: boolean;
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        InstallmentImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) taksit sayısı */
+            readyCount: number;
+            /** @description Kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Sözleşmeye bağlanan taksit sayısı */
+            linkedCount: number;
+            /** @description Yazılacak taksitlerin toplamı, kuruş */
+            totalCents: number;
+            /** @description Bunların ödenmiş olanlarının toplamı, kuruş */
+            paidCents: number;
+            /** @description Yalnız önizlemede dolu; kimlik maskeli */
+            rows: components["schemas"]["InstallmentImportRow"][];
         };
     };
     responses: never;
@@ -26248,6 +27206,15 @@ export interface operations {
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
                             }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                            }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
                             /** @description MEBBİS'e işlendiği gün (YYYY-MM-DD) */
@@ -26367,6 +27334,15 @@ export interface operations {
                         percentBasisPoints: number | null;
                         amountCents: number | null;
                     }[];
+                    /** @default [] */
+                    paymentTerms?: {
+                        /** @enum {string} */
+                        kind: "upfront" | "installment";
+                        minInstallments: number;
+                        maxInstallments: number;
+                        discountPercentBasisPoints: number | null;
+                        discountAmountCents: number | null;
+                    }[];
                 };
             };
         };
@@ -26402,6 +27378,15 @@ export interface operations {
                                 kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
+                            }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -26532,6 +27517,15 @@ export interface operations {
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
                             }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                            }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
                             /** @description MEBBİS'e işlendiği gün (YYYY-MM-DD) */
@@ -26652,6 +27646,14 @@ export interface operations {
                         percentBasisPoints: number | null;
                         amountCents: number | null;
                     }[];
+                    paymentTerms?: {
+                        /** @enum {string} */
+                        kind: "upfront" | "installment";
+                        minInstallments: number;
+                        maxInstallments: number;
+                        discountPercentBasisPoints: number | null;
+                        discountAmountCents: number | null;
+                    }[];
                 };
             };
         };
@@ -26687,6 +27689,15 @@ export interface operations {
                                 kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
+                            }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -26828,6 +27839,15 @@ export interface operations {
                                 kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
                                 percentBasisPoints: number | null;
                                 amountCents: number | null;
+                            }[];
+                            /** @description Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş */
+                            paymentTerms: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -27353,6 +28373,1082 @@ export interface operations {
             };
         };
     };
+    listEOzelItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız bu tür */
+                kind?: "learner" | "fee" | "attendance" | "course_end";
+                /** @description `pending` işlenmemiş ve düzeltilmeli (varsayılan), `needs_correction` yalnız düzeltilmeli, `recorded` işlenmiş, `all` hepsi */
+                status?: "pending" | "needs_correction" | "recorded" | "all";
+                /** @description Kursiyer adı, dekont no veya işlem referansı */
+                q?: string;
+                /** @description Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Satır günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            kind: "learner" | "fee" | "attendance" | "course_end";
+                            /** @description Kaynak kaydın kimliği; işaret ucunun yol parametresi */
+                            sourceId: string;
+                            learnerId: string;
+                            learnerName: string;
+                            /** @description Satır günü (YYYY-MM-DD, Europe/Istanbul) */
+                            date: string | null;
+                            /** @description `If-Match` için sürüm; işareti olmayan satırda 1 */
+                            version: number;
+                            /**
+                             * @description `pending` işlenmedi, `recorded` işlendi, `needs_correction` işaretlendikten sonra kaynağı değişti: e-Özel'de düzeltilmeli
+                             * @enum {string}
+                             */
+                            recordStatus: "pending" | "needs_correction" | "recorded";
+                            /** @description Kaynak artık listeye girmiyor (tahsilat iptal edildi, yoklama düzeltildi); satır işaretli olduğu için görünür */
+                            sourceRemoved: boolean;
+                            /** @description İşlendi olarak işaretlendiği an (ISO 8601 UTC) */
+                            recordedAt: string | null;
+                            /** @description İşaretleyen personel */
+                            recordedByName: string | null;
+                            learner: {
+                                identityKind: string | null;
+                                /** @description Yalnız maskeli (`*******1234`) */
+                                maskedIdentity: string | null;
+                                birthDate: string | null;
+                                /**
+                                 * @description Kayıt durumu: aktif ya da kayıt iptal
+                                 * @enum {string}
+                                 */
+                                status: "active" | "cancelled";
+                            } | null;
+                            fee: {
+                                /** @description Tutar (kuruş) */
+                                amountCents: number;
+                                /** @description Kurum dekont numarası */
+                                receipt: string;
+                                method: string;
+                                reference: string | null;
+                            } | null;
+                            attendance: {
+                                /** @description Kur grubu ya da sınıf adı */
+                                groupName: string | null;
+                                courseName: string | null;
+                                /** @description Ders saati; gün bazlı yoklamada boş */
+                                lessonHourId: string | null;
+                                excused: boolean;
+                            } | null;
+                            courseEnd: {
+                                /** @description Kur grubu ya da sınıf adı */
+                                groupName: string | null;
+                                courseName: string | null;
+                                /** @enum {string} */
+                                outcome: "passed" | "repeat" | "incomplete_attendance";
+                                /** @description MEBBİS belge izi varsa belge no */
+                                certificateNumber: string | null;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportEOzelItems: {
+        parameters: {
+            query?: {
+                /** @description Yalnız bu tür */
+                kind?: "learner" | "fee" | "attendance" | "course_end";
+                /** @description `pending` işlenmemiş ve düzeltilmeli (varsayılan), `needs_correction` yalnız düzeltilmeli, `recorded` işlenmiş, `all` hepsi */
+                status?: "pending" | "needs_correction" | "recorded" | "all";
+                /** @description Kursiyer adı, dekont no veya işlem referansı */
+                q?: string;
+                /** @description Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Satır günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV dosyası */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEOzelLearnerIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kursiyer kimliği (satırın `learnerId` alanı) */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description `tc` ya da `foreign` */
+                            identityKind: string;
+                            /** @description Tam kimlik numarası; önbelleğe alınmaz, loglanmaz */
+                            identityNumber: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setEOzelMark: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Satır türü */
+                kind: "learner" | "fee" | "attendance" | "course_end";
+                /** @description Kaynak kaydın kimliği */
+                sourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    recorded: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            kind: "learner" | "fee" | "attendance" | "course_end";
+                            sourceId: string;
+                            version: number;
+                            recordedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceDayReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Gün sonu günü (Europe/Istanbul, `YYYY-MM-DD`) */
+                closingDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            closingDate: string;
+                            /** @enum {string} */
+                            status: "open" | "closed";
+                            /** @description Kapalı günde kapanış anının özeti, açık günde tahsilatlardan hesaplanan özet */
+                            summary: {
+                                /** @description Her yöntem hareket olmasa da yer alır */
+                                methods: {
+                                    /** @enum {string} */
+                                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                    /** @description Tahsilat adedi */
+                                    collectedCount: number;
+                                    /** @description Tahsilat toplamı (kuruş) */
+                                    collectedCents: number;
+                                    /** @description O gün yapılan iptal adedi */
+                                    reversedCount: number;
+                                    /** @description O gün yapılan iptal toplamı (kuruş) */
+                                    reversedCents: number;
+                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    netCents: number;
+                                }[];
+                                collectedCount: number;
+                                collectedCents: number;
+                                reversedCount: number;
+                                reversedCents: number;
+                                netCents: number;
+                            };
+                            /** @description Kapatırken geri gönderilir; rapor değiştiyse 409 */
+                            reportStamp: string;
+                            /** @description Günün net nakit hareketi (kuruş) */
+                            cashNetCents: number;
+                            /** @description Kapanışta nakit sayımı zorunlu mu */
+                            cashCountRequired: boolean;
+                            /** @description Önceki kapanışta sayılan nakit; hiç kapanış yoksa boş */
+                            suggestedOpeningCents: number | null;
+                            /** @description O gün ödeme tarihli tahsilatlar */
+                            collected: {
+                                paymentId: string;
+                                receiptYear: number;
+                                receiptNumber: number;
+                                studentName: string | null;
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                reference: string | null;
+                                bankAccountLabel: string | null;
+                                paidAt: string;
+                                reversedAt: string | null;
+                                reversalReason: string | null;
+                            }[];
+                            /** @description O gün yapılan iptaller; tahsilatın günü başka olabilir */
+                            reversed: {
+                                paymentId: string;
+                                receiptYear: number;
+                                receiptNumber: number;
+                                studentName: string | null;
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                reference: string | null;
+                                bankAccountLabel: string | null;
+                                paidAt: string;
+                                reversedAt: string | null;
+                                reversalReason: string | null;
+                            }[];
+                            /** @description Geçerli kapanış; gün açıksa boş */
+                            closing: {
+                                id: string;
+                                closingDate: string;
+                                /** @description Kapanış anının özeti */
+                                summary: {
+                                    /** @description Her yöntem hareket olmasa da yer alır */
+                                    methods: {
+                                        /** @enum {string} */
+                                        method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                        /** @description Tahsilat adedi */
+                                        collectedCount: number;
+                                        /** @description Tahsilat toplamı (kuruş) */
+                                        collectedCents: number;
+                                        /** @description O gün yapılan iptal adedi */
+                                        reversedCount: number;
+                                        /** @description O gün yapılan iptal toplamı (kuruş) */
+                                        reversedCents: number;
+                                        /** @description Tahsilat eksi iptal (kuruş) */
+                                        netCents: number;
+                                    }[];
+                                    collectedCount: number;
+                                    collectedCents: number;
+                                    reversedCount: number;
+                                    reversedCents: number;
+                                    netCents: number;
+                                };
+                                /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                                cash: {
+                                    /** @description Açılış kasası (kuruş) */
+                                    openingCents: number;
+                                    /** @description Sayılan nakit (kuruş) */
+                                    countedCents: number;
+                                    /** @description Açılış artı günün net nakdi (kuruş) */
+                                    expectedCents: number;
+                                    /** @description Sayılan eksi beklenen (kuruş) */
+                                    differenceCents: number;
+                                } | null;
+                                /** @description Kapatanın açıklaması */
+                                note: string | null;
+                                /** @description Kapanış anı (ISO 8601 UTC) */
+                                closedAt: string;
+                                /** @description Kapatan kişi */
+                                closedByName: string | null;
+                                /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                                reopenedAt: string | null;
+                                /** @description Yeniden açan yönetici */
+                                reopenedByName: string | null;
+                                /** @description Yeniden açma gerekçesi */
+                                reopenReason: string | null;
+                                /** @description `If-Match` için kapanış sürümü */
+                                version: number;
+                            } | null;
+                            /** @description Yeniden açılmış eski kapanışlar, en yeni önce */
+                            history: {
+                                id: string;
+                                closingDate: string;
+                                /** @description Kapanış anının özeti */
+                                summary: {
+                                    /** @description Her yöntem hareket olmasa da yer alır */
+                                    methods: {
+                                        /** @enum {string} */
+                                        method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                        /** @description Tahsilat adedi */
+                                        collectedCount: number;
+                                        /** @description Tahsilat toplamı (kuruş) */
+                                        collectedCents: number;
+                                        /** @description O gün yapılan iptal adedi */
+                                        reversedCount: number;
+                                        /** @description O gün yapılan iptal toplamı (kuruş) */
+                                        reversedCents: number;
+                                        /** @description Tahsilat eksi iptal (kuruş) */
+                                        netCents: number;
+                                    }[];
+                                    collectedCount: number;
+                                    collectedCents: number;
+                                    reversedCount: number;
+                                    reversedCents: number;
+                                    netCents: number;
+                                };
+                                /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                                cash: {
+                                    /** @description Açılış kasası (kuruş) */
+                                    openingCents: number;
+                                    /** @description Sayılan nakit (kuruş) */
+                                    countedCents: number;
+                                    /** @description Açılış artı günün net nakdi (kuruş) */
+                                    expectedCents: number;
+                                    /** @description Sayılan eksi beklenen (kuruş) */
+                                    differenceCents: number;
+                                } | null;
+                                /** @description Kapatanın açıklaması */
+                                note: string | null;
+                                /** @description Kapanış anı (ISO 8601 UTC) */
+                                closedAt: string;
+                                /** @description Kapatan kişi */
+                                closedByName: string | null;
+                                /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                                reopenedAt: string | null;
+                                /** @description Yeniden açan yönetici */
+                                reopenedByName: string | null;
+                                /** @description Yeniden açma gerekçesi */
+                                reopenReason: string | null;
+                                /** @description `If-Match` için kapanış sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeFinanceDay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Gün sonu günü (Europe/Istanbul, `YYYY-MM-DD`) */
+                closingDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reportStamp: string;
+                    openingCashCents?: number;
+                    countedCashCents?: number;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            closingDate: string;
+                            /** @description Kapanış anının özeti */
+                            summary: {
+                                /** @description Her yöntem hareket olmasa da yer alır */
+                                methods: {
+                                    /** @enum {string} */
+                                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                    /** @description Tahsilat adedi */
+                                    collectedCount: number;
+                                    /** @description Tahsilat toplamı (kuruş) */
+                                    collectedCents: number;
+                                    /** @description O gün yapılan iptal adedi */
+                                    reversedCount: number;
+                                    /** @description O gün yapılan iptal toplamı (kuruş) */
+                                    reversedCents: number;
+                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    netCents: number;
+                                }[];
+                                collectedCount: number;
+                                collectedCents: number;
+                                reversedCount: number;
+                                reversedCents: number;
+                                netCents: number;
+                            };
+                            /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                            cash: {
+                                /** @description Açılış kasası (kuruş) */
+                                openingCents: number;
+                                /** @description Sayılan nakit (kuruş) */
+                                countedCents: number;
+                                /** @description Açılış artı günün net nakdi (kuruş) */
+                                expectedCents: number;
+                                /** @description Sayılan eksi beklenen (kuruş) */
+                                differenceCents: number;
+                            } | null;
+                            /** @description Kapatanın açıklaması */
+                            note: string | null;
+                            /** @description Kapanış anı (ISO 8601 UTC) */
+                            closedAt: string;
+                            /** @description Kapatan kişi */
+                            closedByName: string | null;
+                            /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                            reopenedAt: string | null;
+                            /** @description Yeniden açan yönetici */
+                            reopenedByName: string | null;
+                            /** @description Yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description `If-Match` için kapanış sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenFinanceDay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Gün sonu günü (Europe/Istanbul, `YYYY-MM-DD`) */
+                closingDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            closingDate: string;
+                            /** @description Kapanış anının özeti */
+                            summary: {
+                                /** @description Her yöntem hareket olmasa da yer alır */
+                                methods: {
+                                    /** @enum {string} */
+                                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                    /** @description Tahsilat adedi */
+                                    collectedCount: number;
+                                    /** @description Tahsilat toplamı (kuruş) */
+                                    collectedCents: number;
+                                    /** @description O gün yapılan iptal adedi */
+                                    reversedCount: number;
+                                    /** @description O gün yapılan iptal toplamı (kuruş) */
+                                    reversedCents: number;
+                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    netCents: number;
+                                }[];
+                                collectedCount: number;
+                                collectedCents: number;
+                                reversedCount: number;
+                                reversedCents: number;
+                                netCents: number;
+                            };
+                            /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                            cash: {
+                                /** @description Açılış kasası (kuruş) */
+                                openingCents: number;
+                                /** @description Sayılan nakit (kuruş) */
+                                countedCents: number;
+                                /** @description Açılış artı günün net nakdi (kuruş) */
+                                expectedCents: number;
+                                /** @description Sayılan eksi beklenen (kuruş) */
+                                differenceCents: number;
+                            } | null;
+                            /** @description Kapatanın açıklaması */
+                            note: string | null;
+                            /** @description Kapanış anı (ISO 8601 UTC) */
+                            closedAt: string;
+                            /** @description Kapatan kişi */
+                            closedByName: string | null;
+                            /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                            reopenedAt: string | null;
+                            /** @description Yeniden açan yönetici */
+                            reopenedByName: string | null;
+                            /** @description Yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description `If-Match` için kapanış sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getFinanceTotals: {
         parameters: {
             query?: never;
@@ -27372,6 +29468,8 @@ export interface operations {
                         data: {
                             totalCents: number;
                             paidCents: number;
+                            /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                            openingImportCents: number;
                             remainingCents: number;
                             overdueCents: number;
                         };
@@ -27595,6 +29693,8 @@ export interface operations {
                             studentId: string;
                             totalCents: number;
                             paidCents: number;
+                            /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                            openingImportCents: number;
                             openCents: number;
                             overdueCents: number;
                             overdueCount: number;
@@ -27703,6 +29803,8 @@ export interface operations {
                             studentId: string;
                             totalCents: number;
                             paidCents: number;
+                            /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                            openingImportCents: number;
                             openCents: number;
                             overdueCents: number;
                             overdueCount: number;
@@ -27718,10 +29820,10 @@ export interface operations {
                             unappliedCents: number;
                             lines: {
                                 /**
-                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme
+                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme, dosyadan aktarılan geçmiş ödeme (tahsilat değildir)
                                  * @enum {string}
                                  */
-                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment";
+                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment" | "opening_import";
                                 /** @description İşlem günü (YYYY-MM-DD, Europe/Istanbul) */
                                 date: string;
                                 /** @description Borç (kuruş) */
@@ -27856,6 +29958,8 @@ export interface operations {
                                 count: number;
                                 totalCents: number;
                                 paidCents: number;
+                                /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                                openingImportCents: number;
                             };
                         };
                     };
@@ -27972,6 +30076,11 @@ export interface operations {
                                         value?: string;
                                     }[];
                                     invoices: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    reconciliation?: {
                                         source: string;
                                         header: string;
                                         value?: string;
@@ -28096,6 +30205,11 @@ export interface operations {
                                 header: string;
                                 value?: string;
                             }[];
+                            reconciliation?: {
+                                source: string;
+                                header: string;
+                                value?: string;
+                            }[];
                         };
                     } | null;
                 };
@@ -28130,6 +30244,11 @@ export interface operations {
                                         value?: string;
                                     }[];
                                     invoices: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    reconciliation?: {
                                         source: string;
                                         header: string;
                                         value?: string;
@@ -28222,6 +30341,277 @@ export interface operations {
                 from: string;
                 to: string;
                 kind: "payments" | "refunds" | "invoices";
+                format?: "csv" | "xlsx";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV metni ya da `.xlsx` dosyası */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceReconciliation: {
+        parameters: {
+            query: {
+                year: number;
+                status?: "all" | "mismatch";
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Eğitim yılının başladığı yıl */
+                            year: number;
+                            /** @description Dönem başı (YYYY-MM-DD, Europe/Istanbul) */
+                            from: string;
+                            /** @description Dönem sonu; süren yılda bugün */
+                            to: string;
+                            totals: {
+                                /** @description Dönem başı bakiye: açık borç − alacak */
+                                openingCents: number;
+                                /** @description Vadesi dönemde olan taksitler */
+                                accruedCents: number;
+                                /** @description Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi */
+                                withdrawalAdjustmentCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                collectedCents: number;
+                                /** @description Ödeme günü dönemde olan açılış aktarımı (dosyadan gelen geçmiş ödeme); tahsilat değildir (DOM-FIN-014) */
+                                openingImportCents: number;
+                                /** @description İptal günü dönemde olan tahsilatlar */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez */
+                                scholarshipCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez */
+                                discountCents: number;
+                                /** @description Dönem sonu bakiye: açık borç − alacak */
+                                closingCents: number;
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade */
+                                expectedClosingCents: number;
+                                /** @description Kapanış − beklenen kapanış */
+                                differenceCents: number;
+                                /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                openDebtCents: number;
+                                /** @description Dağıtılmamış tahsilat, vadesi gelmemiş avans ya da aktarım ve ödenmemiş iade */
+                                creditCents: number;
+                            };
+                            studentCount: number;
+                            /** @description Toplamları tutmayan öğrenci sayısı */
+                            mismatchCount: number;
+                            rows: {
+                                /** @description Dönem başı bakiye: açık borç − alacak */
+                                openingCents: number;
+                                /** @description Vadesi dönemde olan taksitler */
+                                accruedCents: number;
+                                /** @description Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi */
+                                withdrawalAdjustmentCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                collectedCents: number;
+                                /** @description Ödeme günü dönemde olan açılış aktarımı (dosyadan gelen geçmiş ödeme); tahsilat değildir (DOM-FIN-014) */
+                                openingImportCents: number;
+                                /** @description İptal günü dönemde olan tahsilatlar */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez */
+                                scholarshipCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez */
+                                discountCents: number;
+                                /** @description Dönem sonu bakiye: açık borç − alacak */
+                                closingCents: number;
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade */
+                                expectedClosingCents: number;
+                                /** @description Kapanış − beklenen kapanış */
+                                differenceCents: number;
+                                /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                openDebtCents: number;
+                                /** @description Dağıtılmamış tahsilat, vadesi gelmemiş avans ya da aktarım ve ödenmemiş iade */
+                                creditCents: number;
+                                studentId: string;
+                                studentName: string;
+                                studentNumber: string;
+                                mismatchReason: ("unrecorded_payment" | "other") | null;
+                            }[];
+                        };
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportFinanceReconciliation: {
+        parameters: {
+            query: {
+                year: number;
             };
             header?: never;
             path?: never;
@@ -28423,6 +30813,2137 @@ export interface operations {
             };
         };
     };
+    listLessonPackages: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Paket adında arama */
+                q?: string;
+                kind?: "course" | "hours" | "private";
+                courseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `course` kur ücreti, `hours` saat, `private` özel ders
+                             * @enum {string}
+                             */
+                            kind: "course" | "hours" | "private";
+                            name: string;
+                            courseId: string | null;
+                            /** @description Tarife düzeyi; kura bağlı pakette kurdan okunur */
+                            level: string | null;
+                            /** @description Kur ücreti paketinde saat kurdan okunur */
+                            lessonHours: number | null;
+                            /** @description İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti */
+                            hourlyCents: number | null;
+                            /** @description Kullanım süresi, gün; boşsa süresiz */
+                            validityDays: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLessonPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "course" | "hours" | "private";
+                    name: string;
+                    /** @default null */
+                    courseId?: string | null;
+                    /** @default null */
+                    level?: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    /** @default null */
+                    lessonHours?: number | null;
+                    /** @default null */
+                    hourlyCents?: number | null;
+                    /** @default null */
+                    validityDays?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `course` kur ücreti, `hours` saat, `private` özel ders
+                             * @enum {string}
+                             */
+                            kind: "course" | "hours" | "private";
+                            name: string;
+                            courseId: string | null;
+                            /** @description Tarife düzeyi; kura bağlı pakette kurdan okunur */
+                            level: string | null;
+                            /** @description Kur ücreti paketinde saat kurdan okunur */
+                            lessonHours: number | null;
+                            /** @description İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti */
+                            hourlyCents: number | null;
+                            /** @description Kullanım süresi, gün; boşsa süresiz */
+                            validityDays: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLessonPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `course` kur ücreti, `hours` saat, `private` özel ders
+                             * @enum {string}
+                             */
+                            kind: "course" | "hours" | "private";
+                            name: string;
+                            courseId: string | null;
+                            /** @description Tarife düzeyi; kura bağlı pakette kurdan okunur */
+                            level: string | null;
+                            /** @description Kur ücreti paketinde saat kurdan okunur */
+                            lessonHours: number | null;
+                            /** @description İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti */
+                            hourlyCents: number | null;
+                            /** @description Kullanım süresi, gün; boşsa süresiz */
+                            validityDays: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveLessonPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                packageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLessonPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                packageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    level?: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    lessonHours?: number;
+                    hourlyCents?: number | null;
+                    validityDays?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `course` kur ücreti, `hours` saat, `private` özel ders
+                             * @enum {string}
+                             */
+                            kind: "course" | "hours" | "private";
+                            name: string;
+                            courseId: string | null;
+                            /** @description Tarife düzeyi; kura bağlı pakette kurdan okunur */
+                            level: string | null;
+                            /** @description Kur ücreti paketinde saat kurdan okunur */
+                            lessonHours: number | null;
+                            /** @description İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti */
+                            hourlyCents: number | null;
+                            /** @description Kullanım süresi, gün; boşsa süresiz */
+                            validityDays: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quotePackageSale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    packageId: string;
+                    studentId: string;
+                    installmentCount: number;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            packageId: string;
+                            tariffId: string;
+                            tariffVersion: number;
+                            level: string | null;
+                            purchasedHours: number;
+                            /** @description Tarifenin saat ücreti, kuruş */
+                            announcedHourlyCents: number;
+                            /** @description Uygulanan saat ücreti, kuruş */
+                            hourlyCents: number;
+                            /** @description Saat × tarife saat ücreti */
+                            announcedCents: number;
+                            /** @description Saat × uygulanan saat ücreti */
+                            grossCents: number;
+                            discounts: {
+                                kind: string;
+                                amountCents: number;
+                            }[];
+                            discountCents: number;
+                            /** @description İndirimden sonra öğrenim ücreti */
+                            netCents: number;
+                            /** @description Ayrı borç kalemleri (DOM-FIN-003) */
+                            extras: {
+                                kind: string;
+                                amountCents: number;
+                            }[];
+                            /** @description Öğrenim taksitleri, kuruş */
+                            installments: number[];
+                            /** @description Taksit sayısının ilanlı koşulu (DOM-FIN-013); koşulsuz eski tarifede boş */
+                            paymentTerm: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                                installmentCount: number;
+                            } | null;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPackageSales: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğrenci; kapsamı daraltır */
+                studentId?: string;
+                packageId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            version?: number;
+                            /** @description Satılan paket. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            packageId?: string;
+                            /** @description Satış anındaki ad */
+                            packageName: string;
+                            /** @enum {string} */
+                            kind: "course" | "hours" | "private";
+                            /** @description Paketin kuru; boşsa kura bağlı değil. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            courseId?: string | null;
+                            /** @description Satış anındaki seviye */
+                            level: string | null;
+                            /** @description Paketi alan öğrenci. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            studentId?: string;
+                            /** @description Satışın açtığı sözleşme. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            contractId?: string;
+                            /** @description Satışta uygulanan tarife. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffId?: string;
+                            /** @description Satışta uygulanan tarife sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffVersion?: number;
+                            /** @description Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            hourlyCents?: number;
+                            /** @description Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            grossCents?: number;
+                            /** @description İndirimden sonra öğrenim ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            netCents?: number;
+                            /** @description Satın alınan saat */
+                            purchasedHours: number;
+                            /** @description Tüketilen saat */
+                            consumedHours: number;
+                            /** @description İade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
+                            remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                            /**
+                             * @description `expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.
+                             * @enum {string}
+                             */
+                            status: "active" | "expired" | "depleted";
+                            soldAt: string;
+                            studentName: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sellPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    packageId: string;
+                    studentId: string;
+                    installmentCount: number;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                    tariffId: string;
+                    firstDueDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            packageId: string;
+                            /** @description Satış anındaki ad */
+                            packageName: string;
+                            /** @enum {string} */
+                            kind: "course" | "hours" | "private";
+                            courseId: string | null;
+                            /** @description Satış anındaki seviye */
+                            level: string | null;
+                            studentId: string;
+                            /** @description Satışın açtığı sözleşme */
+                            contractId: string;
+                            tariffId: string;
+                            tariffVersion: number;
+                            /** @description Uygulanan saat ücreti; iade bu ücretle hesaplanır */
+                            hourlyCents: number;
+                            grossCents: number;
+                            netCents: number;
+                            /** @description Satın alınan saat */
+                            purchasedHours: number;
+                            /** @description Tüketilen saat */
+                            consumedHours: number;
+                            /** @description İade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
+                            remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                            /**
+                             * @description `expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.
+                             * @enum {string}
+                             */
+                            status: "active" | "expired" | "depleted";
+                            soldAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPackageSale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                saleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            version?: number;
+                            /** @description Satılan paket. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            packageId?: string;
+                            /** @description Satış anındaki ad */
+                            packageName: string;
+                            /** @enum {string} */
+                            kind: "course" | "hours" | "private";
+                            /** @description Paketin kuru; boşsa kura bağlı değil. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            courseId?: string | null;
+                            /** @description Satış anındaki seviye */
+                            level: string | null;
+                            /** @description Paketi alan öğrenci. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            studentId?: string;
+                            /** @description Satışın açtığı sözleşme. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            contractId?: string;
+                            /** @description Satışta uygulanan tarife. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffId?: string;
+                            /** @description Satışta uygulanan tarife sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffVersion?: number;
+                            /** @description Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            hourlyCents?: number;
+                            /** @description Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            grossCents?: number;
+                            /** @description İndirimden sonra öğrenim ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            netCents?: number;
+                            /** @description Satın alınan saat */
+                            purchasedHours: number;
+                            /** @description Tüketilen saat */
+                            consumedHours: number;
+                            /** @description İade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
+                            remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                            /**
+                             * @description `expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.
+                             * @enum {string}
+                             */
+                            status: "active" | "expired" | "depleted";
+                            soldAt: string;
+                            studentName: string | null;
+                            /** @description Sözleşmenin yalnız bu satışa ait taksitleri. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            invoices?: {
+                                id: string;
+                                installment: number;
+                                amountCents: number;
+                                dueDate: string;
+                                paidAt: string | null;
+                                feeKind: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    extendPackageSale: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                saleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expiresDate: string;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            packageId: string;
+                            /** @description Satış anındaki ad */
+                            packageName: string;
+                            /** @enum {string} */
+                            kind: "course" | "hours" | "private";
+                            courseId: string | null;
+                            /** @description Satış anındaki seviye */
+                            level: string | null;
+                            studentId: string;
+                            /** @description Satışın açtığı sözleşme */
+                            contractId: string;
+                            tariffId: string;
+                            tariffVersion: number;
+                            /** @description Uygulanan saat ücreti; iade bu ücretle hesaplanır */
+                            hourlyCents: number;
+                            grossCents: number;
+                            netCents: number;
+                            /** @description Satın alınan saat */
+                            purchasedHours: number;
+                            /** @description Tüketilen saat */
+                            consumedHours: number;
+                            /** @description İade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
+                            remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                            /**
+                             * @description `expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.
+                             * @enum {string}
+                             */
+                            status: "active" | "expired" | "depleted";
+                            soldAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setPackageSaleUsedHours: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                saleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    usedHours: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            packageId: string;
+                            /** @description Satış anındaki ad */
+                            packageName: string;
+                            /** @enum {string} */
+                            kind: "course" | "hours" | "private";
+                            courseId: string | null;
+                            /** @description Satış anındaki seviye */
+                            level: string | null;
+                            studentId: string;
+                            /** @description Satışın açtığı sözleşme */
+                            contractId: string;
+                            tariffId: string;
+                            tariffVersion: number;
+                            /** @description Uygulanan saat ücreti; iade bu ücretle hesaplanır */
+                            hourlyCents: number;
+                            grossCents: number;
+                            netCents: number;
+                            /** @description Satın alınan saat */
+                            purchasedHours: number;
+                            /** @description Tüketilen saat */
+                            consumedHours: number;
+                            /** @description İade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
+                            remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                            /**
+                             * @description `expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.
+                             * @enum {string}
+                             */
+                            status: "active" | "expired" | "depleted";
+                            soldAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCourseOffers: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kursiyer adında arama */
+                q?: string;
+                /** @description Kur sonu kararının sonucu */
+                outcome?: "passed" | "repeat" | "incomplete_attendance";
+                /** @description Tek kursiyer */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            /**
+                             * @description `ready` teklif açılabilir; `no_next_level` geçti ama üst seviye ya da kur yok
+                             * @enum {string}
+                             */
+                            status: "ready" | "no_next_level";
+                            /** @description Teklifin dayandığı onaylı kur sonu kararı */
+                            decisionId: string;
+                            /** @enum {string} */
+                            outcome: "passed" | "repeat" | "incomplete_attendance";
+                            /** @description Kararın onaylandığı an */
+                            approvedAt: string | null;
+                            fromCourseId: string;
+                            fromCourseName: string;
+                            fromLevel: string;
+                            /** @description Teklif edilen kur; zincirsiz kurdan geçişte boş */
+                            courseId: string | null;
+                            courseName: string | null;
+                            /** @description Teklif edilen seviye */
+                            level: string | null;
+                            /** @description Teklife uyan etkin paketler ve kurum tarifesinden indirimsiz fiyatı */
+                            options: {
+                                packageId: string;
+                                packageName: string;
+                                /** @enum {string} */
+                                kind: "course" | "hours" | "private";
+                                hours: number;
+                                /** @description Saat × tarifenin saat ücreti, kuruş */
+                                announcedCents: number;
+                                /** @description Saat × uygulanan saat ücreti, kuruş; indirimler satışta düşer */
+                                priceCents: number;
+                            }[];
+                            /** @description Karar onayından sonra teklif edilen kur ya da seviyede yapılan son satış */
+                            saleId: string | null;
+                            /** @description Teklif açılamıyorsa nedeni */
+                            problem: {
+                                code: string;
+                                message: string;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentPackageBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            /** @description Satılan (alınan) saat */
+                            purchasedHours: number;
+                            /** @description Kullanılan saat */
+                            usedHours: number;
+                            /** @description Ayrılışta iade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; süresi dolan saat dahil (DOM-DIL-051) */
+                            remainingHours: number;
+                            /** @description Süresi dolmuş satışların kalan saati; kalan saatin içindedir */
+                            expiredHours: number;
+                            /** @description Bir satışta kullanılan saat hiç girilmediyse `false` (K-21) */
+                            usedHoursRecorded: boolean;
+                            /** @description Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur */
+                            amounts?: {
+                                /** @description Satışların net ücreti, kuruş */
+                                netCents: number;
+                                /** @description Kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description İade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                                /** @description Kalan saatin net ücretteki payı (ertelenmiş gelir), kuruş */
+                                deferredCents: number;
+                            };
+                            sales: {
+                                saleId: string;
+                                packageName: string;
+                                /** @enum {string} */
+                                kind: "course" | "hours" | "private";
+                                /** @description Satış günü, Europe/Istanbul */
+                                soldDate: string;
+                                expiresDate: string | null;
+                                /** @enum {string} */
+                                status: "active" | "expired" | "depleted";
+                                purchasedHours: number;
+                                usedHours: number;
+                                refundedHours: number;
+                                remainingHours: number;
+                                expiredHours: number;
+                                usedHoursRecorded: boolean;
+                                /** @description Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur */
+                                amounts?: {
+                                    /** @description Satışların net ücreti, kuruş */
+                                    netCents: number;
+                                    /** @description Kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                    recognizedCents: number;
+                                    /** @description İade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                    returnedCents: number;
+                                    /** @description Kalan saatin net ücretteki payı (ertelenmiş gelir), kuruş */
+                                    deferredCents: number;
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPackageHourReport: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Dönem başlangıcı (dahil), Europe/Istanbul günü */
+                from: string;
+                /** @description Dönem bitişi (dahil); dönem en çok bir yıl */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            totals: {
+                                /** @description Satır sayısı */
+                                saleCount: number;
+                                /** @description Dönemde satılan saat */
+                                soldHours: number;
+                                /** @description Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir */
+                                usedHours: number;
+                                /** @description Dönemde ayrılışla iade edilen saat */
+                                refundedHours: number;
+                                /** @description Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı */
+                                expiredHours: number;
+                                /** @description Dönemde satılan paketlerin net ücreti, kuruş */
+                                soldCents: number;
+                                /** @description Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                                /** @description Dönem başında kalan saat */
+                                openingHours: number;
+                                /** @description Dönem sonunda kalan saat */
+                                closingHours: number;
+                                /** @description Dönem başında ertelenmiş gelir, kuruş */
+                                openingDeferredCents: number;
+                                /** @description Dönem sonunda ertelenmiş gelir, kuruş */
+                                closingDeferredCents: number;
+                            };
+                            months: {
+                                /** @description YYYY-MM */
+                                month: string;
+                                /** @description Dönemde satılan saat */
+                                soldHours: number;
+                                /** @description Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir */
+                                usedHours: number;
+                                /** @description Dönemde ayrılışla iade edilen saat */
+                                refundedHours: number;
+                                /** @description Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı */
+                                expiredHours: number;
+                                /** @description Dönemde satılan paketlerin net ücreti, kuruş */
+                                soldCents: number;
+                                /** @description Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                            }[];
+                            lines: {
+                                saleId: string;
+                                studentId: string;
+                                studentName: string | null;
+                                packageName: string;
+                                /** @enum {string} */
+                                kind: "course" | "hours" | "private";
+                                soldDate: string;
+                                expiresDate: string | null;
+                                purchasedHours: number;
+                                /** @description Satışın net ücreti, kuruş */
+                                netCents: number;
+                                /** @description Dönemde satılan saat */
+                                soldHours: number;
+                                /** @description Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir */
+                                usedHours: number;
+                                /** @description Dönemde ayrılışla iade edilen saat */
+                                refundedHours: number;
+                                /** @description Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı */
+                                expiredHours: number;
+                                /** @description Dönemde satılan paketlerin net ücreti, kuruş */
+                                soldCents: number;
+                                /** @description Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                                /** @description Dönem başında kalan saat */
+                                openingHours: number;
+                                /** @description Dönem sonunda kalan saat */
+                                closingHours: number;
+                                /** @description Dönem başında ertelenmiş gelir, kuruş */
+                                openingDeferredCents: number;
+                                /** @description Dönem sonunda ertelenmiş gelir, kuruş */
+                                closingDeferredCents: number;
+                            }[];
+                        };
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    remindInstallment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Taksit kimliği */
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+                            entity: {
+                                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                                collection: string;
+                                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                                id: string;
+                            } | null;
+                            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+                            changes: {
+                                inserted: number;
+                                updated: number;
+                                archived: number;
+                                restored: number;
+                            };
+                            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+                            records: {
+                                /** @description school-core State koleksiyonu */
+                                collection: string;
+                                id: string;
+                                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                                version: number;
+                                /** @enum {string} */
+                                change: "insert" | "update" | "archive" | "restore" | "move";
+                            }[];
+                            /**
+                             * @description `already_sent`: bugün zaten hatırlatıldı, yeni bildirim yazılmadı
+                             * @enum {string}
+                             */
+                            reminder: "sent" | "already_sent";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listRenewals: {
         parameters: {
             query?: {
@@ -28477,6 +32998,8 @@ export interface operations {
                             pricing: {
                                 tariffId: string;
                                 tariffVersion: number;
+                                /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002) */
+                                tariffCarriedOverFromYear?: number | null;
                                 announcedCents: number;
                                 ceiling: {
                                     /** @enum {string} */
@@ -28521,6 +33044,30 @@ export interface operations {
                                     programId: string;
                                     amountCents: number;
                                 } | null;
+                                courseOffer?: {
+                                    /** @enum {string} */
+                                    status: "ready" | "pending" | "missing" | "no_next_level";
+                                    decisionId: string | null;
+                                    /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                    outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                    /** @description Kursiyerin son kuru */
+                                    fromCourseId: string | null;
+                                    fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                    courseId: string | null;
+                                    /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                };
+                                /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013) */
+                                paymentTerm?: {
+                                    /** @enum {string} */
+                                    kind: "upfront" | "installment";
+                                    minInstallments: number;
+                                    maxInstallments: number;
+                                    discountPercentBasisPoints: number | null;
+                                    discountAmountCents: number | null;
+                                    installmentCount: number;
+                                };
                             } | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
@@ -28627,8 +33174,11 @@ export interface operations {
                     extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
                     /** Format: uuid */
                     scholarshipProgramId?: string;
+                    /** Format: uuid */
+                    referralRewardId?: string;
                     tariffId: string;
                     firstDueDate: string;
+                    debtApproved?: boolean;
                 } | {
                     /** @enum {string} */
                     mode: "graduate";
@@ -28672,6 +33222,539 @@ export interface operations {
                             }[];
                             /** @description Açılan sözleşme; mezuniyette yoktur */
                             contractId?: string;
+                            /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur */
+                            tariffCarriedOverFromYear?: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRenewalCandidates: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                academicYear: number;
+                /** @description Şimdiki sınıf */
+                classId?: string;
+                /** @description Yeni yılın plan durumu */
+                planStatus?: "not_planned" | "planned" | "completed" | "cancelled";
+                /** @description Öğrenci adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string | null;
+                            classId: string;
+                            className: string | null;
+                            grade: number;
+                            /** @description Önerilen hedef sınıf: aynı kampüs ve şube; birden çok aday varsa `null` */
+                            targetClassId: string | null;
+                            targetClassName: string | null;
+                            /** @description Hedef yıldan önceki son sözleşmenin yılı ve indirimsiz ücreti */
+                            previousContract: {
+                                academicYear: number;
+                                tuitionCents: number;
+                            } | null;
+                            /** @description Hedef düzeyin ilan edilen ücreti */
+                            announcedCents: number | null;
+                            /** @description Artış tavanı kararı (DOM-FIN-005) */
+                            ceiling: ({
+                                /** @enum {string} */
+                                status: "entry_grade";
+                            } | {
+                                /** @enum {string} */
+                                status: "no_base";
+                            } | {
+                                /** @enum {string} */
+                                status: "applied";
+                                /** @description Baz ücret, kuruş */
+                                baseCents: number;
+                                /** @enum {string} */
+                                baseSource: "contract" | "enrollment_contract" | "previous_tariff";
+                                baseYear: number;
+                                rates: {
+                                    /** @description Oranın sınırladığı ücret yılı */
+                                    academicYear: number;
+                                    /** @description ÜFE ortalaması, on binde birlik */
+                                    ppiBasisPoints: number;
+                                    /** @description TÜFE ortalaması, on binde birlik */
+                                    cpiBasisPoints: number;
+                                }[];
+                                extraBasisPoints: number;
+                                /** @description Artış tavanı, kuruş */
+                                ceilingCents: number;
+                                /** @description İndirim koşulu kalktıysa gerekçesi (DOM-FIN-023) */
+                                discountLoss: {
+                                    kinds: string[];
+                                    reason: string;
+                                } | null;
+                            }) | null;
+                            /** @description Önerilen ücret: ilan ve tavanın küçüğü */
+                            suggestedTuitionCents: number | null;
+                            /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025) */
+                            outstandingTuitionCents: number;
+                            /** @enum {string} */
+                            planStatus: "not_planned" | "planned" | "completed" | "cancelled";
+                            renewalId: string | null;
+                            renewalNetCents: number | null;
+                            /** @description Ücret hesaplanamıyorsa nedeni */
+                            problem: {
+                                code: string;
+                                message: string;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewRenewalBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    installmentCount: number;
+                    firstDueDate: string;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                    /** Format: uuid */
+                    scholarshipProgramId?: string;
+                    rows: {
+                        studentId: string;
+                        targetClassId: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            /** @description Uygulanacak yayımlı tarife; yoksa `null` */
+                            tariff: {
+                                /** @description Onayda `tariffId` olarak gönderilir */
+                                id: string;
+                                versionNumber: number;
+                                carriedOverFromYear: number | null;
+                            } | null;
+                            summary: {
+                                ready: number;
+                                skipped: number;
+                                failed: number;
+                            };
+                            rows: {
+                                studentId: string;
+                                studentName: string | null;
+                                targetClassId: string;
+                                targetClassName: string | null;
+                                /** @enum {string} */
+                                outcome: "ready" | "skipped" | "failed";
+                                price: {
+                                    tariffId: string;
+                                    tariffVersion: number;
+                                    /** @description Hedef yılın tarifesi süresinde ilan edilmediği için önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); hedef yılın kendi tarifesinde `null` */
+                                    tariffCarriedOverFromYear: number | null;
+                                    /** @description İlan edilen öğrenim ücreti */
+                                    announcedCents: number;
+                                    ceiling: {
+                                        /** @enum {string} */
+                                        status: "entry_grade";
+                                    } | {
+                                        /** @enum {string} */
+                                        status: "no_base";
+                                    } | {
+                                        /** @enum {string} */
+                                        status: "applied";
+                                        /** @description Baz ücret, kuruş */
+                                        baseCents: number;
+                                        /** @enum {string} */
+                                        baseSource: "contract" | "enrollment_contract" | "previous_tariff";
+                                        baseYear: number;
+                                        rates: {
+                                            /** @description Oranın sınırladığı ücret yılı */
+                                            academicYear: number;
+                                            /** @description ÜFE ortalaması, on binde birlik */
+                                            ppiBasisPoints: number;
+                                            /** @description TÜFE ortalaması, on binde birlik */
+                                            cpiBasisPoints: number;
+                                        }[];
+                                        extraBasisPoints: number;
+                                        /** @description Artış tavanı, kuruş */
+                                        ceilingCents: number;
+                                        /** @description İndirim koşulu kalktıysa gerekçesi (DOM-FIN-023) */
+                                        discountLoss: {
+                                            kinds: string[];
+                                            reason: string;
+                                        } | null;
+                                    };
+                                    /** @description Uygulanabilecek en yüksek ücret */
+                                    maxTuitionCents: number;
+                                    /** @description Sözleşmenin indirimsiz öğrenim ücreti */
+                                    tuitionCents: number;
+                                    discounts: {
+                                        kind: string;
+                                        amountCents: number;
+                                    }[];
+                                    discountCents: number;
+                                    scholarship: {
+                                        programId: string;
+                                        amountCents: number;
+                                    } | null;
+                                    /** @description İndirim ve burstan sonra kalan öğrenim ücreti */
+                                    netCents: number;
+                                    extras: {
+                                        kind: string;
+                                        amountCents: number;
+                                    }[];
+                                    /** @description Öğrenim taksitleri, kuruş */
+                                    installments: number[];
+                                    /** @description Dil okulunda teklifin kur sonu kararı dayanağı (DOM-DIL-070); `ready` dışında plan 422 ile reddedilir. Okulda yok */
+                                    courseOffer: {
+                                        /** @enum {string} */
+                                        status: "ready" | "pending" | "missing" | "no_next_level";
+                                        decisionId: string | null;
+                                        /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                        outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                        /** @description Kursiyerin son kuru */
+                                        fromCourseId: string | null;
+                                        fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                        /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                        courseId: string | null;
+                                        /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                        level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    } | null;
+                                    /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`, ilanda olmayan taksit sayısı 422 `payment_term_not_in_tariff` */
+                                    paymentTerm: {
+                                        /** @enum {string} */
+                                        kind: "upfront" | "installment";
+                                        minInstallments: number;
+                                        maxInstallments: number;
+                                        discountPercentBasisPoints: number | null;
+                                        discountAmountCents: number | null;
+                                        installmentCount: number;
+                                    } | null;
+                                    /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister */
+                                    outstandingTuitionCents: number;
+                                } | null;
+                                problem: {
+                                    code: string;
+                                    message: string;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulkPlanRenewals: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    installmentCount: number;
+                    firstDueDate: string;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                    /** Format: uuid */
+                    scholarshipProgramId?: string;
+                    rows: {
+                        studentId: string;
+                        targetClassId: string;
+                    }[];
+                    tariffId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            summary: {
+                                planned: number;
+                                skipped: number;
+                                failed: number;
+                            };
+                            rows: {
+                                studentId: string;
+                                studentName: string | null;
+                                /** @enum {string} */
+                                outcome: "planned" | "skipped" | "failed";
+                                problem: {
+                                    code: string;
+                                    message: string;
+                                } | null;
+                                renewalId: string | null;
+                                contractId: string | null;
+                                netCents: number | null;
+                                /** @description Öğrenim taksitleri; toplamı nettir */
+                                installments: number[];
+                            }[];
                         };
                     };
                 };
@@ -28771,6 +33854,8 @@ export interface operations {
                     extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
                     /** Format: uuid */
                     scholarshipProgramId?: string;
+                    /** Format: uuid */
+                    referralRewardId?: string;
                 };
             };
         };
@@ -28785,6 +33870,8 @@ export interface operations {
                         data: {
                             tariffId: string;
                             tariffVersion: number;
+                            /** @description Hedef yılın tarifesi süresinde ilan edilmediği için önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); hedef yılın kendi tarifesinde `null` */
+                            tariffCarriedOverFromYear: number | null;
                             /** @description İlan edilen öğrenim ücreti */
                             announcedCents: number;
                             ceiling: {
@@ -28839,6 +33926,33 @@ export interface operations {
                             }[];
                             /** @description Öğrenim taksitleri, kuruş */
                             installments: number[];
+                            /** @description Dil okulunda teklifin kur sonu kararı dayanağı (DOM-DIL-070); `ready` dışında plan 422 ile reddedilir. Okulda yok */
+                            courseOffer: {
+                                /** @enum {string} */
+                                status: "ready" | "pending" | "missing" | "no_next_level";
+                                decisionId: string | null;
+                                /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                /** @description Kursiyerin son kuru */
+                                fromCourseId: string | null;
+                                fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                courseId: string | null;
+                                /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            } | null;
+                            /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`, ilanda olmayan taksit sayısı 422 `payment_term_not_in_tariff` */
+                            paymentTerm: {
+                                /** @enum {string} */
+                                kind: "upfront" | "installment";
+                                minInstallments: number;
+                                maxInstallments: number;
+                                discountPercentBasisPoints: number | null;
+                                discountAmountCents: number | null;
+                                installmentCount: number;
+                            } | null;
+                            /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister */
+                            outstandingTuitionCents: number;
                         };
                     };
                 };
@@ -29305,6 +34419,8 @@ export interface operations {
                             pricing: {
                                 tariffId: string;
                                 tariffVersion: number;
+                                /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002) */
+                                tariffCarriedOverFromYear?: number | null;
                                 announcedCents: number;
                                 ceiling: {
                                     /** @enum {string} */
@@ -29349,6 +34465,30 @@ export interface operations {
                                     programId: string;
                                     amountCents: number;
                                 } | null;
+                                courseOffer?: {
+                                    /** @enum {string} */
+                                    status: "ready" | "pending" | "missing" | "no_next_level";
+                                    decisionId: string | null;
+                                    /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                    outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                    /** @description Kursiyerin son kuru */
+                                    fromCourseId: string | null;
+                                    fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                    courseId: string | null;
+                                    /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                };
+                                /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013) */
+                                paymentTerm?: {
+                                    /** @enum {string} */
+                                    kind: "upfront" | "installment";
+                                    minInstallments: number;
+                                    maxInstallments: number;
+                                    discountPercentBasisPoints: number | null;
+                                    discountAmountCents: number | null;
+                                    installmentCount: number;
+                                };
                             } | null;
                             invoices: {
                                 id: string;
@@ -30149,6 +35289,136 @@ export interface operations {
             };
         };
     };
+    listReferralRewards: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                status?: "pending" | "available" | "used" | "cancelled";
+                parentId?: string;
+                familyOfStudentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Referansla gelen kaydın eğitim yılı */
+                            academicYear: number;
+                            /** @enum {string} */
+                            status: "pending" | "available" | "used" | "cancelled";
+                            /** @description Referans veren öğrenci */
+                            referrerStudentId: string;
+                            referrerStudentName: string | null;
+                            /** @description Kesin kayıtta sabitlenen hak değeri, kuruş */
+                            amountCents: number;
+                            /** @description İlk taksitin ödenmesiyle hakkın doğduğu an */
+                            earnedAt: string | null;
+                            usedAt: string | null;
+                            /** @description Sözleşmeye uygulanan tutar, kuruş; tavanı aşan kısım düşer */
+                            usedAmountCents: number | null;
+                            cancelledAt: string | null;
+                            /** @description Aday; yalnız personele döner */
+                            prospectId: string | null;
+                            /** @description Referansla gelen öğrenci; yalnız personele */
+                            referredStudentId: string | null;
+                            /** @description Yalnız personele döner */
+                            referredStudentName: string | null;
+                            /** @description Hakkın sahibi veli; yalnız personele */
+                            referrerParentId: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            cancelReason: ("refunded_before_start" | "withdrawn_before_earned") | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listPayments: {
         parameters: {
             query?: {
@@ -30164,6 +35434,10 @@ export interface operations {
                 mebbis?: "pending";
                 /** @description Yalnız bu ödeme yöntemiyle alınanlar */
                 method?: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                /** @description Ödeme günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Ödeme günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
             };
             header?: never;
             path?: never;
@@ -31441,7 +36715,55 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
+                                    reason?: string;
+                                };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
+                            /** @description Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12) */
+                            payersDiffer: boolean;
+                            /** @description Sözleşme başına ödeyici */
+                            payers: {
+                                contractId: string;
+                                /** @enum {string} */
+                                payer: "guardian" | "student";
+                                /** @description Ödeyicinin adı; iletişim bilgisi dönmez */
+                                payerName: string;
+                            }[];
                         };
                     };
                 };
@@ -31543,9 +36865,16 @@ export interface operations {
                     /** @default false */
                     publicSchoolExemption?: boolean;
                     /** @enum {string} */
-                    reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                    reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                     /** @default null */
                     targetSchool?: string | null;
+                    /** @default null */
+                    payerDecision?: {
+                        payer: string;
+                        reason: string;
+                    } | null;
+                    /** @default null */
+                    approvedRefundCents?: number | null;
                 };
             };
         };
@@ -31564,7 +36893,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -31598,6 +36927,44 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
+                                    reason?: string;
+                                };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -31698,6 +37065,8 @@ export interface operations {
                 pageSize?: number;
                 /** @description İade durumu */
                 refundStatus?: "none" | "pending" | "paid";
+                /** @description Öğrenci adında arama */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -31719,7 +37088,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -31753,6 +37122,44 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
+                                    reason?: string;
+                                };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -31870,7 +37277,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -31904,6 +37311,44 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
+                                    reason?: string;
+                                };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -32033,7 +37478,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -32067,6 +37512,44 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /**
+                                     * @description Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında
+                                     * @enum {string}
+                                     */
+                                    payer: "guardian" | "student";
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
+                                /** @description Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12) */
+                                payerDecision?: {
+                                    /** @enum {string} */
+                                    payer: "guardian" | "student";
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
+                                    reason?: string;
+                                };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -32299,6 +37782,7 @@ export interface operations {
                     stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
                     /** @enum {string} */
                     lostReason?: "price" | "transport" | "other_school" | "academic_fit" | "other";
+                    lostToInstitution?: string;
                     siblingOfId?: string;
                 };
             };
@@ -32667,6 +38151,8 @@ export interface operations {
                     allowOtherCampus?: boolean;
                     /** Format: uuid */
                     scholarshipProgramId?: string;
+                    /** Format: uuid */
+                    referralRewardId?: string;
                 };
             };
         };
@@ -32678,7 +38164,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["CommandResult"];
+                        data: {
+                            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+                            entity: {
+                                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                                collection: string;
+                                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                                id: string;
+                            } | null;
+                            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+                            changes: {
+                                inserted: number;
+                                updated: number;
+                                archived: number;
+                                restored: number;
+                            };
+                            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+                            records: {
+                                /** @description school-core State koleksiyonu */
+                                collection: string;
+                                id: string;
+                                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                                version: number;
+                                /** @enum {string} */
+                                change: "insert" | "update" | "archive" | "restore" | "move";
+                            }[];
+                            /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur */
+                            tariffCarriedOverFromYear?: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectLossBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Vazgeçen aday sayısı */
+                            total: number;
+                            /** @description Neden başına aday sayısı, çoktan aza */
+                            reasons: {
+                                /** @description Vazgeçme nedeni; nedeni olmayan eski kayıtta `null` */
+                                reason: ("price" | "transport" | "other_school" | "academic_fit" | "other") | null;
+                                count: number;
+                            }[];
+                            /** @description Tercih edilen kurum başına aday sayısı, çoktan aza, en çok 50 satır; yazım farkı aynı kurum sayılır */
+                            institutions: {
+                                name: string;
+                                count: number;
+                            }[];
+                            /** @description Listeye sığmayan kurumlara giden aday sayısı */
+                            otherInstitutions: number;
+                            /** @description Tercih ettiği kurum yazılmamış aday sayısı */
+                            unnamed: number;
+                        };
                     };
                 };
             };
@@ -33485,6 +39110,634 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importStudents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importInstallments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstallmentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstallmentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectFunnel: {
+        parameters: {
+            query?: {
+                /** @description Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EnrollmentFunnel"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEnrollmentCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * Format: uuid
+                             * @description Belge kimliği; aynı düzenlemenin denetim satırının kimliğidir
+                             */
+                            documentId: string;
+                            /**
+                             * Format: date-time
+                             * @description Düzenleme anı (UTC); belgede Europe/Istanbul günü yazılır
+                             */
+                            issuedAt: string;
+                            /** @description Kurum adı (IST-013 unvanı gelene kadar kayıtlı ad) */
+                            institutionName: string;
+                            /**
+                             * @description Terimi belirler: öğrenci ya da kursiyer
+                             * @enum {string}
+                             */
+                            institutionType: "school" | "language_school";
+                            /** @description Öğrencinin ya da kursiyerin adı */
+                            learnerName: string;
+                            /** @description Okul numarası; kayıtta yoksa `null` */
+                            schoolNumber: string | null;
+                            /** @description Sınıf adı; okunamıyorsa `null` */
+                            className: string | null;
+                            /** @description Dil okulunda sürmekte olan kurlar, ada göre sıralı; okulda hep boş */
+                            courseNames: string[];
+                            /** @description Etkin eğitim yılının başlangıcı: 2026 → 2026–2027; kurum ayarı yoksa `null` */
+                            academicYear: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFamilyEnrollmentCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * Format: uuid
+                             * @description Belge kimliği; aynı düzenlemenin denetim satırının kimliğidir
+                             */
+                            documentId: string;
+                            /**
+                             * Format: date-time
+                             * @description Düzenleme anı (UTC); belgede Europe/Istanbul günü yazılır
+                             */
+                            issuedAt: string;
+                            /** @description Kurum adı (IST-013 unvanı gelene kadar kayıtlı ad) */
+                            institutionName: string;
+                            /**
+                             * @description Terimi belirler: öğrenci ya da kursiyer
+                             * @enum {string}
+                             */
+                            institutionType: "school" | "language_school";
+                            /** @description Öğrencinin ya da kursiyerin adı */
+                            learnerName: string;
+                            /** @description Okul numarası; kayıtta yoksa `null` */
+                            schoolNumber: string | null;
+                            /** @description Sınıf adı; okunamıyorsa `null` */
+                            className: string | null;
+                            /** @description Dil okulunda sürmekte olan kurlar, ada göre sıralı; okulda hep boş */
+                            courseNames: string[];
+                            /** @description Etkin eğitim yılının başlangıcı: 2026 → 2026–2027; kurum ayarı yoksa `null` */
+                            academicYear: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFinancePayerChildren: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Öğrenci kimliği */
+                            id: string;
+                            /** @description Öğrencinin adı */
+                            name: string;
+                            /** @description Güncel sınıf ya da kur grubu adı */
+                            className: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

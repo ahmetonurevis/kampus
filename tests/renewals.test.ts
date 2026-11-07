@@ -8,6 +8,7 @@ import type { ScholarshipProgram } from '../packages/school-core/src/lib/finance
 import {
   planPriceIndexCreate,
   planPriceIndexUpdate,
+  outstandingTuitionCents,
   planRenewal,
   quoteRenewal,
   type RenewalContext,
@@ -149,6 +150,57 @@ test('DOM-FIN-002: yayımlı tarife yoksa plan ve önizleme reddedilir; tarife d
   )
 })
 
+test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulanınca önizleme ve kayıt bunu söyler; sözleşme o tarifeyi taşır, yıl hedef yıl kalır', () => {
+  const state = seeded()
+  const carried: EnrollmentTariff = { ...TARIFF, id: 'test-tariff-2026', versionNumber: 5 }
+  const context: RenewalContext = {
+    ...CONTEXT,
+    tariff: carried,
+    tariffCarriedOverFromYear: YEAR - 1,
+    previousTariff: carried,
+  }
+  const quote = quoteRenewal(state, ADMIN, QUOTE, context)
+  assert.equal(quote.tariffId, carried.id)
+  assert.equal(quote.tariffVersion, 5)
+  assert.equal(quote.tariffCarriedOverFromYear, YEAR - 1)
+  // Plan gövdesi önizlemenin tarifesiyle uyumlu olmalı: hedef yılın tarifesi sonradan yayımlandıysa 409.
+  unchangedOnFailure(state, () => plan(state, PLAN, context), 'tariff_changed', 'conflict')
+  const { renewal, contractId } = plan(state, { ...PLAN, tariffId: carried.id }, context)
+  const contract = state.contracts.find((item) => item.id === contractId)
+  assert.equal(contract?.tariffId, carried.id)
+  assert.equal(contract?.tariffVersion, 5)
+  assert.equal(contract?.academicYear, YEAR)
+  assert.equal(renewal.year, YEAR)
+  assert.equal(renewal.pricing?.tariffCarriedOverFromYear, YEAR - 1)
+})
+
+test('DOM-FIN-002, K-11: hedef yılın kendi tarifesinde taşınma işareti yoktur', () => {
+  const state = seeded()
+  assert.equal(quoteRenewal(state, ADMIN, QUOTE, CONTEXT).tariffCarriedOverFromYear, null)
+  assert.equal(plan(state).renewal.pricing?.tariffCarriedOverFromYear, null)
+})
+
+test('DOM-FIN-005, K-11: taşınan tarife tavan bazını değiştirmez; baz önceki yılın ilan ücretidir', () => {
+  const state = seeded()
+  state.contracts = state.contracts.filter((item) => item.studentId !== 's3')
+  const previous: EnrollmentTariff = {
+    ...TARIFF,
+    id: 'test-tariff-2026',
+    items: [item({ amountCents: 4_000_000, announcedAmountCents: 5_000_000 })],
+  }
+  const quote = quoteRenewal(state, ADMIN, QUOTE, {
+    ...CONTEXT,
+    tariff: previous,
+    tariffCarriedOverFromYear: YEAR - 1,
+    previousTariff: previous,
+  })
+  assert.equal(quote.announcedCents, 4_000_000)
+  assert.ok(quote.ceiling.status === 'applied')
+  assert.equal(quote.ceiling.baseSource, 'previous_tariff')
+  assert.equal(quote.ceiling.baseCents, 5_000_000)
+  assert.equal(quote.maxTuitionCents, 4_000_000)
+})
+
 test('DOM-FIN-005: oran girilmemiş yılda plan reddedilir; yıl atlanmışsa her yılın oranı sırayla uygulanır', () => {
   const state = seeded({ academicYear: 2025, grossCents: 5_000_000 })
   unchangedOnFailure(state, () => plan(state), 'price_index_missing')
@@ -256,6 +308,49 @@ test('DOM-FIN-023: kardeş indirimi koşulu kalkınca baz kayıt yılındaki ind
   assert.deepEqual(state.contracts, before)
 })
 
+test('DOM-FIN-023, DOM-FIN-022, K-22: kardeş koşulu yenileme yılındaki kayda bakar; tavan istisnası ve indirim aynı cevabı verir', () => {
+  const state = seeded({
+    grossCents: 5_000_000,
+    discounts: [{ kind: 'sibling', amountCents: 1_500_000 }],
+  })
+  const child = state.students.find((s) => s.id === 's3')
+  assert.ok(child)
+  const sibling = { ...child, id: 'test-kardes', name: 'Test Kardeş' }
+  state.students.push(sibling)
+  const siblingContract = (id: string, academicYear: number) => ({
+    id,
+    studentId: sibling.id,
+    date: NOW,
+    amount: 9_000_000,
+    title: 'Özel okul eğitim sözleşmesi',
+    academicYear,
+    grossCents: 9_000_000,
+  })
+  state.contracts.push(siblingContract('test-kardes-bu-yil', 2026))
+  const lossOf = () => {
+    const ceiling = quoteRenewal(state, ADMIN, QUOTE, CONTEXT).ceiling
+    assert.ok(ceiling.status === 'applied')
+    return ceiling.discountLoss
+  }
+  const withSibling = () =>
+    quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['sibling'] }, CONTEXT)
+  // Kardeş etkin ama yenileme yılında (2027) kaydı yok: koşul kalkmıştır, indirim de verilmez.
+  assert.match(lossOf()?.reason ?? '', /Kardeş indirimi koşulu kalktı/)
+  assert.throws(withSibling, isDomainError('sibling_discount_ineligible'))
+  // Kardeşin 2027 kaydı (yenileme planının sözleşmesi) koşulu sürdürür.
+  state.contracts.push(siblingContract('test-kardes-gelecek-yil', YEAR))
+  assert.equal(lossOf(), null)
+  assert.equal(withSibling().discounts[0]?.kind, 'sibling')
+  // Dondurulan kardeş aktif kayıt sayılmaz (DOM-KAY-024).
+  Object.assign(sibling, { frozenAt: NOW })
+  assert.notEqual(lossOf(), null)
+  assert.throws(withSibling, isDomainError('sibling_discount_ineligible'))
+  // Velisi yazılmamış iki öğrenci kardeş sayılmaz.
+  Object.assign(sibling, { frozenAt: null, parentId: '' })
+  child.parentId = ''
+  assert.notEqual(lossOf(), null)
+})
+
 test('DOM-FIN-020, -021, -022: indirim tarifedeki türden ve ilandan hesaplanır; tavan, kardeş ve ilansız tür reddedilir', () => {
   const state = seeded({ grossCents: 9_000_000 })
   const quote = quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['early_payment'] }, CONTEXT)
@@ -263,13 +358,75 @@ test('DOM-FIN-020, -021, -022: indirim tarifedeki türden ve ilandan hesaplanır
   assert.equal(quote.netCents, 9_000_000)
   const withDiscounts = (discounts: string[]) => () =>
     quoteRenewal(state, ADMIN, { ...QUOTE, discounts }, CONTEXT)
-  unchangedOnFailure(state, withDiscounts(['referral']), 'discount_cap_exceeded')
+  unchangedOnFailure(state, withDiscounts(['referral']), 'referral_reward_required')
   unchangedOnFailure(state, withDiscounts(['corporate']), 'discount_not_in_tariff')
+  unchangedOnFailure(
+    state,
+    () =>
+      quoteRenewal(
+        state,
+        ADMIN,
+        { ...QUOTE, discounts: ['sibling', 'early_payment'] },
+        {
+          ...CONTEXT,
+          tariff: {
+            ...TARIFF,
+            discounts: [
+              { kind: 'early_payment', percentBasisPoints: 3_000, amountCents: null },
+              { kind: 'sibling', percentBasisPoints: 3_000, amountCents: null },
+            ],
+          },
+        },
+      ),
+    'discount_cap_exceeded',
+  )
   const student = state.students.find((s) => s.id === 's3')
   assert.ok(student)
   for (const other of state.students)
     if (other.id !== 's3' && other.parentId === student.parentId) other.isActive = false
   unchangedOnFailure(state, withDiscounts(['sibling']), 'sibling_discount_ineligible')
+})
+
+const REWARD_ID = '22222222-2222-4222-8222-222222222222'
+const withReward = (amountCents: number): RenewalContext => ({
+  ...CONTEXT,
+  referralReward: { id: REWARD_ID, status: 'available', referrerParentId: 'p3', amountCents },
+})
+const REFERRAL_QUOTE = { ...QUOTE, discounts: ['referral'], referralRewardId: REWARD_ID }
+
+test('DOM-FIN-024, K-14: yenileme önizlemesi hakkın sabit tutarını gösterir; bu yılın tarife oranı uygulanmaz', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const quote = quoteRenewal(state, ADMIN, REFERRAL_QUOTE, withReward(300_000))
+  assert.deepEqual(quote.discounts, [{ kind: 'referral', amountCents: 300_000 }])
+  assert.equal(quote.discountCents, 300_000)
+  assert.equal(quote.referralRewardId, REWARD_ID)
+  assert.equal(quote.netCents, quote.tuitionCents - 300_000)
+})
+
+test('DOM-FIN-024, DOM-FIN-021: sözleşmeyi aşan hak değeri tavanla sınırlanır, kalan düşer; plan sözleşmeye aynı tutarı yazar', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const applied = quoteRenewal(state, ADMIN, REFERRAL_QUOTE, withReward(50_000_000))
+  assert.equal(applied.discountCents, applied.announcedCents / 2)
+  const planned = plan(state, { ...PLAN, ...REFERRAL_QUOTE }, withReward(50_000_000))
+  assert.deepEqual(planned.referralUse, {
+    rewardId: REWARD_ID,
+    amountCents: applied.announcedCents / 2,
+  })
+  const contract = state.contracts.find((item) => item.id === planned.contractId)
+  assert.deepEqual(contract?.discounts, [
+    { kind: 'referral', amountCents: applied.announcedCents / 2 },
+  ])
+})
+
+test('DOM-FIN-024: ücret ilanın çok altındaysa net sıfırlanmaz; hak harcanmadan reddedilir', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const { announcedCents } = quoteRenewal(state, ADMIN, QUOTE, CONTEXT)
+  const tuitionCents = Math.floor(announcedCents / 4)
+  unchangedOnFailure(
+    state,
+    () => quoteRenewal(state, ADMIN, { ...REFERRAL_QUOTE, tuitionCents }, withReward(tuitionCents)),
+    'discount_exceeds_gross',
+  )
 })
 
 test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulanır; ilk çocuk alamaz', () => {
@@ -283,7 +440,7 @@ test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulan
     date: NOW,
     amount: 1_000_000,
     title: 'Özel okul eğitim sözleşmesi',
-    academicYear: 2026,
+    academicYear: YEAR,
     grossCents: 1_000_000,
   })
   const withSibling = () =>
@@ -293,6 +450,107 @@ test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulan
   state.contracts.at(-1)!.grossCents = 90_000_000
   assert.deepEqual(
     withSibling().discounts.map((line) => line.kind),
+    ['sibling'],
+  )
+})
+
+/** s3 ve aynı veliye bağlı kardeşi; kardeşin sözleşmesini test verir. */
+function withSiblingOf(contract: Partial<State['contracts'][number]> | null, fields: object = {}) {
+  const state = seeded({ grossCents: 9_000_000 })
+  const student = state.students.find((s) => s.id === 's3')
+  assert.ok(student)
+  state.students.push({
+    ...student,
+    id: 'test-sibling',
+    name: 'Test Kardeş',
+    isActive: true,
+    ...fields,
+  })
+  if (contract !== null)
+    state.contracts.push({
+      id: 'test-sibling-contract',
+      studentId: 'test-sibling',
+      date: NOW,
+      amount: 90_000_000,
+      title: 'Özel okul eğitim sözleşmesi',
+      academicYear: YEAR,
+      grossCents: 90_000_000,
+      ...contract,
+    })
+  return state
+}
+
+const quoteWithSibling = (state: State) =>
+  quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['sibling'] }, CONTEXT)
+
+test('DOM-FIN-022, K-22: kardeşi olmayan tek çocuk yenilemede indirim alamaz', () => {
+  const state = seeded()
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: kardeşin yalnız önceki yıl sözleşmesi varsa bu yıl kaydı yoktur, indirim uygulanmaz', () => {
+  const state = withSiblingOf({ academicYear: YEAR - 1 })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: sözleşmesi hiç olmayan kardeş yenileme yılında kayıtlı sayılmaz', () => {
+  const state = withSiblingOf(null)
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: ayrılan kardeşin bu yıl sözleşmesi olsa da indirim uygulanmaz', () => {
+  const state = withSiblingOf({}, { isActive: false })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: dondurulan kardeş aktif kayıt sayılmaz', () => {
+  const state = withSiblingOf({}, { frozenAt: '2027-01-15T09:00:00.000Z' })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: kardeşin bu yılki sözleşmesi iptal edildiyse kayıt sayılmaz', () => {
+  const state = withSiblingOf({ cancelledAt: NOW })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: bu yıl aktif kaydı olan kardeş ücreti yüksekse indirim düşük ücretli çocuğa uygulanır', () => {
+  const discounted = quoteWithSibling(withSiblingOf({}))
+  assert.deepEqual(
+    discounted.discounts.map((line) => line.kind),
+    ['sibling'],
+  )
+  // Sıra korunur: bu yıl kayıtlı kardeşin ücreti düşükse çocuk ilk çocuktur.
+  const first = withSiblingOf({ grossCents: 1_000_000 })
+  unchangedOnFailure(first, () => quoteWithSibling(first), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: sıra aynı yılın ücretiyle kurulur; kardeşin başka yıl ücreti sayılmaz', () => {
+  const state = withSiblingOf({ grossCents: 1_000_000 })
+  for (const academicYear of [YEAR - 1, YEAR + 1])
+    state.contracts.push({
+      id: `test-sibling-${String(academicYear)}`,
+      studentId: 'test-sibling',
+      date: NOW,
+      amount: 90_000_000,
+      title: 'Özel okul eğitim sözleşmesi',
+      academicYear,
+      grossCents: 90_000_000,
+    })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: tavanla düşen ücret kardeşin sözleşmesindeki ücretle karşılaştırılır', () => {
+  // s3'ün ilan ücreti 10.000.000, sözleşmesine yazılacak ücreti 7.000.000; kardeşin bu yılki ücreti
+  // 8.000.000. İlanla kıyaslansaydı s3 ilk çocuk sayılırdı.
+  const state = withSiblingOf({ grossCents: 8_000_000 })
+  const price = quoteRenewal(
+    state,
+    ADMIN,
+    { ...QUOTE, tuitionCents: 7_000_000, discounts: ['sibling'] },
+    CONTEXT,
+  )
+  assert.deepEqual(
+    price.discounts.map((line) => line.kind),
     ['sibling'],
   )
 })
@@ -506,4 +764,57 @@ test('DOM-FIN-005: ÜFE/TÜFE satırı yıl başına tektir, gelecek bülten tar
     isDomainError('price_index_date_future'),
   )
   assert.throws(() => planPriceIndexUpdate({}, '2026-10-06'))
+})
+
+test('DOM-KAY-025, ON-057: önceki yıllardan vadesi geçmiş açık öğrenim ücreti dağılımlar düşülerek hesaplanır', () => {
+  const past = '2026-06-15T09:00:00.000Z'
+  const future = '2027-03-15T09:00:00.000Z'
+  const today = '2026-11-04'
+  const invoices = [
+    {
+      id: 'i1',
+      amount: 1_000,
+      paidAt: null,
+      feeKind: 'tuition',
+      academicYear: YEAR - 1,
+      dueDate: past,
+    },
+    { id: 'i2', amount: 1_000, paidAt: past, academicYear: YEAR - 1, dueDate: past },
+    { id: 'i3', amount: 500, paidAt: null, feeKind: 'meal', academicYear: YEAR - 1, dueDate: past },
+    {
+      id: 'i4',
+      amount: 2_000,
+      paidAt: null,
+      feeKind: 'tuition',
+      academicYear: YEAR,
+      dueDate: past,
+    },
+    { id: 'i5', amount: 700, paidAt: null, dueDate: past },
+    { id: 'i6', amount: 900, paidAt: null, academicYear: YEAR - 1, dueDate: future },
+  ]
+  const allocated = new Map([['i1', 400]])
+  assert.equal(outstandingTuitionCents(invoices, allocated, YEAR, today), 600 + 700)
+  assert.equal(outstandingTuitionCents(invoices, new Map([['i1', 5_000]]), YEAR, today), 700)
+  assert.equal(outstandingTuitionCents([], allocated, YEAR, today), 0)
+})
+
+test('DOM-KAY-025, ON-057: borçlu öğrencinin yenilemesi yönetici onayı olmadan planlanmaz; ön büro onaylayamaz', () => {
+  const debt = { ...CONTEXT, outstandingTuitionCents: 150_000 }
+  const quote = quoteRenewal(seeded(), DESK, QUOTE, debt)
+  assert.equal(quote.outstandingTuitionCents, 150_000)
+  unchangedOnFailure(seeded(), () => plan(seeded(), PLAN, debt), 'renewal_debt_unapproved')
+  const state = seeded()
+  unchangedOnFailure(state, () => plan(state, PLAN, debt), 'renewal_debt_unapproved')
+  const desk = seeded()
+  unchangedOnFailure(
+    desk,
+    () => plan(desk, { ...PLAN, debtApproved: true }, debt, DESK),
+    'renewal_debt_approval_forbidden',
+    'forbidden',
+  )
+  const approved = plan(seeded(), { ...PLAN, debtApproved: true }, debt)
+  assert.equal(approved.renewal.studentId, 's3')
+  // Borç yokken onay alanı etkisizdir; ön büro planlar.
+  assert.equal(plan(seeded(), PLAN, CONTEXT, DESK).renewal.studentId, 's3')
+  assert.equal(quoteRenewal(seeded(), DESK, QUOTE, CONTEXT).outstandingTuitionCents, 0)
 })

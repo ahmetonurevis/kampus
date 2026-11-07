@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { studentIdentities } from './schema/student-identities.ts'
@@ -23,6 +23,32 @@ export async function findIdentityHolder(
     )
     .limit(1)
   return row?.studentId ?? null
+}
+
+/**
+ * Kimliklerin arşivlenmemiş satırlarının öğrencileri (numara → öğrenci; toplu aktarım, IST-007).
+ * Satır başına sorgu olmasın diye tek sorguda okunur; sonuç kişisel veridir, loglanmaz.
+ */
+export async function findIdentityHolders(
+  db: Database,
+  institutionId: string,
+  identityNumbers: readonly string[],
+): Promise<Map<string, string>> {
+  if (identityNumbers.length === 0) return new Map()
+  const rows = await db
+    .select({
+      number: studentIdentities.identityNumber,
+      studentId: studentIdentities.studentId,
+    })
+    .from(studentIdentities)
+    .where(
+      and(
+        eq(studentIdentities.institutionId, institutionId),
+        inArray(studentIdentities.identityNumber, [...new Set(identityNumbers)]),
+        isNull(studentIdentities.archivedAt),
+      ),
+    )
+  return new Map(rows.map((row) => [row.number, row.studentId]))
 }
 
 export async function insertStudentIdentity(

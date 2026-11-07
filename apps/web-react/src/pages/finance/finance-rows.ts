@@ -3,9 +3,7 @@
 // sunucu sorgusu çıkar.
 import {
   dateLabel,
-  INVOICE_STATUS_KEYS,
   INVOICE_STATUS_LABELS,
-  invoiceStatusKey,
   money,
   type InvoiceStatus,
   type InvoiceStatusKey,
@@ -15,7 +13,15 @@ import type {
   CollectionFilters,
   CollectionQuery,
 } from '@kampus/react-shared/collections.ts'
-import type { CoreRow } from '@/hooks/use-core-collection.ts'
+import {
+  canRemindInvoice,
+  INVOICE_STATUS_OPTIONS,
+  invoiceRow,
+  isInvoiceStatusKey,
+  PARTIAL_STATUS,
+  remindedOn,
+  type InvoiceRow,
+} from '@kampus/react-shared/finance-model.ts'
 import type { FilterField, FilterValue, FilterValues } from '@/lib/list-query.ts'
 import { isDayKey } from '../academic/academic-rows.ts'
 import {
@@ -25,15 +31,16 @@ import {
 } from '../../lib/collection-list.ts'
 import type { ListState } from '../../lib/list-state.ts'
 
-/** Durum seçenekleri; URL'de core durum anahtarıyla taşınır (`?durum=gecikmis`). */
-export const INVOICE_STATUS_OPTIONS = INVOICE_STATUS_KEYS.map((key) => ({
-  key,
-  label: INVOICE_STATUS_LABELS[key],
-}))
-
-export function isInvoiceStatusKey(value: unknown): value is InvoiceStatusKey {
-  return typeof value === 'string' && (INVOICE_STATUS_KEYS as readonly string[]).includes(value)
+// Taksit satırı ve durum seçenekleri mobille ortaktır (`@kampus/react-shared/finance-model.ts`).
+export {
+  canRemindInvoice,
+  INVOICE_STATUS_OPTIONS,
+  invoiceRow,
+  isInvoiceStatusKey,
+  PARTIAL_STATUS,
+  remindedOn,
 }
+export type { InvoiceRow }
 
 /**
  * Sunucunun taksitte sıralayabildiği sütunlar. Öğrenci adı ve okul numarası bağlı alandır
@@ -51,51 +58,6 @@ export const INVOICE_LIST = {
   // Vue gibi vadeye göre; eşitlikte kimlik (sayfalar arası kararlı sıra).
   defaultSort: ['dueDate', 'id'],
 } satisfies CollectionListConfig
-
-export const PARTIAL_STATUS = 'Kısmi ödendi'
-
-export type InvoiceRow = {
-  id: string
-  version: number
-  studentId: string
-  /** Kapsam dışı öğrencide "—". */
-  studentName: string
-  /** Okul numarası; kapsam dışında veya saklanmamışsa "—". */
-  studentNumber: string
-  className: string
-  installment: number
-  dueDate: string
-  /** Kuruş. */
-  amount: number
-  paidAt: string | null
-  method: string | null
-  /** Vadesi gelmemiş, kısmen ödenmiş taksit `Kısmi ödendi`; gecikmiş olan gecikmiş kalır. */
-  status: InvoiceStatus | typeof PARTIAL_STATUS
-  /** Açık taksite dağıtılmış tutar; kuruş. */
-  paidCents: number
-}
-
-/** `today` Europe/Istanbul günüdür (`dayKey()`); durum vadesi geçmiş ödenmemiş taksitte "Gecikmiş". */
-export function invoiceRow(item: CoreRow<'invoices'>, today: string): InvoiceRow {
-  const invoice = item.record
-  const key = invoiceStatusKey(invoice, today)
-  const paidCents = invoice.paidCents ?? 0
-  return {
-    id: invoice.id,
-    version: item.version,
-    studentId: invoice.studentId,
-    studentName: item.joined?.studentName ?? '—',
-    studentNumber: item.joined?.studentNumber ?? '—',
-    className: item.joined?.className ?? '—',
-    installment: invoice.installment,
-    dueDate: invoice.dueDate,
-    amount: invoice.amount,
-    paidAt: invoice.paidAt ?? null,
-    method: invoice.method ?? null,
-    status: key === 'yaklasan' && paidCents > 0 ? PARTIAL_STATUS : INVOICE_STATUS_LABELS[key],
-    paidCents,
-  }
-}
 
 /**
  * Hazır ödeme filtreleri (Vue `Finance.vue` "Hazır ödeme filtreleri" çipleri): durum süzgecinin

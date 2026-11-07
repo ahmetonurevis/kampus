@@ -3,13 +3,21 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
+  contractLineRows,
+  contractLinesToShow,
+  payerDecisionSchema,
   payRefundSchema,
+  refundApprovalRequired,
+  refundPayerOptions,
+  WITHDRAWAL_PAYER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   WITHDRAWAL_REASONS,
   withdrawalFormSchema,
+  type PayerDecisionInput,
   type PayRefundInput,
   type PayRefundOutput,
   type WithdrawalBreakdown,
+  type WithdrawalContractPayer,
   type WithdrawalFormValues,
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
@@ -31,7 +39,9 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Textarea } from '@/components/ui/textarea'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
@@ -63,10 +73,25 @@ const REFUND_FORM = 'iade-formu'
  * Ayrılış ve iade (ADR 0006 karar 10; DOM-FIN-040, -041; DOM-KAY-024; IST-110). Son günü en yakın
  * iade önce gelir. Yönetici hesabı önizler, onaylar ve iadeyi ödenmiş işaretler; ön büro yalnız
  * listeyi görür. Onay ve ödeme taze oturum ister: oturum eskiyse parola sorulup işlem tekrarlanır.
+ * Paket içeren ayrılışta yönetici iade tutarını görüp ayrıca onaylar; kullanılan saat girilmemişse
+ * önizleme açık uyarı verir (K-21).
  */
+const isRefundStatus = (value: unknown): value is keyof typeof STATUS_LABELS =>
+  typeof value === 'string' && Object.hasOwn(STATUS_LABELS, value)
+
 export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
   const list = useListState('ayrilislar')
-  const withdrawals = useWithdrawals({ page: list.state.page, pageSize: list.state.pageSize })
+  // Öğrenci adı araması ve iade durumu sunucuda süzülür (ON-118).
+  const search = useDebouncedValue(list.state.query)
+  const refundStatus = isRefundStatus(list.state.filters.refundStatus)
+    ? list.state.filters.refundStatus
+    : null
+  const withdrawals = useWithdrawals({
+    page: list.state.page,
+    pageSize: list.state.pageSize,
+    ...(search.trim().length >= 2 ? { q: search.trim() } : {}),
+    ...(refundStatus ? { refundStatus } : {}),
+  })
   const [starting, setStarting] = useState(false)
   const [paying, setPaying] = useState<WithdrawalRow | null>(null)
   const [viewing, setViewing] = useState<WithdrawalRow | null>(null)
@@ -162,6 +187,22 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
           <p className="text-sm text-muted-foreground">
             {total} kayıt · İade, ayrılıştan en geç bir ay sonra yapılır.
           </p>
+          <label className="mt-3 grid w-full max-w-xs gap-1 text-sm font-medium">
+            İade durumu
+            <NativeSelect
+              value={refundStatus ?? ''}
+              onChange={(event) =>
+                list.dispatch({ type: 'filter', key: 'refundStatus', value: event.target.value })
+              }
+            >
+              <NativeSelectOption value="">Tümü</NativeSelectOption>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <NativeSelectOption key={value} value={value}>
+                  {label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
         </div>
         {canManage ? <Button onClick={() => setStarting(true)}>Ayrılış başlat</Button> : null}
       </header>
@@ -173,7 +214,6 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
         columns={columns}
         mobileColumns={MOBILE_COLUMNS}
         caption="Ayrılış ve iade kayıtları"
-        search={false}
         loading={withdrawals.isPending}
         fetching={withdrawals.isFetching && !withdrawals.isPending}
         error={
@@ -198,7 +238,88 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
   )
 }
 
-function BreakdownList({ breakdown }: { breakdown: WithdrawalBreakdown }) {
+function BreakdownRows({ rows }: { rows: readonly (readonly [string, string])[] }) {
+  return rows.map(([label, value]) => (
+    <div key={label} className="flex justify-between gap-4 border-b py-1.5">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium">{value}</dd>
+    </div>
+  ))
+}
+
+/** Birden çok sözleşmede ve pakette her sözleşme ayrı başlıkla, ardından tek bakiye (K-06). */
+function ContractBreakdown({
+  breakdown,
+  payers,
+}: {
+  breakdown: WithdrawalBreakdown
+  payers?: readonly WithdrawalContractPayer[] | undefined
+}) {
+  const lines = contractLinesToShow(breakdown.contracts)
+  const decision = breakdown.payerDecision
+  return (
+    <div className="grid gap-4 text-sm">
+      {lines.map((line) => (
+        <section key={line.contractId} aria-label={line.title}>
+          <h4 className="font-semibold">{line.title}</h4>
+          <dl className="grid gap-1">
+            <BreakdownRows
+              rows={contractLineRows(
+                line,
+                breakdown.deductionBasisPoints,
+                payers?.find((item) => item.contractId === line.contractId)?.payerName,
+              )}
+            />
+          </dl>
+        </section>
+      ))}
+      <section aria-label="Toplam">
+        <h4 className="font-semibold">Toplam</h4>
+        <p className="text-muted-foreground">
+          Sözleşmelerin sonucu tek bakiyede netleşir; iade ve borç birlikte oluşmaz.
+        </p>
+        <dl className="grid gap-1">
+          {breakdown.creditCents > 0 ? (
+            <BreakdownRows rows={[['Dağıtılmamış tahsilat', money(breakdown.creditCents)]]} />
+          ) : null}
+          {decision ? (
+            <BreakdownRows
+              rows={[
+                ['İadeyi alacak ödeyici', WITHDRAWAL_PAYER_LABELS[decision.payer]],
+                ...(decision.reason
+                  ? ([['Karar gerekçesi', decision.reason]] as [string, string][])
+                  : []),
+              ]}
+            />
+          ) : null}
+          {breakdown.refundApprovedCents === undefined ? null : (
+            <BreakdownRows
+              rows={[['Yöneticinin onayladığı iade', money(breakdown.refundApprovedCents)]]}
+            />
+          )}
+          <div className="flex justify-between gap-4 py-1.5 font-semibold">
+            <dt>İade</dt>
+            <dd>{money(breakdown.refundCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4 py-1.5 font-semibold">
+            <dt>Kalan borç</dt>
+            <dd>{money(breakdown.debtCents)}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  )
+}
+
+function BreakdownList({
+  breakdown,
+  payers,
+}: {
+  breakdown: WithdrawalBreakdown
+  payers?: readonly WithdrawalContractPayer[]
+}) {
+  if (contractLinesToShow(breakdown.contracts).length > 0)
+    return <ContractBreakdown breakdown={breakdown} payers={payers} />
   const extras = breakdown.extras.reduce((sum, line) => sum + line.paidCents - line.usedCents, 0)
   const lines: readonly [string, string][] = [
     ['Hesap tabanı (net ücret)', money(breakdown.baseCents)],
@@ -221,12 +342,7 @@ function BreakdownList({ breakdown }: { breakdown: WithdrawalBreakdown }) {
   ]
   return (
     <dl className="grid gap-1 text-sm">
-      {lines.map(([label, value]) => (
-        <div key={label} className="flex justify-between gap-4 border-b py-1.5">
-          <dt className="text-muted-foreground">{label}</dt>
-          <dd className="font-medium">{value}</dd>
-        </div>
-      ))}
+      <BreakdownRows rows={lines} />
       <div className="flex justify-between gap-4 py-1.5 font-semibold">
         <dt>İade</dt>
         <dd>{money(breakdown.refundCents)}</dd>
@@ -244,7 +360,22 @@ function StartModal({ onClose }: { onClose: () => void }) {
   const students = useCoreAll('students')
   const quote = useQuoteWithdrawal()
   const withdraw = useWithdrawStudent()
-  const [preview, setPreview] = useState<WithdrawalBreakdown | null>(null)
+  const [quoted, setQuoted] = useState<{
+    breakdown: WithdrawalBreakdown
+    payersDiffer: boolean
+    payers: readonly WithdrawalContractPayer[]
+  } | null>(null)
+  const preview = quoted?.breakdown ?? null
+  // Ödeyiciler farklı ve iade varken iadeyi kimin alacağı yöneticinin kararıdır (K-12).
+  const needsDecision = Boolean(quoted?.payersDiffer && quoted.breakdown.refundCents > 0)
+  // Paket içeren ayrılışta iade tutarı yönetici onayından geçer; onay gördüğü tutara bağlıdır (K-21).
+  const needsApproval = preview !== null && refundApprovalRequired(preview)
+  const [refundApproved, setRefundApproved] = useState(false)
+  const missingHours = preview?.contracts?.filter((line) => line.usedHoursMissing) ?? []
+  const decisionForm = useForm<PayerDecisionInput>({
+    resolver: zodResolver(payerDecisionSchema),
+    defaultValues: { payer: '', reason: '' },
+  })
   const [reauth, setReauth] = useState(false)
   const today = dayKey()
   const form = useForm<WithdrawalFormValues>({
@@ -271,6 +402,10 @@ function StartModal({ onClose }: { onClose: () => void }) {
         name === 'termStartDate'
       )
         form.setError(name, error)
+      else if (needsDecision && name === 'payerDecision.reason')
+        decisionForm.setError('reason', error)
+      else if (needsDecision && name.startsWith('payerDecision'))
+        decisionForm.setError('payer', error)
       else form.setError('root.server', error)
     },
   }
@@ -289,13 +424,24 @@ function StartModal({ onClose }: { onClose: () => void }) {
       },
       fields,
     )
-    if (outcome.status === 'success') setPreview(outcome.data.data.breakdown)
+    if (outcome.status === 'success') {
+      setRefundApproved(false)
+      setQuoted(outcome.data.data)
+    }
   })
 
-  async function confirm() {
+  async function send() {
     const { studentId, targetSchool, ...rest } = form.getValues()
     const outcome = await withdraw.submit(
-      { studentId, body: { ...rest, targetSchool: targetSchool.trim() || null } },
+      {
+        studentId,
+        body: {
+          ...rest,
+          targetSchool: targetSchool.trim() || null,
+          ...(needsDecision ? { payerDecision: decisionForm.getValues() } : {}),
+          ...(needsApproval && preview ? { approvedRefundCents: preview.refundCents } : {}),
+        },
+      },
       fields,
     )
     if (outcome.status === 'success') {
@@ -303,7 +449,12 @@ function StartModal({ onClose }: { onClose: () => void }) {
       onClose()
     } else if (outcome.status === 'failed' && outcome.error.code === REAUTHENTICATION_CODE)
       setReauth(true)
+    // Tutar önizlemeden sonra değiştiyse eski tutarın onayı geçmez: hesap yeniden görülür (K-21).
+    else if (outcome.status === 'failed' && outcome.error.code === 'withdrawal_refund_changed')
+      setQuoted(null)
   }
+  // Karar gerekiyorsa önce alanlar doğrulanır; kararsız onay sunucuya gitmez.
+  const confirm = needsDecision ? decisionForm.handleSubmit(() => send()) : send
 
   if (students.error)
     return (
@@ -327,12 +478,12 @@ function StartModal({ onClose }: { onClose: () => void }) {
       footer={
         preview ? (
           <>
-            <Button variant="secondary" disabled={busy} onClick={() => setPreview(null)}>
+            <Button variant="secondary" disabled={busy} onClick={() => setQuoted(null)}>
               Bilgileri düzenle
             </Button>
             <Button
               variant="destructive"
-              disabled={busy}
+              disabled={busy || (needsApproval && !refundApproved)}
               aria-busy={busy || undefined}
               onClick={() => void confirm()}
             >
@@ -408,6 +559,7 @@ function StartModal({ onClose }: { onClose: () => void }) {
             id="ayrilis-gorulen"
             label="Görülen gün veya ders saati"
             error={errors.attendedUnits}
+            description="Öğrenim sözleşmesine uygulanır; paket satışının saati kayıttan gelir."
           >
             {(control) => (
               <Input
@@ -468,10 +620,78 @@ function StartModal({ onClose }: { onClose: () => void }) {
       {preview ? (
         <div className="mt-5 rounded-card border bg-surface-soft p-4">
           <h3 className="mb-2 font-semibold">Hesap önizlemesi</h3>
-          <BreakdownList breakdown={preview} />
+          {(preview.contracts?.length ?? 0) > 1 ? (
+            <p className="mb-2 text-sm text-muted-foreground">
+              Yürürlükteki {preview.contracts?.length} sözleşme hesaba girdi.
+            </p>
+          ) : null}
+          {missingHours.length > 0 ? (
+            <p role="alert" className="mb-3 rounded-md border bg-warning-soft p-3 text-sm">
+              Kullanılan saat girilmedi: {missingHours.map((line) => line.title).join(', ')}. İade
+              sıfır saate göre hesaplandı ve fazla çıkabilir. Onaydan önce saati paket satışı
+              ayrıntısından girin.
+            </p>
+          ) : null}
+          <BreakdownList breakdown={preview} payers={quoted?.payers ?? []} />
+          {needsDecision ? (
+            <div className="mt-4 grid gap-4 border-t pt-4">
+              <p className="text-sm font-medium" role="status">
+                Hesaba giren sözleşmelerin ödeyicileri farklı. İade otomatik tek kişiye yazılmaz;
+                iadeyi alacak ödeyiciyi siz seçersiniz, IBAN bu kişiye ait olmalıdır.
+              </p>
+              <FormField
+                id="ayrilis-iade-odeyici"
+                label="İadeyi alacak ödeyici"
+                error={decisionForm.formState.errors.payer}
+              >
+                {(control) => (
+                  <NativeSelect {...control} {...decisionForm.register('payer')} disabled={busy}>
+                    <NativeSelectOption value="">Ödeyici seçin</NativeSelectOption>
+                    {refundPayerOptions(quoted?.payers ?? []).map((item) => (
+                      <NativeSelectOption key={item.payer} value={item.payer}>
+                        {item.payerName} ({WITHDRAWAL_PAYER_LABELS[item.payer]})
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                )}
+              </FormField>
+              <FormField
+                id="ayrilis-karar-gerekce"
+                label="Karar gerekçesi"
+                error={decisionForm.formState.errors.reason}
+              >
+                {(control) => (
+                  <Textarea
+                    {...control}
+                    {...decisionForm.register('reason')}
+                    rows={2}
+                    maxLength={500}
+                    disabled={busy}
+                  />
+                )}
+              </FormField>
+            </div>
+          ) : null}
+          {needsApproval ? (
+            <label className="mt-4 flex items-start gap-2 border-t pt-4 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={refundApproved}
+                disabled={busy}
+                onChange={(event) => setRefundApproved(event.target.checked)}
+                className="mt-0.5 size-4"
+              />
+              Paket içeren bu ayrılışta {money(preview.refundCents)} iade tutarını inceledim,
+              onaylıyorum.
+            </label>
+          ) : null}
           <p className="mt-3 text-sm text-muted-foreground">
             Onayla öğrenci pasifleşir, açık taksitler iptal edilir, ileri tarihli etüt, servis ve
-            kulüp kayıtları sonlanır. Kesinti oranı ve hesap tabanı hukuki doğrulama bekliyor.
+            kulüp kayıtları sonlanır
+            {preview.contracts?.some((line) => line.packageSaleId !== undefined)
+              ? ', paketlerin kalan saati iade edilmiş yazılır'
+              : ''}
+            . Kesinti oranı ve hesap tabanı hukuki doğrulama bekliyor.
           </p>
         </div>
       ) : null}
@@ -480,7 +700,7 @@ function StartModal({ onClose }: { onClose: () => void }) {
           onCancel={() => setReauth(false)}
           onDone={() => {
             setReauth(false)
-            void confirm()
+            void send()
           }}
         />
       ) : null}
@@ -563,7 +783,11 @@ function RefundModal({ row, onClose }: { row: WithdrawalRow; onClose: () => void
           id="iade-sahip"
           label="Hesap sahibi"
           error={errors.accountHolder}
-          description="Sözleşmedeki ödeyici olmalıdır."
+          description={
+            row.breakdown.payerDecision
+              ? `Ayrılış kararıyla seçilen ödeyici olmalıdır: ${WITHDRAWAL_PAYER_LABELS[row.breakdown.payerDecision.payer]}.`
+              : 'Sözleşmedeki ödeyici olmalıdır.'
+          }
         >
           {(control) => (
             <Input

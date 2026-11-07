@@ -14,7 +14,9 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 import { SEED, sampleRows } from './support/collections-sample.ts'
+import { lazySession } from './support/finance-sessions.ts'
 
 /**
  * Ödeyici velinin finans okuması (ON-291; K-04 kullanıcı kararı 2026-11-03; DOM-FIN-052,
@@ -36,9 +38,10 @@ const OPEN_INVOICES = ['s1', 's2'].map((studentId) => ({
   studentId,
   installment: 9,
   amount: 10_000,
-  dueDate: '2026-11-15T00:00:00.000Z',
+  dueDate: '2026-11-15T09:00:00.000Z',
   paidAt: null,
   method: null,
+  reminderAt: null,
 }))
 
 describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
@@ -46,6 +49,8 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
   let close: () => Promise<void>
   let app: App
   let serial = 0
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
@@ -108,7 +113,7 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
       const user = await createMember(app, institution.id, 'veli', [
         { kind: 'child', recordId: 's1' },
       ])
-      return { ...user, cookie: await signInAs(app, user) }
+      return { ...user, session: lazySession(app, user) }
     }
     const keeper = await parent()
     const payer = await parent()
@@ -149,71 +154,77 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
 
   test('DOM-FIN-052 DOM-ILT-074 velayetsiz ödeyici veli ödediği öğrencinin fatura ve sözleşmesini okur, başkasınınkini okumaz', async () => {
     const w = await world()
-    assert.deepEqual(await studentsIn(w.payer.cookie, 'invoices'), ['s1'])
-    assert.deepEqual(await studentsIn(w.payer.cookie, 'contracts'), ['s1'])
+    assert.deepEqual(await studentsIn(await w.payer.session(), 'invoices'), ['s1'])
+    assert.deepEqual(await studentsIn(await w.payer.session(), 'contracts'), ['s1'])
     const own = invoiceOf('s1')
     const other = invoiceOf('s2')
     assert.ok(own && other)
     assert.equal(
-      (await get(w.payer.cookie, `/api/v1/collections/invoices/${own.id}`)).statusCode,
+      (await get(await w.payer.session(), `/api/v1/collections/invoices/${own.id}`)).statusCode,
       200,
     )
     assert.equal(
-      (await get(w.payer.cookie, `/api/v1/collections/invoices/${other.id}`)).statusCode,
+      (await get(await w.payer.session(), `/api/v1/collections/invoices/${other.id}`)).statusCode,
       404,
     )
     const ownContract = contractOf('s1')
     const otherContract = contractOf('s2')
     assert.ok(ownContract && otherContract)
     assert.equal(
-      (await get(w.payer.cookie, `/api/v1/collections/contracts/${ownContract.id}`)).statusCode,
+      (await get(await w.payer.session(), `/api/v1/collections/contracts/${ownContract.id}`))
+        .statusCode,
       200,
     )
     assert.equal(
-      (await get(w.payer.cookie, `/api/v1/collections/contracts/${otherContract.id}`)).statusCode,
+      (await get(await w.payer.session(), `/api/v1/collections/contracts/${otherContract.id}`))
+        .statusCode,
       404,
     )
     // Velayetli veli etkilenmez.
-    assert.deepEqual(await studentsIn(w.keeper.cookie, 'invoices'), ['s1'])
+    assert.deepEqual(await studentsIn(await w.keeper.session(), 'invoices'), ['s1'])
   })
 
   test('DOM-FIN-052 DOM-ILT-074 ödeyici veli ödediği öğrencinin tahsilatını ve dekontunu okur; başka öğrencinin tahsilatı 404', async () => {
     const w = await world()
     const own = await pay(w.admin, 's1')
     const other = await pay(w.admin, 's2')
-    const listed = await get(w.payer.cookie, '/api/v1/payments')
+    const listed = await get(await w.payer.session(), '/api/v1/payments')
     assert.equal(listed.statusCode, 200, listed.body)
     assert.deepEqual(
       (listed.json().data as Json[]).map((item) => item.id),
       [own.id],
     )
     assert.equal(listed.json().meta.total, 1)
-    const detail = await data(w.payer.cookie, `/api/v1/payments/${String(own.id)}`)
+    const detail = await data(await w.payer.session(), `/api/v1/payments/${String(own.id)}`)
     assert.equal(detail.studentId, 's1')
     assert.equal(detail.receiptNumber, own.receiptNumber)
     assert.equal(detail.amountCents, 1_000)
     assert.equal(
-      (await get(w.payer.cookie, `/api/v1/payments/${String(other.id)}`)).statusCode,
+      (await get(await w.payer.session(), `/api/v1/payments/${String(other.id)}`)).statusCode,
       404,
     )
   })
 
   test('DOM-FIN-052 IST-107 ödeyici veli bakiye ve ekstreyi okur; başka öğrenci 404', async () => {
     const w = await world()
-    const before = await data(w.payer.cookie, '/api/v1/finance/students/s1/balance')
+    const before = await data(await w.payer.session(), '/api/v1/finance/students/s1/balance')
     await pay(w.admin, 's1')
-    const balance = await data(w.payer.cookie, '/api/v1/finance/students/s1/balance')
-    assert.deepEqual(balance, await data(w.keeper.cookie, '/api/v1/finance/students/s1/balance'))
+    const balance = await data(await w.payer.session(), '/api/v1/finance/students/s1/balance')
+    assert.deepEqual(
+      balance,
+      await data(await w.keeper.session(), '/api/v1/finance/students/s1/balance'),
+    )
     assert.equal(balance.paidCents - before.paidCents, 1_000)
-    const statement = await data(w.payer.cookie, '/api/v1/finance/students/s1/statement')
+    const statement = await data(await w.payer.session(), '/api/v1/finance/students/s1/statement')
     assert.deepEqual(
       statement,
-      await data(w.keeper.cookie, '/api/v1/finance/students/s1/statement'),
+      await data(await w.keeper.session(), '/api/v1/finance/students/s1/statement'),
     )
     for (const studentId of ['s2', 's11', 'olmayan-ogrenci'])
       for (const kind of ['balance', 'statement'])
         assert.equal(
-          (await get(w.payer.cookie, `/api/v1/finance/students/${studentId}/${kind}`)).statusCode,
+          (await get(await w.payer.session(), `/api/v1/finance/students/${studentId}/${kind}`))
+            .statusCode,
           404,
           `${studentId} ${kind}`,
         )
@@ -222,16 +233,16 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
   test('DOM-ILT-074 iletişim kısıtlı veli fatura, tahsilat, bakiye, ekstre ve sözleşme okumaz', async () => {
     const w = await world()
     const paid = await pay(w.admin, 's1')
-    assert.deepEqual(await studentsIn(w.restricted.cookie, 'invoices'), [])
-    assert.deepEqual(await studentsIn(w.restricted.cookie, 'contracts'), [])
-    assert.equal((await get(w.restricted.cookie, '/api/v1/payments')).json().meta.total, 0)
+    assert.deepEqual(await studentsIn(await w.restricted.session(), 'invoices'), [])
+    assert.deepEqual(await studentsIn(await w.restricted.session(), 'contracts'), [])
+    assert.equal((await get(await w.restricted.session(), '/api/v1/payments')).json().meta.total, 0)
     assert.equal(
-      (await get(w.restricted.cookie, `/api/v1/payments/${String(paid.id)}`)).statusCode,
+      (await get(await w.restricted.session(), `/api/v1/payments/${String(paid.id)}`)).statusCode,
       404,
     )
     for (const kind of ['balance', 'statement'])
       assert.equal(
-        (await get(w.restricted.cookie, `/api/v1/finance/students/s1/${kind}`)).statusCode,
+        (await get(await w.restricted.session(), `/api/v1/finance/students/s1/${kind}`)).statusCode,
         404,
         kind,
       )
@@ -239,12 +250,15 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
 
   test('DOM-ILT-070 ödeyici bağı akademik okumaları ve kayıt koleksiyonlarını açmaz', async () => {
     const w = await world()
-    assert.deepEqual(await studentsIn(w.payer.cookie, 'grades'), [])
-    assert.deepEqual(await studentsIn(w.payer.cookie, 'attendance'), [])
-    assert.deepEqual(await studentsIn(w.payer.cookie, 'renewals'), [])
-    assert.deepEqual(await studentsIn(w.payer.cookie, 'enrollmentHistory'), [])
-    assert.equal((await get(w.payer.cookie, '/api/v1/collections/students/s1')).statusCode, 404)
-    assert.deepEqual(await studentsIn(w.keeper.cookie, 'grades'), ['s1'])
+    assert.deepEqual(await studentsIn(await w.payer.session(), 'grades'), [])
+    assert.deepEqual(await studentsIn(await w.payer.session(), 'attendance'), [])
+    assert.deepEqual(await studentsIn(await w.payer.session(), 'renewals'), [])
+    assert.deepEqual(await studentsIn(await w.payer.session(), 'enrollmentHistory'), [])
+    assert.equal(
+      (await get(await w.payer.session(), '/api/v1/collections/students/s1')).statusCode,
+      404,
+    )
+    assert.deepEqual(await studentsIn(await w.keeper.session(), 'grades'), ['s1'])
   })
 
   test('DOM-YTK-040 finans modülü kapalıyken ödeyici veli finans okuyamaz (403)', async () => {
@@ -256,6 +270,6 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
       '/api/v1/finance/students/s1/balance',
       '/api/v1/finance/students/s1/statement',
     ])
-      assert.equal((await get(w.payer.cookie, url)).statusCode, 403, url)
+      assert.equal((await get(await w.payer.session(), url)).statusCode, 403, url)
   })
 })

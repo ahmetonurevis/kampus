@@ -603,6 +603,35 @@ test('DOM-FIN-020, DOM-FIN-021: ek protokolde indirim tarifeden yeniden hesaplan
   assert.equal(contract.netCents, 10_000_000, 'önceki sürüm değişmedi')
 })
 
+test('DOM-FIN-024: referans kalemi ek protokolle yeni eklenmez; sözleşmede zaten olan kalır', () => {
+  const { state, contract } = approved()
+  const tariff = {
+    ...TARIFF,
+    discounts: [{ kind: 'referral', percentBasisPoints: 1_000, amountCents: null }],
+  } as unknown as AmendContractContext['tariff']
+  const before = structuredClone(state)
+  assert.throws(
+    () =>
+      amendContract(
+        state,
+        'contract-1',
+        { ...AMEND, discounts: ['referral'] },
+        amender({ tariff, userId: 'u-admin' }),
+      ),
+    isDomainError('referral_reward_required', 'rule'),
+  )
+  assert.deepEqual(state, before)
+  // K-14: kalem hakkın uygulanmış tutarıyla kalır, tarife oranından yeniden hesaplanmaz.
+  contract.discounts = [{ kind: 'referral', amountCents: 777_000 }]
+  const amendment = amendContract(
+    state,
+    'contract-1',
+    { ...AMEND, discounts: ['referral'] },
+    amender({ tariff, userId: 'u-admin' }),
+  )
+  assert.deepEqual(amendment.discounts, [{ kind: 'referral', amountCents: 777_000 }])
+})
+
 test('DOM-FIN-022: kardeş indirimi aynı veliye bağlı aktif öğrenci ister', () => {
   const { state, student } = approved()
   const others = state.students.filter((item) => item.id !== student.id)
@@ -626,6 +655,37 @@ test('DOM-FIN-022: kardeş indirimi aynı veliye bağlı aktif öğrenci ister',
     amender({ tariff: TARIFF }),
   )
   assert.equal(amendment.netCents, 9_000_000)
+})
+
+test('DOM-FIN-022, K-22: ek protokolde kardeş sözleşmenin yılında kayıtlı olmalıdır', () => {
+  const { state, student, contract } = approved()
+  const others = state.students.filter((item) => item.id !== student.id)
+  for (const other of others) other.parentId = 'baska-veli'
+  const sibling = others[0]!
+  sibling.parentId = student.parentId
+  sibling.isActive = true
+  state.contracts = [
+    contract,
+    {
+      id: 'test-sibling-contract',
+      studentId: sibling.id,
+      date: NOW,
+      amount: 90_000_000,
+      title: 'Sözleşme',
+      academicYear: 2025,
+      grossCents: 90_000_000,
+    },
+  ]
+  const amend = () =>
+    amendContract(
+      state,
+      'contract-1',
+      { ...AMEND, discounts: ['sibling'] },
+      amender({ tariff: TARIFF }),
+    )
+  assert.throws(amend, isDomainError('sibling_discount_ineligible', 'rule'))
+  state.contracts[1]!.academicYear = 2026
+  assert.equal(amend().netCents, 9_000_000)
 })
 
 test('DOM-FIN-025, DOM-FIN-010: ek protokol bursu korur; net tahsil edilenin altına inemez', () => {

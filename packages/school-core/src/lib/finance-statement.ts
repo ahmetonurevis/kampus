@@ -1,11 +1,14 @@
 import { studentBalance, type StudentBalance } from './finance-export.ts'
+import { receiptNumberLabel } from './finance-receipt.ts'
 import { dayKey } from './format.ts'
+import { isOpeningImport } from './payments.ts'
 
 /**
  * Öğrencinin cari ekstresi (IST-107): taksitler borç, tahsilatlar alacak olarak tarih sırasıyla
  * yürüyen bakiyeyle yazılır. Bakiye `studentBalance` ile aynı kuraldadır; ekstre toplamı taksit
  * ve tahsilat kayıtlarıyla bu yüzden tutarlı kalır. İptal edilen tahsilat silinmez, iptal gününe
- * ters kayıt olarak düşer (DOM-FIN-033).
+ * ters kayıt olarak düşer (DOM-FIN-033). Dosyadan aktarılan geçmiş ödeme borcu kapatır ama tahsilat
+ * değildir: `opening_import` satırıdır, dekont ve tahsilat yöntemi taşımaz (DOM-FIN-014).
  */
 
 export type StatementInvoice = {
@@ -38,6 +41,8 @@ export type StatementLineKind =
   | 'payment_reversal'
   /** Tahsilat kaydı olmadan ödenmiş eski taksit. */
   | 'legacy_payment'
+  /** Dosyadan aktarılan geçmiş ödeme; tahsilat değildir, borcu kapatır (DOM-FIN-014). */
+  | 'opening_import'
 
 export type StatementLine = {
   kind: StatementLineKind
@@ -89,6 +94,7 @@ const EMPTY_LINE = {
 const KIND_ORDER: Readonly<Record<StatementLineKind, number>> = {
   installment: 0,
   legacy_payment: 1,
+  opening_import: 1,
   payment: 1,
   payment_reversal: 2,
 }
@@ -156,7 +162,7 @@ export function studentStatement(
     if (invoice.paidAt && invoice.amount > recorded)
       lines.push({
         ...EMPTY_LINE,
-        kind: 'legacy_payment',
+        kind: isOpeningImport(invoice) ? 'opening_import' : 'legacy_payment',
         date: dayKey(invoice.paidAt),
         creditCents: invoice.amount - recorded,
         invoiceId: invoice.id,
@@ -185,10 +191,10 @@ export function studentStatement(
   }
 }
 
-const receiptOf = (line: StatementLine) =>
-  line.receiptYear === null
+const receiptOf = ({ receiptYear, receiptNumber }: StatementLine) =>
+  receiptYear === null || receiptNumber === null
     ? ''
-    : ` · Dekont ${String(line.receiptYear)}-${String(line.receiptNumber)}`
+    : ` · Dekont ${receiptNumberLabel({ receiptYear, receiptNumber })}`
 
 /** Ekran ve PDF aynı açıklamayı yazar; ekstre ile dekont numarası bu metinden eşleşir. */
 export function statementLineLabel(line: StatementLine): string {
@@ -202,6 +208,8 @@ export function statementLineLabel(line: StatementLine): string {
       return `Tahsilat iptali${receiptOf(line)}`
     case 'legacy_payment':
       return `${String(line.installment)}. taksit ödemesi${method}`
+    case 'opening_import':
+      return `Açılış aktarımı · ${String(line.installment)}. taksit`
     default:
       return line.kind satisfies never
   }

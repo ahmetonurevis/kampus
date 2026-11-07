@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
-import { csvAmount, csvCell } from '../packages/school-core/src/lib/csv.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import { csvAmount, csvCell, CSV_SEPARATOR } from '../packages/school-core/src/lib/csv.ts'
 import {
   assertFinancePeriod,
   defaultOverviewPeriod,
@@ -143,7 +143,12 @@ test('DOM-FIN-030: taksit durumu ve ödenen tutar dağılımdan hesaplanır', ()
     ],
   )
   const summary = financeSummary([], [], lines).invoices
-  assert.deepEqual(summary, { count: 3, totalCents: 30_000, paidCents: 12_500 })
+  assert.deepEqual(summary, {
+    count: 3,
+    totalCents: 30_000,
+    paidCents: 12_500,
+    openingImportCents: 0,
+  })
   assert.ok(invoicesCsv(lines).includes('"Kısmi";100,00;25,00'))
 })
 
@@ -192,6 +197,7 @@ test('DOM-FIN-030: kartlar kısmi ödemeyi sayar; gecikmiş tutar kalan kısımd
   assert.deepEqual(totals, {
     totalCents: 30_000,
     paidCents: 13_500,
+    openingImportCents: 0,
     remainingCents: 16_500,
     overdueCents: 7_500,
   })
@@ -403,6 +409,7 @@ test('DOM-FIN-052: öğrenci bakiyesi kısmi ödemede yalnız kalanı sayar; en 
     studentId: 's1',
     totalCents: 350_000,
     paidCents: 120_000,
+    openingImportCents: 0,
     openCents: 230_000,
     overdueCents: 70_000,
     overdueCount: 1,
@@ -416,6 +423,7 @@ test('DOM-FIN-052: taksiti olmayan ya da borcu bitmiş öğrencide bakiye sıfı
     studentId: 's1',
     totalCents: 0,
     paidCents: 0,
+    openingImportCents: 0,
     openCents: 0,
     overdueCents: 0,
     overdueCount: 0,
@@ -429,4 +437,84 @@ test('DOM-FIN-052: taksiti olmayan ya da borcu bitmiş öğrencide bakiye sıfı
   )
   assert.equal(settled.openCents, 0)
   assert.equal(settled.nextDue, null)
+})
+
+// --- Açılış aktarımı (DOM-FIN-014, ON-060, ON-061) -----------------------------------------
+
+const openingInvoice = {
+  id: 'open-1',
+  studentId: 's1',
+  installment: 1,
+  amount: 40_000,
+  dueDate: '2026-09-15T09:00:00.000Z',
+  paidAt: '2026-09-14T09:00:00.000Z',
+  method: 'Açılış aktarımı',
+  reminderAt: null,
+} as State['invoices'][number]
+const openInvoice = {
+  ...openingInvoice,
+  id: 'open-2',
+  installment: 2,
+  dueDate: '2026-10-15T09:00:00.000Z',
+  paidAt: null,
+  method: null,
+} as State['invoices'][number]
+const collectedInvoice = {
+  ...openingInvoice,
+  id: 'open-3',
+  installment: 3,
+  amount: 10_000,
+  method: 'Nakit',
+} as State['invoices'][number]
+
+test('DOM-FIN-014: açılış aktarımı toplamda ödendi sayılır, tahsilat tutarından ayrılır', () => {
+  const invoices = [openingInvoice, openInvoice, collectedInvoice]
+  assert.deepEqual(financeTotals(invoices, new Map(), '2026-10-01'), {
+    totalCents: 90_000,
+    paidCents: 50_000,
+    openingImportCents: 40_000,
+    remainingCents: 40_000,
+    overdueCents: 0,
+  })
+  const balance = studentBalance('s1', invoices, new Map(), '2026-10-01')
+  assert.equal(balance.paidCents, 50_000)
+  assert.equal(balance.openingImportCents, 40_000)
+  assert.equal(balance.openCents, 40_000)
+})
+
+test('DOM-FIN-014: açılış aktarımı dönem tahsilatını değiştirmez', () => {
+  const overview = financeOverview({
+    invoices: [openingInvoice, openInvoice],
+    allocated: new Map(),
+    payments: [],
+    period: { from: '2026-09-01', to: '2026-10-31' },
+    today: '2026-10-01',
+  })
+  assert.equal(overview.collectedCents, 0)
+  assert.equal(overview.openCents, 40_000)
+})
+
+test('DOM-FIN-014: taksit dosyası ödendi yazar ve Açılış aktarımı etiketini taşır', () => {
+  const lines = invoiceLines(
+    [openingInvoice, openInvoice, collectedInvoice],
+    new Map(),
+    studentDirectory([{ id: 's1', name: 'Ece', number: 7 }]),
+    { from: '2026-09-01', to: '2026-10-31' },
+  )
+  assert.deepEqual(
+    lines.map((line) => [line.status, line.paidCents, line.note]),
+    [
+      ['Ödendi', 40_000, 'Açılış aktarımı'],
+      ['Ödendi', 10_000, ''],
+      ['Açık', 0, ''],
+    ],
+  )
+  const summary = financeSummary([], [], lines).invoices
+  assert.equal(summary.paidCents, 50_000)
+  assert.equal(summary.openingImportCents, 40_000)
+  const [header, opening, collected] = invoicesCsv(lines).split('\r\n')
+  assert.ok(header?.endsWith(`"Ödenen (₺)"${CSV_SEPARATOR}"Açıklama"`))
+  assert.ok(opening?.includes(`"Ödendi"${CSV_SEPARATOR}400,00${CSV_SEPARATOR}400,00`))
+  assert.ok(opening?.endsWith(`${CSV_SEPARATOR}"Açılış aktarımı"`))
+  assert.ok(collected?.endsWith(`${CSV_SEPARATOR}""`))
 })

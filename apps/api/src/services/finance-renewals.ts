@@ -50,6 +50,7 @@ import { commandBody } from './command-result.ts'
 import { environment } from './commands.ts'
 import { getInstitution } from './memberships.ts'
 import { withTariffCarryOver } from './fee-tariffs.ts'
+import { requireFamilyLoaded, withStudentFamilies } from './finance-families.ts'
 import { useReferralReward } from './finance-referrals.ts'
 import {
   runCommand,
@@ -225,6 +226,21 @@ export const renewalContractStudents = (
   priced ? loadStudentFamilies(ctx.db, ctx.institutionId, studentIds) : Promise.resolve(studentIds)
 
 /**
+ * `renewalContractStudents` kilit dışında okunur, yalnız ön tahmindir: `load` içinde (kurum kilidi
+ * altında ya da önizlemenin tek görüntüsünde) aile yeniden doğrulanır. Arada kesin kayıt olan
+ * kardeş varsa işlem yazmadan durur ve `withStudentFamilies` onu güncel aileyle yeniden kurar.
+ */
+export async function requireRenewalFamily(
+  tx: Database,
+  ctx: ServiceContext,
+  studentIds: readonly string[],
+  loaded: readonly string[],
+  priced = true,
+): Promise<void> {
+  if (priced) await requireFamilyLoaded(tx, ctx.institutionId, studentIds, loaded)
+}
+
+/**
  * Öğrencinin sözleşmeleri tavanın bazıdır; taksitler okunmaz, yeni kayıtlar sona eklenir. Kurumun
  * bütün finans kaydı her yenilemede yüklenmez.
  */
@@ -238,18 +254,22 @@ export const renewalLoadScope = (contractStudentIds: readonly string[]) => ({
 /** Formun ücret özeti: hiçbir kayıt yazılmaz (DOM-FIN-005). Kapsam ve rol planla aynıdır. */
 export async function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
   const data = renewalQuoteSchema.parse(input)
-  const contractStudents = await renewalContractStudents(ctx, [data.studentId])
-  return runReadOnly(ctx, {
-    action: 'renewal.quote',
-    collections: SPEC.collections,
-    stores: FINANCE_TABLE_STORES,
-    loadScope: renewalLoadScope(contractStudents),
-    load: async (tx) => {
-      const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
-      const context = await renewalContext(tx, ctx, institutionType, data)
-      return { scalars, run: (state) => quoteRenewal(state, session, input, context) }
-    },
-  })
+  return withStudentFamilies(
+    () => renewalContractStudents(ctx, [data.studentId]),
+    (contractStudents) =>
+      runReadOnly(ctx, {
+        action: 'renewal.quote',
+        collections: SPEC.collections,
+        stores: FINANCE_TABLE_STORES,
+        loadScope: renewalLoadScope(contractStudents),
+        load: async (tx) => {
+          await requireRenewalFamily(tx, ctx, [data.studentId], contractStudents)
+          const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
+          const context = await renewalContext(tx, ctx, institutionType, data)
+          return { scalars, run: (state) => quoteRenewal(state, session, input, context) }
+        },
+      }),
+  )
 }
 
 /**
@@ -262,11 +282,21 @@ export async function planRenewalCommand(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const data = renewalPlanSchema.parse(input)
-  const contractStudents = await renewalContractStudents(
-    ctx,
-    [data.studentId],
-    data.mode === 'renew',
+  const priced = data.mode === 'renew'
+  return withStudentFamilies(
+    () => renewalContractStudents(ctx, [data.studentId], priced),
+    (contractStudents) => planRenewalAttempt(ctx, input, data, contractStudents, idempotency),
   )
+}
+
+/** Planın tek denemesi: aile tahmini kilit altında doğrulanmazsa hiçbir şey yazılmadan durur. */
+function planRenewalAttempt(
+  ctx: ServiceContext,
+  input: unknown,
+  data: z.output<typeof renewalPlanSchema>,
+  contractStudents: readonly string[],
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
   return runCommand(
     ctx,
     {
@@ -279,6 +309,13 @@ export async function planRenewalCommand(
         id: result.renewal.id,
       }),
       load: async (tx) => {
+        await requireRenewalFamily(
+          tx,
+          ctx,
+          [data.studentId],
+          contractStudents,
+          data.mode === 'renew',
+        )
         const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
         const context = await renewalContext(tx, ctx, institutionType, {
           studentId: data.studentId,

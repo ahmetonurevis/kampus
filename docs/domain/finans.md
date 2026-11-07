@@ -104,7 +104,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat kurumca belirlenecek indirimlerin ilanda belirtilmesini ister. Serbest indirim ilan dışı uygulama ve kayıt dışı pazarlık riski taşır.
 - **Kaynak:** ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, kesin kayıt) — `priceEnrollment` (`lib/enrollment.ts`). Yenilemede de (`planRenewal`, `lib/renewals.ts`); iş akışı köprüsü serbest indirimi reddeder (422 `discount_not_in_tariff`).
+- **Kodda:** var (API, kesin kayıt) — `priceEnrollment` (`lib/enrollment.ts`). Yenilemede de (`planRenewal`, `lib/renewals.ts`); iş akışı köprüsü serbest indirimi reddeder (422 `discount_not_in_tariff`). Dil okulunda kur yenileme ve üst kur teklifi (IST-088, ON-082) paket satışıyla açılır (`sellPackage`, `lib/finance-packages.ts`); teklif listesi (`lib/renewal-course-offer-list.ts` `courseOfferRows`, `GET /api/v1/finance/course-offers`) yalnız tarifenin indirimsiz fiyatını gösterir, teklife ayrı indirim alanı yoktur.
 
 ### DOM-FIN-021 · Toplam indirim tavanı
 

@@ -1021,6 +1021,10 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'K-32, DOM-KAY-027: başka kurumun öğrencisi aile ucunda 404, B denetimi yazılmaz',
     "get(familyUrl('cert-other'), parent.cookie)",
   ),
+  'GET /api/v1/finance/course-offers': liste(
+    'finance-course-offers.test.ts',
+    'DOM-YTK-001: başka kurumun kursiyeri listede yok, studentId ile 404',
+  ),
 }
 
 /**

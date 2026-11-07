@@ -116,22 +116,30 @@ async function courseOf(
     : null
 }
 
+/**
+ * Satışın tarife yılı: kurumun etkin eğitim yılı, ayar yoksa bugünün yılı. Satış ve kur yenileme
+ * teklif listesi (ON-082) aynı tarifeyi okur.
+ */
+export async function saleAcademicYear(tx: Database, ctx: ServiceContext): Promise<number> {
+  const settings = await tx
+    .select({ academicYear: institutionSettings.academicYear })
+    .from(institutionSettings)
+    .where(eq(institutionSettings.institutionId, ctx.institutionId))
+    .limit(1)
+  return settings[0]?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
+}
+
 /** Fiyatı etkileyen satırları işlemin içinde okur: önizleme ve satış aynı girdiyle hesaplar. */
 async function saleContext(
   tx: Database,
   ctx: ServiceContext,
   packageId: string,
 ): Promise<PackageSaleContext> {
-  const [institution, settings, pkg] = await Promise.all([
+  const [institution, academicYear, pkg] = await Promise.all([
     getInstitutionModules(tx, ctx.institutionId),
-    tx
-      .select({ academicYear: institutionSettings.academicYear })
-      .from(institutionSettings)
-      .where(eq(institutionSettings.institutionId, ctx.institutionId))
-      .limit(1),
+    saleAcademicYear(tx, ctx),
     findLessonPackage(tx, ctx.institutionId, packageId),
   ])
-  const academicYear = settings[0]?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
   const [tariff, course] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, academicYear),
     courseOf(tx, ctx.institutionId, pkg?.courseId ?? null),

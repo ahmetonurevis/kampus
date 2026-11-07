@@ -40,13 +40,20 @@ import {
 
 const FORM_ID = 'paket-satis-formu'
 const TITLE = 'Paket sat'
+const OFFER_TITLE = 'Yenileme teklifi aç'
 const OPTION_PAGE_SIZE = 100
 const TARIFF_PAGE_SIZE = 100
 
 type Option = { id: string; label: string }
+/**
+ * Kur yenileme teklifinden açılış (IST-088): öğrenci ve teklif edilen paket seçili gelir, başlık ve
+ * not teklifi söyler. Fiyat yine sunucu önizlemesidir; indirim yalnız ilanlı türdendir (DOM-FIN-020).
+ */
+export type SaleOffer = { studentId: string; packageId: string; note: string }
 type Props = {
   canApproveCapException: boolean
   academicYear: number
+  offer?: SaleOffer | undefined
   onClose: () => void
   onSold: (saleId: string) => void
 }
@@ -56,7 +63,14 @@ type Props = {
  * sunucu önizlemesi gösterilir, onay aynı gövdeyi önizlenen tarifeyle yazar; tarife arada değiştiyse
  * sunucu reddeder, form yeniden açılır. Pakette burs seçeneği yoktur (K-19).
  */
-export function PackageSaleModal({ canApproveCapException, academicYear, onClose, onSold }: Props) {
+export function PackageSaleModal({
+  canApproveCapException,
+  academicYear,
+  offer,
+  onClose,
+  onSold,
+}: Props) {
+  const title = offer ? OFFER_TITLE : TITLE
   const students = useCoreAll('students')
   const packages = useLessonPackages({ page: 1, pageSize: OPTION_PAGE_SIZE })
   const effective = useEffectiveFeeTariff({
@@ -65,7 +79,7 @@ export function PackageSaleModal({ canApproveCapException, academicYear, onClose
     pageSize: TARIFF_PAGE_SIZE,
   })
   const shell = (children: React.ReactNode) => (
-    <Modal open size="wide" onOpenChange={(open) => (open ? undefined : onClose())} title={TITLE}>
+    <Modal open size="wide" onOpenChange={(open) => (open ? undefined : onClose())} title={title}>
       {children}
     </Modal>
   )
@@ -94,6 +108,7 @@ export function PackageSaleModal({ canApproveCapException, academicYear, onClose
     <SaleForm
       tariff={effective.tariff}
       canApproveCapException={canApproveCapException}
+      offer={offer}
       students={students.data
         .filter((row) => row.record.isActive !== false)
         .map((row) => ({ id: row.id, label: row.record.name }))
@@ -111,6 +126,7 @@ export function PackageSaleModal({ canApproveCapException, academicYear, onClose
 function SaleForm({
   tariff,
   canApproveCapException,
+  offer,
   students,
   packages,
   onClose,
@@ -121,7 +137,10 @@ function SaleForm({
   const [today] = useState(() => dayKey())
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleFormSchema),
-    defaultValues: saleDefaults(today, defaultInstallmentCount(tariff.paymentTerms)),
+    defaultValues: {
+      ...saleDefaults(today, defaultInstallmentCount(tariff.paymentTerms)),
+      ...(offer ? { studentId: offer.studentId, packageId: offer.packageId } : {}),
+    },
   })
   const [preview, setPreview] = useState<{
     price: PriceView
@@ -175,8 +194,12 @@ function SaleForm({
       open
       size="wide"
       onOpenChange={(open) => (open ? undefined : onClose())}
-      title={TITLE}
-      description="Önce ücret gösterilir; onaydan önce hiçbir kayıt yazılmaz."
+      title={offer ? OFFER_TITLE : TITLE}
+      description={
+        offer
+          ? `${offer.note} Önce ücret gösterilir; onaydan önce hiçbir kayıt yazılmaz.`
+          : 'Önce ücret gösterilir; onaydan önce hiçbir kayıt yazılmaz.'
+      }
       footer={
         preview ? (
           <>
@@ -203,7 +226,7 @@ function SaleForm({
         id={FORM_ID}
         noValidate
         hidden={preview !== null}
-        aria-label={TITLE}
+        aria-label={offer ? OFFER_TITLE : TITLE}
         onSubmit={(event) => void onPreview(event)}
         className="grid grid-cols-2 gap-4 max-[650px]:grid-cols-1 [&[hidden]]:hidden"
       >

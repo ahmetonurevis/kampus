@@ -2744,6 +2744,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/course-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kur yenileme ve üst kur tekliflerini listele
+         * @description Son kurunun geçerli kur sonu kararı onaylı kursiyerler, ada göre (IST-088; DOM-DIL-070, DOM-DIL-071). Karar `geçti` ise teklif zincirdeki sonraki kura ya da üst seviyeye, `tekrar` ve `devamsızlıktan tamamlamadı` ise aynı kura açılır; üst seviye ya da sonraki kur yoksa satır `no_next_level` olur ve teklif açılmaz. Onay bekleyen, reddedilmiş ya da hiç verilmemiş karar ve pasif kursiyer listede yoktur. `options` teklife uyan etkin paketlerin kurum tarifesinden indirimsiz fiyatıdır (DOM-DIL-050); tarife, paket ya da tarife kalemi yoksa `problem` nedeni söyler. Teklif paket satışıyla (`POST /api/v1/finance/package-sales`) açılır; indirim yalnız tarifede ilanlı türden seçilir (DOM-FIN-020). `saleId` karar onayından sonra teklif edilen kur ya da seviyede yapılan satıştır. Kararın gerekçesi, dayanağı ve öğretmen notu dönmez. `q` kursiyer adında arar, `outcome` süzer; `studentId` tek kursiyeri verir, olmayan ya da başka kurumun öğrencisi 404. Hiçbir şey yazılmaz. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listCourseOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/invoices/{invoiceId}/remind": {
         parameters: {
             query?: never;
@@ -32024,6 +32044,153 @@ export interface operations {
                             status: "active" | "expired" | "depleted";
                             soldAt: string;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCourseOffers: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kursiyer adında arama */
+                q?: string;
+                /** @description Kur sonu kararının sonucu */
+                outcome?: "passed" | "repeat" | "incomplete_attendance";
+                /** @description Tek kursiyer */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            /**
+                             * @description `ready` teklif açılabilir; `no_next_level` geçti ama üst seviye ya da kur yok
+                             * @enum {string}
+                             */
+                            status: "ready" | "no_next_level";
+                            /** @description Teklifin dayandığı onaylı kur sonu kararı */
+                            decisionId: string;
+                            /** @enum {string} */
+                            outcome: "passed" | "repeat" | "incomplete_attendance";
+                            /** @description Kararın onaylandığı an */
+                            approvedAt: string | null;
+                            fromCourseId: string;
+                            fromCourseName: string;
+                            fromLevel: string;
+                            /** @description Teklif edilen kur; zincirsiz kurdan geçişte boş */
+                            courseId: string | null;
+                            courseName: string | null;
+                            /** @description Teklif edilen seviye */
+                            level: string | null;
+                            /** @description Teklife uyan etkin paketler ve kurum tarifesinden indirimsiz fiyatı */
+                            options: {
+                                packageId: string;
+                                packageName: string;
+                                /** @enum {string} */
+                                kind: "course" | "hours" | "private";
+                                hours: number;
+                                /** @description Saat × tarifenin saat ücreti, kuruş */
+                                announcedCents: number;
+                                /** @description Saat × uygulanan saat ücreti, kuruş; indirimler satışta düşer */
+                                priceCents: number;
+                            }[];
+                            /** @description Karar onayından sonra teklif edilen kur ya da seviyede yapılan son satış */
+                            saleId: string | null;
+                            /** @description Teklif açılamıyorsa nedeni */
+                            problem: {
+                                code: string;
+                                message: string;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
                     };
                 };
             };

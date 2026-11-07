@@ -3,6 +3,11 @@ import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
+  WITHDRAWAL_SERVICE_NOTE,
+  withdrawalServiceRows,
+  withdrawalServiceTitle,
+} from '../packages/school-core/src/lib/finance-student-services.ts'
+import {
   contractLineRows,
   contractLinesToShow,
   isValidTurkishIban,
@@ -17,6 +22,7 @@ import {
   withdrawStudentSchema,
   withdrawStudent,
   type WithdrawalContext,
+  type WithdrawalStudentService,
 } from '../packages/school-core/src/lib/withdrawals.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -1087,4 +1093,211 @@ test('K-30: ayrılış nedeninde sağlık yok, belgeli neden var', () => {
   assert.equal(issue('documented'), false)
   assert.equal(WITHDRAWAL_REASON_LABELS.documented, 'Belgeli neden')
   assert.ok(!Object.keys(WITHDRAWAL_REASON_LABELS).includes('health'))
+})
+
+/** Abonelikler (ON-087): aylık servis ve henüz başlamamış yıllık kulüp; taksitler sözleşmesizdir. */
+function withServices(state: ReturnType<typeof fixture>['state'], studentId: string) {
+  const invoice = (
+    id: string,
+    installment: number,
+    amount: number,
+    feeKind: string,
+    due: string,
+  ) => ({
+    id,
+    studentId,
+    installment,
+    amount,
+    dueDate: `${due}T09:00:00.000Z`,
+    paidAt: null as string | null,
+    method: null as string | null,
+    reminderAt: null,
+    feeKind,
+  })
+  state.invoices.push(
+    {
+      ...invoice('s-1', 1, 400_000, 'transport', '2026-09-15'),
+      paidAt: '2026-09-15T09:00:00.000Z',
+    },
+    invoice('s-2', 2, 400_000, 'transport', '2026-10-15'),
+    invoice('s-3', 3, 400_000, 'transport', '2026-11-15'),
+    invoice('s-4', 1, 900_000, 'club', '2026-11-02'),
+  )
+  const services: WithdrawalStudentService[] = [
+    {
+      id: 'svc-transport',
+      studentId,
+      kind: 'transport',
+      academicYear: 2026,
+      startDate: '2026-09-15',
+      endDate: '2026-11-30',
+      status: 'active',
+      unit: 'month',
+      amountCents: 400_000,
+      invoiceIds: ['s-1', 's-2', 's-3'],
+    },
+    {
+      id: 'svc-club',
+      studentId,
+      kind: 'club',
+      academicYear: 2026,
+      startDate: '2026-11-02',
+      endDate: null,
+      status: 'active',
+      unit: 'year',
+      amountCents: 900_000,
+      invoiceIds: ['s-4'],
+    },
+  ]
+  return services
+}
+
+test('DOM-FIN-040, K-17: ek hizmet aboneliği dökümde görünür, iade hesabına girmez (ON-298)', () => {
+  const { state, studentId } = fixture()
+  state.invoices[0]!.paidAt = NOW
+  const services = withServices(state, studentId)
+  // s-2 ileri vadeli ama kısmen ödenmiş: kullanılmayan döneme ait ödeme de iadeye yazılmaz.
+  const allocated = new Map([['s-2', 150_000]])
+  const without = quoteWithdrawal(state, studentId, AFTER, context({ allocated }))
+  const before = JSON.stringify(state)
+  const quoted = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ allocated, studentServices: services }),
+  )
+  assert.equal(JSON.stringify(state), before)
+  const { services: lines, ...rest } = quoted.breakdown
+  assert.deepEqual(rest, without.breakdown)
+  assert.equal(without.breakdown.services, undefined)
+  assert.deepEqual(lines, [
+    {
+      serviceId: 'svc-transport',
+      kind: 'transport',
+      academicYear: 2026,
+      startDate: '2026-09-15',
+      endDate: '2026-11-30',
+      unit: 'month',
+      amountCents: 400_000,
+      // Vadesi ayrılış gününe (2026-10-01) kadar gelen tek ay.
+      usedCents: 400_000,
+      paidCents: 550_000,
+      endedDate: '2026-10-01',
+    },
+    {
+      serviceId: 'svc-club',
+      kind: 'club',
+      academicYear: 2026,
+      startDate: '2026-11-02',
+      endDate: null,
+      unit: 'year',
+      amountCents: 900_000,
+      usedCents: 0,
+      paidCents: 0,
+      // Başlamadan ayrılışta bitiş başlangıca çekilir (ON-087 closeStudentServicesOnWithdrawal).
+      endedDate: '2026-11-02',
+    },
+  ])
+})
+
+test('DOM-FIN-040, K-17: kapalı abonelik dökümde yer almaz; aboneliği olmayan öğrencide alan yoktur (ON-298)', () => {
+  const { state, studentId } = fixture()
+  const services = withServices(state, studentId).map((service) => ({
+    ...service,
+    status: 'ended' as const,
+  }))
+  const { breakdown } = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ studentServices: services }),
+  )
+  assert.equal(breakdown.services, undefined)
+})
+
+test('DOM-FIN-012, K-17: listesiz eski sözleşme abonelik taksitini saymaz, ayrılış onu iptal etmez (ON-298)', () => {
+  const { state, studentId } = fixture()
+  delete state.contracts[0]!.invoiceIds
+  const services = withServices(state, studentId)
+  const plain = fixture()
+  delete plain.state.contracts[0]!.invoiceIds
+  const expected = quoteWithdrawal(plain.state, plain.studentId, AFTER, context())
+
+  const quoted = quoteWithdrawal(state, studentId, AFTER, context({ studentServices: services }))
+  assert.deepEqual(
+    quoted.breakdown.extras.map((line) => line.invoiceId),
+    ['t-meal'],
+  )
+  assert.equal(quoted.breakdown.refundCents, expected.breakdown.refundCents)
+  assert.equal(quoted.breakdown.debtCents, expected.breakdown.debtCents)
+
+  const plan = withdrawStudent(
+    state,
+    studentId,
+    WITHDRAW,
+    makeId,
+    context({ studentServices: services }),
+  )
+  // Abonelik taksitlerini ON-087'nin kapanış kuralı işler; ayrılış hesabı dokunmaz.
+  for (const id of ['s-1', 's-2', 's-3', 's-4'])
+    assert.ok(
+      state.invoices.some((invoice) => invoice.id === id),
+      id,
+    )
+  assert.equal(plan.breakdown.services?.length, 2)
+})
+
+test('DOM-FIN-041, K-17: ayrılış kaydı abonelik satırlarını saklar, iade tutarı değişmez (ON-298)', () => {
+  const { state, studentId } = fixture()
+  state.invoices[0]!.paidAt = NOW
+  const services = withServices(state, studentId)
+  const plain = fixture()
+  plain.state.invoices[0]!.paidAt = NOW
+  const expected = withdrawStudent(plain.state, plain.studentId, WITHDRAW, makeId, context())
+
+  const plan = withdrawStudent(
+    state,
+    studentId,
+    WITHDRAW,
+    makeId,
+    context({ studentServices: services }),
+  )
+  assert.equal(plan.breakdown.refundCents, expected.breakdown.refundCents)
+  assert.equal(plan.breakdown.debtCents, expected.breakdown.debtCents)
+  assert.deepEqual(
+    plan.breakdown.services?.map((line) => [line.serviceId, line.usedCents, line.endedDate]),
+    [
+      ['svc-transport', 400_000, '2026-10-01'],
+      ['svc-club', 0, '2026-11-02'],
+    ],
+  )
+})
+
+test('K-17: abonelik satırı hizmeti, dönemi, aylık tutarı ve kullanılanı gösterir; iade notu sabittir (ON-298)', () => {
+  const { state, studentId } = fixture()
+  const services = withServices(state, studentId)
+  const { breakdown } = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ studentServices: services }),
+  )
+  const [transport, club] = breakdown.services!
+  assert.equal(withdrawalServiceTitle(transport!), 'Servis')
+  assert.deepEqual(withdrawalServiceRows(transport!), [
+    ['Dönem', '15 Eyl 2026 – 30 Kas 2026'],
+    ['Aylık tutar', '4.000,00 ₺'],
+    ['Ayrılış gününe kadar kullanılan', '4.000,00 ₺'],
+    ['Ödenen', '4.000,00 ₺'],
+    ['Abonelik bitişi', '1 Eki 2026'],
+  ])
+  assert.equal(withdrawalServiceTitle(club!), 'Kulüp')
+  assert.deepEqual(withdrawalServiceRows(club!).slice(0, 2), [
+    ['Dönem', '2 Kas 2026 – bitiş yok'],
+    ['Tutar (Yıl)', '9.000,00 ₺'],
+  ])
+  assert.equal(
+    WITHDRAWAL_SERVICE_NOTE,
+    'Ek hizmet iadesi otomatik yazılmaz; kalem kurala göre ayrıca işlenir.',
+  )
 })

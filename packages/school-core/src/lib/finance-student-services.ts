@@ -6,8 +6,15 @@ import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { installmentDueDate, itemFor, type EnrollmentTariff } from './enrollment.ts'
 import { DomainError } from './errors.ts'
-import { FEE_ITEM_KIND_LABELS, type FeeItemKind, type FeeUnit } from './fee-tariffs.ts'
+import {
+  FEE_ITEM_KIND_LABELS,
+  FEE_UNIT_LABELS,
+  type FeeItemKind,
+  type FeeUnit,
+} from './fee-tariffs.ts'
+import { dateLabel, money } from './format.ts'
 import { parseAmountInput } from './payments.ts'
+import type { WithdrawalServiceLine } from './withdrawals.ts'
 
 /**
  * Ek hizmet aboneliği (docs/domain/finans.md DOM-FIN-002, -003, -004, -040; ON-087): öğrencinin dönem
@@ -469,4 +476,32 @@ export function studentServiceBalance(
       endedEarly &&
       live.some((line) => service.unit !== 'month' || line.dueDate.slice(0, 10) > endedDate),
   }
+}
+
+/** Ayrılış dökümünde ek hizmetin altındaki sabit not (K-17, H-15). */
+export const WITHDRAWAL_SERVICE_NOTE =
+  'Ek hizmet iadesi otomatik yazılmaz; kalem kurala göre ayrıca işlenir.'
+
+const withdrawalDay = (day: string) => dateLabel(day, { year: 'numeric' })
+
+export const withdrawalServiceTitle = (line: Pick<WithdrawalServiceLine, 'kind'>) =>
+  studentServiceKindLabel(line.kind)
+
+/** Ayrılış dökümünde bir aboneliğin satırları; ekran ve iade belgesi aynısını gösterir (ON-298). */
+export function withdrawalServiceRows(
+  line: WithdrawalServiceLine,
+): readonly (readonly [string, string])[] {
+  return [
+    [
+      'Dönem',
+      `${withdrawalDay(line.startDate)} – ${line.endDate === null ? 'bitiş yok' : withdrawalDay(line.endDate)}`,
+    ],
+    [
+      line.unit === 'month' ? 'Aylık tutar' : `Tutar (${FEE_UNIT_LABELS[line.unit]})`,
+      money(line.amountCents),
+    ],
+    ['Ayrılış gününe kadar kullanılan', money(line.usedCents)],
+    ['Ödenen', money(line.paidCents)],
+    ['Abonelik bitişi', withdrawalDay(line.endedDate)],
+  ]
 }

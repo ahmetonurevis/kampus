@@ -899,6 +899,79 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-040, K-17: açık ek hizmet aboneliği dökümde görünür, iadeye girmez (ON-298)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s21'] })
+    const academicYear = createSeed(new Date()).academicYear
+    await seedStudentServiceTariff({ institutionId: school.institutionId, academicYear })
+    const client = await api(school.user('yonetici'))
+    const student = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { name: string } }
+    }
+    const quoteBody = {
+      withdrawalDate: new Date().toISOString().slice(0, 10),
+      termStartDate: `${String(academicYear)}-09-07`,
+      attendedUnits: 1,
+      totalUnits: 180,
+    }
+    const before = await client.post('/api/v1/students/s21/withdrawal-quote', quoteBody)
+    expect(before.status, 'abonelikten önce önizleme').toBe(200)
+    const made = await client.post(
+      '/api/v1/finance/student-services',
+      {
+        studentId: 's21',
+        kind: 'transport',
+        academicYear,
+        startDate: `${String(academicYear)}-09-15`,
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(made.status, 'abonelik').toBe(201)
+    const after = await client.post('/api/v1/students/s21/withdrawal-quote', quoteBody)
+    type Quote = { data: { breakdown: { refundCents: number; debtCents: number } } }
+    expect((after.body as Quote).data.breakdown.refundCents).toBe(
+      (before.body as Quote).data.breakdown.refundCents,
+    )
+    expect((after.body as Quote).data.breakdown.debtCents).toBe(
+      (before.body as Quote).data.breakdown.debtCents,
+    )
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByLabel('Öğrenci').selectOption({ label: student.data.record.name })
+    await dialog.getByLabel('Dönem başlangıcı').fill(quoteBody.termStartDate)
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+
+    const services = dialog.getByRole('region', { name: 'Ek hizmet abonelikleri' })
+    await expect(services).toContainText(
+      'Ek hizmet iadesi otomatik yazılmaz; kalem kurala göre ayrıca işlenir.',
+    )
+    const transport = services.getByRole('region', { name: 'Servis' })
+    await expect(transport).toContainText('Tutar (Yıl)')
+    await expect(transport).toContainText('40.000,00 ₺')
+    await expect(transport).toContainText('Ayrılış gününe kadar kullanılan')
+
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    await page
+      .getByRole('button', { name: `${student.data.record.name} hesap dökümünü görüntüle` })
+      .click()
+    await expect(
+      page
+        .getByRole('dialog', { name: 'Hesap dökümü' })
+        .getByRole('region', { name: 'Ek hizmet abonelikleri' }),
+    ).toContainText('Servis')
+    const listed = await client.get('/api/v1/finance/student-services?studentId=s21')
+    expect((listed.body as { data: { status: string }[] }).data[0]?.status).toBe('ended')
+  })
+
   test('DOM-FIN-040, K-06: önizleme öğrenim sözleşmesini ve paket satışını ayrı ayrı gösterir', async ({
     page,
     loginAs,

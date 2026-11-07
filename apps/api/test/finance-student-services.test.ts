@@ -856,6 +856,71 @@ describe('ON-087: ek hizmet aboneliği uçları', () => {
     assert.equal(row.json().data.debtCents, withdrawn.json().data.debtCents)
   })
 
+  test('DOM-FIN-040, K-17: açık abonelik ayrılış dökümünde görünür, iade hesabına girmez (ON-298)', async () => {
+    const a = await institution({ contract: {} })
+    const quoteUrl = `/api/v1/students/${String(STUDENT?.id)}/withdrawal-quote`
+    const quoteBody = {
+      withdrawalDate: WITHDRAWAL.withdrawalDate,
+      termStartDate: WITHDRAWAL.termStartDate,
+      attendedUnits: WITHDRAWAL.attendedUnits,
+      totalUnits: WITHDRAWAL.totalUnits,
+    }
+    const plain = await send('POST', quoteUrl, a.cookie, quoteBody)
+    assert.equal(plain.statusCode, 200, plain.body)
+    assert.equal(plain.json().data.breakdown.services, undefined)
+
+    const meal = (await subscribe(a.cookie, MEAL)).json().data
+    const club = (await subscribe(a.cookie, { ...SUBSCRIBE, kind: 'club' })).json().data
+    const [september] = meal.invoices as { id: string }[]
+    assert.ok(september)
+    assert.equal((await payInvoice(a.cookie, september.id, 500_000, 'TR-SVC-Q')).statusCode, 201)
+
+    const quoted = await send('POST', quoteUrl, a.cookie, quoteBody)
+    assert.equal(quoted.statusCode, 200, quoted.body)
+    const { services, ...rest } = quoted.json().data.breakdown
+    assert.deepEqual(rest, plain.json().data.breakdown)
+    // Aynı gün başlayan aboneliklerin sırası kimliğe bağlıdır; türe göre karşılaştırılır.
+    const byKind = (lines: { kind: string }[]) =>
+      [...lines].sort((x, y) => x.kind.localeCompare(y.kind))
+    const expected = [
+      {
+        serviceId: club.id,
+        kind: 'club',
+        academicYear: YEAR,
+        startDate: '2026-09-15',
+        endDate: null,
+        unit: 'year',
+        amountCents: 200_000,
+        usedCents: 200_000,
+        paidCents: 0,
+        endedDate: '2026-10-01',
+      },
+      {
+        serviceId: meal.id,
+        kind: 'meal',
+        academicYear: YEAR,
+        startDate: '2026-09-15',
+        endDate: '2026-12-31',
+        unit: 'month',
+        amountCents: 500_000,
+        usedCents: 500_000,
+        paidCents: 500_000,
+        endedDate: '2026-10-01',
+      },
+    ]
+    assert.deepEqual(byKind(services), expected)
+
+    const done = await withdrawStudent(a.cookie)
+    assert.equal(done.statusCode, 201, done.body)
+    assert.deepEqual(byKind(done.json().data.breakdown.services), expected)
+    assert.equal(done.json().data.refundCents, plain.json().data.breakdown.refundCents)
+    assert.equal(done.json().data.debtCents, plain.json().data.breakdown.debtCents)
+    const row = await send('GET', `/api/v1/withdrawals/${String(done.json().data.id)}`, a.cookie)
+    assert.deepEqual(byKind(row.json().data.breakdown.services), expected)
+    const rows = await serviceRows(a.id)
+    assert.ok(rows.every((item) => item.status === 'ended' && item.endedDate === '2026-10-01'))
+  })
+
   test('DOM-FIN-041: ayrılıştan önce abonelik taksitine alınan tahsilat iptal edilemez, kayıt değişmez', async () => {
     const a = await institution({ contract: {} })
     const meal = (await subscribe(a.cookie, MEAL)).json().data

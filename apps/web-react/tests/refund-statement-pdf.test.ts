@@ -138,3 +138,43 @@ test('DOM-FIN-040: tek öğrenim sözleşmesinde belge toplam satırlarıyla kal
   assert.equal(texts.includes('Öğrenim sözleşmesi'), false)
   assert.equal(texts.includes('Bu sözleşmeden iade'), false)
 })
+
+test('K-17, DOM-FIN-040: açık abonelik belgede ayrı bölümde ve iade notuyla yazılır, tutar değişmez (ON-298)', () => {
+  const texts = allTexts(
+    refundStatementDocument(
+      measurer,
+      {
+        ...WITHDRAWAL,
+        breakdown: {
+          ...WITHDRAWAL.breakdown,
+          services: [
+            {
+              serviceId: 'svc-1',
+              kind: 'transport',
+              academicYear: 2026,
+              startDate: '2026-09-15',
+              endDate: '2026-11-30',
+              unit: 'month',
+              amountCents: 400_000,
+              usedCents: 400_000,
+              paidCents: 400_000,
+              endedDate: '2026-10-01',
+            },
+          ],
+        },
+      },
+      OPTIONS,
+    ),
+  )
+  assert.ok(texts.includes('Ek hizmet abonelikleri'))
+  assert.ok(texts.includes('Ek hizmet iadesi otomatik yazılmaz; kalem kurala göre ayrıca işlenir.'))
+  assert.ok(texts.includes('Servis'))
+  assert.ok(texts.includes('Ayrılış gününe kadar kullanılan'))
+  assert.ok(texts.includes('4.000,00 ₺'))
+  assert.equal(
+    allTexts(refundStatementDocument(measurer, WITHDRAWAL, OPTIONS)).includes(
+      'Ek hizmet abonelikleri',
+    ),
+    false,
+  )
+})

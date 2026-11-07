@@ -1,4 +1,9 @@
 // İade hesap kırılımı: veri ayrılış kaydından gelir, hesap burada yeniden yazılmaz (DOM-FIN-040, -041; IST-110).
+import {
+  WITHDRAWAL_SERVICE_NOTE,
+  withdrawalServiceRows,
+  withdrawalServiceTitle,
+} from '@kampus/school-core/lib/finance-student-services.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   contractLineRows,
@@ -8,6 +13,7 @@ import {
   type WithdrawalContractLine,
   type WithdrawalPayer,
   type WithdrawalReason,
+  type WithdrawalServiceLine,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
 import type { TemplateOptions } from './shared.ts'
@@ -39,6 +45,8 @@ export type RefundWithdrawal = {
     contracts?: readonly WithdrawalContractLine[]
     /** Gerekçe belgeye yazılmaz; yalnız iadeyi alacak ödeyici (K-12). */
     payerDecision?: { payer: WithdrawalPayer }
+    /** Hesaba girmeyen açık ek hizmet abonelikleri (K-17, ON-298); eski kayıtta yok. */
+    services?: readonly WithdrawalServiceLine[]
   }
 }
 
@@ -116,6 +124,12 @@ export function refundStatementDocument(
       ['İade', money(withdrawal.refundCents)],
       ['Kalan borç', money(withdrawal.debtCents)],
     ])
+  }
+  if (breakdown.services?.length) {
+    doc.section('Ek hizmet abonelikleri')
+    doc.paragraph(WITHDRAWAL_SERVICE_NOTE)
+    for (const line of breakdown.services)
+      doc.fields([['Hizmet', withdrawalServiceTitle(line)], ...withdrawalServiceRows(line)])
   }
   doc.section('Ödeme')
   doc.fields([

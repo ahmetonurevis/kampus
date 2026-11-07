@@ -3,6 +3,8 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
+import { FEE_UNITS } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { STUDENT_SERVICE_KINDS } from '@kampus/school-core/lib/finance-student-services.ts'
 import {
   payRefundSchema,
   WITHDRAWAL_REASONS,
@@ -115,6 +117,36 @@ const breakdownSchema = z.object({
     .int()
     .optional()
     .describe('Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok'),
+  services: z
+    .array(
+      z.object({
+        serviceId: z.string().describe('Ek hizmet aboneliği (ON-087)'),
+        kind: z.enum(STUDENT_SERVICE_KINDS),
+        academicYear: z.number().int(),
+        startDate: z.string(),
+        endDate: z
+          .string()
+          .nullable()
+          .describe('Planlanan bitiş; aylık olmayan kalemde boş olabilir'),
+        unit: z.enum(FEE_UNITS),
+        amountCents: z
+          .number()
+          .int()
+          .describe('Birim tutar; aylık kalemde bir ayın tutarı (kuruş)'),
+        usedCents: z
+          .number()
+          .int()
+          .describe(
+            'Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı',
+          ),
+        paidCents: z.number().int().describe('Aboneliğin ödenmiş tutarı'),
+        endedDate: z.string().describe('Aboneliğin ayrılışla kapandığı gün'),
+      }),
+    )
+    .optional()
+    .describe(
+      'Açık ek hizmet abonelikleri (K-17, ON-298); iade ve borç hesabına girmez, personel kalemi tarifeye göre ayrıca işler. Abonelik yoksa ve eski kayıtta yok',
+    ),
 })
 
 const withdrawalSchema = z.object({
@@ -174,7 +206,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade hesabını önizle',
         description:
-          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.',
+          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Açık ek hizmet aboneliği (ON-087) `breakdown.services` alanında hizmet, dönem, birim tutar ve ayrılış gününe kadar kullanılan tutarla gösterilir; iade ve borç hesabına girmez, iadesi otomatik yazılmaz (K-17). Roller: `yonetici`, `onburo`.',
         params: studentParams,
         body: withdrawalQuoteSchema,
         response: {
@@ -220,7 +252,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Öğrencinin ayrılışını onayla',
         description:
-          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
+          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Açık ek hizmet abonelikleri aynı işlemde kapanır (ON-087) ve dökümde `breakdown.services` olarak saklanır; iade tutarına girmez, iadesi otomatik yazılmaz (K-17). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: studentParams,
         body: withdrawStudentSchema,

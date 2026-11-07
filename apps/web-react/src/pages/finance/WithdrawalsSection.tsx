@@ -1,6 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import {
+  WITHDRAWAL_SERVICE_NOTE,
+  withdrawalServiceRows,
+  withdrawalServiceTitle,
+} from '@kampus/school-core/lib/finance-student-services.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   contractLineRows,
@@ -20,6 +25,7 @@ import {
   type WithdrawalContractPayer,
   type WithdrawalFormValues,
   type WithdrawalReason,
+  type WithdrawalServiceLine,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import {
   REAUTHENTICATION_CODE,
@@ -311,12 +317,45 @@ function ContractBreakdown({
   )
 }
 
+/** İade hesabı ve altında hesaba girmeyen ek hizmet abonelikleri (K-17, ON-298). */
 function BreakdownList({
   breakdown,
   payers,
 }: {
   breakdown: WithdrawalBreakdown
   payers?: readonly WithdrawalContractPayer[]
+}) {
+  return (
+    <div className="grid gap-4">
+      <AccountBreakdown breakdown={breakdown} payers={payers} />
+      {breakdown.services?.length ? <ServiceBreakdown lines={breakdown.services} /> : null}
+    </div>
+  )
+}
+
+function ServiceBreakdown({ lines }: { lines: readonly WithdrawalServiceLine[] }) {
+  return (
+    <section aria-label="Ek hizmet abonelikleri" className="grid gap-3 text-sm">
+      <h4 className="font-semibold">Ek hizmet abonelikleri</h4>
+      <p className="text-muted-foreground">{WITHDRAWAL_SERVICE_NOTE}</p>
+      {lines.map((line) => (
+        <section key={line.serviceId} aria-label={withdrawalServiceTitle(line)}>
+          <h5 className="font-medium">{withdrawalServiceTitle(line)}</h5>
+          <dl className="grid gap-1">
+            <BreakdownRows rows={withdrawalServiceRows(line)} />
+          </dl>
+        </section>
+      ))}
+    </section>
+  )
+}
+
+function AccountBreakdown({
+  breakdown,
+  payers,
+}: {
+  breakdown: WithdrawalBreakdown
+  payers?: readonly WithdrawalContractPayer[] | undefined
 }) {
   if (contractLinesToShow(breakdown.contracts).length > 0)
     return <ContractBreakdown breakdown={breakdown} payers={payers} />

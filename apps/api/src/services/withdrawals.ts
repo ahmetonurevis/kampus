@@ -190,10 +190,16 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
     load: async (tx) => {
       const { institutionType, scalars } = await environment(tx, ctx, SPEC)
       const account = await accountContext(tx, ctx, studentId)
+      const studentServices = await openStudentServicesOf(tx, ctx.institutionId, studentId)
       return {
         scalars,
         run: (state, { now }) =>
-          quoteWithdrawal(state, studentId, input, { institutionType, ...account, now }),
+          quoteWithdrawal(state, studentId, input, {
+            institutionType,
+            ...account,
+            studentServices,
+            now,
+          }),
       }
     },
   })
@@ -231,6 +237,7 @@ export function withdrawStudentCommand(
             const plan = withdrawStudent(state, studentId, input, makeId, {
               institutionType,
               ...account,
+              studentServices: openServices,
               now,
             })
             const serviceClosures = closeStudentServicesOnWithdrawal(

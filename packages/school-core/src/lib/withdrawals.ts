@@ -7,6 +7,9 @@ import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { packageHourBalance, packageUsedHoursRecorded } from './finance-package-hours.ts'
 import type { PackageHourKind, PackageHourSource } from './finance-packages.ts'
+// Yalnız tip: abonelik modülü tahsilat kuralları üzerinden bu dosyayı çalışma anında içe aktarır.
+import type { StudentServiceKind, StudentServiceRow } from './finance-student-services.ts'
+import type { FeeUnit } from './fee-tariffs.ts'
 import { dayKey, money } from './format.ts'
 
 /**
@@ -176,6 +179,32 @@ export interface WithdrawalContractLine {
   balanceCents: number
 }
 
+/**
+ * Öğrencinin ayrılışta açık ek hizmet aboneliği (ON-087, ON-298). Yalnız dökümde gösterilir; iade ve
+ * borç hesabına girmez: ek hizmet iadesinin kuralı belirsizdir (H-15), personel kalemi tarifeye göre
+ * ayrıca işler (K-17).
+ */
+export interface WithdrawalServiceLine {
+  serviceId: string
+  kind: StudentServiceKind
+  academicYear: number
+  startDate: string
+  /** Yazılırken planlanan bitiş; aylık olmayan kalemde boş olabilir. */
+  endDate: string | null
+  unit: FeeUnit
+  /** Uygulanan birim tutar; aylık kalemde bir ayın tutarı. */
+  amountCents: number
+  /**
+   * Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı. Aylık kalemde
+   * başlayan aylar, tek taksitli kalemde başlamışsa tamamı; kısmi dönem oranı yoktur (ON-087).
+   */
+  usedCents: number
+  /** Aboneliğin ödenmiş tutarı; ileri vadeli taksite yapılan ödeme dahil. */
+  paidCents: number
+  /** Aboneliğin kapanacağı gün (`closeStudentServicesOnWithdrawal`, ON-087). */
+  endedDate: string
+}
+
 /** Hesap dökümü: iade kaydında aynen saklanır, sonradan değişmez (DOM-FIN-041). */
 export interface WithdrawalBreakdown {
   institutionType: InstitutionType
@@ -219,6 +248,8 @@ export interface WithdrawalBreakdown {
   }
   /** Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yoktur. */
   refundApprovedCents?: number
+  /** Açık ek hizmet abonelikleri (K-17, ON-298); hesaba girmez. Abonelik yoksa ve eski kayıtta yok. */
+  services?: WithdrawalServiceLine[]
 }
 
 /** Hesaba giren paket satışı ve saat hareketleri (`lesson_package_sales`, DOM-DIL-051). */
@@ -235,6 +266,9 @@ export interface WithdrawalPackageSale {
   }[]
 }
 
+/** Abonelik satırı ve dökümün okuduğu tutar alanları (`student_services`). */
+export type WithdrawalStudentService = StudentServiceRow & { unit: FeeUnit; amountCents: number }
+
 export interface WithdrawalContext {
   institutionType: InstitutionType
   /** Taksit → iptal edilmemiş tahsilatlardan dağıtılmış tutar. */
@@ -243,6 +277,8 @@ export interface WithdrawalContext {
   creditCents: number
   /** Öğrencinin paket satışları; dil okulu dışında boştur. */
   packageSales?: readonly WithdrawalPackageSale[]
+  /** Öğrencinin ek hizmet abonelikleri (ON-087); açık olanlar dökümde gösterilir. */
+  studentServices?: readonly WithdrawalStudentService[]
   now: string
 }
 
@@ -304,6 +340,7 @@ function withdrawalAccount(
   state: State,
   studentId: string,
   sales: readonly WithdrawalPackageSale[],
+  services: readonly WithdrawalStudentService[],
 ): AccountContract[] {
   const planned = plannedRenewalContractIds(state, studentId)
   const saleOf = saleFinder(state, sales)
@@ -323,12 +360,14 @@ function withdrawalAccount(
     throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
 
   // Taksit bir kez sayılır. Listesi olmayan eski sözleşme yalnız hiçbir sözleşmenin listesinde
-  // bulunmayan taksitleri alır; aynı taksit iki sözleşmede görünürse yeni sözleşmede kalır.
-  const listed = new Set(
-    state.contracts
+  // bulunmayan taksitleri alır; aynı taksit iki sözleşmede görünürse yeni sözleşmede kalır. Abonelik
+  // taksiti sözleşmesizdir, hesaba girmez (K-17).
+  const listed = new Set([
+    ...state.contracts
       .filter((item) => item.studentId === studentId)
       .flatMap((item) => item.invoiceIds ?? []),
-  )
+    ...services.flatMap((service) => service.invoiceIds),
+  ])
   const counted = new Set<string>()
   const newestFirst = [...contracts].reverse().map((contract) => {
     const own = contract.invoiceIds
@@ -467,7 +506,12 @@ export function quoteWithdrawal(
       'Kesintisiz iade yalnız okulda, öğretim yılı başlamadan uygulanır.',
       { path: ['publicSchoolExemption'] },
     )
-  const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
+  const account = withdrawalAccount(
+    state,
+    studentId,
+    context.packageSales ?? [],
+    context.studentServices ?? [],
+  )
   const latest = account.at(-1)
   if (!latest)
     throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
@@ -478,6 +522,12 @@ export function quoteWithdrawal(
   // Sözleşmeler, ek hizmet ve dağıtılmamış tahsilat tek bakiyede netleşir: iade ve borç birlikte
   // oluşmaz (DOM-FIN-040: ödenen hak edilenden azsa iade sıfırdır).
   const balance = total((line) => line.balanceCents) + context.creditCents
+  const services = withdrawalServiceLines(
+    state,
+    context.studentServices ?? [],
+    data.withdrawalDate,
+    context.allocated,
+  )
   const payers = lines.map((line): WithdrawalContractPayer => ({
     contractId: line.contractId,
     payer: line.payer,
@@ -507,8 +557,41 @@ export function quoteWithdrawal(
       refundCents: Math.max(balance, 0),
       debtCents: Math.max(-balance, 0),
       contracts: lines,
+      ...(services.length > 0 ? { services } : {}),
     },
   }
+}
+
+/**
+ * Açık aboneliklerin döküm satırları (K-17, ON-298): kapanış günü ON-087'nin ayrılış kuralıyla aynıdır
+ * (başlamadan ayrılışta başlangıç günü). İptal edilmiş taksit State'te yoktur, sayılmaz.
+ */
+function withdrawalServiceLines(
+  state: State,
+  services: readonly WithdrawalStudentService[],
+  withdrawalDate: string,
+  allocated: ReadonlyMap<string, number>,
+): WithdrawalServiceLine[] {
+  return services
+    .filter((service) => service.status === 'active')
+    .map((service) => {
+      const ids = new Set(service.invoiceIds)
+      const invoices = state.invoices.filter((invoice) => ids.has(invoice.id))
+      return {
+        serviceId: service.id,
+        kind: service.kind,
+        academicYear: service.academicYear,
+        startDate: service.startDate,
+        endDate: service.endDate,
+        unit: service.unit,
+        amountCents: service.amountCents,
+        usedCents: invoices
+          .filter((invoice) => invoice.dueDate.slice(0, 10) <= withdrawalDate)
+          .reduce((sum, invoice) => sum + invoice.amount, 0),
+        paidCents: invoices.reduce((sum, invoice) => sum + paidOf(invoice, allocated), 0),
+        endedDate: withdrawalDate < service.startDate ? service.startDate : withdrawalDate,
+      }
+    })
 }
 
 /**
@@ -646,7 +729,12 @@ export function withdrawStudent(
   const refundApprovedCents = refundApprovalRequired(breakdown)
     ? requireRefundApproval(breakdown.refundCents, data.approvedRefundCents)
     : null
-  const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
+  const account = withdrawalAccount(
+    state,
+    studentId,
+    context.packageSales ?? [],
+    context.studentServices ?? [],
+  )
 
   const planned = state.renewals.filter(
     (item) => item.studentId === studentId && item.status === 'Planlandı',

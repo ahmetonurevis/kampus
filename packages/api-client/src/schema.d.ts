@@ -3363,7 +3363,7 @@ export interface paths {
         put?: never;
         /**
          * Ayrılış ve iade hesabını önizle
-         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Açık ek hizmet aboneliği (ON-087) `breakdown.services` alanında hizmet, dönem, birim tutar ve ayrılış gününe kadar kullanılan tutarla gösterilir; iade ve borç hesabına girmez, iadesi otomatik yazılmaz (K-17). Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteWithdrawal"];
         delete?: never;
@@ -3383,7 +3383,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrencinin ayrılışını onayla
-         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Açık ek hizmet abonelikleri aynı işlemde kapanır (ON-087) ve dökümde `breakdown.services` olarak saklanır; iade tutarına girmez, iadesi otomatik yazılmaz (K-17). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["withdrawStudent"];
         delete?: never;
@@ -37463,6 +37463,27 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Açık ek hizmet abonelikleri (K-17, ON-298); iade ve borç hesabına girmez, personel kalemi tarifeye göre ayrıca işler. Abonelik yoksa ve eski kayıtta yok */
+                                services?: {
+                                    /** @description Ek hizmet aboneliği (ON-087) */
+                                    serviceId: string;
+                                    /** @enum {string} */
+                                    kind: "transport" | "meal" | "breakfast" | "club" | "tutoring" | "dormitory";
+                                    academicYear: number;
+                                    startDate: string;
+                                    /** @description Planlanan bitiş; aylık olmayan kalemde boş olabilir */
+                                    endDate: string | null;
+                                    /** @enum {string} */
+                                    unit: "year" | "month" | "lesson_hour" | "item";
+                                    /** @description Birim tutar; aylık kalemde bir ayın tutarı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı */
+                                    usedCents: number;
+                                    /** @description Aboneliğin ödenmiş tutarı */
+                                    paidCents: number;
+                                    /** @description Aboneliğin ayrılışla kapandığı gün */
+                                    endedDate: string;
+                                }[];
                             };
                             /** @description Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12) */
                             payersDiffer: boolean;
@@ -37675,6 +37696,27 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Açık ek hizmet abonelikleri (K-17, ON-298); iade ve borç hesabına girmez, personel kalemi tarifeye göre ayrıca işler. Abonelik yoksa ve eski kayıtta yok */
+                                services?: {
+                                    /** @description Ek hizmet aboneliği (ON-087) */
+                                    serviceId: string;
+                                    /** @enum {string} */
+                                    kind: "transport" | "meal" | "breakfast" | "club" | "tutoring" | "dormitory";
+                                    academicYear: number;
+                                    startDate: string;
+                                    /** @description Planlanan bitiş; aylık olmayan kalemde boş olabilir */
+                                    endDate: string | null;
+                                    /** @enum {string} */
+                                    unit: "year" | "month" | "lesson_hour" | "item";
+                                    /** @description Birim tutar; aylık kalemde bir ayın tutarı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı */
+                                    usedCents: number;
+                                    /** @description Aboneliğin ödenmiş tutarı */
+                                    paidCents: number;
+                                    /** @description Aboneliğin ayrılışla kapandığı gün */
+                                    endedDate: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -37870,6 +37912,27 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Açık ek hizmet abonelikleri (K-17, ON-298); iade ve borç hesabına girmez, personel kalemi tarifeye göre ayrıca işler. Abonelik yoksa ve eski kayıtta yok */
+                                services?: {
+                                    /** @description Ek hizmet aboneliği (ON-087) */
+                                    serviceId: string;
+                                    /** @enum {string} */
+                                    kind: "transport" | "meal" | "breakfast" | "club" | "tutoring" | "dormitory";
+                                    academicYear: number;
+                                    startDate: string;
+                                    /** @description Planlanan bitiş; aylık olmayan kalemde boş olabilir */
+                                    endDate: string | null;
+                                    /** @enum {string} */
+                                    unit: "year" | "month" | "lesson_hour" | "item";
+                                    /** @description Birim tutar; aylık kalemde bir ayın tutarı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı */
+                                    usedCents: number;
+                                    /** @description Aboneliğin ödenmiş tutarı */
+                                    paidCents: number;
+                                    /** @description Aboneliğin ayrılışla kapandığı gün */
+                                    endedDate: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -38059,6 +38122,27 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Açık ek hizmet abonelikleri (K-17, ON-298); iade ve borç hesabına girmez, personel kalemi tarifeye göre ayrıca işler. Abonelik yoksa ve eski kayıtta yok */
+                                services?: {
+                                    /** @description Ek hizmet aboneliği (ON-087) */
+                                    serviceId: string;
+                                    /** @enum {string} */
+                                    kind: "transport" | "meal" | "breakfast" | "club" | "tutoring" | "dormitory";
+                                    academicYear: number;
+                                    startDate: string;
+                                    /** @description Planlanan bitiş; aylık olmayan kalemde boş olabilir */
+                                    endDate: string | null;
+                                    /** @enum {string} */
+                                    unit: "year" | "month" | "lesson_hour" | "item";
+                                    /** @description Birim tutar; aylık kalemde bir ayın tutarı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı */
+                                    usedCents: number;
+                                    /** @description Aboneliğin ödenmiş tutarı */
+                                    paidCents: number;
+                                    /** @description Aboneliğin ayrılışla kapandığı gün */
+                                    endedDate: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -38260,6 +38344,27 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Açık ek hizmet abonelikleri (K-17, ON-298); iade ve borç hesabına girmez, personel kalemi tarifeye göre ayrıca işler. Abonelik yoksa ve eski kayıtta yok */
+                                services?: {
+                                    /** @description Ek hizmet aboneliği (ON-087) */
+                                    serviceId: string;
+                                    /** @enum {string} */
+                                    kind: "transport" | "meal" | "breakfast" | "club" | "tutoring" | "dormitory";
+                                    academicYear: number;
+                                    startDate: string;
+                                    /** @description Planlanan bitiş; aylık olmayan kalemde boş olabilir */
+                                    endDate: string | null;
+                                    /** @enum {string} */
+                                    unit: "year" | "month" | "lesson_hour" | "item";
+                                    /** @description Birim tutar; aylık kalemde bir ayın tutarı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Ayrılış gününe kadar kullanılan: vadesi o güne kadar gelen taksitlerin tutarı */
+                                    usedCents: number;
+                                    /** @description Aboneliğin ödenmiş tutarı */
+                                    paidCents: number;
+                                    /** @description Aboneliğin ayrılışla kapandığı gün */
+                                    endedDate: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;

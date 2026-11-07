@@ -133,7 +133,7 @@ export async function openStudentServicesOf(
   db: Database,
   institutionId: string,
   studentId: string,
-): Promise<StudentServiceRow[]> {
+): Promise<(StoredStudentService & Pick<StudentServiceRow, 'invoiceIds'>)[]> {
   const rows = await db
     .select(COLUMNS)
     .from(studentServices)

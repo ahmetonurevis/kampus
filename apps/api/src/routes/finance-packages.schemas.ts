@@ -76,6 +76,11 @@ const saleSchema = z.object({
   consumedHours: z.number().int().describe('Tüketilen saat'),
   refundedHours: z.number().int().describe('İade edilen saat'),
   remainingHours: z.number().int().describe('Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)'),
+  // Eski idempotency yanıtı bu alanı taşımaz: tekrar yanıtı şemadan geçerken düşmesin.
+  usedHoursRecorded: z
+    .boolean()
+    .default(false)
+    .describe('Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)'),
   expiresDate: z.string().nullable().describe('Son kullanma günü; boşsa süresiz'),
   status: z
     .enum(PACKAGE_SALE_STATUSES)

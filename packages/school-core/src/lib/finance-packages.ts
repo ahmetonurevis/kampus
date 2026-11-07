@@ -18,7 +18,7 @@ import {
 } from './enrollment.ts'
 import { DomainError } from './errors.ts'
 import { FEE_DISCOUNT_KINDS, FEE_ITEM_KINDS } from './fee-tariffs.ts'
-import { packageHourBalance } from './finance-package-hours.ts'
+import { packageHourBalance, packageUsedHoursRecorded } from './finance-package-hours.ts'
 import { dayKey } from './format.ts'
 import {
   assertEarlyPaymentOnUpfront,
@@ -47,7 +47,10 @@ export const PACKAGE_KIND_LABELS: Readonly<Record<PackageKind, string>> = {
   private: 'Özel ders paketi',
 }
 
-/** Satış ve süre uzatma yönetici ile ön büronundur; tanım tarife gibi yöneticidedir (DOM-FIN-052). */
+/**
+ * Satış, süre uzatma ve kullanılan saat girişi (K-21) yönetici ile ön büronundur; tanım tarife gibi
+ * yöneticidedir (DOM-FIN-052).
+ */
 export const PACKAGE_SELL_ROLES = ['yonetici', 'onburo'] as const
 /** Satışı öğrenci kendisinde, veli bağlı çocuğunda ve ödeyicisi olduğu öğrencide görür (IST-078). */
 export const PACKAGE_SALE_READ_ROLES = ['yonetici', 'onburo', 'veli', 'ogrenci'] as const
@@ -155,18 +158,39 @@ export type ExtendPackageSaleInput = z.input<typeof extendPackageSaleSchema>
 
 export const PACKAGE_HOUR_KINDS = ['consumed', 'refunded'] as const
 export type PackageHourKind = (typeof PACKAGE_HOUR_KINDS)[number]
-export const PACKAGE_HOUR_SOURCES = ['lesson', 'withdrawal'] as const
+/** `manual`: personelin elle girdiği kullanılan saat (K-21); `setPackageUsedHours` yazar. */
+export const PACKAGE_HOUR_SOURCES = ['lesson', 'withdrawal', 'manual'] as const
 export type PackageHourSource = (typeof PACKAGE_HOUR_SOURCES)[number]
+const LEDGER_HOUR_SOURCES = ['lesson', 'withdrawal'] as const
 
 /** Saat hareketi: kaynak (ders, ayrılış) başına bir kez yazılır, yoklama yeniden işlenince artmaz. */
 export const packageHourEntrySchema = z.strictObject({
   kind: z.enum(PACKAGE_HOUR_KINDS),
   hours: hoursSchema,
   occurredDate: daySchema,
-  sourceType: z.enum(PACKAGE_HOUR_SOURCES),
+  sourceType: z.enum(LEDGER_HOUR_SOURCES),
   sourceId: requiredText.max(200),
 })
 export type PackageHourEntryInput = z.input<typeof packageHourEntrySchema>
+
+/**
+ * Elle girilen kullanılan saat (K-21, DOM-DIL-051): satışın o güne kadarki toplamı. Fark değil toplam
+ * girilir; gerekçe her girişte zorunludur, azaltma da böylece gerekçesiz yapılamaz.
+ */
+export const setPackageUsedHoursSchema = z.strictObject({
+  usedHours: z
+    .number('Kullanılan saati girin.')
+    .int('Kullanılan saat tam sayı olmalıdır.')
+    .min(0, 'Kullanılan saat sıfırdan küçük olamaz.')
+    .max(PACKAGE_HOURS_MAX, `Kullanılan saat en çok ${String(PACKAGE_HOURS_MAX)} olabilir.`),
+  // kvkk: Ç — gerekçe yalnız denetim kaydına yazılır, loglanmaz.
+  reason: z
+    .string('Gerekçeyi yazın.')
+    .trim()
+    .min(2, 'Gerekçeyi yazın.')
+    .max(500, 'En fazla 500 karakter girebilirsiniz.'),
+})
+export type SetPackageUsedHoursInput = z.input<typeof setPackageUsedHoursSchema>
 
 export interface LessonPackage {
   id: string
@@ -542,7 +566,7 @@ export interface PackageHourBalance {
   remainingHours: number
 }
 
-export { packageHourBalance }
+export { packageHourBalance, packageUsedHoursRecorded }
 
 export const PACKAGE_SALE_STATUSES = ['active', 'expired', 'depleted'] as const
 export type PackageSaleStatus = (typeof PACKAGE_SALE_STATUSES)[number]
@@ -598,6 +622,59 @@ export function planPackageHourEntry(
       path: ['hours'],
     })
   return data
+}
+
+/**
+ * Kullanılan saati elle yazar (K-21, DOM-DIL-051, DOM-FIN-040). Yoklama bağı yokken ayrılışta fazla
+ * iade çıkmasın diye personel toplamı girer; satışta tek etkin `manual` hareket durur, yenisi eskisini
+ * arşivler (eski değer arşivli satırda kalır). Süresi dolan pakette de girilir: ders süre içinde
+ * yapılmış, sonradan yazılıyor olabilir. Sıfır girişi "kullanılmadı" bilgisidir, satır olarak kalır.
+ * Ayrılış hesabı dondurulduktan sonra değişmez (DOM-FIN-041).
+ *
+ * TODO(package-attendance): yoklama köprüsü (OG-116, OG-144) gelince bu yol kaldırılabilir; o güne
+ * kadar yoklamadan gelen saat toplamın parçasıdır, elle girilen yalnız farkı tutar.
+ */
+export function planPackageUsedHours(
+  sale: { purchasedHours: number },
+  entries: readonly PackageHourEntry[],
+  input: unknown,
+  context: { studentActive: boolean },
+) {
+  const data = setPackageUsedHoursSchema.parse(input)
+  const { consumedHours, refundedHours } = packageHourBalance(sale.purchasedHours, entries)
+  if (!context.studentActive || refundedHours > 0)
+    throw new DomainError(
+      'package_sale_closed',
+      'Ayrılış hesabına girmiş satışın kullanılan saati değiştirilemez.',
+    )
+  if (data.usedHours > sale.purchasedHours)
+    throw new DomainError(
+      'package_used_exceeds_purchased',
+      'Kullanılan saat alınan saati aşamaz.',
+      {
+        path: ['usedHours'],
+      },
+    )
+  const lessonHours = entries.reduce(
+    (sum, entry) =>
+      entry.kind === 'consumed' && entry.sourceType !== 'manual' ? sum + entry.hours : sum,
+    0,
+  )
+  if (data.usedHours < lessonHours)
+    throw new DomainError(
+      'package_used_below_lessons',
+      `Kullanılan saat, derslerden yazılan ${String(lessonHours)} saatin altına inemez.`,
+      { path: ['usedHours'] },
+    )
+  if (packageUsedHoursRecorded(entries) && data.usedHours === consumedHours)
+    throw new DomainError('package_used_hours_unchanged', 'Kullanılan saat zaten bu değerde.', {
+      path: ['usedHours'],
+    })
+  return {
+    usedHours: data.usedHours,
+    manualHours: data.usedHours - lessonHours,
+    reason: data.reason,
+  }
 }
 
 /**

@@ -259,6 +259,7 @@ export function withdrawStudentCommand(
           'targetSchool',
           'breakdown',
           ...(plan.breakdown.payerDecision ? ['payerDecision'] : []),
+          ...(plan.breakdown.refundApprovedCents === undefined ? [] : ['refundApprovedCents']),
         ])
         const row = await findWithdrawal(tx, ctx.institutionId, id)
         if (row === null) throw new NotFoundError()

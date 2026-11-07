@@ -102,7 +102,7 @@ export const lessonPackages = pgTable(
 /**
  * Satış: paketin ve fiyatın karar anı kopyası (DOM-FIN-010). İndirim ve ek kalem dökümü sözleşmede,
  * taksitler ADR 0010 tablolarındadır. Bakiye saklanmaz (DOM-DIL-051); yalnız `expires_date`, `version`
- * ve `updated_at` süre uzatmayla değişir. Öğrenci `records`'tadır, yabancı anahtar değildir (ADR 0010
+ * ve `updated_at` süre uzatmayla, `version` ve `updated_at` kullanılan saat girişiyle değişir. Öğrenci `records`'tadır, yabancı anahtar değildir (ADR 0010
  * karar 6).
  */
 export const lessonPackageSales = pgTable(
@@ -185,6 +185,8 @@ export const lessonPackageSales = pgTable(
 /**
  * Saat hareketi: bakiyenin kaynağı (DOM-DIL-051). Bakiye bu satırlardan hesaplanır. Kaynak başına
  * tek satır: yoklama ya da ayrılış yeniden işlenince saat iki kez düşmez. Yanlış hareket arşivlenir.
+ * `manual` satış başına tek etkin satırdır (K-21); sıfır saat yalnız onda geçerlidir: "kullanılmadı"
+ * bilgisi "girilmedi"den ayrılsın.
  */
 export const lessonPackageHourEntries = pgTable(
   'lesson_package_hour_entries',
@@ -220,7 +222,7 @@ export const lessonPackageHourEntries = pgTable(
     ),
     check(
       'lesson_package_hour_entries_hours_check',
-      sql`${table.hours} between 1 and ${max(PACKAGE_HOURS_MAX)}`,
+      sql`(${table.hours} between 1 and ${max(PACKAGE_HOURS_MAX)}) or (${table.sourceType} = 'manual' and ${table.hours} = 0)`,
     ),
     uniqueIndex('lesson_package_hour_entries_source_key')
       .on(table.institutionId, table.saleId, table.sourceType, table.sourceId)

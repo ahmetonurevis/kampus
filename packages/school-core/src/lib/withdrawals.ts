@@ -5,17 +5,18 @@ import type { InstitutionType } from '../modules/collection-modules.ts'
 import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { packageHourBalance } from './finance-package-hours.ts'
-import type { PackageHourKind } from './finance-packages.ts'
+import { packageHourBalance, packageUsedHoursRecorded } from './finance-package-hours.ts'
+import type { PackageHourKind, PackageHourSource } from './finance-packages.ts'
 import { dayKey, money } from './format.ts'
 
 /**
  * Ayrılış ve iade (docs/domain/finans.md DOM-FIN-040, -041; kayit-ve-crm.md DOM-KAY-024; IST-110;
  * ADR 0006 karar 10). Bütün yürürlükteki sözleşmeler hesaba girer (K-06). Öğretim takvimi kaynağı
  * olmadığı için öğrenim sözleşmesinde görülen ve toplam birim (ders günü veya ders saati) yönetici
- * tarafından girilir; paket satışında kullanılan saat kayıttan gelir (DOM-DIL-051). Yuvarlama ödeyici
- * lehinedir: kesinti aşağı yuvarlanır. Oranlar ve hesap tabanı mevzuat metninde açık değildir,
- * **doğrulanmalı** (DOM-FIN-040).
+ * tarafından girilir; paket satışında kullanılan saat kayıttan gelir (DOM-DIL-051), yoklama bağı
+ * gelene kadar personel elle yazar ve paketli ayrılışın iade tutarı yönetici onayından geçer (K-21).
+ * Yuvarlama ödeyici lehinedir: kesinti aşağı yuvarlanır. Oranlar ve hesap tabanı mevzuat metninde
+ * açık değildir, **doğrulanmalı** (DOM-FIN-040).
  */
 
 /** Kesinti oranı; on binde birlik, %10 (ÖÖKY md. 56/3). Hesap dökümüne kopyalanır. */
@@ -68,6 +69,16 @@ export const withdrawStudentSchema = z.strictObject({
   reason: z.enum(WITHDRAWAL_REASONS, 'Ayrılış nedenini seçin.'),
   targetSchool: requiredText.max(200).nullable().default(null),
   payerDecision: payerDecisionSchema.nullable().default(null),
+  /**
+   * Yöneticinin önizlemede gördüğü iade tutarı (K-21); paket satışı hesaba giriyorsa zorunludur.
+   * Tutar arada değiştiyse ayrılış yazılmaz: denetim `withdrawStudent`'tadır.
+   */
+  approvedRefundCents: z
+    .number('İade tutarı geçersiz.')
+    .int('İade tutarı geçersiz.')
+    .min(0, 'İade tutarı geçersiz.')
+    .nullable()
+    .default(null),
 })
 export type WithdrawStudentInput = z.input<typeof withdrawStudentSchema>
 
@@ -152,6 +163,8 @@ export interface WithdrawalContractLine {
   totalUnits: number
   /** Ayrılışla iade edilmiş yazılacak kalan saat (DOM-DIL-051); yalnız pakette. */
   returnedHours?: number
+  /** Pakette kullanılan saat hiç girilmedi: hesap sıfır saate dayanır, fazla çıkabilir (K-21). */
+  usedHoursMissing?: boolean
   scholarshipExempt: boolean
   baseCents: number
   deductionCents: number
@@ -204,6 +217,8 @@ export interface WithdrawalBreakdown {
     // kvkk: K
     reason?: string
   }
+  /** Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yoktur. */
+  refundApprovedCents?: number
 }
 
 /** Hesaba giren paket satışı ve saat hareketleri (`lesson_package_sales`, DOM-DIL-051). */
@@ -211,7 +226,13 @@ export interface WithdrawalPackageSale {
   id: string
   contractId: string
   purchasedHours: number
-  entries: readonly { kind: PackageHourKind; hours: number; occurredDate: string }[]
+  entries: readonly {
+    kind: PackageHourKind
+    hours: number
+    occurredDate: string
+    /** `manual` satırı girildiği güne kadarki toplamdır; ayrılış gününe göre elenmez (K-21). */
+    sourceType?: PackageHourSource
+  }[]
 }
 
 export interface WithdrawalContext {
@@ -327,9 +348,14 @@ function quoteContract(
   started: boolean,
   allocated: ReadonlyMap<string, number>,
 ): { line: WithdrawalContractLine; extras: WithdrawalExtraLine[] } {
-  // Ayrılıştan sonraki ders kayıtlı olunan süreye girmez (DOM-DIL-051).
+  // Ayrılıştan sonraki ders kayıtlı olunan süreye girmez (DOM-DIL-051). Elle girilen toplam ayrılıştan
+  // sonra yazılmış olabilir, ama tarihi girişin günüdür, dersin değil: elenirse fazla iade çıkar (K-21).
   const usedHours = sale?.entries
-    .filter((entry) => entry.kind === 'consumed' && entry.occurredDate <= data.withdrawalDate)
+    .filter(
+      (entry) =>
+        entry.kind === 'consumed' &&
+        (entry.sourceType === 'manual' || entry.occurredDate <= data.withdrawalDate),
+    )
     .reduce((sum, entry) => sum + entry.hours, 0)
   const attendedUnits = usedHours ?? data.attendedUnits
   const totalUnits = sale?.purchasedHours ?? data.totalUnits
@@ -373,6 +399,7 @@ function quoteContract(
               packageHourBalance(sale.purchasedHours, sale.entries).remainingHours,
               0,
             ),
+            ...(packageUsedHoursRecorded(sale.entries) ? {} : { usedHoursMissing: true }),
           }
         : {}),
       attendedUnits,
@@ -496,6 +523,31 @@ export function contractLinesToShow<T extends { packageSaleId?: string | undefin
   return lines.length > 1 || lines.some((line) => line.packageSaleId !== undefined) ? lines : []
 }
 
+/** Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21). */
+export function refundApprovalRequired(breakdown: Pick<WithdrawalBreakdown, 'contracts'>): boolean {
+  return breakdown.contracts?.some((line) => line.packageSaleId !== undefined) ?? false
+}
+
+/**
+ * Yöneticinin onayı gördüğü tutara bağlıdır (K-21): önizlemeden sonra saat girildiyse ya da tahsilat
+ * geldiyse tutar değişir, eski tutarla ayrılış yazılmaz.
+ */
+function requireRefundApproval(refundCents: number, approvedCents: number | null): number {
+  if (approvedCents === null)
+    throw new DomainError(
+      'withdrawal_refund_approval_required',
+      'Paket içeren ayrılışta iade tutarını görüp onaylayın.',
+      { path: ['approvedRefundCents'] },
+    )
+  if (approvedCents !== refundCents)
+    throw new DomainError(
+      'withdrawal_refund_changed',
+      'İade tutarı önizlemeden sonra değişti. Hesabı yeniden görüp onaylayın.',
+      { kind: 'conflict' },
+    )
+  return approvedCents
+}
+
 /** Seçilebilir iade ödeyicileri (K-12): her biri bir kez; adı bulunamayan ödeyici seçilemez. */
 export function refundPayerOptions(
   payers: readonly WithdrawalContractPayer[],
@@ -525,6 +577,9 @@ export function contractLineRows(
         : `Kullanım (${usage} ders saati, kayıttan)`,
       money(line.usageCents),
     ],
+    ...(line.usedHoursMissing
+      ? ([['Kullanılan saat', 'Girilmedi; hesap sıfır saate göre']] as const)
+      : []),
     ['Hak edilen', money(line.entitledCents)],
     ...(line.scholarshipExempt
       ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
@@ -555,7 +610,9 @@ export function refundDueDate(withdrawalDate: string): string {
  * Ayrılışı uygular (DOM-FIN-041, DOM-KAY-024): öğrenci pasifleşir, hesaba giren bütün sözleşmelerin
  * açık taksitleri iptal edilir (listeden çıkan kayıt arşivlenir), borç kalırsa tek taksit açılır,
  * ileri tarihli etüt, servis ve kulüp kayıtları sonlanır, planlanmış yenileme iptal edilir. Kalan
- * paket saatinin iade hareketini servis yazar (`returnedHours`). Bütün denetimler yazımdan öncedir.
+ * paket saatinin iade hareketini servis yazar (`returnedHours`). Paket satışı hesaba giriyorsa iade
+ * tutarı yönetici onayından geçer (K-21); komutu yalnız yönetici çalıştırır (`student.withdraw`), ön
+ * büro hesabı görür ama ayrılışı tamamlayamaz. Bütün denetimler yazımdan öncedir.
  */
 export function withdrawStudent(
   state: State,
@@ -586,6 +643,9 @@ export function withdrawStudent(
     payersDiffer && breakdown.refundCents > 0
       ? requirePayerDecision(payers, data.payerDecision)
       : null
+  const refundApprovedCents = refundApprovalRequired(breakdown)
+    ? requireRefundApproval(breakdown.refundCents, data.approvedRefundCents)
+    : null
   const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
 
   const planned = state.renewals.filter(
@@ -669,6 +729,7 @@ export function withdrawStudent(
       ...breakdown,
       ...(debt ? { debtInvoiceId: debt.id } : {}),
       ...(payerDecision ? { payerDecision } : {}),
+      ...(refundApprovedCents === null ? {} : { refundApprovedCents }),
     },
   }
 }

@@ -1006,6 +1006,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-installment-import.test.ts',
     'başka kurumun öğrencisi ve sözleşmesi bu kurumu etkilemez',
   ),
+  'POST /api/v1/finance/package-sales/:saleId/set-used-hours': kayit(
+    'finance-packages.test.ts',
+    'başka kurumun satışında kullanılan saat 404, B değişmez',
+    'usedUrl(bSale.id)',
+  ),
 }
 
 /**

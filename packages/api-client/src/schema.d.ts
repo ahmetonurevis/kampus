@@ -2724,6 +2724,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/package-sales/{saleId}/set-used-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kullanılan saati elle gir
+         * @description Yoklama bağı (OG-116, OG-144) gelene kadar personel satışın o güne kadar kullanılan toplam saatini girer; ayrılıştaki iade bu saate dayanır (K-21, DOM-DIL-051, DOM-FIN-040). Azaltılabilir; gerekçe zorunludur ve yalnız denetim kaydına yazılır, eski değer arşivli saat hareketinde kalır. Alınan saati aşarsa 422 `package_used_exceeds_purchased`, derslerden yazılan saatin altına inerse 422 `package_used_below_lessons`, aynı değer 422 `package_used_hours_unchanged`, ayrılış hesabına girmiş satış 422 `package_sale_closed`. Olmayan ya da başka kurumun satışı 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["setPackageSaleUsedHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/invoices/{invoiceId}/remind": {
         parameters: {
             query?: never;
@@ -3199,7 +3219,7 @@ export interface paths {
         put?: never;
         /**
          * Ayrılış ve iade hesabını önizle
-         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteWithdrawal"];
         delete?: never;
@@ -3219,7 +3239,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrencinin ayrılışını onayla
-         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["withdrawStudent"];
         delete?: never;
@@ -31343,6 +31363,11 @@ export interface operations {
                             refundedHours: number;
                             /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
                             remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
                             /** @description Son kullanma günü; boşsa süresiz */
                             expiresDate: string | null;
                             /**
@@ -31494,6 +31519,11 @@ export interface operations {
                             refundedHours: number;
                             /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
                             remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
                             /** @description Son kullanma günü; boşsa süresiz */
                             expiresDate: string | null;
                             /**
@@ -31627,6 +31657,11 @@ export interface operations {
                             refundedHours: number;
                             /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
                             remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
                             /** @description Son kullanma günü; boşsa süresiz */
                             expiresDate: string | null;
                             /**
@@ -31781,6 +31816,161 @@ export interface operations {
                             refundedHours: number;
                             /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
                             remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
+                            /** @description Son kullanma günü; boşsa süresiz */
+                            expiresDate: string | null;
+                            /**
+                             * @description `expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.
+                             * @enum {string}
+                             */
+                            status: "active" | "expired" | "depleted";
+                            soldAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setPackageSaleUsedHours: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                saleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    usedHours: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            packageId: string;
+                            /** @description Satış anındaki ad */
+                            packageName: string;
+                            /** @enum {string} */
+                            kind: "course" | "hours" | "private";
+                            courseId: string | null;
+                            /** @description Satış anındaki seviye */
+                            level: string | null;
+                            studentId: string;
+                            /** @description Satışın açtığı sözleşme */
+                            contractId: string;
+                            tariffId: string;
+                            tariffVersion: number;
+                            /** @description Uygulanan saat ücreti; iade bu ücretle hesaplanır */
+                            hourlyCents: number;
+                            grossCents: number;
+                            netCents: number;
+                            /** @description Satın alınan saat */
+                            purchasedHours: number;
+                            /** @description Tüketilen saat */
+                            consumedHours: number;
+                            /** @description İade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051) */
+                            remainingHours: number;
+                            /**
+                             * @description Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)
+                             * @default false
+                             */
+                            usedHoursRecorded: boolean;
                             /** @description Son kullanma günü; boşsa süresiz */
                             expiresDate: string | null;
                             /**
@@ -35731,6 +35921,8 @@ export interface operations {
                                     totalUnits: number;
                                     /** @description Pakette iade edilen kalan saat */
                                     returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
                                     baseCents: number;
                                     deductionCents: number;
@@ -35748,6 +35940,8 @@ export interface operations {
                                     /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             /** @description Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12) */
                             payersDiffer: boolean;
@@ -35868,6 +36062,8 @@ export interface operations {
                         payer: string;
                         reason: string;
                     } | null;
+                    /** @default null */
+                    approvedRefundCents?: number | null;
                 };
             };
         };
@@ -35937,6 +36133,8 @@ export interface operations {
                                     totalUnits: number;
                                     /** @description Pakette iade edilen kalan saat */
                                     returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
                                     baseCents: number;
                                     deductionCents: number;
@@ -35954,6 +36152,8 @@ export interface operations {
                                     /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -36128,6 +36328,8 @@ export interface operations {
                                     totalUnits: number;
                                     /** @description Pakette iade edilen kalan saat */
                                     returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
                                     baseCents: number;
                                     deductionCents: number;
@@ -36145,6 +36347,8 @@ export interface operations {
                                     /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -36313,6 +36517,8 @@ export interface operations {
                                     totalUnits: number;
                                     /** @description Pakette iade edilen kalan saat */
                                     returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
                                     baseCents: number;
                                     deductionCents: number;
@@ -36330,6 +36536,8 @@ export interface operations {
                                     /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;
@@ -36510,6 +36718,8 @@ export interface operations {
                                     totalUnits: number;
                                     /** @description Pakette iade edilen kalan saat */
                                     returnedHours?: number;
+                                    /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
+                                    usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
                                     baseCents: number;
                                     deductionCents: number;
@@ -36527,6 +36737,8 @@ export interface operations {
                                     /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
+                                /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
+                                refundApprovedCents?: number;
                             };
                             refundCents: number;
                             debtCents: number;

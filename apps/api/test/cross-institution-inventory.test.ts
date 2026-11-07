@@ -1040,6 +1040,19 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-payer-children.test.ts',
     'başka kurumun öğrencisi listede yok, finans okuması 404',
   ),
+  // Onur: ek hizmet aboneliği (ON-087, #54).
+  ...((F, T) => ({
+    'GET /api/v1/finance/student-services': liste(F, T),
+    // Önizlemenin başka kurum denetimi yetki testindedir; yol `quoteUrl` ile kurulur.
+    'GET /api/v1/finance/student-services/quote': liste(
+      F,
+      'önizleme oturumsuz 401; veli ve öğrenci 403; modül kapalı 403; başka kurum 404',
+      '`${BASE}/quote?',
+    ),
+    'POST /api/v1/finance/student-services': govde(F, T),
+    'GET /api/v1/finance/student-services/:serviceId': kayit(F, T, '`${BASE}/${String(id)}`'),
+    'POST /api/v1/finance/student-services/:serviceId/end': kayit(F, T, '/end`'),
+  }))('finance-student-services.test.ts', 'başka kurumun öğrencisi ve aboneliği 404'),
 }
 
 /**

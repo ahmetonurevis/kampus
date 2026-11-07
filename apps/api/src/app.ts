@@ -147,6 +147,8 @@ export const REDACTED_PATHS = [
   '*.signatoryName',
   'guardian.name',
   '*.guardian.name',
+  // Aday `interest` ve imza yetkilisi ucunun üst düzey `name` alanı yalnız istek gövdesinde gelir;
+  // gövde loglanmadığından maske yok, genel `name` de başka kayıtların adıdır (ON-315, testte).
   // Paket uzatma ve kullanılan saat düzeltmesi (ON-300, DOM-DIL-051), ek protokol, tahsilat ters
   // kaydı ve gün sonu yeniden açma gövdesindeki gerekçe `reason` adıyla gelir: aşağıdaki
   // `reason`/`*.reason` gizler (finance-log-redaction.test.ts).

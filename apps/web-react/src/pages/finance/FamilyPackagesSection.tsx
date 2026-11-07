@@ -9,7 +9,8 @@ const PAGE = { page: 1, pageSize: 100 } as const
 /**
  * Satın alınan paketler (veli ve öğrenci, dil okulu; IST-078, DOM-DIL-051, K-07). Kapsam sunucudadır:
  * veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür. Yalnız okunur; satış
- * kurumdadır. Tutar burada yoktur: taksitler ve sözleşme kendi bölümlerinde görünür.
+ * kurumdadır. Tutar burada yoktur, sunucu da göndermez (K-40): taksitler ve sözleşme kendi
+ * bölümlerinde görünür.
  */
 export function FamilyPackagesSection({ studentId }: { studentId: string }) {
   const sales = usePackageSales({ ...PAGE, studentId })

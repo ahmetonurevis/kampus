@@ -3,10 +3,12 @@ import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   contractLineRows,
   contractLinesToShow,
+  paidTuitionLabel,
   WITHDRAWAL_PAYER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type WithdrawalContractLine,
   type WithdrawalPayer,
+  withdrawalTargetLabel,
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
@@ -47,7 +49,8 @@ const DAY = { year: 'numeric' } as const
 
 /**
  * İade hesap kırılımı: karar anındaki döküm aynen yazılır (DOM-FIN-041, IST-110). Ayrılan kayıt
- * okulda "Öğrenci", dil okulu ve kursta "Kursiyer" diye yazılır (DOM-KAY-012).
+ * okulda "Öğrenci", dil okulu ve kursta "Kursiyer" diye yazılır; gidilen yer ve ödenen ücret de
+ * okulda "okul" ve "öğrenim ücreti", öteki türlerde "kurum" ve "kurs ücreti"dir (DOM-KAY-012).
  */
 export function refundStatementDocument(
   measurer: TextMeasurer,
@@ -55,6 +58,7 @@ export function refundStatementDocument(
   options: TemplateOptions & LearnerTermOptions,
 ): PdfDocument {
   const { breakdown } = withdrawal
+  const type = options.institutionType
   const doc = new DocumentLayout(measurer, {
     label: 'İADE HESAP KIRILIMI',
     badge: 'İADE',
@@ -71,17 +75,17 @@ export function refundStatementDocument(
     'TRY / Türk lirası',
   )
   doc.fields([
-    [learnerTerm(options.institutionType), withdrawal.studentName ?? '—'],
+    [learnerTerm(type), withdrawal.studentName ?? '—'],
     ['Ayrılış tarihi', dateLabel(withdrawal.withdrawalDate, DAY)],
     ['Ayrılış nedeni', WITHDRAWAL_REASON_LABELS[withdrawal.reason]],
-    ['Gittiği okul', withdrawal.targetSchool ?? '—'],
+    [withdrawalTargetLabel(type), withdrawal.targetSchool ?? '—'],
   ])
   const contractLines = contractLinesToShow(breakdown.contracts)
   if (contractLines.length > 0) {
     // Birden çok sözleşmede ve pakette toplam satırı kullanımı anlatamaz (K-06).
     for (const line of contractLines) {
       doc.section(line.title)
-      doc.fields(contractLineRows(line, breakdown.deductionBasisPoints))
+      doc.fields(contractLineRows(line, breakdown.deductionBasisPoints, undefined, type))
     }
     doc.section('Toplam')
     doc.fields([
@@ -114,7 +118,7 @@ export function refundStatementDocument(
       ...(breakdown.scholarshipExempt
         ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
         : []),
-      ['Ödenen öğrenim ücreti', money(breakdown.paidCents)],
+      [paidTuitionLabel(type), money(breakdown.paidCents)],
       ['Ek hizmet bakiyesi', money(extraBalance)],
       ['Dağıtılmamış tahsilat', money(breakdown.creditCents)],
       ['İade', money(withdrawal.refundCents)],

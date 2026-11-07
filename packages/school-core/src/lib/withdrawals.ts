@@ -553,11 +553,31 @@ export function refundPayerOptions(
   })
 }
 
-/** Bir sözleşmenin ekran ve belge satırları; ikisi aynı dökümü aynı sözlerle gösterir (IST-110). */
+/**
+ * Ayrılanın gittiği yerin etiketi (DOM-KAY-012): okulda "Gittiği okul", dil okulu ve kursta
+ * "Gittiği kurum". Tür bilinmiyorsa okul sayılır.
+ */
+export function withdrawalTargetLabel(type?: InstitutionType): string {
+  return type === undefined || type === 'school' ? 'Gittiği okul' : 'Gittiği kurum'
+}
+
+/**
+ * İade dökümünde ödenen ana ücretin etiketi (DOM-KAY-012, IST-110): okulda "Ödenen öğrenim
+ * ücreti", dil okulu ve kursta "Ödenen kurs ücreti". Tür bilinmiyorsa okul sayılır.
+ */
+export function paidTuitionLabel(type?: InstitutionType): string {
+  return type === undefined || type === 'school' ? 'Ödenen öğrenim ücreti' : 'Ödenen kurs ücreti'
+}
+
+/**
+ * Bir sözleşmenin ekran ve belge satırları; ikisi aynı dökümü aynı sözlerle gösterir (IST-110).
+ * Ödenen ücret satırı kurum türünü izler (`paidTuitionLabel`); tür verilmezse okul metnidir.
+ */
 export function contractLineRows(
   line: WithdrawalContractLine,
   deductionBasisPoints: number,
   payerName?: string,
+  institutionType?: InstitutionType,
 ): readonly (readonly [string, string])[] {
   const usage = `${String(line.attendedUnits)} / ${String(line.totalUnits)}`
   return [
@@ -577,7 +597,7 @@ export function contractLineRows(
     ...(line.scholarshipExempt
       ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
       : []),
-    ['Ödenen öğrenim ücreti', money(line.paidCents)],
+    [paidTuitionLabel(institutionType), money(line.paidCents)],
     ...(line.extraBalanceCents === 0
       ? []
       : ([['Ek hizmet bakiyesi', money(line.extraBalanceCents)]] as const)),

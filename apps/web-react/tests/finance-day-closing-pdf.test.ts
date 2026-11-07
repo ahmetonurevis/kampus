@@ -9,7 +9,7 @@ import {
   dayClosingFilename,
   financeDayClosingDocument,
 } from '../src/lib/pdf/templates/finance-day-closing.ts'
-import { allTexts, measurer, texts } from './support/pdf-measurer.ts'
+import { allTexts, measurer, texts, type Page } from './support/pdf-measurer.ts'
 
 const OPTIONS = {
   institution: 'Akademi Özel Okulları',
@@ -161,4 +161,61 @@ test('ADR 0008, DOM-KAY-012: dil okulunda gün sonu tablolarının sütunu "Kurs
     assert.equal(all.filter((text) => text === 'Kursiyer').length, 2, institutionType)
     assert.equal(all.includes('Öğrenci'), false, institutionType)
   }
+})
+
+/** Sayfa gövdesinin metinleri: üst bilgi (y ≤ 41) ve alt bilgi (y ≥ 276) dışı. */
+const bodyTexts = (page: Page) =>
+  page.ops.flatMap((op) => (op.kind === 'text' && op.y > 41 && op.y < 276 ? [op.text] : []))
+const SIGNATURE = ['Kapatan', 'Yönetici']
+
+test('ON-322, IST-113: tek tahsilatlı açık günde imza alanı son bölümle birlikte ikinci sayfadadır', () => {
+  const document = financeDayClosingDocument(measurer, report(), OPTIONS)
+  assert.equal(document.pages.length, 2)
+  const [first, second] = document.pages.map(bodyTexts)
+  assert.ok(first?.includes('Deniz Yılmaz'))
+  assert.deepEqual(second, ['İptaller', 'Bu gün iptal yok.', ...SIGNATURE])
+})
+
+test('ON-322, IST-113: tahsilatsız açık gün tek sayfadır, imza alanı aynı sayfadadır', () => {
+  const document = financeDayClosingDocument(measurer, report({ collected: [] }), OPTIONS)
+  assert.equal(document.pages.length, 1)
+  assert.deepEqual(document.pages[0] && bodyTexts(document.pages[0]).slice(-2), SIGNATURE)
+})
+
+test('ON-322, IST-113, DOM-FIN-036: imza alanı hiçbir gün sonunda tek başına sayfaya düşmez', () => {
+  const history = closing({
+    reopenedAt: `${DAY}T15:00:00.000Z`,
+    reopenedByName: 'Yönetici Ada',
+    reopenReason: 'Sayım yanlış',
+  })
+  const variants: Partial<FinanceDayReport>[] = [
+    {},
+    { status: 'closed', closing: closing() },
+    { status: 'closed', closing: closing({ cash: null, note: null }) },
+    { history: [history] },
+    { history: [history, history, history] },
+  ]
+  for (const variant of variants)
+    for (let collected = 0; collected <= 45; collected += 1)
+      for (const reversed of [0, 1, 2, 6]) {
+        const day = report({
+          ...variant,
+          collected: Array.from({ length: collected }, (_, index) => line(index)),
+          reversed: Array.from({ length: reversed }, (_, index) =>
+            line(100 + index, { reversalReason: 'Yanlış kayıt' }),
+          ),
+        })
+        const document = financeDayClosingDocument(measurer, day, OPTIONS)
+        const last = bodyTexts(document.pages.at(-1)!)
+        const name = `${JSON.stringify(Object.keys(variant))} ${String(collected)}/${String(reversed)}`
+        assert.deepEqual(last.slice(-2), SIGNATURE, name)
+        assert.ok(last.length > SIGNATURE.length, name)
+        // Belge içeriği kaybolmaz: her tahsilat ve iptal satırı yazılır.
+        const all = allTexts(document)
+        assert.equal(
+          all.filter((text) => text === 'Deniz Yılmaz').length,
+          collected + reversed,
+          name,
+        )
+      }
 })

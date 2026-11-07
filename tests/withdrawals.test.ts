@@ -2,10 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { money } from '../packages/school-core/src/lib/format.ts'
 import {
   contractLineRows,
   contractLinesToShow,
   isValidTurkishIban,
+  paidTuitionLabel,
   payerNameOf,
   planRefundPayment,
   quoteWithdrawal,
@@ -16,6 +18,7 @@ import {
   withdrawalFormSchema,
   withdrawStudentSchema,
   withdrawStudent,
+  withdrawalTargetLabel,
   type WithdrawalContext,
 } from '../packages/school-core/src/lib/withdrawals.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -785,6 +788,34 @@ test('IST-110: sözleşme satırı burs, ek hizmet, kalan saat ve sonucu göster
     'Bu sözleşmeden borç',
   ])
     assert.ok(rich.includes(label), label)
+})
+
+test('ON-322, DOM-KAY-012: iade etiketleri okulda okul ve öğrenim ücreti, öteki türlerde kurum ve kurs ücreti', () => {
+  for (const type of [undefined, 'school'] as const) {
+    assert.equal(withdrawalTargetLabel(type), 'Gittiği okul')
+    assert.equal(paidTuitionLabel(type), 'Ödenen öğrenim ücreti')
+  }
+  assert.equal(withdrawalTargetLabel('language_school'), 'Gittiği kurum')
+  assert.equal(paidTuitionLabel('language_school'), 'Ödenen kurs ücreti')
+  const line = {
+    contractId: 'c1',
+    title: 'Sözleşme',
+    payer: 'student' as const,
+    attendedUnits: 1,
+    totalUnits: 10,
+    scholarshipExempt: false,
+    baseCents: 100,
+    deductionCents: 10,
+    usageCents: 10,
+    entitledCents: 20,
+    paidCents: 50,
+    extraBalanceCents: 0,
+    balanceCents: 30,
+  }
+  const paid = (type?: 'school' | 'language_school') =>
+    contractLineRows(line, 1_000, undefined, type).find(([, value]) => value === money(50))
+  assert.deepEqual(paid(), ['Ödenen öğrenim ücreti', money(50)])
+  assert.deepEqual(paid('language_school'), ['Ödenen kurs ücreti', money(50)])
 })
 
 /** İki sözleşme, farklı ödeyici: öğrenim veli, paket kursiyer; öğrenim taksiti ödendi (iade oluşur). */

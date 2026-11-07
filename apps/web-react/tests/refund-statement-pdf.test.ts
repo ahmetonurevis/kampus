@@ -155,3 +155,32 @@ test('ADR 0008, DOM-KAY-012: dil okulunda iade dökümü ayrılanı "Kursiyer" d
     assert.equal(all.includes('Öğrenci'), false, institutionType)
   }
 })
+
+test('ON-322, DOM-KAY-012: okul dışı kurumda iade dökümü "Gittiği kurum" ve "Ödenen kurs ücreti" yazar', () => {
+  const contracts = {
+    ...WITHDRAWAL,
+    breakdown: {
+      ...WITHDRAWAL.breakdown,
+      contracts: [CONTRACT_LINE, { ...CONTRACT_LINE, contractId: 'c2' }],
+    },
+  }
+  // Tek sözleşmeli "Hesap" bölümü ve çok sözleşmeli bölümler aynı terimi kullanır.
+  for (const withdrawal of [WITHDRAWAL, contracts]) {
+    for (const options of [OPTIONS, { ...OPTIONS, institutionType: 'school' as const }]) {
+      const school = allTexts(refundStatementDocument(measurer, withdrawal, options))
+      assert.ok(school.includes('Gittiği okul'))
+      assert.ok(school.includes('Ödenen öğrenim ücreti'))
+      assert.equal(school.includes('Gittiği kurum'), false)
+      assert.equal(school.includes('Ödenen kurs ücreti'), false)
+    }
+    for (const institutionType of INSTITUTION_TYPES.filter((type) => type !== 'school')) {
+      const all = allTexts(
+        refundStatementDocument(measurer, withdrawal, { ...OPTIONS, institutionType }),
+      )
+      assert.ok(all.includes('Gittiği kurum'), institutionType)
+      assert.ok(all.includes('Ödenen kurs ücreti'), institutionType)
+      assert.equal(all.includes('Gittiği okul'), false, institutionType)
+      assert.equal(all.includes('Ödenen öğrenim ücreti'), false, institutionType)
+    }
+  }
+})

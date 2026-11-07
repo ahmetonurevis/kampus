@@ -48,14 +48,40 @@ export function dayClosingFilename(closingDate: string): string {
   return `gun-sonu-${closingDate}.pdf`
 }
 
-/** Gün sonu raporu; tahsilat ve iptal tablolarının kişi sütunu kurum türünü izler (DOM-KAY-012). */
-export function financeDayClosingDocument(
+type Rows = readonly (readonly unknown[])[]
+type Columns = Parameters<DocumentLayout['table']>[0]
+
+/**
+ * Sıkı tablo. `keepLastRow` ise son satırdan önce sayfa kırılır: son satır (başlık yeni sayfada
+ * tekrarlanır) imza alanıyla aynı sayfada kalır. Tek satırlı tabloda kırma bölümün başındadır.
+ */
+function table(doc: DocumentLayout, columns: Columns, rows: Rows, keepLastRow: boolean) {
+  if (!keepLastRow || rows.length < 2) {
+    doc.table(columns, rows, true)
+    return
+  }
+  doc.table(columns, rows.slice(0, -1), true)
+  doc.newPage()
+  doc.table(columns, rows.slice(-1), true)
+}
+
+/** İmza alanından önceki son bölüm. */
+type Tail = 'reversals' | 'closing' | 'history'
+
+/**
+ * Raporu yazar. `keepTail` ise imzadan önceki son içerik birimi (son tablo satırı, son paragraf ya
+ * da tek birimli son bölüm) yeni sayfaya alınır ki imza alanı tek başına kalmasın (ON-322).
+ */
+function writeDayClosing(
   measurer: TextMeasurer,
   report: FinanceDayReport,
   options: TemplateOptions & LearnerTermOptions,
-): PdfDocument {
+  keepTail: boolean,
+): { document: PdfDocument; signatureAlone: boolean } {
   const { summary, closing } = report
   const learner = learnerTerm(options.institutionType)
+  const tail: Tail = report.history.length > 0 ? 'history' : closing ? 'closing' : 'reversals'
+  const keep = (block: Tail) => keepTail && tail === block
   const doc = new DocumentLayout(measurer, {
     label: 'GÜN SONU RAPORU',
     badge: closing ? 'KAPATILDI' : 'AÇIK GÜN',
@@ -109,10 +135,12 @@ export function financeDayClosingDocument(
       true,
     )
 
+  if (keep('reversals') && report.reversed.length < 2) doc.newPage()
   doc.section('İptaller')
   if (report.reversed.length === 0) doc.paragraph('Bu gün iptal yok.')
   else
-    doc.table(
+    table(
+      doc,
       reversalColumns(learner),
       report.reversed.map((line) => [
         receiptNumberLabel(line),
@@ -121,7 +149,7 @@ export function financeDayClosingDocument(
         line.reversalReason ?? '—',
         money(line.amountCents),
       ]),
-      true,
+      keep('reversals'),
     )
 
   if (closing) {
@@ -135,6 +163,7 @@ export function financeDayClosingDocument(
         ['Kasa farkı', cashDifferenceLabel(closing.cash.differenceCents)],
       ])
     else doc.paragraph('Nakit tahsilat kapalı ve hareket olmadığı için kasa sayılmadı.')
+    if (keep('closing')) doc.newPage()
     doc.section('Kapanış')
     doc.fields([
       ['Kapatan', closing.closedByName ?? '—'],
@@ -144,13 +173,35 @@ export function financeDayClosingDocument(
   }
 
   if (report.history.length > 0) {
+    if (keep('history') && report.history.length < 2) doc.newPage()
     doc.section('Önceki kapanışlar')
-    for (const item of report.history)
+    report.history.forEach((item, index) => {
+      if (keep('history') && index > 0 && index === report.history.length - 1) doc.newPage()
       doc.paragraph(
         `${item.closedByName ?? '—'} ${stampOf(item.closedAt)} tarihinde kapattı (net ${money(item.summary.netCents)}); ${item.reopenedByName ?? '—'} ${item.reopenedAt ? stampOf(item.reopenedAt) : '—'} tarihinde yeniden açtı. Gerekçe: ${item.reopenReason ?? '—'}`,
       )
+    })
   }
 
+  const pages = doc.pages.length
   doc.signatures('Kapatan', 'Yönetici', true)
-  return doc.finish()
+  return { document: doc.finish(), signatureAlone: doc.pages.length > pages }
+}
+
+/**
+ * Gün sonu raporu; tahsilat ve iptal tablolarının kişi sütunu kurum türünü izler (DOM-KAY-012).
+ * İmza alanı tek başına sayfaya düşmez (ON-322): sığmazsa son içerik birimiyle birlikte yeni
+ * sayfaya geçer. Sayfa sayısı artarsa (son birim zaten sayfa başındaydı) düz yerleşim kalır.
+ */
+export function financeDayClosingDocument(
+  measurer: TextMeasurer,
+  report: FinanceDayReport,
+  options: TemplateOptions & LearnerTermOptions,
+): PdfDocument {
+  const plain = writeDayClosing(measurer, report, options, false)
+  if (!plain.signatureAlone) return plain.document
+  const kept = writeDayClosing(measurer, report, options, true)
+  return !kept.signatureAlone && kept.document.pages.length <= plain.document.pages.length
+    ? kept.document
+    : plain.document
 }

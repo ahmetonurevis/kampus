@@ -141,6 +141,15 @@ export const REDACTED_PATHS = [
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
+  // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
+  // (DOM-KAY-009); veli telefonu `*.phone` ile gizlenir.
+  'signatoryName',
+  '*.signatoryName',
+  'guardian.name',
+  '*.guardian.name',
+  // Paket uzatma ve kullanılan saat düzeltmesi (ON-300, DOM-DIL-051), ek protokol, tahsilat ters
+  // kaydı ve gün sonu yeniden açma gövdesindeki gerekçe `reason` adıyla gelir: aşağıdaki
+  // `reason`/`*.reason` gizler (finance-log-redaction.test.ts).
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).

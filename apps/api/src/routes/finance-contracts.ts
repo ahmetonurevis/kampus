@@ -9,8 +9,10 @@ import {
   cancelAmendmentSchema,
   contractSignatorySchema,
 } from '@kampus/school-core/lib/contract-approval.ts'
+import { CONTRACT_SELF_SERVICE_ROLES } from '@kampus/school-core/lib/contract-self-service.ts'
 
 import type { Role } from '../auth.ts'
+import { errorResponseSchema } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   amendContractCommand,
@@ -18,14 +20,20 @@ import {
   cancelContractAmendmentCommand,
   setContractSignatoryCommand,
 } from '../services/finance-contracts.ts'
+import { listOwnContracts } from '../services/contract-self-service.ts'
 import { sendCommand } from './command-support.ts'
+import { authenticatedErrors } from './common.schemas.ts'
 import { captureInput, options, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema, commandResponseSchema } from './commands.schemas.ts'
+import {
+  ownContractsParamsSchema,
+  ownContractsResponseSchema,
+} from './finance-contracts.schemas.ts'
 
 /**
  * Sözleşme onayı ve ek protokol uçları (IST-092; docs/domain/finans.md DOM-FIN-010, -012, -051).
  * Modül `finance`. Okuma `GET /api/v1/collections/contracts` ile yapılır; eski sürümler orada
- * kalır. Her yazma konunun okunan sürümünü (`If-Match`) ister: onaylanan belge ödeyicinin gördüğü
+ * kalır. Yetişkin kursiyer koleksiyonu okumaz, kendi sürümlerini salt okunur uçtan alır (IST-082). Her yazma konunun okunan sürümünü (`If-Match`) ister: onaylanan belge ödeyicinin gördüğü
  * sürümdür.
  */
 
@@ -160,5 +168,28 @@ export function registerFinanceContractRoutes(app: FastifyInstance) {
       )
       return sendCommand(reply, result)
     },
+  )
+
+  typed.get(
+    '/api/v1/finance/students/:studentId/contracts',
+    {
+      preValidation: [app.authenticate, finance, app.requireRole(CONTRACT_SELF_SERVICE_ROLES)],
+      schema: {
+        operationId: 'listOwnContracts',
+        tags: ['finance-contracts'],
+        summary: 'Yetişkin kursiyerin kendi sözleşmeleri',
+        description:
+          'Velisi olmayan kursiyer sözleşme sürümlerini kendi hesabından salt okur görür (IST-082, DOM-FIN-059): kayıt, türetilmiş durum ve ödeme planı özeti (plan satırı sayısı, toplam, ödenen satır, yürürlükteki sürümde sıradaki vade). Onay ve ek protokol bu uçta yoktur. Öğrenci yalnız kendisini okur; başka öğrenci, olmayan ya da başka kurumun öğrencisi 404. Yalnız okul dışındaki kurum türlerinde (bugün `language_school`); okulda 404. 18 yaşını doldurmamış kursiyer 403 `adult_learner_only` (yaş doğum tarihinden, Europe/Istanbul gününe göre; DOM-KAY-012). Rol: `ogrenci` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.',
+        params: ownContractsParamsSchema,
+        response: {
+          200: ownContractsResponseSchema,
+          ...authenticatedErrors,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => ({
+      data: await listOwnContracts(contextOf(request), request.params.studentId),
+    }),
   )
 }

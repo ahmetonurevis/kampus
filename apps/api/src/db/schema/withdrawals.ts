@@ -64,7 +64,7 @@ export const studentWithdrawals = pgTable(
       oneOf(table.reason, [
         'transfer',
         'relocation',
-        'health',
+        'documented',
         'financial',
         'dissatisfaction',
         'other',

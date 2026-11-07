@@ -476,6 +476,20 @@ describe('ayrılış ve iade uçları', () => {
     assertError(await quote(a.cookie, { ...QUOTE, x: 1 }), 400, 'validation_failed')
   })
 
+  test('K-30: sağlık nedeni reddedilir, kayıt yazılmaz', async () => {
+    const a = await institution()
+    assertError(
+      await withdraw(a.cookie, { ...WITHDRAW, reason: 'health' }),
+      400,
+      'validation_failed',
+    )
+    const rows = await db
+      .select()
+      .from(studentWithdrawals)
+      .where(eq(studentWithdrawals.institutionId, a.id))
+    assert.equal(rows.length, 0)
+  })
+
   test('ON-046f, ADR 0010 ölçüt 4: ayrılış yalnız öğrencinin taksit ve sözleşmelerini yükler; başka öğrencininki değişmez', async () => {
     const a = await institution()
     const other = SEED.students.find((item) => item.classId === 'c1' && item.id !== STUDENT?.id)

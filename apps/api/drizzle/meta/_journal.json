@@ -498,6 +498,13 @@
       "when": 1794018634230,
       "tag": "0070_allow_manual_package_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794029549348,
+      "tag": "0071_withdrawal_reason_documented",
+      "breakpoints": true
     }
   ]
 }

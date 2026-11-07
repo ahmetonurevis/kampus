@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 
 import type { Browser, Page } from '@playwright/test'
+import pg from 'pg'
 
+import { APPLICATION_DAILY_PROSPECT_LIMIT } from '../../packages/school-core/src/lib/prospect-application-form.ts'
 import { apiRequest, type ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
@@ -1269,7 +1271,54 @@ async function publishCandidateNotice(client: ApiClient) {
   expect(response.status).toBe(201)
 }
 
+/**
+ * Tavan sayımı denetim satırlarıdır; 200 başvuruyu uçtan göndermek IP sınırına takılır, satırlar
+ * testin kendi kurumuna doğrudan yazılır.
+ */
+async function fillDailyLimit(institutionId: string, rejected: number): Promise<void> {
+  const client = new pg.Client({ connectionString: e2e.databaseUrl })
+  await client.connect()
+  try {
+    await client.query(
+      `insert into audit_log (institution_id, actor_role, action, created_at)
+       select $1, 'system', action, now()
+       from unnest(array_fill('prospect.application'::text, array[$2::int])
+                   || array_fill('prospect.application.rejected'::text, array[$3::int])) as action`,
+      [institutionId, APPLICATION_DAILY_PROSPECT_LIMIT, rejected],
+    )
+  } finally {
+    await client.end()
+  }
+}
+
 test.describe('Web başvuru formu (ON-133)', () => {
+  test('DOM-KAY-002 K-23: tavan dolunca yönetici kayıt ekranlarında uyarıyı görür, ön büro görmez', async ({
+    tenant,
+    loginAs,
+    page,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['yonetici', 'onburo'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-islemleri')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByText('ön başvuru tavanı')).toHaveCount(0)
+
+    await fillDailyLimit(school.institutionId, 3)
+    await page.reload()
+    const warning = page.getByRole('status').filter({
+      hasText: 'Bugün ön başvuru tavanı doldu, 3 başvuru alınamadı.',
+    })
+    await expect(warning).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await page.goto('/yonetici/kayit-raporlari')
+    await expect(warning).toBeVisible()
+
+    const frontDesk = await loginAs(school.user('onburo'))
+    await frontDesk.goto('/onburo/kayit-islemleri')
+    await expect(frontDesk.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(frontDesk.getByText('ön başvuru tavanı')).toHaveCount(0)
+  })
+
   test('yönetici anahtarı üretir, formu açar, site adresini yazar; ön büro düğmeyi görmez', async ({
     tenant,
     loginAs,
@@ -1378,5 +1427,48 @@ test.describe('Web başvuru formu (ON-133)', () => {
     await page.goto(LIST_URL)
     await expect(resultCount(page)).toContainText('1 kayıt')
     await expectEveryRow(bodyRows(page, 'Aday öğrenciler'), 'Web Başvuran')
+  })
+
+  test('DOM-KAY-002 K-23: tavan doluyken başvurana alındı denmez, kurumla iletişim iletisi görünür', async ({
+    tenant,
+    api,
+    browser,
+  }: Fixtures & { browser: Browser }) => {
+    test.fixme(
+      !readFileSync(
+        new URL('../../apps/web-react/src/routes.tsx', import.meta.url),
+        'utf8',
+      ).includes('APPLICATION_FORM_ROUTE'),
+      'ON-133: /basvuru/:formKey rota satırı bekleniyor',
+    )
+    const school = await tenant({ roles: ['yonetici'] })
+    const admin = await api(school.user('yonetici'))
+    await publishCandidateNotice(admin)
+    const created = await admin.post('/api/v1/prospects/application-form/rotate-key')
+    const { formKey, version } = (created.body as { data: { formKey: string; version: number } })
+      .data
+    const opened = await apiRequest(
+      admin.context,
+      'PATCH',
+      '/api/v1/prospects/application-form',
+      { enabled: true, siteOrigin: SITE },
+      { 'if-match': `"${version}"` },
+    )
+    expect(opened.status).toBe(200)
+    await fillDailyLimit(school.institutionId, 0)
+
+    const visitor = await browser.newContext({ baseURL: e2e.webOrigin })
+    const form = await visitor.newPage()
+    await form.goto(`/basvuru/${formKey}`)
+    await form.getByRole('button', { name: 'Okudum, başvuruya geç' }).click()
+    await form.getByLabel('Aday adı soyadı').fill('Web Başvuran')
+    await form.getByLabel('Veli adı soyadı').fill('Web Veli')
+    await form.getByLabel('Velinin telefonu').fill('05550999002')
+    await form.getByLabel('İlgilendiğiniz program').fill('7. sınıf')
+    await form.getByRole('button', { name: 'Başvuruyu gönder' }).click()
+    await expect(form.getByRole('alert')).toContainText('kurumla doğrudan iletişime geçin')
+    await expect(form.getByRole('heading', { name: 'Başvurunuz alındı' })).toHaveCount(0)
+    await expect(form.getByLabel('Aday adı soyadı')).toHaveValue('Web Başvuran')
+    await visitor.close()
   })
 })

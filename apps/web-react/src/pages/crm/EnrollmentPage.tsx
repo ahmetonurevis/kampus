@@ -59,6 +59,7 @@ import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
 import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { APPLICATION_FORM_PANEL, ApplicationFormPanel } from './ApplicationFormPanel.tsx'
+import { ApplicationLimitNotice } from './ApplicationLimitNotice.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
@@ -151,6 +152,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
       {session?.role === 'yonetici' ? (
         <ApplicationFormPanel open={webForm.selectedId !== ''} onClose={webForm.close} />
       ) : null}
+      <ApplicationLimitNotice />
       {tariffs.error ? (
         <QueryError error={tariffs.error} onRetry={tariffs.refetch} />
       ) : tariffs.isPending ? (

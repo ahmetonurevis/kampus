@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import type { ProspectApplicationBody } from '@kampus/react-shared/use-prospect-application-form.ts'
 import {
+  APPLICATION_DAILY_REJECTED_LIMIT,
   prospectApplicationSchema,
   siteOriginSchema,
 } from '@kampus/school-core/lib/prospect-application-form.ts'
@@ -147,4 +148,30 @@ export function embeddingAllowed(
 export function applicationTheme(search: string): 'dark' | 'light' | null {
   const theme = new URLSearchParams(search).get('tema')
   return theme === 'koyu' ? 'dark' : theme === 'acik' ? 'light' : null
+}
+
+/**
+ * Gönderim hatasının başvurana iletisi. Alan hatası alanında görünür; dolu kurum tavanı dahil diğer
+ * hatalarda sunucunun Türkçe iletisi yazılır (`application_unavailable`, K-23).
+ */
+export function applicationFailureText(error: {
+  status: number
+  message: string
+  issues?: readonly unknown[] | undefined
+}): string {
+  if (error.status === 429)
+    return 'Kısa sürede çok fazla başvuru gönderildi. Lütfen biraz sonra yeniden deneyin.'
+  return error.issues?.length ? '' : error.message
+}
+
+/**
+ * Yöneticinin bugünkü tavan uyarısı (DOM-KAY-002, K-23); tavan dolmadıysa `null`. Sayı gönderimdir,
+ * kişi değildir ve üst sınıra ulaşınca "en az" yazılır: sayım orada durur.
+ */
+export function applicationLimitWarning(limit: { reached: boolean; rejected: number }) {
+  if (!limit.reached) return null
+  const count = limit.rejected.toLocaleString('tr-TR')
+  return limit.rejected === 0
+    ? 'Bugün ön başvuru tavanı doldu; yeni başvuru bugün alınamayacak.'
+    : `Bugün ön başvuru tavanı doldu, ${limit.rejected >= APPLICATION_DAILY_REJECTED_LIMIT ? 'en az ' : ''}${count} başvuru alınamadı. Başvuranlara kurumla iletişime geçmeleri söylendi; bilgileri saklanmadı.`
 }

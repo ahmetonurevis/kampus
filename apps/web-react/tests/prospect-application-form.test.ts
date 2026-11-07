@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { prospectApplicationSchema } from '@kampus/school-core/lib/prospect-application-form.ts'
+import {
+  APPLICATION_DAILY_REJECTED_LIMIT,
+  prospectApplicationSchema,
+} from '@kampus/school-core/lib/prospect-application-form.ts'
 import { APPLICATION_FORM_ROUTE } from '../src/pages/crm/application-form-route.ts'
 import {
   applicationBody,
   applicationDefaults,
   applicationEmbedCode,
+  applicationFailureText,
   applicationFormSchema,
   applicationFormUrl,
+  applicationLimitWarning,
   applicationTheme,
   embeddingAllowed,
   isMinorApplicant,
@@ -116,4 +121,34 @@ test('ON-133: tema gömme kodundan gelir, verilmezse tarayıcı kararı kalır; 
   assert.equal(applicationTheme('?tema=acik'), 'light')
   assert.equal(applicationTheme('?tema=diger'), null)
   assert.equal(APPLICATION_FORM_ROUTE, 'basvuru/:formKey')
+})
+
+test('DOM-KAY-002 K-23: tavan dolmadıysa uyarı yok; dolunca alınamayan sayı yazılır', () => {
+  assert.equal(applicationLimitWarning({ reached: false, rejected: 0 }), null)
+  assert.match(applicationLimitWarning({ reached: true, rejected: 0 }) ?? '', /tavanı doldu/)
+  assert.doesNotMatch(applicationLimitWarning({ reached: true, rejected: 0 }) ?? '', /alınamadı/)
+  assert.match(
+    applicationLimitWarning({ reached: true, rejected: 3 }) ?? '',
+    /Bugün ön başvuru tavanı doldu, 3 başvuru alınamadı\./,
+  )
+})
+
+test('DOM-KAY-002 K-23: sayım üst sınıra ulaşınca kesin sayı gibi yazılmaz', () => {
+  const below = applicationLimitWarning({
+    reached: true,
+    rejected: APPLICATION_DAILY_REJECTED_LIMIT - 1,
+  })
+  assert.match(below ?? '', /doldu, 999 başvuru/)
+  const atLimit = applicationLimitWarning({
+    reached: true,
+    rejected: APPLICATION_DAILY_REJECTED_LIMIT,
+  })
+  assert.match(atLimit ?? '', /en az 1\.000 başvuru/)
+})
+
+test('DOM-KAY-002 K-23: dolu tavanın sunucu iletisi başvurana yazılır; alan hatası alanda kalır', () => {
+  const message = 'Başvurunuz şu anda alınamadı. Lütfen kurumla doğrudan iletişime geçin.'
+  assert.equal(applicationFailureText({ status: 422, message, issues: [] }), message)
+  assert.equal(applicationFailureText({ status: 422, message, issues: [{ path: 'name' }] }), '')
+  assert.match(applicationFailureText({ status: 429, message }), /çok fazla başvuru/)
 })

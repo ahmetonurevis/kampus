@@ -20,6 +20,7 @@ import { fieldErrors } from './prospect-forms.ts'
 import {
   applicationBody,
   applicationDefaults,
+  applicationFailureText,
   applicationFormSchema,
   applicationTheme,
   embeddingAllowed,
@@ -58,6 +59,7 @@ function ancestorOrigins(): readonly string[] | null {
  * menüsüz ve hafiftir: üçüncü taraf betik, analitik ve çerez yoktur, tarayıcı deposuna yazılmaz.
  * Önce sürümlü aydınlatma metni gösterilir, başvuru ancak metin okunduktan sonra açılır; gönderilen
  * sürüm gösterilen metnindir. Başarı iletisi tektir: yeni kayıt, mükerrer ve gizli alan ayrılmaz.
+ * Kurum tavanı doluyken başvuru alınmaz; "alındı" denmez, kurumla iletişim iletisi yazar (K-23).
  */
 export function PublicApplicationFormPage() {
   useDocumentTitle('Ön başvuru')
@@ -235,14 +237,7 @@ function ApplicationForm({
     if (outcome.status === 'success') onDone()
     else if (outcome.status === 'failed' && outcome.error.code === 'notice_outdated')
       onNoticeChanged()
-    else if (outcome.status === 'failed')
-      setFailure(
-        outcome.error.status === 429
-          ? 'Kısa sürede çok fazla başvuru gönderildi. Lütfen biraz sonra yeniden deneyin.'
-          : outcome.error.issues?.length
-            ? ''
-            : outcome.error.message,
-      )
+    else if (outcome.status === 'failed') setFailure(applicationFailureText(outcome.error))
   })
 
   return (

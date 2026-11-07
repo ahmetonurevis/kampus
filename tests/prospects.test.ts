@@ -730,6 +730,80 @@ test('DOM-KAY-005: Vazgeçti nedenle girilir; neden yalnız Vazgeçti aşamasın
   assert.equal(PROSPECT_LOST_REASON_LABELS[PROSPECT_LOST_REASONS[0]], 'Fiyat')
 })
 
+test('DOM-KAY-005, IST-117: tercih edilen kurum isteğe bağlıdır, yalnız Vazgeçti aşamasında yazılır, yeniden açılışta silinir', () => {
+  const state = seed()
+  const body = { stage: 'Vazgeçti', lostReason: 'other_school' }
+  for (const wrong of [
+    { stage: 'Teklif verildi', lostToInstitution: 'Rakip Koleji' },
+    { ...body, lostToInstitution: 'x'.repeat(prospects.PROSPECT_LOST_INSTITUTION_MAX + 1) },
+    { ...body, lostToInstitution: 42 },
+  ])
+    unchangedOnFailure(state, () => changeProspectStage(state, front, 'pr1', wrong, now), zodError)
+
+  const blank = changeProspectStage(state, front, 'pr1', { ...body, lostToInstitution: '  ' }, now)
+  assert.equal('lostToInstitution' in blank, false)
+
+  const named = changeProspectStage(
+    state,
+    front,
+    'pr2',
+    { ...body, lostToInstitution: '  Rakip Koleji ' },
+    now,
+  )
+  assert.equal(named.lostToInstitution, 'Rakip Koleji')
+  const reopened = changeProspectStage(state, front, 'pr2', { stage: 'İletişime geçildi' }, now)
+  assert.equal('lostToInstitution' in reopened, false)
+  assert.equal('lostReason' in reopened, false)
+})
+
+test('IST-117: kayıp kırılımı neden ve kurumu sayar, yazım farkını birleştirir, kimlik taşımaz', () => {
+  const lost: Record<string, unknown>[] = [
+    { id: 'p1', name: 'Gizli Ad', lostReason: 'price', lostToInstitution: 'Rakip  Koleji' },
+    { lostReason: 'price', lostToInstitution: 'rakip koleji' },
+    { lostReason: 'other_school', lostToInstitution: 'Ilgaz Okulu' },
+    { lostReason: 'transport', lostToInstitution: '   ' },
+    { lostReason: 'Başka okul' },
+    {},
+  ]
+  const result = prospects.prospectLossBreakdown(lost)
+  assert.deepEqual(result, {
+    total: 6,
+    reasons: [
+      { reason: 'price', count: 2 },
+      { reason: null, count: 2 },
+      { reason: 'other_school', count: 1 },
+      { reason: 'transport', count: 1 },
+    ],
+    institutions: [
+      { name: 'Rakip Koleji', count: 2 },
+      { name: 'Ilgaz Okulu', count: 1 },
+    ],
+    otherInstitutions: 0,
+    unnamed: 3,
+  })
+  assert.equal(JSON.stringify(result).includes('Gizli Ad'), false)
+  assert.deepEqual(prospects.prospectLossBreakdown([]), {
+    total: 0,
+    reasons: [],
+    institutions: [],
+    otherInstitutions: 0,
+    unnamed: 0,
+  })
+})
+
+test('IST-117: kırılım en çok 50 kurumu adıyla verir, kalanını toplu sayar', () => {
+  const lost = Array.from(
+    { length: prospects.PROSPECT_LOSS_INSTITUTION_LIMIT + 3 },
+    (_, index) => ({
+      lostReason: 'price',
+      lostToInstitution: `Kurum ${index}`,
+    }),
+  )
+  const result = prospects.prospectLossBreakdown(lost)
+  assert.equal(result.institutions.length, prospects.PROSPECT_LOSS_INSTITUTION_LIMIT)
+  assert.equal(result.otherInstitutions, 3)
+})
+
 test('DOM-KAY-030: Vazgeçti ileri tarihli görüşmeyi ve deneme dersini iptal eder, geçmişi korur', () => {
   const state = seed()
   const child = languageProspect(state)

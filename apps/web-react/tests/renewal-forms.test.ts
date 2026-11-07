@@ -8,6 +8,7 @@ import {
 } from '@kampus/school-core/modules/collection-modules.ts'
 import { visiblePages } from '../src/lib/navigation.ts'
 import {
+  bulkDiscountKinds,
   ceilingLines,
   parseRateInput,
   priceIndexBody,
@@ -194,6 +195,37 @@ test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulanınca ödeme özeti bun
   assert.match(first ?? '', /önceki yılın \(2026–2027\) tarifesi uygulanır/)
 })
 
+test('DOM-FIN-013: ödeme özeti planın ilanlı koşulunu yazar; koşulsuz eski tarifede satır yok', () => {
+  const base = {
+    tariffCarriedOverFromYear: null,
+    announcedCents: 3_000_000,
+    ceiling: { status: 'no_base' as const },
+    tuitionCents: 3_000_000,
+    discounts: [{ kind: 'payment_term', amountCents: 90_000 }],
+    discountCents: 90_000,
+    scholarship: null,
+    netCents: 2_910_000,
+    extras: [],
+    installments: [970_000, 970_000, 970_000],
+    outstandingTuitionCents: 0,
+  }
+  const { pricing } = quoteLines({
+    ...base,
+    paymentTerm: {
+      kind: 'installment',
+      minInstallments: 2,
+      maxInstallments: 4,
+      discountPercentBasisPoints: 300,
+      discountAmountCents: null,
+      installmentCount: 3,
+    },
+  })
+  assert.ok(pricing.includes('Ödeme koşulu: Süreli · 3 taksit · %3 indirim'))
+  assert.ok(pricing.includes('Ödeme koşulu indirimi: −900,00 ₺'))
+  for (const line of quoteLines({ ...base, paymentTerm: null }).pricing)
+    assert.doesNotMatch(line, /^Ödeme koşulu:/)
+})
+
 test('sunucu alanları form alanına eşlenir', () => {
   assert.equal(renewalFieldFor('tuitionCents'), 'tuition')
   assert.equal(renewalFieldFor('scholarshipProgramId'), 'scholarshipProgramId')
@@ -245,4 +277,11 @@ test('ON-057, DOM-KAY-025: borç onayı yalnız işaretlenince plan gövdesine g
   assert.equal('debtApproved' in approved && approved.debtApproved, true)
   assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1'), false)
   assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1', false), false)
+})
+
+test('DOM-FIN-024: toplu planda referans indirimi sunulmaz', () => {
+  assert.deepEqual(
+    bulkDiscountKinds([{ kind: 'sibling' }, { kind: 'referral' }, { kind: 'corporate' }]),
+    ['sibling', 'corporate'],
+  )
 })

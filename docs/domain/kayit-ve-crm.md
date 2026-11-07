@@ -40,11 +40,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-005 · Aşama geçişleri
 
-- **Kural:** `Kayıt oldu` aşamasına yalnız kesin kayıt işlemi geçirir; elle seçilemez. `Kayıt oldu` olan adayın aşaması değişmez. `Vazgeçti` seçilirken neden (fiyat, ulaşım, başka okul, akademik uygunsuzluk, diğer) zorunludur.
+- **Kural:** `Kayıt oldu` aşamasına yalnız kesin kayıt işlemi geçirir; elle seçilemez. `Kayıt oldu` olan adayın aşaması değişmez. `Vazgeçti` seçilirken neden (fiyat, ulaşım, başka okul, akademik uygunsuzluk, diğer) zorunludur; adayın tercih ettiği kurum isteğe bağlı yazılır (en çok 120 karakter). Kayıt raporu neden ve kurum kırılımı verir (IST-117).
 - **Gerekçe:** Dönüşüm raporu kayıtla tutarlı olmalı; kayıp nedeni satış stratejisinin girdisidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/enrollment.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/enrollment.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Tercih edilen kurum `lostToInstitution`: serbest metin kişi adı taşıyabildiği için `// kvkk: K`, uzunluk sınırlı, pino `redact` listesinde, denetime yalnız alan adı düşer, öğretmene kapalı, aday yeniden açılınca silinir (ON-140). Kırılım core `prospectLossBreakdown` ve API `GET /api/v1/prospects/loss-breakdown` (yönetici, ön büro; yalnız sayı ve kurum adı, yazım farkı aynı kurum, en çok 50 kurum); web Kayıt Raporları `EnrollmentLossBreakdown`, aday detayında neden ve kurum. Kurum adı henüz kapalı aday imhasına (`DOM-KAY-008`) bağlı değil: imha işi kodda yok. Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
 
 ### DOM-KAY-006 · Tanışma görüşmesi / deneme dersi çakışması
 
@@ -60,7 +60,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Pazarlama bütçesi kaynak bazlı dönüşümle ölçülür.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — sabit liste (`PROSPECT_SOURCES`) ve veli referansında referans öğrenci (`referrerStudentId`) `packages/school-core/src/lib/prospects.ts`; aday düzenleme işlemi olmadığı için değişmezlik kendiliğinden. Referans indirimi bağı (`DOM-FIN-024`) yok.
+- **Kodda:** kısmen — sabit liste (`PROSPECT_SOURCES`) ve veli referansında referans öğrenci (`referrerStudentId`) `packages/school-core/src/lib/prospects.ts`; aday düzenleme işlemi olmadığı için değişmezlik kendiliğinden. Referans indirimi bağı kesin kayıtta kurulur (`DOM-FIN-024`, `lib/finance-referrals.ts`).
 
 ### DOM-KAY-008 · Aday saklama ve imha
 
@@ -171,7 +171,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Ücret iadesi ayrılış tarihine göre hesaplanır; neden verisi kayıp analizi için gerekir.
 - **Kaynak:** ÖÖKY md. 56/3.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`. Dil okulunda kayıt dondurma yok.
+- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`; hesaba bütün yürürlükteki sözleşmeler girer (K-06, `DOM-FIN-040`). Dil okulunda kayıt dondurma yok.
 
 ### DOM-KAY-025 · Borçlu öğrencinin kaydı yenilenmeyebilir
 
@@ -179,7 +179,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mevzuat yenilememe hakkı verir; belge/karne alıkoyma hakkı vermez.
 - **Kaynak:** ÖÖKY md. 55/2 (yenilememe ve resmî okula nakil); karne/belge alıkoyma yasağı işletme yorumu — **doğrulanmalı** (H-23).
 - **Kurum türü:** `school`
-- **Kodda:** var (API) — tarifeli yenileme planı (`lib/renewals.ts` `planRenewal`, `POST /api/v1/finance/renewals`) önceki eğitim yıllarından vadesi geçmiş ödenmemiş öğrenim ücretini taksit tablosu ve ödeme dağılımlarından hesaplar (`outstandingTuitionCents`; ek hizmet borcu sayılmaz, vadesi gelmemiş taksit borç değildir). Borç varsa `debtApproved: true` olmadan 422 `renewal_debt_unapproved`, onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`; önizleme borcu `outstandingTuitionCents` ile döner, web formu uyarı ve yöneticiye onay kutusu gösterir (ON-057). Eski iş akışı köprüsü (`runWorkflow('renewal')`) bu denetimi yapmaz.
+- **Kodda:** var (API) — tarifeli yenileme planı (`lib/renewals.ts` `planRenewal`, `POST /api/v1/finance/renewals`) önceki eğitim yıllarından vadesi geçmiş ödenmemiş öğrenim ücretini taksit tablosu ve ödeme dağılımlarından hesaplar (`outstandingTuitionCents`; ek hizmet borcu sayılmaz, vadesi gelmemiş taksit borç değildir). Borç varsa `debtApproved: true` olmadan 422 `renewal_debt_unapproved`, onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`; önizleme borcu `outstandingTuitionCents` ile döner, web formu uyarı ve yöneticiye onay kutusu gösterir (ON-057). Toplu yolda (IST-105, ON-086; `POST /api/v1/finance/renewals/bulk-plan`) borç onayı yoktur, gövdede `debtApproved` 400'dür: borçlu öğrenci `renewal_debt_unapproved` koduyla atlanır, "yönetici onayı gerekir" der, öteki öğrenciler planlanır; karar tek öğrenci yolundadır. Eski iş akışı köprüsü (`runWorkflow('renewal')`) bu denetimi yapmaz.
 
 ### DOM-KAY-026 · Kayıt durumu türetilir, geçişler olaydır
 
@@ -241,6 +241,16 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Kurum türü:** ikisi
 - **Kodda:** var (core) — `packages/school-core/src/lib/enrollment.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). API `POST /api/v1/prospects/:prospectId/enroll` önce `requireAuthorized` çağırır, sonra core `enrollProspectWithTariff`'ı çalıştırır (`Idempotency-Key` ve `If-Match` zorunlu); `crm` veya `finance` modülü kapalıyken 403 `module_disabled` (kesin kayıt taksit ve sözleşme yazar), öteki roller 403, kapalı aday 409. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`). Kesin kayıt rıza yazmaz ve rızayı beklemez (`DOM-YTK-057`, `DOM-YTK-061`): web `apps/web-react/src/pages/crm/EnrollmentConsentNotice.tsx` kayıttan sonra personele beklenen rızaları `GET /api/v1/consents/status` ile bildirir (ON-025). Yanıttaki `grantor` öğrenci kaydının doğum tarihinden hesaplandığı, kesin kayıt ise doğum tarihini yalnız `student_identities`'e yazdığı için yeni yetişkin öğrencide sunucu `guardian` döner; ekran kişiyi formdaki doğum tarihiyle düzeltir, sunucunun rıza kararı düzeltilene kadar bu öğrenci rıza veremez.
 
+## Raporlama
+
+### DOM-KAY-040 · Kayıt hunisi
+
+- **Kural:** Huni, bir tarih aralığında açılan adayların (açılış günü Europe/Istanbul, iki uç dahil; aralık verilmezse bütün adaylar) bugünkü ilerlemesini gösterir. Adımlar: aday → görüşme (okulda tanışma görüşmesi, dil okulunda seviye tespiti görüşmesi) → deneme dersi (yalnız `language_school`, `DOM-DIL-030`) → kesin kayıt. Huni birikimlidir: aşama atlanabildiği için (`DOM-KAY-030`) ileri adıma ulaşan aday önceki adımları geçmiş sayılır. Görüşme adımı görüşmesi (eski kayıtta görüşme anı) olan ya da `Görüşme planlandı` aşamasındaki adaydır; vazgeçen veya geri alınan adayın kalkan ileri tarihli görüşmesi sayılmaz, gerçekleşmiş olanı sayılır. Deneme adımı deneme dersi planlanmış adaydır. Kesin kayıt `Kayıt oldu` aşamasıdır (`DOM-KAY-005`). Her adımın oranı önceki adıma, genel dönüşüm oranı kesin kaydın aday sayısına bölümüdür; yüzde bir ondalığa yuvarlanır, payda 0 ise oran yoktur. Ayrıca güncel aşama sayıları verilir; tanınmayan eski aşama aday sayısına girer, aşamalara girmez. Kırılımlar kaynak (`DOM-KAY-007`; bilinen kaynaklar sıfır olsa da listelenir, tanınmayan eski kaynak kendi adıyla, kaynaksız aday "belirtilmemiş") ve danışmandır. Aday atama alanı olmadığı için danışman adayı açan personeldir; açanı kayıtlı olmayan eski aday "belirtilmemiş" danışmandadır, danışman adı yalnız kurumun üyesi için gösterilir. Arşivlenen aday sayılmaz; anonimleştirilen aday (`DOM-KAY-008`) kaynak, aşama ve tarihiyle sayılır. Raporu yönetici ve ön büro görür (modül `crm`); rapor aday adı, iletişim bilgisi veya aday kimliği taşımaz.
+- **Gerekçe:** Pazarlama bütçesi kaynak bazlı dönüşümle ölçülür (`DOM-KAY-007`); açılış tarihine göre kohort, adayın farklı dönem raporlarında iki kez sayılmasını önler. Birikimli sayım, atlanan aşama yüzünden sonraki adımın öncekinden büyük görünmesini engeller.
+- **Kaynak:** İşletme kuralı; IST-117.
+- **Kurum türü:** ikisi (deneme adımı yalnız `language_school`)
+- **Kodda:** var — `packages/school-core/src/lib/enrollment-funnel.ts` (`enrollmentFunnel`, `funnelSteps`, `funnelStepLabel`, `ENROLLMENT_FUNNEL_ROLES`); API `GET /api/v1/prospects/funnel` (`apps/api/src/routes/enrollment-funnel.ts`, `services/enrollment-funnel.ts`; `dateFrom`/`dateTo`). Ekran: Kayıt Raporları sayfasında "Dönem hunisi" bölümü (`apps/web-react/src/pages/management/EnrollmentFunnelSection.tsx`, ON-052): başlangıç–bitiş günü, adım sayıları ve önceki adıma oran, danışman tablosu; kanal tablosu ve güncel aşama hunisi sayım uçlarından gelmeye devam eder. Danışman ataması (adayın sorumlusunu açan kişiden ayrı seçmek) yoktur (`TODO(crm-counselor)`).
+
 ## API uygulama notları
 
 Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydığı koşulları sunucuda sağlar; kesin kayıt ucu da aynı düzendedir:
@@ -249,7 +259,7 @@ Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydı�
 - Not yazarının gösterilen adı (`authorName`) oturum kullanıcısından alınır; gövdeden okunmaz.
 - `createProspect` ucu `Idempotency-Key` ister; aynı anahtarla yinelenen istek ikinci aday açmaz, ilk yanıtı döner.
 - Mükerrer kayıt reddinde (`prospect_duplicate`, `prospect_contact_shared`) eşleşen adayın kimliği (`prospectId`) yanıta ve loga konmaz; yanıt yalnız kod, ileti ve alan yolunu taşır.
-- Kesin kayıt ucu önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır (`DOM-KAY-035`); `If-Match` (aday sürümü) ve `Idempotency-Key` zorunludur, aynı anahtarla yinelenen istek ikinci öğrenci ve taksit yazmaz. Modül şartı `crm` ve `finance`'tır (`DOM-YTK-040`). Tutar gövdeden alınmaz, yayımlanmış tarifeden kuruş tamsayı olarak hesaplanır ve taksitlere kuruşu kuruşuna dağılır (`DOM-FIN-002`, `-011`). Dil okulunda sözleşme başlığı "Dil kursu eğitim sözleşmesi"dir. Oluşturulan sözleşme yanıtın `records` listesinde (`contracts`) döner. Kimlik numarası, doğum tarihi ve veli iletişimi loglanmaz (`apps/api/src/app.ts` gizleme listesi).
+- Kesin kayıt ucu önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır (`DOM-KAY-035`); `If-Match` (aday sürümü) ve `Idempotency-Key` zorunludur, aynı anahtarla yinelenen istek ikinci öğrenci ve taksit yazmaz. Modül şartı `crm` ve `finance`'tır (`DOM-YTK-040`). Tutar gövdeden alınmaz, yayımlanmış tarifeden kuruş tamsayı olarak hesaplanır ve taksitlere kuruşu kuruşuna dağılır (`DOM-FIN-002`, `-011`). Taksit sayısı tarifede ilan edilen ödeme koşullarından çıkar, ilanda olmayan sayı 422 `payment_term_not_in_tariff`; sözleşme koşulun kopyasını taşır, koşulsuz eski tarifede sınır yoktur (`DOM-FIN-013`). Dil okulunda sözleşme başlığı "Dil kursu eğitim sözleşmesi"dir. Oluşturulan sözleşme yanıtın `records` listesinde (`contracts`) döner. Kimlik numarası, doğum tarihi ve veli iletişimi loglanmaz (`apps/api/src/app.ts` gizleme listesi).
 - Kesin kayıtta sınıf adayın kampüsünden değilse 422 `class_campus_mismatch` (`path: ['classId']`, kontenjan denetiminden önce); başka kampüsün sınıfı yalnız açık onayla (`allowOtherCampus: true`) kabul edilir. Web formu bunu yalnız "Başka kampüsün sınıfını bilerek seçiyorum" kutusu işaretliyken gönderir; "Tüm kampüslerin sınıflarını göster" listeleme seçimi tek başına onay sayılmaz. Çevrimdışı demo (`enrollProspect`) her kampüsün sınıfını listelediği için seçimi bilinçli sayar.
 - Görüşme ve not uçları `If-Match` (kayıt sürümü) ister; eski sürümle gelen istek `version_conflict` ile reddedilir, aynı adayın görüşmesi veya notu sessizce üzerine yazılmaz.
 

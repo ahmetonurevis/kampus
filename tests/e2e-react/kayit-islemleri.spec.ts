@@ -31,6 +31,23 @@ const at = (days: number, hour: number) => {
   ).toISOString()
 }
 
+/** İlanlı koşullar (DOM-FIN-013): peşin ve 2–12 taksit. */
+const PAYMENT_TERMS = [
+  {
+    kind: 'upfront',
+    minInstallments: 1,
+    maxInstallments: 1,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+  {
+    kind: 'installment',
+    minInstallments: 2,
+    maxInstallments: 12,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+]
 const LIST_URL = '/onburo/kayit-islemleri'
 const detailUrl = (id: string) => `/onburo/aday/${id}`
 const MODULES_MESSAGE = 'Kesin kayıt için aday (CRM) ve finans modüllerinin açık olması gerekir.'
@@ -355,6 +372,7 @@ test.describe('Kayıt İşlemleri', () => {
           announcedAmountCents: 10_000_000,
         },
       ],
+      paymentTerms: PAYMENT_TERMS,
     })
     await post(
       `/api/v1/fee-tariffs/${draft.id}/publish`,
@@ -1069,6 +1087,7 @@ test.describe('Kayıt İşlemleri: ret iletileri', () => {
           { kind: 'early_registration', percentBasisPoints: 3000, amountCents: null },
           { kind: 'early_payment', percentBasisPoints: 3000, amountCents: null },
         ],
+        paymentTerms: PAYMENT_TERMS,
       },
       { 'idempotency-key': randomUUID() },
     )
@@ -1094,6 +1113,12 @@ test.describe('Kayıt İşlemleri: ret iletileri', () => {
 
     await page.getByLabel('Erken kayıt').check()
     await page.getByLabel('Peşin ödeme').check()
+    // Peşin indirimi yalnız peşin koşulunda geçer (DOM-FIN-013).
+    await proceed.click()
+    await expect(page.getByRole('alert')).toHaveText(
+      'Peşin ödeme indirimi yalnız peşin koşuluyla uygulanır.',
+    )
+    await page.getByLabel('Taksit sayısı').selectOption('1')
     await proceed.click()
     await expect(page.getByRole('alert')).toHaveText(
       "Toplam indirim ilan ücretinin %50'sini aşamaz.",
@@ -1108,6 +1133,93 @@ test.describe('Kayıt İşlemleri: ret iletileri', () => {
     await expect(
       page.getByRole('heading', { name: 'Kaydı tamamlamadan önce kontrol edin' }),
     ).toBeVisible()
+  })
+
+  test('DOM-FIN-013: kesin kayıt yalnız ilanlı taksit sayılarını sunar; koşul özette ve sözleşmede görünür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-kosul', 'Koşul Adayı')],
+    })
+    const admin = await api(school.user('yonetici'))
+    const academicYear = new Date().getFullYear()
+    const draft = await admin.post(
+      '/api/v1/fee-tariffs',
+      {
+        academicYear,
+        items: [
+          {
+            kind: 'tuition',
+            level: null,
+            amountCents: 10_000_000,
+            unit: 'year',
+            vatBasisPoints: 1000,
+            vatEffectiveDate: `${String(academicYear)}-01-01`,
+            announcedAmountCents: 10_000_000,
+          },
+        ],
+        paymentTerms: [
+          {
+            kind: 'installment',
+            minInstallments: 2,
+            maxInstallments: 4,
+            discountPercentBasisPoints: 300,
+            discountAmountCents: null,
+          },
+        ],
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(draft.status, JSON.stringify(draft.body)).toBe(201)
+    const { id, version } = (draft.body as { data: { id: string; version: number } }).data
+    const published = await admin.post(
+      `/api/v1/fee-tariffs/${id}/publish`,
+      { announcedDate: `${String(academicYear)}-01-02`, mebbisRecordedDate: null },
+      { 'idempotency-key': randomUUID(), 'if-match': `"${String(version)}"` },
+    )
+    expect(published.status, JSON.stringify(published.body)).toBe(200)
+
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-kosul`)
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Koşul Velisi')
+    await page.getByLabel('Veli telefonu').fill('05559990094')
+    await proceed.click()
+
+    const count = page.getByLabel('Taksit sayısı')
+    await expect(count.getByRole('option')).toHaveText([
+      'Süreli · 2 taksit · %3 indirim',
+      'Süreli · 3 taksit · %3 indirim',
+      'Süreli · 4 taksit · %3 indirim',
+    ])
+    await expect(count).toHaveValue('4')
+    const preview = page.getByRole('region', { name: 'Ödeme planı önizlemesi' })
+    await expect(preview.getByText('Süreli · 4 taksit · %3 indirim')).toBeVisible()
+    await expect(preview.getByText(/-3\.000,00/)).toBeVisible()
+    await proceed.click()
+    await expect(page.getByText('Ödeme koşulu').first()).toBeVisible()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByText('Kesin kayıt, sözleşme ve taksit planı oluşturuldu.')).toBeVisible()
+    const contracts = await admin.get('/api/v1/collections/contracts?pageSize=100')
+    const rows = (contracts.body as { data: { record: { paymentTerm?: unknown } }[] }).data
+    expect(rows.map((row) => row.record.paymentTerm).filter(Boolean)).toEqual([
+      {
+        kind: 'installment',
+        minInstallments: 2,
+        maxInstallments: 4,
+        discountPercentBasisPoints: 300,
+        discountAmountCents: null,
+        installmentCount: 4,
+      },
+    ])
   })
 
   test('DOM-KAY-010, class_capacity_full: dolu sınıf seçilemez; form açıkken dolan sınıfta sınıf adımına dönülür, ileti alanda', async ({

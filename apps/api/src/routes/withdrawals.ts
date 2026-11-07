@@ -32,6 +32,8 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 
 const STAFF = ['yonetici', 'onburo'] as const
 
+const payerSchema = z.enum(['guardian', 'student'])
+
 const breakdownSchema = z.object({
   institutionType: z.enum(INSTITUTION_TYPES),
   withdrawalDate: z.string(),
@@ -62,6 +64,48 @@ const breakdownSchema = z.object({
   ),
   refundCents: z.number().int(),
   debtCents: z.number().int(),
+  contracts: z
+    .array(
+      z.object({
+        contractId: z.string(),
+        title: z.string(),
+        payer: payerSchema.describe(
+          'Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında',
+        ),
+        packageSaleId: z.string().optional().describe('Paket satışı; öğrenim sözleşmesinde yok'),
+        attendedUnits: z
+          .number()
+          .int()
+          .describe('Öğrenimde girilen görülen birim, pakette kullanılan saat'),
+        totalUnits: z.number().int().describe('Öğrenimde toplam birim, pakette satın alınan saat'),
+        returnedHours: z.number().int().optional().describe('Pakette iade edilen kalan saat'),
+        scholarshipExempt: z.boolean(),
+        baseCents: z.number().int(),
+        deductionCents: z.number().int(),
+        usageCents: z.number().int(),
+        entitledCents: z.number().int(),
+        paidCents: z.number().int(),
+        extraBalanceCents: z.number().int(),
+        balanceCents: z
+          .number()
+          .int()
+          .describe('Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç'),
+      }),
+    )
+    .optional()
+    .describe('Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok'),
+  payerDecision: z
+    .object({
+      payer: payerSchema,
+      reason: z
+        .string()
+        .optional()
+        .describe(
+          'Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)',
+        ),
+    })
+    .optional()
+    .describe('Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)'),
 })
 
 const withdrawalSchema = z.object({
@@ -125,7 +169,26 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         params: studentParams,
         body: withdrawalQuoteSchema,
         response: {
-          200: dataResponse(z.object({ contractId: z.string(), breakdown: breakdownSchema })),
+          200: dataResponse(
+            z.object({
+              contractId: z.string(),
+              breakdown: breakdownSchema,
+              payersDiffer: z
+                .boolean()
+                .describe(
+                  'Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12)',
+                ),
+              payers: z
+                .array(
+                  z.object({
+                    contractId: z.string(),
+                    payer: payerSchema,
+                    payerName: z.string().describe('Ödeyicinin adı; iletişim bilgisi dönmez'),
+                  }),
+                )
+                .describe('Sözleşme başına ödeyici'),
+            }),
+          ),
           ...commandErrors,
         },
       },
@@ -177,7 +240,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iadeleri listele',
         description:
-          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.',
+          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.',
         querystring: listQuerySchema,
         response: {
           200: z.object({ data: z.array(withdrawalSchema), meta: pageMetaSchema }),
@@ -201,7 +264,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade ayrıntısı',
         description:
-          'Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.',
+          'Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.',
         params: withdrawalParams,
         response: { 200: withdrawalResponseSchema, ...commandErrors },
       },

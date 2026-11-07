@@ -1,5 +1,5 @@
 {
-  "id": "017c0fed-7f76-41ca-a35a-f59681a66ccd",
+  "id": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "prevId": "f58a7c9e-ac9b-4263-a179-40ad00d6e517",
   "version": "7",
   "dialect": "postgresql",
@@ -4109,6 +4109,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_term": {
+          "name": "payment_term",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "signatory_name": {
           "name": "signatory_name",
           "type": "text",
@@ -4523,6 +4529,10 @@
         "contracts_scholarship_check": {
           "name": "contracts_scholarship_check",
           "value": "(\"contracts\".\"scholarship_program_id\" is null) = (\"contracts\".\"scholarship_cents\" is null) and (\"contracts\".\"scholarship_program_id\" is null or \"contracts\".\"tariff_id\" is not null)"
+        },
+        "contracts_payment_term_check": {
+          "name": "contracts_payment_term_check",
+          "value": "\"contracts\".\"payment_term\" is null or \"contracts\".\"tariff_id\" is not null"
         },
         "contracts_signatory_check": {
           "name": "contracts_signatory_check",
@@ -5102,6 +5112,13 @@
         },
         "discounts": {
           "name": "discounts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "payment_terms": {
+          "name": "payment_terms",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
@@ -5756,114 +5773,6 @@
         "files_superseded_storage_key_check": {
           "name": "files_superseded_storage_key_check",
           "value": "\"files\".\"superseded_storage_key\" is null or \"files\".\"superseded_storage_key\" <> \"files\".\"storage_key\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.e_ozel_records": {
-      "name": "e_ozel_records",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_id": {
-          "name": "source_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_at": {
-          "name": "recorded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recorded_fingerprint": {
-          "name": "recorded_fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "e_ozel_records_institution_id_institutions_id_fk": {
-          "name": "e_ozel_records_institution_id_institutions_id_fk",
-          "tableFrom": "e_ozel_records",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "e_ozel_records_pkey": {
-          "name": "e_ozel_records_pkey",
-          "columns": [
-            "institution_id",
-            "kind",
-            "source_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "e_ozel_records_kind_check": {
-          "name": "e_ozel_records_kind_check",
-          "value": "\"e_ozel_records\".\"kind\" in ('learner', 'attendance', 'course_end')"
-        },
-        "e_ozel_records_mark_check": {
-          "name": "e_ozel_records_mark_check",
-          "value": "(\"e_ozel_records\".\"recorded_at\" is null) = (\"e_ozel_records\".\"recorded_by_user_id\" is null) and (\"e_ozel_records\".\"recorded_at\" is null) = (\"e_ozel_records\".\"recorded_fingerprint\" is null)"
         }
       },
       "isRLSEnabled": false
@@ -8564,12 +8473,6 @@
         },
         "mebbis_recorded_by_user_id": {
           "name": "mebbis_recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mebbis_fingerprint": {
-          "name": "mebbis_fingerprint",
           "type": "text",
           "primaryKey": false,
           "notNull": false

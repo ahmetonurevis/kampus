@@ -105,6 +105,26 @@ export const CONTRACT_NOTIFICATION_TYPES = {
 } as const
 
 /**
+ * Referans hakkı bildirimi (ON-139; DOM-FIN-024). Finans türlerinden ayrı nesnedir: ödeyici bağının
+ * açtığı listeye girmez. Referans veren aileye gider; yalnız hak kimliğini taşır. Tutar, aday adı ve
+ * adayın öğrenci kimliği yoktur: başka ailenin verisi veliye gösterilmez (KVKK md. 4). Kitlenin
+ * `{öğrenci}` değeri referans verenin kendi çocuğudur.
+ */
+export const REFERRAL_NOTIFICATION_TYPES = {
+  /** Referansla gelen kaydın ilk taksiti ödendi, hak kullanılabilir oldu. */
+  referral_reward_earned: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'referral_rewards',
+    data: z.strictObject({ rewardId: notificationId }),
+    subjectId: (data) => data.rewardId,
+    titles: {
+      student: 'Referans indirimi hakkın tanımlandı.',
+      parent: '{öğrenci} için referans indirimi hakkı tanımlandı.',
+    },
+  }),
+} as const
+
+/**
  * Sözleşme bildiriminin kitlesi ödeyicidir, yaş değil (DOM-FIN-052, DOM-KAY-012): ödeyici veli
  * (`payer: 'guardian'`; alanı olmayan eski sözleşme de veli ödeyicilidir) `parent`, kendi ödeyicisi
  * yetişkin kursiyer (`payer: 'student'`) `student` kitlesine gider. Sözleşme 18 yaş altında

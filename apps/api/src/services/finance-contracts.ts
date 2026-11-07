@@ -223,7 +223,7 @@ export async function amendContractCommand(
   input: unknown,
   options: CommandOptions,
 ): Promise<CommandResponse> {
-  const { discounts } = amendContractSchema.parse(input)
+  amendContractSchema.parse(input)
   const [source] = await loadFinanceRecords(ctx.db, ctx.institutionId, COLLECTION, {
     ids: [contractId],
   })
@@ -238,9 +238,8 @@ export async function amendContractCommand(
     options,
     prepare: async (tx, actor, institutionType) => {
       const [tariff, allocated] = await Promise.all([
-        discounts !== undefined && typeof tariffId === 'string'
-          ? findFeeTariff(tx, ctx.institutionId, tariffId)
-          : null,
+        // Ek protokolün taksit sayısı da tarifenin koşuluna bağlıdır (DOM-FIN-013).
+        typeof tariffId === 'string' ? findFeeTariff(tx, ctx.institutionId, tariffId) : null,
         allocatedByInvoice(tx, ctx.institutionId, studentId),
       ])
       return (state, { now, makeId }) => {

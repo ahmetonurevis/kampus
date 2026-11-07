@@ -20,6 +20,7 @@ import {
 } from '@kampus/school-core/lib/enrollment.ts'
 import {
   carriedOverTariffNote,
+  DISCOUNT_LINE_LABELS,
   FEE_DISCOUNT_KIND_LABELS,
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
@@ -27,7 +28,14 @@ import {
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import {
+  contractPaymentTermLabel,
+  defaultInstallmentCount,
+  installmentOptionLabel,
+  offeredInstallmentCounts,
+} from '@kampus/school-core/lib/payment-terms.ts'
 import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
+import { useAvailableReferralRewards } from '@kampus/react-shared/use-finance-referrals.ts'
 import {
   useEnrollProspect,
   useGuardianMatches,
@@ -69,6 +77,7 @@ import {
   seatsTaken,
   suggestedClassOrder,
 } from './enrollment-form.ts'
+import { ReferralRewardField } from '../finance/ReferralRewardField.tsx'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
@@ -252,12 +261,13 @@ function EnrollmentForm({
       guardianPhone: '',
       relationship: 'mother',
       existingParentId: '',
+      referralRewardId: '',
       studentPhone: '',
       studentEmail: '',
       lessonHours: '',
       discounts: [],
       extras: [],
-      installmentCount: '8',
+      installmentCount: String(defaultInstallmentCount(tariff.paymentTerms)),
       firstDueDate: today,
       allCampuses: false,
       confirmOtherCampus: false,
@@ -322,12 +332,22 @@ function EnrollmentForm({
     { enabled: session?.role === 'yonetici' },
   )
   const awardable = awardablePrograms(scholarshipPrograms.data?.data ?? [])
+  // Referans kalemi hakkın sabit tutarıyla önizlenir; alan da aynı sorguyu okur (DOM-FIN-024).
+  const referralOwner =
+    values.discounts?.includes('referral') &&
+    values.guardianMode === 'existing' &&
+    values.existingParentId
+      ? { parentId: values.existingParentId }
+      : null
+  const { items: referralRewards } = useAvailableReferralRewards(referralOwner)
   const preview = previewEnrollment(tariff, values, {
     institutionType,
     level:
       institutionType === 'language_school'
         ? (room?.record.level ?? '')
         : String(room?.record.grade ?? ''),
+    referralRewardCents: referralRewards.find((item) => item.id === values.referralRewardId)
+      ?.amountCents,
   })
   // Burs indirim değildir, netten düşer; kesin hesabı sunucu yapar (DOM-FIN-025).
   const selectedProgram = awardable.find((item) => item.id === values.scholarshipProgramId)
@@ -458,6 +478,12 @@ function EnrollmentForm({
           : values.guardianName,
     ],
     ['Taksit', `${values.installmentCount} taksit · İlk vade ${values.firstDueDate}`],
+    ...(preview.ok && preview.price.paymentTerm
+      ? ([['Ödeme koşulu', contractPaymentTermLabel(preview.price.paymentTerm)]] as [
+          string,
+          string,
+        ][])
+      : []),
     ['Aday aydınlatması', prospectNoticeLabel(prospect?.record.privacyNotice)],
   ]
 
@@ -743,7 +769,13 @@ function EnrollmentForm({
                   description="Kardeş adayın velisi ve adayın telefonuyla eşleşen veliler önerilir."
                 >
                   {(control) => (
-                    <NativeSelect {...control} {...form.register('existingParentId')}>
+                    <NativeSelect
+                      {...control}
+                      {...form.register('existingParentId', {
+                        // Hak velinindir; veli değişince önceki velinin hakkı seçili kalmaz.
+                        onChange: () => form.setValue('referralRewardId', ''),
+                      })}
+                    >
                       <NativeSelectOption value="">
                         {matches.data?.data.length ? 'Veli seçin' : 'Eşleşen veli yok'}
                       </NativeSelectOption>
@@ -784,6 +816,14 @@ function EnrollmentForm({
                     </label>
                   ))}
                 </fieldset>
+              ) : null}
+              {values.discounts?.includes('referral') ? (
+                <ReferralRewardField
+                  id="kayit-referans-hakki"
+                  query={referralOwner}
+                  error={errors.referralRewardId}
+                  register={form.register('referralRewardId')}
+                />
               ) : null}
               {awardable.length > 0 ? (
                 <FormField
@@ -831,9 +871,9 @@ function EnrollmentForm({
                 <FormField id="kayit-taksit" label="Taksit sayısı" error={errors.installmentCount}>
                   {(control) => (
                     <NativeSelect {...control} {...form.register('installmentCount')}>
-                      {Array.from({ length: 12 }, (_, index) => index + 1).map((count) => (
+                      {offeredInstallmentCounts(tariff.paymentTerms).map((count) => (
                         <NativeSelectOption key={count} value={String(count)}>
-                          {count} taksit
+                          {installmentOptionLabel(count, tariff.paymentTerms)}
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>
@@ -902,11 +942,17 @@ function EnrollmentForm({
                 value={`${String(carriedOverFromYear)}–${String(carriedOverFromYear + 1)} (önceki yıl)`}
               />
             )}
+            {preview.price.paymentTerm ? (
+              <Line
+                label="Ödeme koşulu"
+                value={contractPaymentTermLabel(preview.price.paymentTerm)}
+              />
+            ) : null}
             <Line label="İlan ücreti" value={money(preview.price.grossCents)} />
             {preview.price.discounts.map((line) => (
               <Line
                 key={line.kind}
-                label={`${FEE_DISCOUNT_KIND_LABELS[line.kind]} indirimi`}
+                label={`${DISCOUNT_LINE_LABELS[line.kind]} indirimi`}
                 value={`-${money(line.amountCents)}`}
               />
             ))}

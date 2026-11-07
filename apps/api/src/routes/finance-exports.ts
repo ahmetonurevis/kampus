@@ -11,10 +11,16 @@ import {
   financeOverviewQuerySchema,
   financePeriodSchema,
 } from '@kampus/school-core/lib/finance-export.ts'
+import {
+  financeReconciliationExportQuerySchema,
+  financeReconciliationQuerySchema,
+  RECONCILIATION_MISMATCH_REASONS,
+} from '@kampus/school-core/lib/finance-reconciliation.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   financeExportFor,
+  financeExportWorkbookFor,
   financeOverviewFor,
   financeSummaryFor,
   financeTotalsFor,
@@ -23,9 +29,14 @@ import {
   setFinanceExportProfile,
   studentStatementFor,
 } from '../services/finance-exports.ts'
+import {
+  financeReconciliationExportFor,
+  financeReconciliationFor,
+} from '../services/finance-reconciliation.ts'
+import { XLSX_CONTENT_TYPE } from '../services/finance-workbook.ts'
 import { captureInput, options, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
-import { dataResponse } from './common.schemas.ts'
+import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
 /**
  * Muhasebe dışa aktarımı (IST-111; guvenlik-kvkk.md). Modül `finance`. Dönem özeti yönetici ve ön
@@ -69,6 +80,54 @@ const overviewSchema = dataResponse(
     ),
   }),
 )
+
+const reconciliationAmounts = z.object({
+  openingCents: z.number().int().describe('Dönem başı bakiye: açık borç − alacak'),
+  accruedCents: z.number().int().describe('Vadesi dönemde olan taksitler'),
+  withdrawalAdjustmentCents: z
+    .number()
+    .int()
+    .describe('Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi'),
+  collectedCents: z.number().int().describe('Ödeme günü dönemde olan tahsilatlar (brüt)'),
+  reversedCents: z.number().int().describe('İptal günü dönemde olan tahsilatlar'),
+  refundedCents: z.number().int().describe('Ödeme günü dönemde olan iadeler'),
+  scholarshipCents: z
+    .number()
+    .int()
+    .describe('Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez'),
+  discountCents: z
+    .number()
+    .int()
+    .describe('Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez'),
+  closingCents: z.number().int().describe('Dönem sonu bakiye: açık borç − alacak'),
+  expectedClosingCents: z
+    .number()
+    .int()
+    .describe('Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade'),
+  differenceCents: z.number().int().describe('Kapanış − beklenen kapanış'),
+  openDebtCents: z.number().int().describe('Dönem sonunda vadesi gelmiş açık taksit tutarı'),
+  creditCents: z.number().int().describe('Dağıtılmamış tahsilat, avans ve ödenmemiş iade'),
+})
+
+const reconciliationResponse = z.object({
+  data: z.object({
+    year: z.number().int().describe('Eğitim yılının başladığı yıl'),
+    from: z.string().describe('Dönem başı (YYYY-MM-DD, Europe/Istanbul)'),
+    to: z.string().describe('Dönem sonu; süren yılda bugün'),
+    totals: reconciliationAmounts,
+    studentCount: z.number().int(),
+    mismatchCount: z.number().int().describe('Toplamları tutmayan öğrenci sayısı'),
+    rows: z.array(
+      reconciliationAmounts.extend({
+        studentId: z.string(),
+        studentName: z.string(),
+        studentNumber: z.string(),
+        mismatchReason: z.enum(RECONCILIATION_MISMATCH_REASONS).nullable(),
+      }),
+    ),
+  }),
+  meta: pageMetaSchema,
+})
 
 /** Sayaç doğrulanmış kullanıcıyadır; istemcinin değiştirebildiği başlığa bağlanmaz. */
 function exportRateKey(request: FastifyRequest): string {
@@ -329,17 +388,80 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
         tags: ['finance-exports'],
         summary: 'Muhasebe aktarım dosyası',
         description:
-          '`kind` ile tahsilat, iade veya taksit satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.',
+          '`kind` ile tahsilat, iade veya taksit satırlarını döner. `format=csv` (varsayılan): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. `format=xlsx`: Excel dosyası (ikili gövde); metin alanları formül çalıştırmayan metin hücresi, tutar `#,##0.00` biçimli sayı hücresi, tarih Europe/Istanbul günü olarak profilin tarih biçimiyle tarih hücresidir; sütun adı ve sırası kurumun profilinden gelir, ayırıcı ve ondalık işareti yalnız CSV içindir. Belirli bir muhasebe programına uyum iddiası, hesap kodu ve KDV dökümü yoktur. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.',
         querystring: financeExportQuerySchema,
-        response: { 200: z.string().describe('CSV dosyası'), ...commandErrors },
+        response: { 200: z.string().describe('CSV metni ya da `.xlsx` dosyası'), ...commandErrors },
       },
     },
     async (request, reply) => {
-      const { kind, from, to } = request.query
+      const { kind, from, to, format } = request.query
+      if (format === 'xlsx') {
+        const file = await financeExportWorkbookFor(contextOf(request), { kind, from, to })
+        // Buffer serileştirilmeden gönderilir; yanıt şeması yalnız OpenAPI içindir.
+        return (reply as FastifyReply)
+          .type(XLSX_CONTENT_TYPE)
+          .header('content-disposition', `attachment; filename="${kind}-${from}-${to}.xlsx"`)
+          .send(file)
+      }
       const csv = await financeExportFor(contextOf(request), { kind, from, to })
       return reply
         .type('text/csv; charset=utf-8')
         .header('content-disposition', `attachment; filename="${kind}-${from}-${to}.csv"`)
+        .serializer((payload: unknown) => String(payload))
+        .send(`\uFEFF${csv}`)
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/reconciliation',
+    {
+      preValidation: [app.authenticate, finance, app.requireRole(['yonetici'])],
+      schema: {
+        operationId: 'getFinanceReconciliation',
+        tags: ['finance-exports'],
+        summary: 'Yıl sonu mutabakatı',
+        description:
+          'Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.',
+        querystring: financeReconciliationQuerySchema.extend(pageQuerySchema.shape),
+        response: { 200: reconciliationResponse, ...commandErrors },
+      },
+    },
+    async (request) => financeReconciliationFor(contextOf(request), request.query),
+  )
+
+  typed.get(
+    '/api/v1/finance/reconciliation/export',
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+          hook: 'preHandler',
+          keyGenerator: exportRateKey,
+        },
+      },
+      preValidation: [
+        app.authenticate,
+        finance,
+        app.requireRole(['yonetici']),
+        app.requireFreshSession,
+      ],
+      schema: {
+        operationId: 'exportFinanceReconciliation',
+        tags: ['finance-exports'],
+        summary: 'Yıl sonu mutabakat dosyası',
+        description:
+          'Mutabakatın öğrenci satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; kurumun aktarım profili varsa onun biçimi ve sütunları. Satır ve toplam kuralı `GET /finance/reconciliation` ile aynıdır. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Rol: `yonetici`.',
+        querystring: financeReconciliationExportQuerySchema,
+        response: { 200: z.string().describe('CSV dosyası'), ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { year } = request.query
+      const { csv, from, to } = await financeReconciliationExportFor(contextOf(request), year)
+      return reply
+        .type('text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="reconciliation-${from}-${to}.csv"`)
         .serializer((payload: unknown) => String(payload))
         .send(`\uFEFF${csv}`)
     },

@@ -4,6 +4,7 @@ import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
+import { learnerWords } from './enrollment-learner.ts'
 import { DomainError } from './errors.ts'
 import { packageUsedHoursRecorded, packageWithdrawalHours } from './finance-package-hours.ts'
 import type { PackageHourKind, PackageHourSource } from './finance-packages.ts'
@@ -304,6 +305,7 @@ function withdrawalAccount(
   state: State,
   studentId: string,
   sales: readonly WithdrawalPackageSale[],
+  institutionType: InstitutionType,
 ): AccountContract[] {
   const planned = plannedRenewalContractIds(state, studentId)
   const saleOf = saleFinder(state, sales)
@@ -319,8 +321,7 @@ function withdrawalAccount(
   const contracts = inForce
     .filter((item) => saleOf(item) !== undefined || (item.academicYear ?? 0) === latestYear)
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
-  if (contracts.length === 0)
-    throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
+  if (contracts.length === 0) throw contractMissing(institutionType)
 
   // Taksit bir kez sayılır. Listesi olmayan eski sözleşme yalnız hiçbir sözleşmenin listesinde
   // bulunmayan taksitleri alır; aynı taksit iki sözleşmede görünürse yeni sözleşmede kalır.
@@ -426,10 +427,23 @@ function assertUnits(data: z.output<typeof withdrawalQuoteSchema>, today: string
   return started
 }
 
-function studentOf(state: State, studentId: string) {
+/**
+ * Sunucu iletileri kurum türünün sözünü kullanır (DOM-KAY-012, ADR 0008 karar 1): okulda "öğrenci",
+ * dil okulu ve kursta "kursiyer"; tür bilinmiyorsa okul metni. Kod (`code`) türden bağımsızdır.
+ */
+function contractMissing(type?: InstitutionType) {
+  return new DomainError(
+    'withdrawal_contract_missing',
+    `${learnerWords(type).titleGenitive} sözleşmesi bulunamadı.`,
+  )
+}
+
+function studentOf(state: State, studentId: string, type: InstitutionType) {
   const student = state.students.find((item) => item.id === studentId)
   if (!student)
-    throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
+    throw new DomainError('student_not_found', `${learnerWords(type).title} bulunamadı.`, {
+      kind: 'not_found',
+    })
   return student
 }
 
@@ -452,7 +466,7 @@ export function quoteWithdrawal(
   payers: WithdrawalContractPayer[]
 } {
   const data = withdrawalQuoteSchema.parse(input)
-  studentOf(state, studentId)
+  studentOf(state, studentId, context.institutionType)
   const started = assertUnits(data, dayKey(context.now))
   if (data.publicSchoolExemption && (started || context.institutionType !== 'school'))
     throw new DomainError(
@@ -460,10 +474,14 @@ export function quoteWithdrawal(
       'Kesintisiz iade yalnız okulda, öğretim yılı başlamadan uygulanır.',
       { path: ['publicSchoolExemption'] },
     )
-  const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
+  const account = withdrawalAccount(
+    state,
+    studentId,
+    context.packageSales ?? [],
+    context.institutionType,
+  )
   const latest = account.at(-1)
-  if (!latest)
-    throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
+  if (!latest) throw contractMissing(context.institutionType)
   const quotes = account.map((item) => quoteContract(item, data, started, context.allocated))
   const lines = quotes.map((quote) => quote.line)
   const total = (pick: (line: WithdrawalContractLine) => number) =>
@@ -474,7 +492,7 @@ export function quoteWithdrawal(
   const payers = lines.map((line): WithdrawalContractPayer => ({
     contractId: line.contractId,
     payer: line.payer,
-    payerName: payerNameOf(state, line.contractId),
+    payerName: payerNameOf(state, line.contractId, context.institutionType),
   }))
   return {
     contractId: latest.contract.id,
@@ -635,11 +653,16 @@ export function withdrawStudent(
   context: WithdrawalContext,
 ) {
   const data = withdrawStudentSchema.parse(input)
-  const student = studentOf(state, studentId)
+  const learner = learnerWords(context.institutionType)
+  const student = studentOf(state, studentId, context.institutionType)
   if (!student.isActive)
-    throw new DomainError('student_already_withdrawn', 'Bu öğrencinin kaydı zaten pasif.', {
-      kind: 'conflict',
-    })
+    throw new DomainError(
+      'student_already_withdrawn',
+      `Bu ${learner.genitive} kaydı zaten pasif.`,
+      {
+        kind: 'conflict',
+      },
+    )
   const { contractId, breakdown, payersDiffer, payers } = quoteWithdrawal(
     state,
     studentId,
@@ -659,7 +682,12 @@ export function withdrawStudent(
   const refundApprovedCents = refundApprovalRequired(breakdown)
     ? requireRefundApproval(breakdown.refundCents, data.approvedRefundCents)
     : null
-  const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
+  const account = withdrawalAccount(
+    state,
+    studentId,
+    context.packageSales ?? [],
+    context.institutionType,
+  )
 
   const planned = state.renewals.filter(
     (item) => item.studentId === studentId && item.status === 'Planlandı',
@@ -726,7 +754,7 @@ export function withdrawStudent(
     if (session.studentIds.length === 0)
       Object.assign(session, {
         status: 'İptal',
-        cancelReason: 'Öğrenci ayrıldı',
+        cancelReason: `${learner.title} ayrıldı`,
         cancelledAt: now,
         updatedAt: now,
       })
@@ -797,12 +825,14 @@ export function planRefundPayment(
   return data
 }
 
-/** Sözleşmedeki ödeyicinin adı: veli veya 18 yaş üstü kursiyer (DOM-KAY-012). */
-export function payerNameOf(state: State, contractId: string): string {
+/**
+ * Sözleşmedeki ödeyicinin adı: veli veya 18 yaş üstü kursiyer (DOM-KAY-012). Tür yalnız bulunamama
+ * iletisinin sözüdür; verilmezse okul metni.
+ */
+export function payerNameOf(state: State, contractId: string, type?: InstitutionType): string {
   const contract = state.contracts.find((item) => item.id === contractId)
   const student = state.students.find((item) => item.id === contract?.studentId)
-  if (!contract || !student)
-    throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
+  if (!contract || !student) throw contractMissing(type)
   if (contract.payer === 'student') return student.name
   return state.parents.find((parent) => parent.id === student.parentId)?.name ?? ''
 }
@@ -814,8 +844,9 @@ export function refundPayerName(
     contractId: string
     breakdown: Pick<WithdrawalBreakdown, 'contracts' | 'payerDecision'>
   },
+  type?: InstitutionType,
 ): string {
   const { contracts, payerDecision } = withdrawal.breakdown
   const chosen = payerDecision && contracts?.find((line) => line.payer === payerDecision.payer)
-  return payerNameOf(state, chosen?.contractId ?? withdrawal.contractId)
+  return payerNameOf(state, chosen?.contractId ?? withdrawal.contractId, type)
 }

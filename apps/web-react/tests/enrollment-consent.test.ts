@@ -1,21 +1,27 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { ConsentPurpose } from '@kampus/school-core/lib/consent-purposes.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
+import { STAFF_CONSENT_INFO } from '../src/components/consent/consent-model.ts'
 import {
-  ACCOUNT_LINK_NOTE,
+  accountLinkNote,
   accountNote,
-  ENROLLMENT_CONSENT_NOTE,
-  GUARDIAN_ACCOUNT_INVITED_NOTE,
-  GUARDIAN_ACCOUNT_MISSING_NOTE,
+  enrollmentConsentNote,
   GUARDIAN_GUIDANCE,
+  guardianAccountInvitedNote,
+  guardianAccountMissingNote,
   NO_NOTICE_LABEL,
-  SELF_GUIDANCE,
-  UNKNOWN_GRANTOR_GUIDANCE,
+  selfGuidance,
+  staffConsentInfo,
+  unknownGrantorGuidance,
   enrollmentConsentSummary,
   isAdultOnForm,
   prospectNoticeLabel,
   type ConsentTextState,
 } from '../src/pages/crm/enrollment-consent.ts'
+
+const learner = learnerWords('school')
+const kursiyer = learnerWords('language_school')
 
 const ready = (): ConsentTextState => 'ready'
 const only =
@@ -31,6 +37,7 @@ test('IST-017, DOM-YTK-057: 18 yaş altı öğrencide beklenen rızalar veliyi v
     ],
     textState: ready,
     adult: false,
+    learner,
   })
   assert.deepEqual(summary, {
     awaiting: [
@@ -47,8 +54,9 @@ test('DOM-YTK-057: 18 yaşını doldurmuş öğrencide rızayı öğrenci verir'
     statuses: [{ purpose: 'photo_video_sharing', valid: false, grantor: 'self' }],
     textState: ready,
     adult: false,
+    learner,
   })
-  assert.equal(summary.awaiting[0]?.guidance, SELF_GUIDANCE)
+  assert.equal(summary.awaiting[0]?.guidance, selfGuidance(learner))
 })
 
 test('DOM-YTK-057: formdaki doğum tarihi yetişkinse sunucunun bilinmeyen yaş yanıtı veliyi göstermez', () => {
@@ -57,8 +65,9 @@ test('DOM-YTK-057: formdaki doğum tarihi yetişkinse sunucunun bilinmeyen yaş 
     statuses: [{ purpose: 'photo_video_sharing', valid: false, grantor: 'guardian' }],
     textState: ready,
     adult: true,
+    learner,
   })
-  assert.equal(summary.awaiting[0]?.guidance, SELF_GUIDANCE)
+  assert.equal(summary.awaiting[0]?.guidance, selfGuidance(learner))
 })
 
 test('IST-017: metni yayımlanmamış amaç beklenmez, ayrı listelenir', () => {
@@ -69,6 +78,7 @@ test('IST-017: metni yayımlanmamış amaç beklenmez, ayrı listelenir', () => 
     ],
     textState: only('speaking_recording', 'missing'),
     adult: false,
+    learner,
   })
   assert.deepEqual(summary.unavailable, ['speaking_recording'])
   assert.deepEqual(summary.awaiting[0]?.purposes, ['photo_video_sharing'])
@@ -79,6 +89,7 @@ test('DOM-YTK-061: geçerli rızası olan amaç beklenmez; metni olmasa da geçe
     statuses: [{ purpose: 'photo_video_sharing', valid: true, grantor: 'guardian' }],
     textState: only('photo_video_sharing', 'missing'),
     adult: false,
+    learner,
   })
   assert.deepEqual(summary, { awaiting: [], unavailable: [], granted: ['photo_video_sharing'] })
 })
@@ -88,8 +99,9 @@ test('DOM-YTK-057: rızayı vereni bildirmeyen yanıtta kişi tahmin edilmez', (
     statuses: [{ purpose: 'photo_video_sharing', valid: false }],
     textState: ready,
     adult: false,
+    learner,
   })
-  assert.equal(summary.awaiting[0]?.guidance, UNKNOWN_GRANTOR_GUIDANCE)
+  assert.equal(summary.awaiting[0]?.guidance, unknownGrantorGuidance(learner))
 })
 
 test('DOM-YTK-057: 18 yaş sınırı formdaki doğum gününde Europe/Istanbul gününe göre işler', () => {
@@ -108,16 +120,77 @@ test('DOM-KAY-003, IST-016: aday aydınlatması sürüm ve günle, kaydı yoksa 
 })
 
 test('IST-017: kontrol adımı bilgisi rızanın kaydı engellemediğini söyler', () => {
-  assert.match(ENROLLMENT_CONSENT_NOTE, /kaydı engellemez/)
-  assert.match(ENROLLMENT_CONSENT_NOTE, /veli ya da öğrenci kendi hesabından verir/)
+  assert.match(enrollmentConsentNote(learner), /kaydı engellemez/)
+  assert.match(enrollmentConsentNote(learner), /veli ya da öğrenci kendi hesabından verir/)
 })
 
 test('ON-290, DOM-YTK-071: veli hesabı yokken açılması gerektiği, davet açılınca hesabın açıldığı yazılır', () => {
-  assert.equal(accountNote({ adult: false, invited: false }), GUARDIAN_ACCOUNT_MISSING_NOTE)
-  assert.match(GUARDIAN_ACCOUNT_MISSING_NOTE, /veli rıza veremez/)
-  assert.match(GUARDIAN_ACCOUNT_MISSING_NOTE, /Veli hesabı aç/)
-  assert.equal(accountNote({ adult: false, invited: true }), GUARDIAN_ACCOUNT_INVITED_NOTE)
-  assert.match(GUARDIAN_ACCOUNT_INVITED_NOTE, /Veli hesabı açıldı/)
+  const missing = guardianAccountMissingNote(learner)
+  const invited = guardianAccountInvitedNote(learner)
+  assert.equal(accountNote({ adult: false, invited: false, learner }), missing)
+  assert.match(missing, /veli rıza veremez/)
+  assert.match(missing, /Veli hesabı aç/)
+  assert.equal(accountNote({ adult: false, invited: true, learner }), invited)
+  assert.match(invited, /Veli hesabı açıldı/)
   // Yetişkin kursiyer rızayı kendi hesabıyla verir; veli daveti notu gösterilmez.
-  assert.equal(accountNote({ adult: true, invited: true }), ACCOUNT_LINK_NOTE)
+  assert.equal(accountNote({ adult: true, invited: true, learner }), accountLinkNote(learner))
+})
+
+test('DOM-KAY-012: okulda rıza metinleri "öğrenci" der; ortak personel bilgisiyle aynıdır', () => {
+  assert.equal(staffConsentInfo(learner), STAFF_CONSENT_INFO)
+  assert.equal(
+    selfGuidance(learner),
+    'Öğrenci 18 yaşını doldurduğu için rızayı kendisi verir: kendi hesabıyla web panelinde hesap menüsü, Ayarlar, Rızalarım.',
+  )
+  assert.equal(
+    accountLinkNote(learner),
+    'Hesap bu öğrenciye bağlı değilse öğrenci Rızalarım bölümünde görünmez; önce hesap bağlantısı kurulmalıdır.',
+  )
+  assert.equal(
+    guardianAccountMissingNote(learner),
+    'Velinin bu öğrenciye bağlı bir hesabı yoksa öğrenci Rızalarım bölümünde görünmez ve veli rıza veremez. Hesabı "Veli hesabı aç" ile açabilirsiniz.',
+  )
+})
+
+test('DOM-KAY-012: dil okulu ve kursta rıza metinleri "öğrenci" yerine "kursiyer" der', () => {
+  assert.equal(staffConsentInfo(kursiyer), 'Rızayı veli ya da kursiyer kendi hesabından verir.')
+  assert.equal(
+    enrollmentConsentNote(kursiyer),
+    'Açık rıza bu formda alınmaz ve kaydı engellemez. Rızayı veli ya da kursiyer kendi hesabından verir. Kayıt tamamlanınca beklenen rızalar listelenir.',
+  )
+  assert.equal(
+    selfGuidance(kursiyer),
+    'Kursiyer 18 yaşını doldurduğu için rızayı kendisi verir: kendi hesabıyla web panelinde hesap menüsü, Ayarlar, Rızalarım.',
+  )
+  assert.equal(
+    unknownGrantorGuidance(kursiyer),
+    'Rızayı veli ya da kursiyer kendi hesabından verir. Yeri: web panelinde hesap menüsü, Ayarlar, Rızalarım.',
+  )
+  assert.equal(
+    accountLinkNote(kursiyer),
+    'Hesap bu kursiyere bağlı değilse kursiyer Rızalarım bölümünde görünmez; önce hesap bağlantısı kurulmalıdır.',
+  )
+  assert.equal(
+    guardianAccountMissingNote(kursiyer),
+    'Velinin bu kursiyere bağlı bir hesabı yoksa kursiyer Rızalarım bölümünde görünmez ve veli rıza veremez. Hesabı "Veli hesabı aç" ile açabilirsiniz.',
+  )
+  assert.equal(
+    guardianAccountInvitedNote(kursiyer),
+    'Veli hesabı açıldı. Veli e-postadaki bağlantıyla parolasını belirleyip giriş yapınca bu kursiyer Rızalarım bölümünde görünür ve rızayı oradan verir.',
+  )
+  const summary = enrollmentConsentSummary({
+    statuses: [{ purpose: 'photo_video_sharing', valid: false, grantor: 'guardian' }],
+    textState: ready,
+    adult: true,
+    learner: kursiyer,
+  })
+  assert.equal(summary.awaiting[0]?.guidance, selfGuidance(kursiyer))
+  for (const text of [
+    enrollmentConsentNote(kursiyer),
+    selfGuidance(kursiyer),
+    accountNote({ adult: true, invited: false, learner: kursiyer }),
+    accountNote({ adult: false, invited: false, learner: kursiyer }),
+    accountNote({ adult: false, invited: true, learner: kursiyer }),
+  ])
+    assert.doesNotMatch(text, /öğrenci/i)
 })

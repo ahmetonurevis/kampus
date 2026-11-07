@@ -17,6 +17,7 @@ import {
   previewEnrollment,
   type EnrollmentFormValues,
   type EnrollmentTariff,
+  type GuardianMode,
 } from '@kampus/school-core/lib/enrollment.ts'
 import {
   carriedOverTariffNote,
@@ -55,7 +56,6 @@ import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
-import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
 import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
@@ -66,12 +66,14 @@ import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
 import { StudentImportSection } from './StudentImportSection.tsx'
 import { enrollmentParentId } from './enrollment-guardian-account.ts'
 import {
-  ENROLLMENT_CONSENT_NOTE,
+  enrollmentConsentNote,
   isAdultOnForm,
   prospectNoticeLabel,
+  staffConsentInfo,
 } from './enrollment-consent.ts'
 import {
   birthDateAgeGroupMismatch,
+  enrollmentDoneSummary,
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
@@ -106,6 +108,8 @@ type Done = {
   contractId: string | null
   studentId: string | null
   adult: boolean
+  /** Sonuç metni veli seçimine göredir: velisiz kursiyerde veli cümlesi yoktur (DOM-KAY-012). */
+  guardianMode: GuardianMode
   /** Veli hesabı açılacak veli kaydı (ON-290); kursiyerin kendisi seçildiyse yok. */
   parentId: string | null
   /** Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002, K-11); sunucu yanıtından. */
@@ -158,7 +162,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
             {done.studentName} kaydedildi
           </h2>
           <p className="text-sm text-muted-foreground">
-            {learner.title}, veli, sözleşme ve taksit planı oluşturuldu.
+            {enrollmentDoneSummary(done.guardianMode, learner)}
           </p>
           {done.tariffCarriedOverFromYear === null ? null : (
             <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
@@ -169,7 +173,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
             <EnrollmentConsentNotice studentId={done.studentId} adult={done.adult} />
           ) : (
             <p role="note" className="text-sm">
-              {STAFF_CONSENT_INFO}
+              {staffConsentInfo(learner)}
             </p>
           )}
           <div className="flex flex-wrap gap-3">
@@ -448,6 +452,7 @@ function EnrollmentForm({
         contractId: contract?.id ?? null,
         studentId: outcome.data.data.entity?.id ?? null,
         adult: isAdultOnForm(data.birthDate),
+        guardianMode: data.guardianMode,
         parentId: enrollmentParentId(
           data.guardianMode,
           data.existingParentId,
@@ -913,7 +918,7 @@ function EnrollmentForm({
                 ))}
               </dl>
               <p role="note" className="rounded-xl border bg-surface-soft p-4 text-sm">
-                {ENROLLMENT_CONSENT_NOTE}
+                {enrollmentConsentNote(learner)}
               </p>
             </>
           ) : null}

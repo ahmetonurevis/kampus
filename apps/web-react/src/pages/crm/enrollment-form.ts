@@ -1,5 +1,6 @@
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { isCalendarDay } from '@kampus/school-core/lib/age.ts'
+import type { LearnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import {
   allowedGuardianModes,
   GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE,
@@ -13,6 +14,23 @@ import {
 // Kesin kayıt formunun (`EnrollmentPage`) saf yardımcıları: veli seçiminin doğum tarihine uyumu,
 // aday değişiminde sıfırlanan alanlar ve sunucu hatasının forma bağlanması (DOM-KAY-010, -012,
 // -013, class_campus_mismatch).
+
+/**
+ * Kesin kayıt sonucunda oluşanlar (DOM-KAY-012): yeni velide veli kaydı da oluşur; mevcut veliye
+ * bağlamada veli oluşturulmaz, bağlanır; kursiyerin kendisi ödeyiciyse veli yoktur.
+ */
+export function enrollmentDoneSummary(guardianMode: GuardianMode, learner: LearnerWords): string {
+  switch (guardianMode) {
+    case 'new':
+      return `${learner.title}, veli, sözleşme ve taksit planı oluşturuldu.`
+    case 'existing':
+      return `${learner.title}, sözleşme ve taksit planı oluşturuldu; ${learner.noun} mevcut veliye bağlandı.`
+    case 'self':
+      return `${learner.title}, sözleşme ve taksit planı oluşturuldu.`
+    default:
+      return guardianMode satisfies never
+  }
+}
 
 /**
  * Doğum tarihi ya da aday değişince veli seçimi: geçerli seçim kalır, değilse kurala uyan ilk

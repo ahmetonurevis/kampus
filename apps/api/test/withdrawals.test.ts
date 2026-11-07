@@ -541,7 +541,10 @@ describe('ayrılış ve iade uçları', () => {
       open.map((row) => row.id),
       ['test-inv-1'],
     )
-    assertError(await withdraw(a.cookie), 409, 'student_already_withdrawn')
+    const again = await withdraw(a.cookie)
+    assertError(again, 409, 'student_already_withdrawn')
+    // DOM-KAY-012: okulda ileti "öğrenci" der.
+    assert.equal(again.json().message, 'Bu öğrencinin kaydı zaten pasif.')
 
     const audits = await db
       .select()

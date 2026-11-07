@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
+import type { LearnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import {
   guardianInvitationInputSchema,
@@ -23,10 +24,12 @@ export type GuardianAccountFormValues = z.input<typeof guardianAccountFormSchema
 /**
  * Kurumda bu e-postayla bir hesap (veli ya da personel) zaten var. Mevcut hesabı öğrenciye
  * bağlayan web ekranı henüz yok (bağ ucu `POST /students/:studentId/guardians` `membershipId`);
- * bu yüzden ileti yöneticiye yönlendirir.
+ * bu yüzden ileti yöneticiye yönlendirir. Okulda "öğrenci", dil okulu ve kursta "kursiyer" der
+ * (DOM-KAY-012).
  */
-export const MEMBER_EXISTS_MESSAGE =
-  'Bu e-posta adresiyle kurumda zaten bir hesap var; ikinci hesap açılmaz. Var olan hesabın bu öğrenciye bağlanması için kurum yöneticisine başvurun ya da başka bir e-posta girin.'
+export function memberExistsMessage(learner: LearnerWords): string {
+  return `Bu e-posta adresiyle kurumda zaten bir hesap var; ikinci hesap açılmaz. Var olan hesabın bu ${learner.dative} bağlanması için kurum yöneticisine başvurun ya da başka bir e-posta girin.`
+}
 
 /** Sunucu hata kodunun formdaki yeri; listede olmayan kod toast olur. */
 const FIELD_BY_CODE: Readonly<Record<string, keyof GuardianAccountFormValues | 'root.server'>> = {
@@ -43,8 +46,12 @@ export function guardianAccountFieldFor(error: Pick<ApiError, 'code'>): string |
 }
 
 /** Alan hatasının iletisi: `member_exists` yöneticiye yönlendiren metinle değişir. */
-export function guardianAccountErrorMessage(code: string, message: string): string {
-  return code === 'member_exists' ? MEMBER_EXISTS_MESSAGE : message
+export function guardianAccountErrorMessage(
+  code: string,
+  message: string,
+  learner: LearnerWords,
+): string {
+  return code === 'member_exists' ? memberExistsMessage(learner) : message
 }
 
 /** Odak verilebilecek alan mı (kök hata bir giriş değildir). */

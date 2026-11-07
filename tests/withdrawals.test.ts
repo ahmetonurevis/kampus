@@ -202,6 +202,58 @@ test('DOM-FIN-040: eski sözleşmede taban tutardır; tarih ve birim denetlenir'
   )
 })
 
+test('DOM-KAY-012: ayrılış iletileri dil okulunda "kursiyer", okulda ve tür bilinmezken "öğrenci" der; kod değişmez', () => {
+  const message = (run: () => unknown) => {
+    try {
+      run()
+    } catch (error) {
+      return (error as Error).message
+    }
+    return assert.fail('hata bekleniyordu')
+  }
+  for (const [institutionType, title, genitive, titleGenitive] of [
+    ['school', 'Öğrenci', 'öğrencinin', 'Öğrencinin'],
+    ['language_school', 'Kursiyer', 'kursiyerin', 'Kursiyerin'],
+  ] as const) {
+    const options = context({ institutionType })
+    const { state, studentId } = fixture()
+    assert.equal(
+      message(() => quoteWithdrawal(state, 'yok', BEFORE, options)),
+      `${title} bulunamadı.`,
+    )
+    assert.throws(
+      () => withdrawStudent(state, 'yok', WITHDRAW, makeId, options),
+      isDomainError('student_not_found', 'not_found'),
+    )
+    const tutoring = {
+      id: 'alone',
+      date: '2026-10-20T10:00:00.000Z',
+      status: 'Planlandı',
+      studentIds: [studentId],
+    } as (typeof state.tutorSessions)[number]
+    state.tutorSessions = [tutoring]
+    withdrawStudent(state, studentId, WITHDRAW, makeId, options)
+    assert.equal(state.tutorSessions[0]?.cancelReason, `${title} ayrıldı`)
+    assert.equal(
+      message(() => withdrawStudent(state, studentId, WITHDRAW, makeId, options)),
+      `Bu ${genitive} kaydı zaten pasif.`,
+    )
+    state.contracts = []
+    assert.equal(
+      message(() => quoteWithdrawal(state, studentId, BEFORE, options)),
+      `${titleGenitive} sözleşmesi bulunamadı.`,
+    )
+    assert.equal(
+      message(() => payerNameOf(state, 'yok', institutionType)),
+      `${titleGenitive} sözleşmesi bulunamadı.`,
+    )
+  }
+  assert.equal(
+    message(() => payerNameOf(fixture().state, 'yok')),
+    'Öğrencinin sözleşmesi bulunamadı.',
+  )
+})
+
 test('DOM-FIN-041, DOM-KAY-024: ayrılış öğrenciyi pasifler, açık taksiti iptal eder, borç taksiti açar, ileri kayıtları sonlandırır', () => {
   const { state, studentId } = fixture()
   state.invoices[0]!.paidAt = '2026-09-15T09:00:00.000Z'

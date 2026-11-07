@@ -2,7 +2,10 @@ import { useRef, useState } from 'react'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
-import { useEnrollmentCertificatePdf } from '@/hooks/use-enrollment-certificate-pdf.ts'
+import {
+  useEnrollmentCertificatePdf,
+  type EnrollmentCertificateAudience,
+} from '@/hooks/use-enrollment-certificate-pdf.ts'
 import { enrollmentCertificateTitle } from '@/lib/pdf/templates/enrollment-certificate.ts'
 import { FinancePdfDialog } from '../finance/FinancePdfDialog.tsx'
 
@@ -12,9 +15,12 @@ import { FinancePdfDialog } from '../finance/FinancePdfDialog.tsx'
 export function EnrollmentCertificateButton({
   studentId,
   studentName,
+  audience = 'staff',
 }: {
   studentId: string
-  studentName: string
+  /** Listede satırı ayırt eder; sayfada tek düğme varsa görünür ad yeter. */
+  studentName?: string
+  audience?: EnrollmentCertificateAudience
 }) {
   const { session } = useAuth()
   const title = enrollmentCertificateTitle(session?.institution.type)
@@ -29,7 +35,9 @@ export function EnrollmentCertificateButton({
         variant="secondary"
         size="sm"
         aria-haspopup="dialog"
-        aria-label={`${studentName} ${title.toLocaleLowerCase('tr-TR')}`}
+        {...(studentName === undefined
+          ? {}
+          : { 'aria-label': `${studentName} ${title.toLocaleLowerCase('tr-TR')}` })}
         onClick={() => {
           setUsed(true)
           setOpen(true)
@@ -41,6 +49,7 @@ export function EnrollmentCertificateButton({
       {used ? (
         <CertificatePreview
           studentId={studentId}
+          audience={audience}
           title={title}
           open={open}
           onOpenChange={setOpen}
@@ -56,18 +65,20 @@ export function EnrollmentCertificateButton({
 
 function CertificatePreview({
   studentId,
+  audience,
   title,
   open,
   onOpenChange,
   onCloseAutoFocus,
 }: {
   studentId: string
+  audience: EnrollmentCertificateAudience
   title: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onCloseAutoFocus: (event: Event) => void
 }) {
-  const pdf = useEnrollmentCertificatePdf(studentId, open)
+  const pdf = useEnrollmentCertificatePdf(studentId, open, audience)
   return (
     <FinancePdfDialog
       title={title}

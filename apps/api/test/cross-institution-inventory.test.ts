@@ -1016,6 +1016,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-KAY-027: başka kurumun öğrencisi 404, denetim yazılmaz; olmayan öğrenci 404',
     "get(url('cert-other'), a.cookie)",
   ),
+  'GET /api/v1/finance/students/:studentId/enrollment-certificate': kayit(
+    'enrollment-certificates.test.ts',
+    'K-32, DOM-KAY-027: başka kurumun öğrencisi aile ucunda 404, B denetimi yazılmaz',
+    "get(familyUrl('cert-other'), parent.cookie)",
+  ),
 }
 
 /**

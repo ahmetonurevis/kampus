@@ -195,6 +195,37 @@ describe('tahsilat uçları', () => {
     assert.equal(audits.length, 1)
   })
 
+  // ON-308: önden denetim `bank_accounts_iban_key` ile aynı kapsamdadır (arşivlenmemiş satırlar);
+  // kısıt yalnız kilitsiz yarışta tetiklenir ve aynı kod ve iletiyle döner.
+  test('DOM-FIN-032, ON-308: etkin IBAN 409 bank_account_exists; arşivli hesabın IBAN’ı yeniden eklenir', async () => {
+    const a = await institution()
+    const first = (await addAccount(a.adminCookie)).json().data
+    const duplicate = await addAccount(a.adminCookie, { ...ACCOUNT, bankName: 'Başka Banka' })
+    assertError(duplicate, 409, 'bank_account_exists')
+    assert.equal(duplicate.json().message, 'Bu IBAN zaten tanımlı.')
+    assert.deepEqual(
+      duplicate.json().issues.map((issue: { path: unknown }) => issue.path),
+      [['iban']],
+    )
+
+    const archived = await send(
+      'DELETE',
+      `/api/v1/bank-accounts/${String(first.id)}`,
+      a.adminCookie,
+      undefined,
+      { ...ifMatch(first.version), ...key() },
+    )
+    assert.equal(archived.statusCode, 200, archived.body)
+    const again = await addAccount(a.adminCookie)
+    assert.equal(again.statusCode, 201, again.body)
+    assert.notEqual(again.json().data.id, first.id)
+    const listed = await send('GET', '/api/v1/bank-accounts', a.adminCookie)
+    assert.deepEqual(
+      listed.json().data.map((account: { id: string }) => account.id),
+      [again.json().data.id],
+    )
+  })
+
   test('DOM-FIN-032: hesap tanımlıysa tahsilat hesaba bağlanır; arşivli hesap seçilemez, geçmişte görünür', async () => {
     const a = await institution()
     const b = await institution()
@@ -361,7 +392,7 @@ describe('tahsilat uçları', () => {
     assert.equal((await paymentRows(a.id)).length, 1)
   })
 
-  test('DOM-FIN-031: kullanılmış referans 409; referanssız banka tahsilatı 422; kayıt yazılmaz', async () => {
+  test('DOM-FIN-031, ON-308: kullanılmış referans 409; referanssız banka tahsilatı 422; kayıt yazılmaz', async () => {
     const a = await institution()
     assertError(
       await record(a.adminCookie, {
@@ -374,7 +405,10 @@ describe('tahsilat uçları', () => {
     )
     await nothingWritten(a.id)
     assert.equal((await record(a.adminCookie, payment(100))).statusCode, 201)
-    assertError(await record(a.adminCookie, payment(200)), 409, 'payment_reference_used')
+    // ON-308: `payments_reference_key` yarışta aynı kod ve iletiyle döner.
+    const used = await record(a.adminCookie, payment(200))
+    assertError(used, 409, 'payment_reference_used')
+    assert.equal(used.json().message, 'Bu işlem referansı daha önce kaydedilmiş.')
     assert.equal((await paymentRows(a.id)).length, 1)
   })
 

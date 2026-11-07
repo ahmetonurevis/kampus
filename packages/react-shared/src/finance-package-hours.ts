@@ -3,8 +3,9 @@ import { dateLabel } from '@kampus/school-core/lib/format.ts'
 
 // Öğrencinin telefonda gördüğü kalan paket saati (K-24, DOM-DIL-051). Ders planlaması içindir, ödeme
 // bilgisi sayılmaz: tutar alanları (`hourlyCents`, `grossCents`, `netCents`) öğrenci ve veli
-// yanıtında hiç yoktur (K-40), personel yanıtında olsa da satıra kopyalanmaz. Kalan saat ve durum
-// sunucudan gelir, burada yeniden hesaplanmaz.
+// yanıtında hiç yoktur (K-40), iç kimlikler (sözleşme, tarife, sürüm) de öyle (K-41); personel
+// yanıtında olsa da satıra kopyalanmaz. Kalan saat ve durum sunucudan gelir, burada yeniden
+// hesaplanmaz.
 
 type ListedSale =
   operations['listPackageSales']['responses'][200]['content']['application/json']['data'][number]

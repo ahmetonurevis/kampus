@@ -2669,7 +2669,7 @@ export interface paths {
         };
         /**
          * Paket satışlarını listele
-         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yalnız saat, son kullanma, durum ve paket adını alır, tutar anahtarı yanıtta yoktur (K-40). `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır (K-40). İç kimlikler (`version`, `packageId`, `courseId`, `studentId`, `contractId`, `tariffId`, `tariffVersion`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Sorgudaki `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
          */
         get: operations["listPackageSales"];
         put?: never;
@@ -2693,7 +2693,7 @@ export interface paths {
         };
         /**
          * Paket satışı ayrıntısı
-         * @description Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Tutar alanları ve taksitler (`invoices`) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yanıtında anahtar yoktur, taksit kendi bölümünde görünür (K-40). Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         * @description Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Tutar alanları ve taksitler (`invoices`) yalnız `yonetici` ve `onburo` yanıtındadır; taksit ailede kendi bölümünde görünür (K-40). İç kimlikler (`version`, `packageId`, `courseId`, `studentId`, `contractId`, `tariffId`, `tariffVersion`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
          */
         get: operations["getPackageSale"];
         put?: never;
@@ -31440,21 +31440,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description `If-Match` için kayıt sürümü */
-                            version: number;
-                            packageId: string;
+                            /** @description `If-Match` için kayıt sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            version?: number;
+                            /** @description Satılan paket. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            packageId?: string;
                             /** @description Satış anındaki ad */
                             packageName: string;
                             /** @enum {string} */
                             kind: "course" | "hours" | "private";
-                            courseId: string | null;
+                            /** @description Paketin kuru; boşsa kura bağlı değil. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            courseId?: string | null;
                             /** @description Satış anındaki seviye */
                             level: string | null;
-                            studentId: string;
-                            /** @description Satışın açtığı sözleşme */
-                            contractId: string;
-                            tariffId: string;
-                            tariffVersion: number;
+                            /** @description Paketi alan öğrenci. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            studentId?: string;
+                            /** @description Satışın açtığı sözleşme. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            contractId?: string;
+                            /** @description Satışta uygulanan tarife. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffId?: string;
+                            /** @description Satışta uygulanan tarife sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffVersion?: number;
                             /** @description Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
                             hourlyCents?: number;
                             /** @description Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
@@ -31736,21 +31741,26 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description `If-Match` için kayıt sürümü */
-                            version: number;
-                            packageId: string;
+                            /** @description `If-Match` için kayıt sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            version?: number;
+                            /** @description Satılan paket. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            packageId?: string;
                             /** @description Satış anındaki ad */
                             packageName: string;
                             /** @enum {string} */
                             kind: "course" | "hours" | "private";
-                            courseId: string | null;
+                            /** @description Paketin kuru; boşsa kura bağlı değil. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            courseId?: string | null;
                             /** @description Satış anındaki seviye */
                             level: string | null;
-                            studentId: string;
-                            /** @description Satışın açtığı sözleşme */
-                            contractId: string;
-                            tariffId: string;
-                            tariffVersion: number;
+                            /** @description Paketi alan öğrenci. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            studentId?: string;
+                            /** @description Satışın açtığı sözleşme. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            contractId?: string;
+                            /** @description Satışta uygulanan tarife. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffId?: string;
+                            /** @description Satışta uygulanan tarife sürümü. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-41). */
+                            tariffVersion?: number;
                             /** @description Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
                             hourlyCents?: number;
                             /** @description Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */

@@ -2,6 +2,7 @@
 import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { COLORS, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
+import { learnerTerm, type LearnerTermOptions } from './finance-shared.ts'
 import type { TemplateOptions } from './shared.ts'
 
 export type ReceiptPayment = {
@@ -24,11 +25,14 @@ const AT = { year: 'numeric', hour: '2-digit', minute: '2-digit' } as const
 // Dekont no biçimi core'dadır (DOM-FIN-050); belge dosya adı (`use-document-pdf.ts`) buradan alır.
 export { receiptNumberLabel }
 
-/** Tahsilat dekontu; iptal edilen tahsilatta "İptal edildi" ibaresiyle erişilebilir (DOM-FIN-033). */
+/**
+ * Tahsilat dekontu; iptal edilen tahsilatta "İptal edildi" ibaresiyle erişilebilir (DOM-FIN-033).
+ * Ödenen kayıt okulda "Öğrenci", dil okulu ve kursta "Kursiyer" diye yazılır (DOM-KAY-012).
+ */
 export function paymentReceiptDocument(
   measurer: TextMeasurer,
   payment: ReceiptPayment,
-  options: TemplateOptions,
+  options: TemplateOptions & LearnerTermOptions,
 ): PdfDocument {
   const number = receiptNumberLabel(payment)
   const reversed = payment.reversedAt !== null
@@ -49,7 +53,7 @@ export function paymentReceiptDocument(
   doc.highlight('TAHSİL EDİLEN TUTAR', money(payment.amountCents), 'TRY / Türk lirası')
   doc.fields([
     ['Dekont no', number],
-    ['Öğrenci', payment.studentName ?? '—'],
+    [learnerTerm(options.institutionType), payment.studentName ?? '—'],
     ['Ödeme tarihi', dateLabel(payment.paidAt, AT)],
     ['Ödeme yöntemi', payment.method],
     ['İşlem referansı', payment.reference ?? '—'],

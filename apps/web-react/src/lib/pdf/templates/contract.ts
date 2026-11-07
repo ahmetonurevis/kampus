@@ -11,11 +11,15 @@ import {
 } from '@kampus/school-core/lib/contract-status.ts'
 import { money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
-import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { DISCOUNT_LINE_LABELS, FEE_ITEM_KIND_LABELS } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
-import { INSTALLMENT_COLUMNS, learnerTerm, studentFields } from './finance-shared.ts'
+import {
+  INSTALLMENT_COLUMNS,
+  learnerTerm,
+  studentFields,
+  type LearnerTermOptions,
+} from './finance-shared.ts'
 import {
   renewalAppendix,
   renewalPlanNote,
@@ -24,15 +28,11 @@ import {
 } from './renewal-contract.ts'
 import type { TemplateOptions } from './shared.ts'
 
-export type ContractTemplateOptions = TemplateOptions & {
-  /** Yenileme ayrıntısından açıldıysa dönem geçişi ve plan anındaki ücret kararı (IST-100). */
-  renewal?: RenewalContractContext
-  /**
-   * Etkin kurumun türü: metindeki kayıtlı kişi okulda "öğrenci", dil okulu ve kursta "kursiyer"dir
-   * (ADR 0008 karar 1). Verilmezse okul metni kullanılır.
-   */
-  institutionType?: InstitutionType
-}
+export type ContractTemplateOptions = TemplateOptions &
+  LearnerTermOptions & {
+    /** Yenileme ayrıntısından açıldıysa dönem geçişi ve plan anındaki ücret kararı (IST-100). */
+    renewal?: RenewalContractContext
+  }
 
 const LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
 const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...DISCOUNT_LINE_LABELS }

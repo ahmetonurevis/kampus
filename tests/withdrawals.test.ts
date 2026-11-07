@@ -12,7 +12,9 @@ import {
   refundDueDate,
   refundPayerName,
   refundPayerOptions,
+  WITHDRAWAL_REASON_LABELS,
   withdrawalFormSchema,
+  withdrawStudentSchema,
   withdrawStudent,
   type WithdrawalContext,
 } from '../packages/school-core/src/lib/withdrawals.ts'
@@ -1073,4 +1075,16 @@ test('IST-110: ayrılış formu öğrenci ve geçerli birim ister', () => {
   assert.equal(withdrawalFormSchema.safeParse({ ...values, studentId: '' }).success, false)
   assert.equal(withdrawalFormSchema.safeParse({ ...values, totalUnits: 0 }).success, false)
   assert.equal(withdrawalFormSchema.safeParse({ ...values, attendedUnits: NaN }).success, false)
+})
+
+test('K-30: ayrılış nedeninde sağlık yok, belgeli neden var', () => {
+  const body = { ...WITHDRAW, studentId: 's1', contractId: 'c1' }
+  const issue = (reason: string) =>
+    withdrawStudentSchema
+      .safeParse({ ...body, reason })
+      .error?.issues.some((item) => item.path.includes('reason')) ?? false
+  assert.equal(issue('health'), true)
+  assert.equal(issue('documented'), false)
+  assert.equal(WITHDRAWAL_REASON_LABELS.documented, 'Belgeli neden')
+  assert.ok(!Object.keys(WITHDRAWAL_REASON_LABELS).includes('health'))
 })

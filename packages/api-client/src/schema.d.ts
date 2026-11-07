@@ -36058,7 +36058,7 @@ export interface operations {
                     /** @default false */
                     publicSchoolExemption?: boolean;
                     /** @enum {string} */
-                    reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                    reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                     /** @default null */
                     targetSchool?: string | null;
                     /** @default null */
@@ -36086,7 +36086,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -36281,7 +36281,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -36470,7 +36470,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */
@@ -36671,7 +36671,7 @@ export interface operations {
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
-                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
                                 /** @enum {string} */

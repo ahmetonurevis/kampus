@@ -27,7 +27,7 @@ const DAY_TIME = 'T09:00:00.000Z'
 export const WITHDRAWAL_REASONS = [
   'transfer',
   'relocation',
-  'health',
+  'documented',
   'financial',
   'dissatisfaction',
   'other',
@@ -85,7 +85,7 @@ export type WithdrawStudentInput = z.input<typeof withdrawStudentSchema>
 export const WITHDRAWAL_REASON_LABELS: Readonly<Record<WithdrawalReason, string>> = {
   transfer: 'Nakil',
   relocation: 'Taşınma',
-  health: 'Sağlık',
+  documented: 'Belgeli neden',
   financial: 'Ekonomik',
   dissatisfaction: 'Memnuniyetsizlik',
   other: 'Diğer',

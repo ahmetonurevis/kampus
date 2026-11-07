@@ -222,7 +222,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 
 ### DOM-FIN-040 · Ayrılışta ücret iadesi
 
-- **Kural:** İade, ayrılış tarihi (`DOM-KAY-024`) ve ücret birimine göre hesaplanır. Oranlar profil parametresidir.
+- **Kural:** İade, ayrılış tarihi (`DOM-KAY-024`) ve ücret birimine göre hesaplanır. Oranlar profil parametresidir. Ayrılış nedeni kapalı listedir; sağlık ayrıntısı yazılmaz, "belgeli neden" seçilir (K-30).
   - **Yıllık ücret (`school`), öğretim yılı başlamadan ayrılış:** yıllık ücretin %10'u kesilir, kalanı iade edilir. Öğrenci sınavla öğrenci alan bir resmî okulun 9. sınıfına kayıt yaptırdığını belgelerse kesinti yapılmaz, tamamı iade edilir.
   - **Yıllık ücret, öğretim yılı başladıktan sonra ayrılış:** kesinti `yıllık ücret × %10 + yıllık ücret × (öğrenim görülen gün / öğretim yılı toplam günü)`, kalanı iade edilir.
   - **Ders saati ücreti (`language_school`, kurslar), dönem başlamadan ayrılış:** öğrenim ücretinin %10'u kesilir.

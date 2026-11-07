@@ -580,6 +580,8 @@ export interface PackageHourEntry {
   hours: number
   sourceType: PackageHourSource
   sourceId: string
+  /** Varsa bakiye ayrılış gününden sonraki dersi saymaz (`packageHourBalance`, K-43). */
+  occurredDate?: string
 }
 
 export interface PackageHourBalance {

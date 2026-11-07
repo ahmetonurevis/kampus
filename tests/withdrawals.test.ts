@@ -488,7 +488,7 @@ test('DOM-FIN-040: ikinci sözleşmenin tahsilatı hesapta kaybolmaz, fazlası i
   assert.equal(breakdown.debtCents, 0)
 })
 
-test('DOM-DIL-051: dönem başlamadan tüketilen saat de sayılır; ayrılıştan sonraki saat sayılmaz, iade saatine de girmez', () => {
+test('DOM-DIL-051: dönem başlamadan tüketilen saat de sayılır; ayrılıştan sonraki saat ücrete de iade saatinden düşmeye de girmez', () => {
   const { state, studentId } = fixture()
   withPackage(state, studentId)
   const entries = [hour(4, '2026-08-10'), hour(2, '2026-10-02'), hour(1, '2026-08-11', 'refunded')]
@@ -496,7 +496,8 @@ test('DOM-DIL-051: dönem başlamadan tüketilen saat de sayılır; ayrılışta
     .breakdown.contracts![1]!
   assert.equal(line.attendedUnits, 4)
   assert.equal(line.usageCents, 200_000)
-  assert.equal(line.returnedHours, 33)
+  // Ücreti alınmayan saat iade edilir: 40 − 4 kullanılan − 1 önceden iade.
+  assert.equal(line.returnedHours, 35)
   const before = quoteWithdrawal(
     state,
     studentId,
@@ -1018,6 +1019,35 @@ test('K-21, DOM-DIL-051: elle girilen toplam ayrılış gününe göre elenmez, 
   const line = breakdown.contracts!.find((item) => item.packageSaleId === 'sale-1')
   assert.equal(line?.attendedUnits, 6)
   assert.equal(line?.usedHoursMissing, undefined)
+})
+
+test('DOM-DIL-051, K-43: geriye tarihli ayrılışta ücret ve iade saati aynı hareketlerden hesaplanır; saat kaybolmaz', () => {
+  const { state, studentId } = fixture()
+  withPackage(state, studentId)
+  // 20 saatlik paket: ayrılıştan önce 5, sonra 3 saat ders yazılmış.
+  const entries = [
+    { ...hour(5, '2026-09-25'), sourceType: 'lesson' as const },
+    { ...hour(3, '2026-10-03'), sourceType: 'lesson' as const },
+  ]
+  const line = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ packageSales: [sale(entries, 20)] }),
+  ).breakdown.contracts!.find((item) => item.packageSaleId === 'sale-1')!
+  assert.equal(line.attendedUnits, 5)
+  assert.equal(line.returnedHours, 15)
+  assert.equal(line.attendedUnits + line.returnedHours, line.totalUnits)
+  // Elle girilen toplam ayrılıştan sonra girilse de sayılır (K-43); ders saati yine elenir.
+  const withManual = [...entries, { ...hour(2, '2026-10-05'), sourceType: 'manual' as const }]
+  const manualLine = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ packageSales: [sale(withManual, 20)] }),
+  ).breakdown.contracts!.find((item) => item.packageSaleId === 'sale-1')!
+  assert.equal(manualLine.attendedUnits, 7)
+  assert.equal(manualLine.returnedHours, 13)
 })
 
 test('K-21: saat girilmemişse satır işaretlenir ve döküm söyler; sıfır girişi saat girilmiş sayılır', () => {

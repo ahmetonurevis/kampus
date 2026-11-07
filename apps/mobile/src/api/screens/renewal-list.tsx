@@ -9,8 +9,8 @@ import {
   RENEWAL_STATUS_OPTIONS,
   renewalListItem,
   renewalListQuery,
-  renewalListRefreshing,
 } from '../renewal-mobile.ts'
+import { listRefreshing } from '../finance-list.ts'
 import {
   API_PAGE_SIZE,
   clampPageIndex,
@@ -43,7 +43,7 @@ function RenewalList() {
   const search = useDebouncedValue(state.search)
   const query = useMemo(() => renewalListQuery(state, search), [state, search])
   const renewals = useRenewals(query)
-  const refreshing = renewalListRefreshing(renewals)
+  const refreshing = listRefreshing(renewals)
   const total = renewals.data?.meta.total
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)

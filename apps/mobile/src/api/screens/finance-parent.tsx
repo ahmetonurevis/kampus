@@ -25,6 +25,7 @@ import {
   Section,
   Tabs,
 } from '../../ui/SchoolLayout.tsx'
+import { listRefreshing } from '../finance-list.ts'
 import { INVOICE_FILTER_OPTIONS } from '../finance-staff.ts'
 import {
   canOpenParentFinance,
@@ -111,11 +112,15 @@ function BalanceSummary({ childId }: { childId: string }) {
   )
 }
 
-/** Taksitler: durum süzgeci ve sayfa sunucuda; süzgeç ve sayfa çocuk bazında bellekte korunur. */
+/**
+ * Taksitler: durum süzgeci ve sayfa sunucuda; süzgeç ve sayfa çocuk bazında bellekte korunur. Yeni
+ * sayfa gelene kadar önceki satırlar soluk ve meşgul kalır, tazeleme duyurulur (ON-322).
+ */
 function FamilyInvoices({ childId, today }: { childId: string; today: string }) {
   const { state, setFilter, setIndex, clear } = useListMemory(`veli/finans/${childId}`)
   const query = useMemo(() => familyInvoiceQuery(childId, state), [childId, state])
   const list = useCollectionList<InvoiceRecord>('invoices', query)
+  const refreshing = listRefreshing(list)
   const total = list.data?.total
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
@@ -141,7 +146,15 @@ function FamilyInvoices({ childId, today }: { childId: string; today: string }) 
         )
       ) : (
         <>
-          <View style={{ gap: 10 }} accessibilityRole="list">
+          <T muted size={14} accessibilityLiveRegion="polite">
+            {refreshing ? 'Taksitler güncelleniyor…' : `${String(list.data.total)} taksit`}
+          </T>
+          <View
+            style={{ gap: 10, opacity: refreshing ? 0.55 : 1 }}
+            accessibilityRole="list"
+            accessibilityState={{ busy: refreshing }}
+            aria-busy={refreshing}
+          >
             {list.data.rows.map((row) => {
               const item = familyInvoiceItem(invoiceRow(row, today))
               return (

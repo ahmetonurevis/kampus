@@ -67962,6 +67962,811 @@
         }
       }
     },
+    "/api/v1/finance/students/{studentId}/package-balance": {
+      "get": {
+        "operationId": "getStudentPackageBalance",
+        "summary": "Öğrencinin paket saat bakiyesi",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Satılan, kullanılan, iade edilen, kalan ve süresi dolan saat; satış başına ve toplam (IST-114, DOM-DIL-051, DOM-FIN-057). Bakiye saklanmaz, saat hareketlerinden hesaplanır; süresi dolan saat kalan saatin içindedir, silinmez. Ücret payları (`amounts`: net ücret, tanınan gelir, iade edilen saat payı, ertelenmiş gelir) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yanıtında alan yoktur. Kullanılan saat yoklamaya bağlanana kadar elle girilir (K-21); hiç girilmediyse `usedHoursRecorded: false`. Kapsam `/finance/students/:id/balance` ile aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "purchasedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satılan (alınan) saat"
+                        },
+                        "usedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kullanılan saat"
+                        },
+                        "refundedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayrılışta iade edilen saat"
+                        },
+                        "remainingHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan saat; süresi dolan saat dahil (DOM-DIL-051)"
+                        },
+                        "expiredHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süresi dolmuş satışların kalan saati; kalan saatin içindedir"
+                        },
+                        "usedHoursRecorded": {
+                          "type": "boolean",
+                          "description": "Bir satışta kullanılan saat hiç girilmediyse `false` (K-21)"
+                        },
+                        "amounts": {
+                          "type": "object",
+                          "properties": {
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Satışların net ücreti, kuruş"
+                            },
+                            "recognizedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kullanılan saatin net ücretteki payı (tanınan gelir), kuruş"
+                            },
+                            "returnedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş"
+                            },
+                            "deferredCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kalan saatin net ücretteki payı (ertelenmiş gelir), kuruş"
+                            }
+                          },
+                          "required": [
+                            "netCents",
+                            "recognizedCents",
+                            "returnedCents",
+                            "deferredCents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur"
+                        },
+                        "sales": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "saleId": {
+                                "type": "string"
+                              },
+                              "packageName": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "course",
+                                  "hours",
+                                  "private"
+                                ]
+                              },
+                              "soldDate": {
+                                "type": "string",
+                                "description": "Satış günü, Europe/Istanbul"
+                              },
+                              "expiresDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "expired",
+                                  "depleted"
+                                ]
+                              },
+                              "purchasedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "usedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "refundedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "remainingHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "expiredHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "usedHoursRecorded": {
+                                "type": "boolean"
+                              },
+                              "amounts": {
+                                "type": "object",
+                                "properties": {
+                                  "netCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Satışların net ücreti, kuruş"
+                                  },
+                                  "recognizedCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kullanılan saatin net ücretteki payı (tanınan gelir), kuruş"
+                                  },
+                                  "returnedCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş"
+                                  },
+                                  "deferredCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kalan saatin net ücretteki payı (ertelenmiş gelir), kuruş"
+                                  }
+                                },
+                                "required": [
+                                  "netCents",
+                                  "recognizedCents",
+                                  "returnedCents",
+                                  "deferredCents"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur"
+                              }
+                            },
+                            "required": [
+                              "saleId",
+                              "packageName",
+                              "kind",
+                              "soldDate",
+                              "expiresDate",
+                              "status",
+                              "purchasedHours",
+                              "usedHours",
+                              "refundedHours",
+                              "remainingHours",
+                              "expiredHours",
+                              "usedHoursRecorded"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "studentId",
+                        "purchasedHours",
+                        "usedHours",
+                        "refundedHours",
+                        "remainingHours",
+                        "expiredHours",
+                        "usedHoursRecorded",
+                        "sales"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/package-report": {
+      "get": {
+        "operationId": "getPackageHourReport",
+        "summary": "Paket saat raporu",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Dönemde satılan, kullanılan, iade edilen ve süresi dolan saat ile gelir tanıma dökümü (IST-114, DOM-FIN-057). Satış başına satır, ay dökümü ve toplam döner; eşitlik: açılış kalan + satılan − kullanılan − iade = kapanış kalan, saatte ve kuruşta. Toplam ve ay dökümü bütün satırlardandır, sayfaya bağlı değildir; dönem bugüne kadar alınırsa kapanış öğrenci bakiyelerinin toplamına eşittir. Gelir, net ücretin kullanılan saat payıdır (birikimli, aşağı yuvarlanır); süresi dolan saat gelir sayılmaz, ertelenmiş gelirde kalır (DOM-DIL-051, H-19). İade payı net ücretin saat oranıdır, ödenen iade ve kesinti ayrılış kaydındadır. Elle girilen kullanılan saatin (K-21) değişikliği giriş gününe fark olarak düşer; geçmiş dönem değişmez. Hesap kodu ve KDV dökümü yoktur (M-12 doğrulanmalı). Satır: dönemde hareketi ya da dönem sonunda kalanı olan satış, yeni satış önce. Başlangıç bitişten sonra 422 `export_period_invalid`, bir yıldan uzun 422 `export_period_too_long`. `Accept: text/csv` ile sayfa yok sayılır, bütün satırlar CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetime yazılır (`finance.package_report_export`). Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "description": "Dönem başlangıcı (dahil), Europe/Istanbul günü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "description": "Dönem bitişi (dahil); dönem en çok bir yıl"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "saleCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Satır sayısı"
+                            },
+                            "soldHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde satılan saat"
+                            },
+                            "usedHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir"
+                            },
+                            "refundedHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde ayrılışla iade edilen saat"
+                            },
+                            "expiredHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı"
+                            },
+                            "soldCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde satılan paketlerin net ücreti, kuruş"
+                            },
+                            "recognizedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş"
+                            },
+                            "returnedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş"
+                            },
+                            "openingHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem başında kalan saat"
+                            },
+                            "closingHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem sonunda kalan saat"
+                            },
+                            "openingDeferredCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem başında ertelenmiş gelir, kuruş"
+                            },
+                            "closingDeferredCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem sonunda ertelenmiş gelir, kuruş"
+                            }
+                          },
+                          "required": [
+                            "saleCount",
+                            "soldHours",
+                            "usedHours",
+                            "refundedHours",
+                            "expiredHours",
+                            "soldCents",
+                            "recognizedCents",
+                            "returnedCents",
+                            "openingHours",
+                            "closingHours",
+                            "openingDeferredCents",
+                            "closingDeferredCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "months": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "month": {
+                                "type": "string",
+                                "description": "YYYY-MM"
+                              },
+                              "soldHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde satılan saat"
+                              },
+                              "usedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir"
+                              },
+                              "refundedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde ayrılışla iade edilen saat"
+                              },
+                              "expiredHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı"
+                              },
+                              "soldCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde satılan paketlerin net ücreti, kuruş"
+                              },
+                              "recognizedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş"
+                              },
+                              "returnedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş"
+                              }
+                            },
+                            "required": [
+                              "month",
+                              "soldHours",
+                              "usedHours",
+                              "refundedHours",
+                              "expiredHours",
+                              "soldCents",
+                              "recognizedCents",
+                              "returnedCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "saleId": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "packageName": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "course",
+                                  "hours",
+                                  "private"
+                                ]
+                              },
+                              "soldDate": {
+                                "type": "string"
+                              },
+                              "expiresDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "purchasedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Satışın net ücreti, kuruş"
+                              },
+                              "soldHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde satılan saat"
+                              },
+                              "usedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir"
+                              },
+                              "refundedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde ayrılışla iade edilen saat"
+                              },
+                              "expiredHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı"
+                              },
+                              "soldCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde satılan paketlerin net ücreti, kuruş"
+                              },
+                              "recognizedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş"
+                              },
+                              "returnedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş"
+                              },
+                              "openingHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem başında kalan saat"
+                              },
+                              "closingHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem sonunda kalan saat"
+                              },
+                              "openingDeferredCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem başında ertelenmiş gelir, kuruş"
+                              },
+                              "closingDeferredCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem sonunda ertelenmiş gelir, kuruş"
+                              }
+                            },
+                            "required": [
+                              "saleId",
+                              "studentId",
+                              "studentName",
+                              "packageName",
+                              "kind",
+                              "soldDate",
+                              "expiresDate",
+                              "purchasedHours",
+                              "netCents",
+                              "soldHours",
+                              "usedHours",
+                              "refundedHours",
+                              "expiredHours",
+                              "soldCents",
+                              "recognizedCents",
+                              "returnedCents",
+                              "openingHours",
+                              "closingHours",
+                              "openingDeferredCents",
+                              "closingDeferredCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "totals",
+                        "months",
+                        "lines"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/invoices/{invoiceId}/remind": {
       "post": {
         "operationId": "remindInstallment",

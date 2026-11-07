@@ -216,6 +216,60 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await expect(salePanel(page).getByRole('button', { name: 'Süreyi uzat' })).toBeVisible()
   })
 
+  test('IST-114, DOM-FIN-057: yönetici paket saat raporunu dönemle görür, CSV indirir; ön büroda rapor yok', async ({
+    api,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await languageSchool(tenant, ['onburo'])
+    const admin = await api(school.user('yonetici'))
+    await sellThroughApi(admin, await createPackage(admin))
+    const listed = (await admin.get('/api/v1/finance/package-sales')).body as {
+      data: { id: string; version: number }[]
+    }
+    const sale = listed.data[0]
+    if (!sale) throw new Error('satış bulunamadı')
+    const used = await admin.post(
+      `/api/v1/finance/package-sales/${sale.id}/set-used-hours`,
+      { usedHours: 12, reason: 'Devam çizelgesine göre' },
+      { 'if-match': `"${String(sale.version)}"` },
+    )
+    expect(used.status, 'kullanılan saat').toBe(200)
+    await admin.dispose()
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    const report = page.getByRole('region', { name: 'Paket saat raporu' })
+    const totals = report.getByLabel('Dönem toplamları')
+    await expect(totals.getByText('40 saat')).toBeVisible()
+    await expect(totals.getByText('12 saat')).toBeVisible()
+    await expect(totals.getByText('28 saat')).toBeVisible()
+    await expect(report.getByRole('table', { name: 'Aylık döküm' })).toBeVisible()
+    await expect(report.getByRole('table', { name: 'Satış bazında paket saatleri' })).toBeVisible()
+
+    const download = page.waitForEvent('download')
+    await report.getByRole('button', { name: 'Rapor dosyası' }).click()
+    expect((await download).suggestedFilename()).toMatch(/^paket-saat-raporu-.+\.csv$/)
+    await expect(page.getByText('Dosya indirildi.')).toBeVisible()
+
+    // Ters dönem istek göndermeden alan altında reddedilir.
+    await report.getByLabel('Dönem başlangıcı').fill('2099-01-02')
+    await report.getByLabel('Dönem bitişi').fill('2099-01-01')
+    await expect(report.getByRole('alert')).toHaveText('Dönem başlangıcı bitişinden sonra olamaz.')
+    await expect(report.getByRole('button', { name: 'Rapor dosyası' })).toBeDisabled()
+
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 800 })
+      await expect(report.getByRole('heading', { name: 'Paket saat raporu' })).toBeVisible()
+      await expectNoHorizontalOverflow(page)
+    }
+
+    await loginAs(school.user('onburo'))
+    await page.goto(DESK_URL)
+    await expect(salesList(page)).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Paket saat raporu' })).toHaveCount(0)
+  })
+
   test('K-21, DOM-DIL-051, DOM-FIN-040: ön büro saati girer; yönetici uyarıyı ve tutarı görüp onaylar', async ({
     api,
     loginAs,

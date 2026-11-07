@@ -1,4 +1,9 @@
-import type { FastifyInstance, FastifyReply, preValidationAsyncHookHandler } from 'fastify'
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  preValidationAsyncHookHandler,
+} from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
@@ -29,12 +34,20 @@ import {
   setPackageUsedHoursCommand,
   updatePackageCommand,
 } from '../services/finance-packages.ts'
+import {
+  packageReportCsvFor,
+  packageReportFor,
+  studentPackageBalanceFor,
+} from '../services/finance-package-report.ts'
 import { getInstitutionModules } from '../services/modules.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
   packageArchiveResponse,
+  packageBalanceResponse,
+  packageReportQuery,
+  packageReportResponse,
   packageListQuery,
   packageListResponse,
   packageParams,
@@ -45,6 +58,7 @@ import {
   saleListResponse,
   saleParams,
   saleResponse,
+  studentPackageParams,
 } from './finance-packages.schemas.ts'
 
 /**
@@ -66,6 +80,11 @@ function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   reply.status(result.statusCode)
   return result.body
 }
+
+/** Rapor `Accept: text/csv` ile bütün satırları dosya olarak döner (api-tasarimi.md §CSV). */
+const wantsCsv = (request: FastifyRequest) => (request.headers.accept ?? '').includes('text/csv')
+const CSV_PER_MINUTE = 10
+const READS_PER_MINUTE = 300
 
 function expected(version: number | null): number {
   if (version === null) throw new Error('If-Match guard did not run')
@@ -351,6 +370,69 @@ export function registerFinancePackageRoutes(app: FastifyInstance) {
         opts.idempotency,
       )
       return saleResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/students/:studentId/package-balance',
+    {
+      preValidation: guarded(PACKAGE_SALE_READ_ROLES),
+      schema: {
+        operationId: 'getStudentPackageBalance',
+        tags: ['finance-packages'],
+        summary: 'Öğrencinin paket saat bakiyesi',
+        description: `Satılan, kullanılan, iade edilen, kalan ve süresi dolan saat; satış başına ve toplam (IST-114, DOM-DIL-051, DOM-FIN-057). Bakiye saklanmaz, saat hareketlerinden hesaplanır; süresi dolan saat kalan saatin içindedir, silinmez. Ücret payları (\`amounts\`: net ücret, tanınan gelir, iade edilen saat payı, ertelenmiş gelir) yalnız \`yonetici\` ve \`onburo\` yanıtındadır; veli ve öğrenci yanıtında alan yoktur. Kullanılan saat yoklamaya bağlanana kadar elle girilir (K-21); hiç girilmediyse \`usedHoursRecorded: false\`. Kapsam \`/finance/students/:id/balance\` ile aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. ${LANGUAGE_ONLY} Roller: \`yonetici\`, \`onburo\`, \`veli\`, \`ogrenci\`.`,
+        params: studentPackageParams,
+        response: { 200: packageBalanceResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await studentPackageBalanceFor(contextOf(request), request.params.studentId),
+    }),
+  )
+
+  // Dosya kişisel veri taşır: taze oturum ve kullanıcı başına 10/dk yalnız CSV isteğinde.
+  const freshForCsv: preValidationAsyncHookHandler = async function (request, reply) {
+    if (wantsCsv(request)) await app.requireFreshSession.call(app, request, reply)
+  }
+  typed.get(
+    '/api/v1/finance/package-report',
+    {
+      config: {
+        rateLimit: {
+          max: (request) => (wantsCsv(request) ? CSV_PER_MINUTE : READS_PER_MINUTE),
+          timeWindow: '1 minute',
+          hook: 'preHandler',
+          keyGenerator: (request) =>
+            wantsCsv(request)
+              ? `package-report-csv:${request.auth?.userId ?? request.ip}`
+              : request.ip,
+        },
+      },
+      preValidation: [...guarded(['yonetici']), freshForCsv],
+      schema: {
+        operationId: 'getPackageHourReport',
+        tags: ['finance-packages'],
+        summary: 'Paket saat raporu',
+        description: `Dönemde satılan, kullanılan, iade edilen ve süresi dolan saat ile gelir tanıma dökümü (IST-114, DOM-FIN-057). Satış başına satır, ay dökümü ve toplam döner; eşitlik: açılış kalan + satılan − kullanılan − iade = kapanış kalan, saatte ve kuruşta. Toplam ve ay dökümü bütün satırlardandır, sayfaya bağlı değildir; dönem bugüne kadar alınırsa kapanış öğrenci bakiyelerinin toplamına eşittir. Gelir, net ücretin kullanılan saat payıdır (birikimli, aşağı yuvarlanır); süresi dolan saat gelir sayılmaz, ertelenmiş gelirde kalır (DOM-DIL-051, H-19). İade payı net ücretin saat oranıdır, ödenen iade ve kesinti ayrılış kaydındadır. Elle girilen kullanılan saatin (K-21) değişikliği giriş gününe fark olarak düşer; geçmiş dönem değişmez. Hesap kodu ve KDV dökümü yoktur (M-12 doğrulanmalı). Satır: dönemde hareketi ya da dönem sonunda kalanı olan satış, yeni satış önce. Başlangıç bitişten sonra 422 \`export_period_invalid\`, bir yıldan uzun 422 \`export_period_too_long\`. \`Accept: text/csv\` ile sayfa yok sayılır, bütün satırlar CSV iner: \`;\` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 \`reauthentication_required\`), kullanıcı başına 10/dk, denetime yazılır (\`finance.package_report_export\`). ${LANGUAGE_ONLY} Rol: \`yonetici\`.`,
+        querystring: packageReportQuery,
+        // CSV gövdesi `reply.serializer` ile gider; şemada yalnız JSON durur, istemci tipi tek kalsın.
+        response: { 200: packageReportResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { from, to, page, pageSize } = request.query
+      const ctx = contextOf(request)
+      if (wantsCsv(request)) {
+        const csv = await packageReportCsvFor(ctx, { from, to })
+        // Metin gövdesi JSON yanıt şemasından geçmez; tip yalnız JSON yanıtı tanır.
+        return (reply as FastifyReply)
+          .type('text/csv; charset=utf-8')
+          .header('content-disposition', `attachment; filename="package-report-${from}-${to}.csv"`)
+          .serializer((payload: unknown) => String(payload))
+          .send(`\uFEFF${csv}`)
+      }
+      return packageReportFor(ctx, { from, to, page, pageSize })
     },
   )
 }

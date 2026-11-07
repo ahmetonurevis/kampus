@@ -24,6 +24,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { PackageFormModal } from './PackageFormModal.tsx'
+import { PackageReportSection } from './PackageReportSection.tsx'
 import { PackageSaleModal } from './PackageSaleModal.tsx'
 import { PackageSalePanel } from './PackageSalePanel.tsx'
 import { PACKAGE_SALE_STATUS_VIEW, packageRow, type PackageRow } from './package-forms.ts'
@@ -43,7 +44,8 @@ const isPackageKind = (value: string | null): value is PackageKind =>
 /**
  * Paket satışı (`?gorunum=paket`; IST-078, DOM-DIL-050, -051): yalnız dil okulunda. Satışı yönetici
  * ve ön büro yapar, veli ve kursiyer satın alamaz (K-07); tanım yöneticidedir. Çevrim içi satış
- * kanalı olmadığından ön bilgilendirme ekranı yoktur (DOM-FIN-042).
+ * kanalı olmadığından ön bilgilendirme ekranı yoktur (DOM-FIN-042). Saat raporu (IST-114) yalnız
+ * yöneticidedir.
  */
 export function PackagesSection({
   canManage,
@@ -56,6 +58,7 @@ export function PackagesSection({
     <div className="grid gap-6">
       <SalesTable canApproveCapException={canManage} academicYear={academicYear} />
       {canManage ? <CatalogTable /> : null}
+      {canManage ? <PackageReportSection /> : null}
     </div>
   )
 }

@@ -183,3 +183,31 @@ export function useSetPackageUsedHours() {
     exclusive: true,
   })
 }
+
+export type PackageReportQuery = { from: string; to: string; page: number; pageSize: number }
+
+/**
+ * Paket saat raporu (IST-114, DOM-FIN-057): toplam ve ay dökümü bütün satırlardan, satırlar sayfalı;
+ * yalnız yönetici okur. Saat girişi ve satış paket anahtarını tazeler, rapor da onunla tazelenir.
+ */
+export function usePackageReport(query: PackageReportQuery, options: { enabled?: boolean } = {}) {
+  return useApiQuery({
+    key: [...PACKAGES_KEY, 'report', query],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/package-report', { params: { query }, signal }),
+  })
+}
+
+/** Raporun CSV dosyası (`Accept: text/csv`); taze oturum ister, denetime düşer, sorgu tazelenmez. */
+export function usePackageReportExport() {
+  return useApiCommand({
+    request: (client, period: { from: string; to: string }) =>
+      client.GET('/api/v1/finance/package-report', {
+        params: { query: { ...period, page: 1, pageSize: 20 } },
+        headers: { accept: 'text/csv' },
+        parseAs: 'text',
+      }),
+    invalidates: [],
+  })
+}

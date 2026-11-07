@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { PROGRESSION_OUTCOMES } from '@kampus/school-core/cefr/progression.ts'
 import { enumKeys } from '@kampus/school-core/content/taxonomy.ts'
+import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import { PACKAGE_KINDS, PACKAGE_SALE_STATUSES } from '@kampus/school-core/lib/finance-packages.ts'
 import { contractPaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
 import { COURSE_OFFER_ROW_STATUSES } from '@kampus/school-core/lib/renewal-course-offer-list.ts'
@@ -165,5 +166,106 @@ const courseOfferSchema = z.object({
 })
 export const courseOfferListResponse = z.object({
   data: z.array(courseOfferSchema),
+  meta: pageMetaSchema,
+})
+
+// --- Bakiye ve rapor (IST-114; DOM-FIN-058) ------------------------------------------------------
+
+const hours = (description: string) => z.number().int().describe(description)
+const cents = (description: string) => z.number().int().describe(`${description}, kuruş`)
+
+const balanceAmountsSchema = z
+  .object({
+    netCents: cents('Satışların net ücreti'),
+    recognizedCents: cents('Kullanılan saatin net ücretteki payı (tanınan gelir)'),
+    returnedCents: cents('İade edilen saatin net ücretteki payı; ödenen iade değildir'),
+    deferredCents: cents('Kalan saatin net ücretteki payı (ertelenmiş gelir)'),
+  })
+  .describe('Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur')
+
+export const studentPackageParams = z.object({
+  studentId: z.string().min(1).max(200).describe('Öğrenci kimliği'),
+})
+export const packageBalanceResponse = dataResponse(
+  z.object({
+    studentId: z.string(),
+    purchasedHours: hours('Satılan (alınan) saat'),
+    usedHours: hours('Kullanılan saat'),
+    refundedHours: hours('Ayrılışta iade edilen saat'),
+    remainingHours: hours('Kalan saat; süresi dolan saat dahil (DOM-DIL-051)'),
+    expiredHours: hours('Süresi dolmuş satışların kalan saati; kalan saatin içindedir'),
+    usedHoursRecorded: z
+      .boolean()
+      .describe('Bir satışta kullanılan saat hiç girilmediyse `false` (K-21)'),
+    amounts: balanceAmountsSchema.optional(),
+    sales: z.array(
+      z.object({
+        saleId: z.string(),
+        packageName: z.string(),
+        kind: z.enum(PACKAGE_KINDS),
+        soldDate: z.string().describe('Satış günü, Europe/Istanbul'),
+        expiresDate: z.string().nullable(),
+        status: z.enum(PACKAGE_SALE_STATUSES),
+        purchasedHours: z.number().int(),
+        usedHours: z.number().int(),
+        refundedHours: z.number().int(),
+        remainingHours: z.number().int(),
+        expiredHours: z.number().int(),
+        usedHoursRecorded: z.boolean(),
+        amounts: balanceAmountsSchema.optional(),
+      }),
+    ),
+  }),
+)
+
+export const packageReportQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  from: daySchema.describe('Dönem başlangıcı (dahil), Europe/Istanbul günü'),
+  to: daySchema.describe('Dönem bitişi (dahil); dönem en çok bir yıl'),
+})
+
+const flowShape = {
+  soldHours: hours('Dönemde satılan saat'),
+  usedHours: hours('Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir'),
+  refundedHours: hours('Dönemde ayrılışla iade edilen saat'),
+  expiredHours: hours(
+    'Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı',
+  ),
+  soldCents: cents('Dönemde satılan paketlerin net ücreti'),
+  recognizedCents: cents('Dönemde kullanılan saatin net ücretteki payı (tanınan gelir)'),
+  returnedCents: cents('Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir'),
+}
+const balanceShape = {
+  openingHours: hours('Dönem başında kalan saat'),
+  closingHours: hours('Dönem sonunda kalan saat'),
+  openingDeferredCents: cents('Dönem başında ertelenmiş gelir'),
+  closingDeferredCents: cents('Dönem sonunda ertelenmiş gelir'),
+}
+export const packageReportResponse = z.object({
+  data: z.object({
+    from: z.string(),
+    to: z.string(),
+    totals: z.object({
+      saleCount: z.number().int().describe('Satır sayısı'),
+      ...flowShape,
+      ...balanceShape,
+    }),
+    months: z.array(z.object({ month: z.string().describe('YYYY-MM'), ...flowShape })),
+    lines: z.array(
+      z.object({
+        saleId: z.string(),
+        studentId: z.string(),
+        studentName: z.string().nullable(),
+        packageName: z.string(),
+        kind: z.enum(PACKAGE_KINDS),
+        soldDate: z.string(),
+        expiresDate: z.string().nullable(),
+        purchasedHours: z.number().int(),
+        netCents: cents('Satışın net ücreti'),
+        ...flowShape,
+        ...balanceShape,
+      }),
+    ),
+  }),
   meta: pageMetaSchema,
 })

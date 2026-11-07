@@ -1025,6 +1025,16 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-course-offers.test.ts',
     'DOM-YTK-001: başka kurumun kursiyeri listede yok, studentId ile 404',
   ),
+  // Onur: paket saat bakiyesi ve raporu (ON-074, IST-114).
+  'GET /api/v1/finance/students/:studentId/package-balance': kayit(
+    'finance-package-report.test.ts',
+    'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
+    'get(balanceUrl(randomUUID()), a.admin)',
+  ),
+  'GET /api/v1/finance/package-report': liste(
+    'finance-package-report.test.ts',
+    'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
+  ),
 }
 
 /**

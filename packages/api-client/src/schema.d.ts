@@ -2764,6 +2764,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/students/{studentId}/package-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin paket saat bakiyesi
+         * @description Satılan, kullanılan, iade edilen, kalan ve süresi dolan saat; satış başına ve toplam (IST-114, DOM-DIL-051, DOM-FIN-058). Bakiye saklanmaz, saat hareketlerinden hesaplanır; süresi dolan saat kalan saatin içindedir, silinmez. Ücret payları (`amounts`: net ücret, tanınan gelir, iade edilen saat payı, ertelenmiş gelir) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yanıtında alan yoktur. Kullanılan saat yoklamaya bağlanana kadar elle girilir (K-21); hiç girilmediyse `usedHoursRecorded: false`. Kapsam `/finance/students/:id/balance` ile aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         */
+        get: operations["getStudentPackageBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/package-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paket saat raporu
+         * @description Dönemde satılan, kullanılan, iade edilen ve süresi dolan saat ile gelir tanıma dökümü (IST-114, DOM-FIN-058). Satış başına satır, ay dökümü ve toplam döner; eşitlik: açılış kalan + satılan − kullanılan − iade = kapanış kalan, saatte ve kuruşta. Toplam ve ay dökümü bütün satırlardandır, sayfaya bağlı değildir; dönem bugüne kadar alınırsa kapanış öğrenci bakiyelerinin toplamına eşittir. Gelir, net ücretin kullanılan saat payıdır (birikimli, aşağı yuvarlanır); süresi dolan saat gelir sayılmaz, ertelenmiş gelirde kalır (DOM-DIL-051, H-19). İade payı net ücretin saat oranıdır, ödenen iade ve kesinti ayrılış kaydındadır. Elle girilen kullanılan saatin (K-21) değişikliği giriş gününe fark olarak düşer; geçmiş dönem değişmez. Hesap kodu ve KDV dökümü yoktur (M-12 doğrulanmalı). Satır: dönemde hareketi ya da dönem sonunda kalanı olan satış, yeni satış önce. Başlangıç bitişten sonra 422 `export_period_invalid`, bir yıldan uzun 422 `export_period_too_long`. `Accept: text/csv` ile sayfa yok sayılır, bütün satırlar CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetime yazılır (`finance.package_report_export`). Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Rol: `yonetici`.
+         */
+        get: operations["getPackageHourReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/invoices/{invoiceId}/remind": {
         parameters: {
             query?: never;
@@ -32190,6 +32230,342 @@ export interface operations {
                                 message: string;
                             } | null;
                         }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentPackageBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            /** @description Satılan (alınan) saat */
+                            purchasedHours: number;
+                            /** @description Kullanılan saat */
+                            usedHours: number;
+                            /** @description Ayrılışta iade edilen saat */
+                            refundedHours: number;
+                            /** @description Kalan saat; süresi dolan saat dahil (DOM-DIL-051) */
+                            remainingHours: number;
+                            /** @description Süresi dolmuş satışların kalan saati; kalan saatin içindedir */
+                            expiredHours: number;
+                            /** @description Bir satışta kullanılan saat hiç girilmediyse `false` (K-21) */
+                            usedHoursRecorded: boolean;
+                            /** @description Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur */
+                            amounts?: {
+                                /** @description Satışların net ücreti, kuruş */
+                                netCents: number;
+                                /** @description Kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description İade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                                /** @description Kalan saatin net ücretteki payı (ertelenmiş gelir), kuruş */
+                                deferredCents: number;
+                            };
+                            sales: {
+                                saleId: string;
+                                packageName: string;
+                                /** @enum {string} */
+                                kind: "course" | "hours" | "private";
+                                /** @description Satış günü, Europe/Istanbul */
+                                soldDate: string;
+                                expiresDate: string | null;
+                                /** @enum {string} */
+                                status: "active" | "expired" | "depleted";
+                                purchasedHours: number;
+                                usedHours: number;
+                                refundedHours: number;
+                                remainingHours: number;
+                                expiredHours: number;
+                                usedHoursRecorded: boolean;
+                                /** @description Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur */
+                                amounts?: {
+                                    /** @description Satışların net ücreti, kuruş */
+                                    netCents: number;
+                                    /** @description Kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                    recognizedCents: number;
+                                    /** @description İade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                    returnedCents: number;
+                                    /** @description Kalan saatin net ücretteki payı (ertelenmiş gelir), kuruş */
+                                    deferredCents: number;
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPackageHourReport: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Dönem başlangıcı (dahil), Europe/Istanbul günü */
+                from: string;
+                /** @description Dönem bitişi (dahil); dönem en çok bir yıl */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            totals: {
+                                /** @description Satır sayısı */
+                                saleCount: number;
+                                /** @description Dönemde satılan saat */
+                                soldHours: number;
+                                /** @description Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir */
+                                usedHours: number;
+                                /** @description Dönemde ayrılışla iade edilen saat */
+                                refundedHours: number;
+                                /** @description Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı */
+                                expiredHours: number;
+                                /** @description Dönemde satılan paketlerin net ücreti, kuruş */
+                                soldCents: number;
+                                /** @description Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                                /** @description Dönem başında kalan saat */
+                                openingHours: number;
+                                /** @description Dönem sonunda kalan saat */
+                                closingHours: number;
+                                /** @description Dönem başında ertelenmiş gelir, kuruş */
+                                openingDeferredCents: number;
+                                /** @description Dönem sonunda ertelenmiş gelir, kuruş */
+                                closingDeferredCents: number;
+                            };
+                            months: {
+                                /** @description YYYY-MM */
+                                month: string;
+                                /** @description Dönemde satılan saat */
+                                soldHours: number;
+                                /** @description Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir */
+                                usedHours: number;
+                                /** @description Dönemde ayrılışla iade edilen saat */
+                                refundedHours: number;
+                                /** @description Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı */
+                                expiredHours: number;
+                                /** @description Dönemde satılan paketlerin net ücreti, kuruş */
+                                soldCents: number;
+                                /** @description Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                            }[];
+                            lines: {
+                                saleId: string;
+                                studentId: string;
+                                studentName: string | null;
+                                packageName: string;
+                                /** @enum {string} */
+                                kind: "course" | "hours" | "private";
+                                soldDate: string;
+                                expiresDate: string | null;
+                                purchasedHours: number;
+                                /** @description Satışın net ücreti, kuruş */
+                                netCents: number;
+                                /** @description Dönemde satılan saat */
+                                soldHours: number;
+                                /** @description Dönemde kullanılan saat; elle giriş düzeltmesi eksi olabilir */
+                                usedHours: number;
+                                /** @description Dönemde ayrılışla iade edilen saat */
+                                refundedHours: number;
+                                /** @description Son kullanma günü dönemde olan, bugün süresi dolmuş satışların dönem sonu kalanı */
+                                expiredHours: number;
+                                /** @description Dönemde satılan paketlerin net ücreti, kuruş */
+                                soldCents: number;
+                                /** @description Dönemde kullanılan saatin net ücretteki payı (tanınan gelir), kuruş */
+                                recognizedCents: number;
+                                /** @description Dönemde iade edilen saatin net ücretteki payı; ödenen iade değildir, kuruş */
+                                returnedCents: number;
+                                /** @description Dönem başında kalan saat */
+                                openingHours: number;
+                                /** @description Dönem sonunda kalan saat */
+                                closingHours: number;
+                                /** @description Dönem başında ertelenmiş gelir, kuruş */
+                                openingDeferredCents: number;
+                                /** @description Dönem sonunda ertelenmiş gelir, kuruş */
+                                closingDeferredCents: number;
+                            }[];
+                        };
                         meta: components["schemas"]["PageMeta"];
                     };
                 };

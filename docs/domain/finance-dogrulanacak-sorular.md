@@ -344,6 +344,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Mutabakat dosyasına hesap kodu eşlemesi ve KDV kırılımı eklenir, dönem seçeneği genişler.
 - **Cevap:** bekleniyor
 
+#### M-12 · Paket satışında gelir tanıma
+
+- **Kural:** `DOM-FIN-058`; `DOM-DIL-051`; IST-114.
+- **Soru:** Dil okulu paketinin ücreti gelire hangi anda yazılır: satışta mı, ders saati kullanıldıkça mı? Süresi dolan ve kullanılmayan saatin ücreti ne zaman gelir olur; saat yanmadığına göre (H-19) iade yükümlülüğü sürerken ertelenmiş gelirde mi kalır?
+- **Bugünkü varsayım:** Gelir kullanılan saat oranıyla tanınır (net ücret × birikimli kullanılan saat ÷ alınan saat, aşağı yuvarlanır). Süresi dolan saat gelir sayılmaz, ertelenmiş gelirde kalır. İade edilen saatin payı gelirden düşer; kesinti ve ödenen iade ayrılış kaydındadır. Hesap kodu ve KDV dökümü yoktur.
+- **Kodda:** `lib/finance-package-report.ts` (`packageHourReport`), `GET /api/v1/finance/package-report`.
+- **Cevap değişirse:** Tanıma anı ve süresi dolan saatin gelire alınma kuralı rapor hesabında değişir; ekran ve CSV sütunları aynı kalır.
+- **Cevap:** bekleniyor
+
 ## Kararlaştırılanlar
 
 Aşağıdakiler soru değildir; proje sahibinin kararıdır ve kural belgelerine "kullanıcı kararı" olarak işlenmiştir.

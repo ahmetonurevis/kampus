@@ -50,6 +50,7 @@ const INVOICE: InvoiceLine = {
   status: 'Kısmi',
   amountCents: 10_000,
   paidCents: 2_550,
+  note: '',
 }
 
 test('ON-094: varsayılan profilin sayfası standart dosyanın başlığını ve sırasını taşır', () => {
@@ -92,10 +93,17 @@ test('ON-094: iade ve taksit satırında iki tarih ve tam sayı doğru türdedir
   const invoice = profiledInvoicesSheet([INVOICE], profile)
   assert.equal(invoice.name, 'Taksit')
   assert.deepEqual(invoice.rows[0]?.[3], { kind: 'integer', value: 4 })
-  assert.deepEqual(invoice.rows[0]?.slice(-2), [
+  assert.deepEqual(invoice.rows[0]?.slice(6, 8), [
     { kind: 'amount', cents: 10_000 },
     { kind: 'amount', cents: 2_550 },
   ])
+})
+
+test('DOM-FIN-014: dosyadan aktarılan geçmiş ödeme taksit sayfasında etiketini taşır', () => {
+  const profile = defaultFinanceExportProfile()
+  const sheet = profiledInvoicesSheet([{ ...INVOICE, note: 'Açılış aktarımı' }], profile)
+  assert.equal(sheet.headers.at(-1), 'Açıklama')
+  assert.deepEqual(sheet.rows[0]?.at(-1), { kind: 'text', value: 'Açılış aktarımı' })
 })
 
 test('DOM-FIN-055: profilin başlığı, sırası, sabit değeri ve tarih biçimi sayfaya geçer', () => {

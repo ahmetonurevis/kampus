@@ -38,6 +38,19 @@ export const PAYMENT_METHOD_LABELS = {
   'Kredi kartı': 'Kredi kartı',
   Senet: 'Senet',
 } as const satisfies Record<PaymentMethod, string>
+/**
+ * Dosyadan aktarılan geçmiş ödemenin taksit işareti (DOM-FIN-014): taksit ödenmiştir ama Kampüs'te
+ * tahsilat kaydı yoktur, kasayı ve dönem tahsilatını değiştirmez. `PAYMENT_METHODS`'a girmez: hiçbir
+ * tahsilat bu yöntemle alınamaz, `payments` tablosuna yazılamaz. Yalnız taksitin `method` alanında
+ * bulunur; `paidAt` ile `method` birlikte dolu kuralı (ADR 0010) böylece sahte yöntem gerektirmez.
+ */
+export const OPENING_IMPORT_METHOD = 'Açılış aktarımı'
+/** Taksitin `method` alanının alabileceği değerler. */
+export const INVOICE_METHODS = [...PAYMENT_METHODS, OPENING_IMPORT_METHOD] as const
+export type InvoiceMethod = (typeof INVOICE_METHODS)[number]
+/** Taksit dosyadan aktarılmış geçmiş ödeme mi; ödendi görünür, tahsilat sayılmaz. */
+export const isOpeningImport = (invoice: { method?: string | null }): boolean =>
+  invoice.method === OPENING_IMPORT_METHOD
 /** Tahsilat girdisi; API gövde şeması ve web/mobil form şemasıdır. */
 export const paymentInputSchema = z.object({
   method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),

@@ -17578,6 +17578,210 @@
           "learners"
         ]
       },
+      "ImportIssueInput": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "line",
+          "field",
+          "code",
+          "message"
+        ]
+      },
+      "ImportNoticeInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "StudentImportRowInput": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır (başlık 1. satırdır)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "skipped",
+              "invalid"
+            ],
+            "description": "`ready` yazılacak, `skipped` zaten kayıtlı"
+          },
+          "name": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "campus": {
+            "type": "string"
+          },
+          "identityMasked": {
+            "type": "string",
+            "description": "Kimlik numarasının yalnız son dört hanesi görünür"
+          },
+          "guardianName": {
+            "type": "string"
+          },
+          "guardianPhoneMasked": {
+            "type": "string",
+            "description": "Veli telefonu maskeli"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "mother",
+                  "father",
+                  "legal_guardian",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardianMatch": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "file",
+                  "existing",
+                  "self"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`new` yeni veli, `file` dosyanın önceki satırıyla aynı veli, `existing` kurumda kayıtlı veli (DOM-KAY-013), `self` yetişkin kursiyerin kendisi"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssueInput"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportNoticeInput"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "name",
+          "className",
+          "campus",
+          "identityMasked",
+          "guardianName",
+          "guardianPhoneMasked",
+          "relationship",
+          "guardianMatch",
+          "issues",
+          "notices"
+        ]
+      },
+      "StudentImportResultInput": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki veri satırı sayısı"
+          },
+          "readyCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak (onayda yazılan) öğrenci sayısı"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kimliği kayıtlı olduğu için atlanan satır sayısı"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Hatalı satır sayısı"
+          },
+          "newGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Açılacak yeni veli kaydı sayısı"
+          },
+          "existingGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bağlanılacak mevcut veli kaydı sayısı"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentImportRowInput"
+            },
+            "description": "Yalnız önizlemede dolu; satırlar maskeli"
+          }
+        },
+        "required": [
+          "dryRun",
+          "rowCount",
+          "readyCount",
+          "skippedCount",
+          "invalidCount",
+          "newGuardianCount",
+          "existingGuardianCount",
+          "rows"
+        ]
+      },
       "EnrollmentFunnelStepInput": {
         "type": "object",
         "properties": {
@@ -17832,6 +18036,200 @@
           "total",
           "bySource",
           "byCounselor"
+        ]
+      },
+      "InstallmentImportRowInput": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır (başlık 1. satırdır)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "skipped",
+              "invalid"
+            ],
+            "description": "`ready` yazılacak, `skipped` zaten kayıtlı"
+          },
+          "studentName": {
+            "description": "Kimlikle bulunan öğrencinin kayıtlı adı",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identityMasked": {
+            "type": "string",
+            "description": "Kimlik numarasının yalnız son dört hanesi görünür"
+          },
+          "installment": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amountCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tutar, kuruş"
+          },
+          "dueDate": {
+            "description": "Vade, `YYYY-MM-DD`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paidDate": {
+            "description": "Ödeme günü, `YYYY-MM-DD`; açık taksitte `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "Açılış aktarımı"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null`"
+          },
+          "academicYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contractLinked": {
+            "type": "boolean",
+            "description": "Taksit öğrencinin sözleşmesine bağlanacak mı"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssueInput"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportNoticeInput"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "studentName",
+          "identityMasked",
+          "installment",
+          "amountCents",
+          "dueDate",
+          "paidDate",
+          "method",
+          "academicYear",
+          "contractLinked",
+          "issues",
+          "notices"
+        ]
+      },
+      "InstallmentImportResultInput": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki veri satırı sayısı"
+          },
+          "readyCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak (onayda yazılan) taksit sayısı"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kayıtlı olduğu için atlanan satır sayısı"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Hatalı satır sayısı"
+          },
+          "linkedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Sözleşmeye bağlanan taksit sayısı"
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak taksitlerin toplamı, kuruş"
+          },
+          "paidCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bunların ödenmiş olanlarının toplamı, kuruş"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstallmentImportRowInput"
+            },
+            "description": "Yalnız önizlemede dolu; kimlik maskeli"
+          }
+        },
+        "required": [
+          "dryRun",
+          "rowCount",
+          "readyCount",
+          "skippedCount",
+          "invalidCount",
+          "linkedCount",
+          "totalCents",
+          "paidCents",
+          "rows"
         ]
       },
       "ErrorResponse": {
@@ -35795,6 +36193,214 @@
         ],
         "additionalProperties": false
       },
+      "ImportIssue": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "line",
+          "field",
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ImportNotice": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "StudentImportRow": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır (başlık 1. satırdır)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "skipped",
+              "invalid"
+            ],
+            "description": "`ready` yazılacak, `skipped` zaten kayıtlı"
+          },
+          "name": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "campus": {
+            "type": "string"
+          },
+          "identityMasked": {
+            "type": "string",
+            "description": "Kimlik numarasının yalnız son dört hanesi görünür"
+          },
+          "guardianName": {
+            "type": "string"
+          },
+          "guardianPhoneMasked": {
+            "type": "string",
+            "description": "Veli telefonu maskeli"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "mother",
+                  "father",
+                  "legal_guardian",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardianMatch": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "file",
+                  "existing",
+                  "self"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`new` yeni veli, `file` dosyanın önceki satırıyla aynı veli, `existing` kurumda kayıtlı veli (DOM-KAY-013), `self` yetişkin kursiyerin kendisi"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssue"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportNotice"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "name",
+          "className",
+          "campus",
+          "identityMasked",
+          "guardianName",
+          "guardianPhoneMasked",
+          "relationship",
+          "guardianMatch",
+          "issues",
+          "notices"
+        ],
+        "additionalProperties": false
+      },
+      "StudentImportResult": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki veri satırı sayısı"
+          },
+          "readyCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak (onayda yazılan) öğrenci sayısı"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kimliği kayıtlı olduğu için atlanan satır sayısı"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Hatalı satır sayısı"
+          },
+          "newGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Açılacak yeni veli kaydı sayısı"
+          },
+          "existingGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bağlanılacak mevcut veli kaydı sayısı"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentImportRow"
+            },
+            "description": "Yalnız önizlemede dolu; satırlar maskeli"
+          }
+        },
+        "required": [
+          "dryRun",
+          "rowCount",
+          "readyCount",
+          "skippedCount",
+          "invalidCount",
+          "newGuardianCount",
+          "existingGuardianCount",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
       "EnrollmentFunnelStep": {
         "type": "object",
         "properties": {
@@ -36054,6 +36660,202 @@
           "total",
           "bySource",
           "byCounselor"
+        ],
+        "additionalProperties": false
+      },
+      "InstallmentImportRow": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır (başlık 1. satırdır)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "skipped",
+              "invalid"
+            ],
+            "description": "`ready` yazılacak, `skipped` zaten kayıtlı"
+          },
+          "studentName": {
+            "description": "Kimlikle bulunan öğrencinin kayıtlı adı",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identityMasked": {
+            "type": "string",
+            "description": "Kimlik numarasının yalnız son dört hanesi görünür"
+          },
+          "installment": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amountCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tutar, kuruş"
+          },
+          "dueDate": {
+            "description": "Vade, `YYYY-MM-DD`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paidDate": {
+            "description": "Ödeme günü, `YYYY-MM-DD`; açık taksitte `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "Açılış aktarımı"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null`"
+          },
+          "academicYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contractLinked": {
+            "type": "boolean",
+            "description": "Taksit öğrencinin sözleşmesine bağlanacak mı"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssue"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportNotice"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "studentName",
+          "identityMasked",
+          "installment",
+          "amountCents",
+          "dueDate",
+          "paidDate",
+          "method",
+          "academicYear",
+          "contractLinked",
+          "issues",
+          "notices"
+        ],
+        "additionalProperties": false
+      },
+      "InstallmentImportResult": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki veri satırı sayısı"
+          },
+          "readyCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak (onayda yazılan) taksit sayısı"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kayıtlı olduğu için atlanan satır sayısı"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Hatalı satır sayısı"
+          },
+          "linkedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Sözleşmeye bağlanan taksit sayısı"
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak taksitlerin toplamı, kuruş"
+          },
+          "paidCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bunların ödenmiş olanlarının toplamı, kuruş"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstallmentImportRow"
+            },
+            "description": "Yalnız önizlemede dolu; kimlik maskeli"
+          }
+        },
+        "required": [
+          "dryRun",
+          "rowCount",
+          "readyCount",
+          "skippedCount",
+          "invalidCount",
+          "linkedCount",
+          "totalCents",
+          "paidCents",
+          "rows"
         ],
         "additionalProperties": false
       }
@@ -61332,6 +62134,12 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "openingImportCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)"
+                        },
                         "remainingCents": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -61346,6 +62154,7 @@
                       "required": [
                         "totalCents",
                         "paidCents",
+                        "openingImportCents",
                         "remainingCents",
                         "overdueCents"
                       ],
@@ -61724,6 +62533,12 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "openingImportCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)"
+                        },
                         "openCents": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -61769,6 +62584,7 @@
                         "studentId",
                         "totalCents",
                         "paidCents",
+                        "openingImportCents",
                         "openCents",
                         "overdueCents",
                         "overdueCount",
@@ -61875,7 +62691,7 @@
         "tags": [
           "finance-exports"
         ],
-        "description": "Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.",
+        "description": "Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Dosyadan aktarılan geçmiş ödeme `opening_import` satırıdır: borcu kapatır, tahsilat değildir, dekontu yoktur (DOM-FIN-014). Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.",
         "parameters": [
           {
             "schema": {
@@ -61912,6 +62728,12 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "openingImportCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)"
                         },
                         "openCents": {
                           "type": "integer",
@@ -61982,9 +62804,10 @@
                                   "installment",
                                   "payment",
                                   "payment_reversal",
-                                  "legacy_payment"
+                                  "legacy_payment",
+                                  "opening_import"
                                 ],
-                                "description": "Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme"
+                                "description": "Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme, dosyadan aktarılan geçmiş ödeme (tahsilat değildir)"
                               },
                               "date": {
                                 "type": "string",
@@ -62116,6 +62939,7 @@
                         "studentId",
                         "totalCents",
                         "paidCents",
+                        "openingImportCents",
                         "openCents",
                         "overdueCents",
                         "overdueCount",
@@ -62317,12 +63141,19 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "openingImportCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)"
                             }
                           },
                           "required": [
                             "count",
                             "totalCents",
-                            "paidCents"
+                            "paidCents",
+                            "openingImportCents"
                           ],
                           "additionalProperties": false,
                           "description": "Vadesi dönemde olan taksitler"
@@ -80523,6 +81354,342 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/student-imports": {
+      "post": {
+        "operationId": "importStudents",
+        "summary": "Öğrenci ve veliyi dosyadan aktar",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Okul canlıya geçerken mevcut öğrenci ve velileri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-KAY-012, DOM-KAY-013). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 1.000 veri satırı. Sütunlar: `öğrenci adı`, `sınıf`, `kimlik no`, `doğum tarihi`, `veli adı`, `veli telefonu`, `yakınlık`; isteğe bağlı `kampüs`, `kimlik türü`, `öğrenci telefonu`. `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz; kimlik ve telefon maskelidir. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `student_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. Aynı telefon ve aynı veli adı kardeşleri aynı veli kaydına bağlar; önizleme eşleşmeyi gösterir, onay öneriyi kabul eder (DOM-KAY-013). Telefon aynı, ad farklıysa satır hatalıdır (`guardian_phone_conflict`). Kurumda kayıtlı kimlikte aynı adlı etkin öğrencinin satırı atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz. Dosya düzeyindeki sorun 422 ve sorunun kodu (ör. `csv_too_many_rows`, `import_file_legacy_excel`). `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileBase64": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 6990508,
+                    "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+                  },
+                  "dryRun": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "fileBase64"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StudentImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StudentImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/installment-imports": {
+      "post": {
+        "operationId": "importInstallments",
+        "summary": "Taksitleri dosyadan aktar",
+        "tags": [
+          "finance"
+        ],
+        "description": "Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: `kimlik no`, `taksit no`, `tutar` (TL; `1.234,56` ya da `1234.56`, belirsiz biçim ve kuruştan küçük kesir satır hatasıdır, yuvarlanmaz) ya da `tutar kuruş` (tamsayı kuruş), ikisi birden doluysa tutmalıdır (`amount_mismatch`), `vade`; isteğe bağlı `öğrenci adı` (verilirse kayıtla eşleşmeli), `ödeme tarihi`, `ödeme yöntemi` (kabul edilir, saklanmaz), `eğitim yılı` (boşsa kurumun etkin yılı). `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `installment_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (`contract_approved`), plan toplamı sözleşmeyi aşamaz (`contract_total_exceeded`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz, kasa ve dönem tahsilatı değişmez: yöntemi `Açılış aktarımı`dır (`invoices.payment_method = opening_import`), ekstre ve dışa aktarım ödendi gösterip bu etiketle ayırır (DOM-FIN-014). `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileBase64": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 6990508,
+                    "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+                  },
+                  "dryRun": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "fileBase64"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InstallmentImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InstallmentImportResult"
                     }
                   },
                   "required": [

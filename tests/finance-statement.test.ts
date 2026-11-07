@@ -221,3 +221,28 @@ test('IST-107: satır açıklaması tür, yöntem ve dekont numarasını yazar',
     '2. taksit',
   ])
 })
+
+test('DOM-FIN-014: açılış aktarımı borcu kapatır, tahsilat ve dekont satırı yazmaz', () => {
+  const opening = invoice(1, {
+    paidAt: '2026-09-01T09:00:00.000Z',
+    method: 'Açılış aktarımı',
+  })
+  const statement = studentStatement('s1', [opening, invoice(2)], [], TODAY)
+  const line = statement.lines.find((item) => item.kind === 'opening_import')
+  assert.ok(line)
+  assert.equal(line.creditCents, opening.amount)
+  assert.equal(line.receiptNumber, null)
+  assert.equal(statementLineLabel(line), 'Açılış aktarımı · 1. taksit')
+  assert.equal(statement.lines.filter((item) => item.kind === 'payment').length, 0)
+  assert.equal(statement.lines.filter((item) => item.kind === 'legacy_payment').length, 0)
+  assert.equal(statement.openingImportCents, opening.amount)
+  assert.equal(statement.paidCents, opening.amount)
+  assert.equal(statement.lines.at(-1)?.balanceCents, statement.openCents)
+})
+
+test('DOM-FIN-014: tahsilat kaydı olmayan eski taksit açılış aktarımı sayılmaz', () => {
+  const legacy = invoice(1, { paidAt: '2026-09-01T09:00:00.000Z', method: 'Nakit' })
+  const statement = studentStatement('s1', [legacy], [], TODAY)
+  assert.equal(statement.lines.filter((item) => item.kind === 'legacy_payment').length, 1)
+  assert.equal(statement.openingImportCents, 0)
+})

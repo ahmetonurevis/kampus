@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { dateLabel, dayKey, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
+import { isOpeningImport, OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -149,7 +150,9 @@ export function InvoicesSection({
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) =>
-          row.paidAt ? (
+          isOpeningImport(row) ? (
+            OPENING_IMPORT_METHOD
+          ) : row.paidAt ? (
             <PdfButton
               type="receipt"
               recordId={row.id}

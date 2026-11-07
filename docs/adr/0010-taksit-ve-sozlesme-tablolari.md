@@ -191,7 +191,7 @@ create table invoices (
 Taksit kısıtları:
 
 - `invoices_amount_cents_check` (`> 0`), `invoices_installment_check` (`> 0`), `invoices_currency_check`.
-- `invoices_payment_method_check`: `oneOf(PAYMENT_METHOD_KEYS)`.
+- `invoices_payment_method_check`: `oneOf(PAYMENT_METHOD_KEYS)`. Sonradan eklenen `opening_import` dosyadan aktarılan geçmiş ödemenin işaretidir, tahsilat yöntemi değildir (DOM-FIN-014); `payments.method` bunu kabul etmez.
 - `invoices_paid_check`: `(paid_at is null) = (payment_method is null)`.
 - `invoices_contract_root_check`: `(contract_id is null) = (root_contract_id is null)`.
 - `invoices_installment_key`: `unique (institution_id, root_contract_id, installment) where archived_at is null and root_contract_id is not null`. Ek hizmet taksitleri öğrenimin ardından numaralanır (`enrollment.ts`), ek protokol ve ayrılış borcu en büyük korunan numaradan devam eder. Mevcut veride ihlal olup olmadığı ON-046a'da sayılır.

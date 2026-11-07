@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
-import { hasScholarshipContract } from '@kampus/school-core/lib/payments.ts'
+import { hasScholarshipContract, isOpeningImport } from '@kampus/school-core/lib/payments.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
@@ -59,7 +59,7 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
         {[
           ['Vade tarihi', dateLabel(row.dueDate, { year: 'numeric' })],
           [
-            'Tahsilat tarihi',
+            isOpeningImport(row) ? 'Ödeme tarihi' : 'Tahsilat tarihi',
             row.paidAt ? dateLabel(row.paidAt, { year: 'numeric' }) : 'Henüz tahsil edilmedi',
           ],
           ['Ödeme yöntemi', row.paidAt ? (row.method ?? '—') : '—'],
@@ -76,7 +76,7 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
         ))}
       </dl>
       <div className="detail-actions flex flex-wrap gap-2">
-        {row.paidAt ? (
+        {isOpeningImport(row) ? null : row.paidAt ? (
           <PdfButton type="receipt" recordId={row.id} label="Dekontu görüntüle" size="default" />
         ) : (
           actions?.(row)

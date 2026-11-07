@@ -134,6 +134,20 @@ describe('ON-123 mobil yönetici finans ve ön büro tahsilat takibi', () => {
     assert.match(rows[3]?.[1] ?? '', /500,00/)
   })
 
+  test('DOM-FIN-014 açılış aktarımı tahsil edilen tutardan ayrı satırdır', () => {
+    const rows = financeTotalRows({
+      totalCents: 300_000,
+      paidCents: 100_000,
+      openingImportCents: 40_000,
+      remainingCents: 200_000,
+      overdueCents: 0,
+    })
+    assert.deepEqual(rows[1]?.[0], 'Tahsil edilen')
+    assert.match(rows[1]?.[1] ?? '', /600,00/)
+    assert.deepEqual(rows[2]?.[0], 'Açılış aktarımı')
+    assert.match(rows[2]?.[1] ?? '', /400,00/)
+  })
+
   test('ON-123 taksit sorgusu vadeye göre sıralar, durumu etiketle, aramayı iki harften süzer', () => {
     const base = { ...EMPTY_LIST_STATE, index: 2, search: 'x', filter: 'gecikmis' }
     assert.deepEqual(invoiceListQuery(base, 'x'), {

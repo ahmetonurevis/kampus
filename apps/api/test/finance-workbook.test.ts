@@ -339,6 +339,7 @@ describe('muhasebe dosyası .xlsx', () => {
       'Durum',
       'Tutar (₺)',
       'Ödenen (₺)',
+      'Açıklama',
     ])
     assert.equal(serialToDay(Number(file.cells.get('A2')?.value)), '2026-10-15')
     assert.equal(file.cells.get('D2')?.type, 'n')

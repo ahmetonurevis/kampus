@@ -15,6 +15,7 @@ import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
+import { InstallmentImportSection } from './InstallmentImportSection.tsx'
 import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
 import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
@@ -95,7 +96,14 @@ export function FinancePage({ page }: { page: NavPage }) {
               value: money(totals.totalCents),
               note: 'Tüm ödeme planları',
             },
-            { label: 'Tahsil edilen', value: money(totals.paidCents) },
+            {
+              label: 'Tahsil edilen',
+              // Dosyadan aktarılan geçmiş ödeme borcu kapatır, tahsilat değildir (DOM-FIN-014).
+              value: money(totals.paidCents - totals.openingImportCents),
+              ...(totals.openingImportCents > 0
+                ? { note: `Ayrıca ${money(totals.openingImportCents)} açılış aktarımı` }
+                : {}),
+            },
             {
               label: 'Kalan bakiye',
               value: money(totals.remainingCents),
@@ -150,6 +158,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'invoices' ? (
         <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />
       ) : null}
+      {tab === 'invoices' && isManager ? <InstallmentImportSection /> : null}
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}
         onClose={panel.close}

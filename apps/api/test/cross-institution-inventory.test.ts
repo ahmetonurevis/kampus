@@ -998,6 +998,14 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-e-ozel.test.ts',
     'IST-085 başka kurum: tam kimlik',
   ),
+  'POST /api/v1/prospects/student-imports': govde(
+    'enrollment-import.test.ts',
+    'başka kurumun sınıfı, velisi ve kimliği bu kurumu etkilemez',
+  ),
+  'POST /api/v1/finance/installment-imports': govde(
+    'finance-installment-import.test.ts',
+    'başka kurumun öğrencisi ve sözleşmesi bu kurumu etkilemez',
+  ),
 }
 
 /**

@@ -28,12 +28,14 @@ import { genRequestId, registerRequestContext } from './plugins/request-context.
 import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/platform-routes.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
+import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
@@ -108,6 +110,9 @@ export const REDACTED_PATHS = [
   '*.nationalId',
   'birthDate',
   '*.birthDate',
+  // kvkk: Ç — pilot aktarım dosyası (IST-007): içerik hiçbir koşulda loglanmaz.
+  'fileBase64',
+  '*.fileBase64',
   // Finans: dekont/havale referansı, iade IBAN'ı ve hesap sahibi, nakil okulu, iptal gerekçesi.
   'reference',
   '*.reference',
@@ -415,6 +420,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
+  registerEnrollmentImportRoutes(app)
+  registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import type { Page } from '@playwright/test'
 
+import { apiRequest, type ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -300,5 +301,105 @@ test.describe('ON-036 veli: bütün taksitler ödenmişken', () => {
     await expectEveryRow(rowsOf(page, PLAN_TABLE), 'Ödendi')
     await presets.getByRole('button', { name: 'Geciken ödemeler', exact: true }).click()
     await expect(page.getByText(/eşleşen kayıt bulunamadı/)).toBeVisible()
+  })
+})
+
+/**
+ * Veli hesabının öğrencideki bağını velayetsiz ödeyici yapar (K-04; DOM-ILT-070, DOM-ILT-074).
+ * Öğrencinin en az bir velayetli bağı kalmalıdır (DOM-ILT-075): velayeti hesapsız veli kaydı
+ * `p1` taşır. Kurulum API'den, arayüzden değil.
+ */
+async function makeNonCustodialPayer(admin: ApiClient, studentId: string) {
+  const keeper = await admin.post(
+    `/api/v1/students/${studentId}/guardians`,
+    { parentId: 'p1', relationship: 'mother', custody: 'full' },
+    { 'idempotency-key': randomUUID() },
+  )
+  expect(keeper.status, JSON.stringify(keeper.body)).toBe(201)
+  const list = await admin.get(`/api/v1/students/${studentId}/guardians`)
+  expect(list.status).toBe(200)
+  const link = (
+    list.body as { data: { id: string; membershipId: string | null; rowVersion?: number }[] }
+  ).data.find((item) => item.membershipId !== null)
+  if (!link) throw new Error('Veli hesabının bağı bulunamadı.')
+  const result = await apiRequest(
+    admin.context,
+    'PATCH',
+    `/api/v1/students/${studentId}/guardians/${link.id}`,
+    { custody: 'none', isPayer: true },
+    { 'if-match': `"${String(link.rowVersion ?? 1)}"` },
+  )
+  expect(result.status, JSON.stringify(result.body)).toBe(200)
+}
+
+const payerPicker = (page: Page) => page.getByLabel('Ödemesi görüntülenen öğrenci')
+
+test.describe('ON-313 K-04 velayetsiz ödeyici veli finans seçicisi (DOM-ILT-074, DOM-FIN-052)', () => {
+  test('yalnız ödeyicisi olduğu çocuğu finans sayfalarında seçer, taksitlerini açar; akademik sayfada görmez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'], childIds: ['s1'] })
+    await makeNonCustodialPayer(await api(school.user('yonetici')), 's1')
+    await loginAs(school.user('veli'))
+
+    await page.goto('/veli/finans')
+    await expect(payerPicker(page)).toHaveValue('s1')
+    await expect(summary(page)).toContainText('Deniz Yılmaz')
+    const plan = rowsOf(page, PLAN_TABLE)
+    await expect(plan).toHaveCount(8)
+    await expectEveryRow(plan, '24.500,00')
+    await page.getByRole('button', { name: '2. taksit detayını aç' }).click()
+    await expect(page.getByRole('dialog', { name: 'Taksit detayı' })).toContainText('2. taksit')
+    await page.keyboard.press('Escape')
+
+    await page.goto('/veli/dekontlar')
+    await expect(rowsOf(page, RECEIPT_TABLE)).toHaveCount(3)
+    await page.goto('/veli/sozlesmeler')
+    await expect(summary(page)).toContainText('Deniz Yılmaz')
+    await expect(page.getByRole('heading', { name: 'Özel okul eğitim sözleşmesi' })).toBeVisible()
+    // Öğrenci belgesi velayet kapsamındadır (K-32): ödeyici bağı açmaz.
+    await expect(page.getByRole('region', { name: 'Öğrenci belgesi' })).toHaveCount(0)
+
+    // Akademik sayfada çocuk yoktur: kabuk seçicisi ve öğrenci özeti çıkmaz.
+    await page.goto('/veli/akademik-takip')
+    await expect(page.getByText('Bağlı öğrenci bulunamadı.')).toBeVisible()
+    await expect(page.getByLabel('Çocuk seç')).toHaveCount(0)
+    await expect(page.getByRole('main')).not.toContainText('Deniz Yılmaz')
+  })
+
+  test('velayetli çocuğun yanında ödediği çocuğu da seçer; kabuk seçicisinde yalnız velayetli çocuk kalır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'], childIds: ['s1', 's2'] })
+    await makeNonCustodialPayer(await api(school.user('yonetici')), 's1')
+    await loginAs(school.user('veli'))
+
+    await page.goto('/veli/finans')
+    await expect(page).toHaveURL(/[?&]cocuk=s2/)
+    await expect(summary(page)).toContainText('Ece Yılmaz')
+    await expect(page.getByLabel('Çocuk seç').locator('option')).toHaveText(['Ece Yılmaz'])
+    await expect(payerPicker(page).locator('option')).toHaveText(['Ece Yılmaz', 'Deniz Yılmaz'])
+
+    await payerPicker(page).selectOption({ label: 'Deniz Yılmaz' })
+    await expect(page).toHaveURL(/[?&]odenen=s1/)
+    await expect(summary(page)).toContainText('Deniz Yılmaz')
+    await expectEveryRow(rowsOf(page, PLAN_TABLE), '24.500,00')
+    await expect(rowsOf(page, PLAN_TABLE).filter({ hasText: 'Ödendi' })).toHaveCount(3)
+
+    await payerPicker(page).selectOption({ label: 'Ece Yılmaz' })
+    await expect(page).not.toHaveURL(/odenen=/)
+    await expect(summary(page)).toContainText('Ece Yılmaz')
+    await expectEveryRow(rowsOf(page, PLAN_TABLE), '27.000,00')
+
+    await page.goto('/veli/akademik-takip?odenen=s1')
+    await expect(page.getByLabel('Çocuk seç').locator('option')).toHaveText(['Ece Yılmaz'])
+    await expect(page.getByLabel('Öğrenci özeti', { exact: true })).toContainText('Ece Yılmaz')
+    await expect(page.getByRole('main')).not.toContainText('Deniz Yılmaz')
   })
 })

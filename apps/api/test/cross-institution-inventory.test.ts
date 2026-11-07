@@ -1035,6 +1035,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-package-report.test.ts',
     'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
   ),
+  // Onur: ödeyicisi olunan çocuklar (ON-313, K-04).
+  'GET /api/v1/finance/payer-children': liste(
+    'finance-payer-children.test.ts',
+    'başka kurumun öğrencisi listede yok, finans okuması 404',
+  ),
 }
 
 /**

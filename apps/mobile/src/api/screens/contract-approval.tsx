@@ -18,10 +18,9 @@ import {
 import { ListLoading, QueryError, resolveChild, useApiSession, useSelectedChild } from '../shell.ts'
 import { ContractPdf } from './contract-pdf.tsx'
 import { ContractPlanSection } from './contract-plan.tsx'
-import { childOptions, ChildPicker } from './parent-child-picker.tsx'
+import { useFinanceChildOptions } from './finance-children.ts'
+import { ChildPicker } from './parent-child-picker.tsx'
 
-type StudentRecord = State['students'][number]
-type ClassRecord = State['classes'][number]
 type InvoiceRecord = State['invoices'][number]
 
 /**
@@ -35,12 +34,8 @@ export default function ParentContracts() {
   const session = useApiSession()
   const open = canOpenParentContracts(session)
   const [selected, setSelected] = useSelectedChild()
-  const students = useCollectionAll<StudentRecord>('students', {}, { enabled: open })
-  const classes = useCollectionAll<ClassRecord>('classes', {}, { enabled: open })
-  const options = useMemo(
-    () => childOptions(students.data ?? [], classes.data ?? []),
-    [students.data, classes.data],
-  )
+  const children = useFinanceChildOptions(open)
+  const options = children.options
   const childId = resolveChild(
     options.map((option) => option.id),
     selected,
@@ -55,9 +50,9 @@ export default function ParentContracts() {
   return (
     <Screen>
       <T muted>Eğitim sözleşmeleri, sürümleri ve onay durumu.</T>
-      {students.error ? (
-        <QueryError error={students.error} onRetry={() => void students.refetch()} />
-      ) : !students.data ? (
+      {children.error ? (
+        <QueryError error={children.error} onRetry={children.retry} />
+      ) : children.loading ? (
         <ListLoading label="Çocuklarınız yükleniyor…" />
       ) : !childId ? (
         <Empty title="Bağlı öğrenci yok" text="Hesabınıza bağlı öğrenci kaydı bulunamadı." />

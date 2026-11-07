@@ -94,7 +94,8 @@ export async function listRenewalCandidatesFor(
     limit: query.pageSize,
   })
   const studentIds = rows.map((row) => row.id)
-  // Kardeş kaybı (DOM-FIN-023) velinin öteki öğrencisine bakar; onlar da yüklenir.
+  // Kardeş kaybı (DOM-FIN-023) velinin öteki öğrencisinin yenileme yılındaki sözleşmesine bakar
+  // (DOM-FIN-022, K-22); onlar ve sözleşmeleri de yüklenir.
   const family = await loadStudentFamilies(ctx.db, ctx.institutionId, studentIds)
   const scope = [{ kind: 'equals' as const, field: 'studentId', values: studentIds }]
   const items = await runReadOnly(ctx, {
@@ -103,7 +104,7 @@ export async function listRenewalCandidatesFor(
     stores: FINANCE_TABLE_STORES,
     loadScope: {
       students: { ids: family },
-      contracts: { match: scope },
+      contracts: { match: [{ kind: 'equals' as const, field: 'studentId', values: family }] },
       renewals: { match: scope },
     },
     load: async (tx) => {
@@ -142,7 +143,7 @@ export async function listRenewalCandidatesFor(
 export async function previewRenewalBulkFor(ctx: ServiceContext, input: unknown) {
   const data = renewalBulkPreviewSchema.parse(input)
   const studentIds = data.rows.map((row) => row.studentId)
-  const contractStudents = await renewalContractStudents(ctx, studentIds, data.discounts)
+  const contractStudents = await renewalContractStudents(ctx, studentIds)
   return runReadOnly(ctx, {
     action: 'renewal.bulk_preview',
     collections: SPEC.collections,

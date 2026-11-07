@@ -120,4 +120,17 @@ describe('ON-078 IST-124 mobil ekran kaydı satırları', () => {
     assert.match(source, /accessibilityLiveRegion="polite"/)
     assert.match(source, /'Taksitler güncelleniyor…'/)
   })
+
+  test('ON-323, ON-078: dekont listesi tazelenirken satırlar soluk ve meşgul, tazeleme duyurulur', () => {
+    const url = new URL(
+      '../apps/mobile/src/api/screens/finance-parent-receipts.tsx',
+      import.meta.url,
+    )
+    const source = readFileSync(url, 'utf8')
+    assert.match(source, /const refreshing = listRefreshing\(payments\)/)
+    assert.match(source, /accessibilityState=\{\{ busy: refreshing \}\}/)
+    assert.match(source, /opacity: refreshing \? /)
+    assert.match(source, /accessibilityLiveRegion="polite"/)
+    assert.match(source, /'Tahsilatlar güncelleniyor…'/)
+  })
 })

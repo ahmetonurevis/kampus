@@ -12,6 +12,7 @@ import {
   invoiceListItem,
   invoiceListQuery,
 } from '../finance-staff.ts'
+import { listRefreshing } from '../finance-list.ts'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useDebouncedValue } from '../use-debounced-value.ts'
@@ -23,13 +24,15 @@ type InvoiceRecord = State['invoices'][number]
 /**
  * Taksitler (web `InvoicesSection` eşi): kurumun taksitleri sunucu sayfalı; arama ve ödeme durumu
  * süzgeci sunucuda uygulanır, durum ve sayfa bellekte korunur. Dokununca ayrıntı açılır, ödenmemiş
- * taksitte tahsilat kaydedilir.
+ * taksitte tahsilat kaydedilir. Yeni sayfa gelene kadar önceki satırlar soluk ve meşgul kalır,
+ * tazeleme duyurulur (ON-323).
  */
 export function FinanceInvoices({ today }: { today: string }) {
   const { state, setSearch, setFilter, setIndex, clear } = useListMemory('finans:taksitler')
   const search = useDebouncedValue(state.search)
   const query = useMemo(() => invoiceListQuery(state, search), [state, search])
   const list = useCollectionList<InvoiceRecord>('invoices', query)
+  const refreshing = listRefreshing(list)
   const total = list.data?.total
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
@@ -61,7 +64,15 @@ export function FinanceInvoices({ today }: { today: string }) {
         )
       ) : (
         <>
-          <View style={{ gap: 10 }} accessibilityRole="list">
+          <T muted size={14} accessibilityLiveRegion="polite">
+            {refreshing ? 'Taksitler güncelleniyor…' : `${String(list.data.total)} taksit`}
+          </T>
+          <View
+            style={{ gap: 10, opacity: refreshing ? 0.55 : 1 }}
+            accessibilityRole="list"
+            accessibilityState={{ busy: refreshing }}
+            aria-busy={refreshing}
+          >
             {list.data.rows.map((row) => {
               const item = invoiceListItem(invoiceRow(row, today))
               return (

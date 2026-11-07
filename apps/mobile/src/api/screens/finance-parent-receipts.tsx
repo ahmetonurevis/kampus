@@ -12,6 +12,7 @@ import { useStudentPayments } from '@kampus/react-shared/use-payment-commands.ts
 import { Badge, Button, Empty, Select, Sheet, T } from '../../ui/components.tsx'
 import { EmptyResults, ListRow, Pagination } from '../../ui/SchoolLayout.tsx'
 import { canOpenParentFinance, pageSlice, PARENT_RECEIPTS_PATH } from '../finance-parent.ts'
+import { listRefreshing } from '../finance-list.ts'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { ListLoading, useApiSession, useListMemory } from '../shell.ts'
 import {
@@ -27,7 +28,8 @@ const FILTER_OPTIONS = FAMILY_PAYMENT_FILTERS.map(({ value, label }) => ({ value
  * Veli Dekontlar (web `veli/dekontlar` eşi; DOM-FIN-030, -033, -050, -052): seçili çocuğun
  * tahsilatları dekont numarasıyla, en yeni önce. İptal edilen tahsilat durumuyla listede kalır;
  * iptal gerekçesi veliye dönmez. Süzgeç (geçerli/iptal) ve sayfa çocuk bazında bellekte korunur.
- * Kapsamı sunucu uygular; dekont PDF'i web'dedir (mobil PDF OG-112).
+ * Kapsamı sunucu uygular; dekont PDF'i web'dedir (mobil PDF OG-112). Tazelenirken satırlar soluk ve
+ * meşgul kalır, tazeleme duyurulur (ON-323).
  */
 export default function ParentReceipts() {
   const session = useApiSession()
@@ -41,6 +43,7 @@ export default function ParentReceipts() {
 
 function ChildReceipts({ childId }: { childId: string }) {
   const payments = useStudentPayments(childId)
+  const refreshing = listRefreshing(payments)
   const { state, setFilter, setIndex, clear } = useListMemory(`veli/dekontlar/${childId}`)
   const rows = useMemo(
     () => filterFamilyPayments(payments.data?.data ?? [], state.filter),
@@ -73,7 +76,15 @@ function ChildReceipts({ childId }: { childId: string }) {
         )
       ) : (
         <>
-          <View style={{ gap: 10 }} accessibilityRole="list">
+          <T muted size={14} accessibilityLiveRegion="polite">
+            {refreshing ? 'Tahsilatlar güncelleniyor…' : `${String(rows.length)} tahsilat`}
+          </T>
+          <View
+            style={{ gap: 10, opacity: refreshing ? 0.55 : 1 }}
+            accessibilityRole="list"
+            accessibilityState={{ busy: refreshing }}
+            aria-busy={refreshing}
+          >
             {pageSlice(rows, index).map((payment) => {
               const item = familyPaymentItem(payment)
               return (

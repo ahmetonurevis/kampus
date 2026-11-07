@@ -139,11 +139,10 @@ describe('öğrenci belgesi (DOM-KAY-027)', () => {
     assert.equal((await audits(b.id)).length, 0)
   })
 
-  test('DOM-KAY-027: geçersiz öğrenci kimliği 400, denetim yazılmaz', async () => {
+  test('DOM-KAY-027: yönlendiricinin sınırını aşan öğrenci kimliği reddedilir, denetim yazılmaz', async () => {
     const a = await institution()
     const response = await get(url('x'.repeat(201)), a.cookie)
-    assert.equal(response.statusCode, 400, response.body)
-    assert.equal(response.json().code, 'validation_failed')
+    assert.equal(response.statusCode, 414, response.body)
     assert.equal((await audits(a.id)).length, 0)
   })
 

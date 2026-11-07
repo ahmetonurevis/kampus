@@ -340,10 +340,12 @@ export function approveFreezeCommand(
   )
 }
 
+/** Yönetici reddi: kapalı listeden ret nedeni zorunludur (K-29, DOM-KAY-024); kayıt değişmez. */
 export function rejectFreezeCommand(
   ctx: ServiceContext,
   freezeId: string,
   expectedVersion: number,
+  input: unknown,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   let result: FreezeView | undefined
@@ -360,11 +362,11 @@ export function rejectFreezeCommand(
           scalars,
           run: (state, { now }) => {
             requireAuthorized(actor, 'enrollment.freezeDecide', {}, state, { now, institutionType })
-            planFreezeRejection({ freeze: toFacts(row) })
+            return planFreezeRejection({ freeze: toFacts(row), input })
           },
         }
       },
-      after: async (tx) => {
+      after: async (tx, plan) => {
         const saved = await updateFreeze(
           tx,
           ctx.institutionId,
@@ -372,6 +374,7 @@ export function rejectFreezeCommand(
           expectedVersion,
           {
             status: 'rejected',
+            rejectionCategory: plan.rejectionCategory,
             decidedByUserId: ctx.actor.userId,
             decidedAt: ctx.now,
           },
@@ -380,6 +383,7 @@ export function rejectFreezeCommand(
         if (!saved) throw new ConflictError()
         await auditWork(tx, ctx, 'enrollment.freeze.reject', { type: ENTITY, id: freezeId }, [
           'status',
+          'rejectionCategory',
         ])
         result = await viewOf(tx, ctx, freezeId)
       },

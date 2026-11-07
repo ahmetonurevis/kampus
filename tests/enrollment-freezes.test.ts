@@ -10,6 +10,8 @@ import {
   daysBetween,
   FREEZE_REASON_LABELS,
   FREEZE_REASONS,
+  FREEZE_REJECTION_CATEGORIES,
+  FREEZE_REJECTION_CATEGORY_LABELS,
   FREEZE_TOTAL_MAX_DAYS,
   freezeFormSchema,
   freezePhase,
@@ -23,6 +25,7 @@ import {
   planFreezeRejection,
   planFreezeRequest,
   planFreezeReturn,
+  rejectFreezeSchema,
   requestFreezeSchema,
   type FreezeFacts,
 } from '../packages/school-core/src/lib/enrollment-freezes.ts'
@@ -267,9 +270,57 @@ test('DOM-DIL-052: onay koşulları güncel veriyle denetler, karara bağlanmı�
     planFreezeApproval({ ...base, freeze: { ...pending, status: 'approved' } }),
   )
   rejectsWith('enrollment_freeze_decided', () =>
-    planFreezeRejection({ freeze: { status: 'rejected' } }),
+    planFreezeRejection({
+      freeze: { status: 'rejected' },
+      input: { rejectionCategory: 'other' },
+    }),
   )
-  assert.doesNotThrow(() => planFreezeRejection({ freeze: pending }))
+  assert.doesNotThrow(() =>
+    planFreezeRejection({ freeze: pending, input: { rejectionCategory: 'other' } }),
+  )
+})
+
+test('DOM-KAY-024, K-29: ret nedeni kapalı listedir, Türkçe etiketlidir', () => {
+  assert.deepEqual(FREEZE_REJECTION_CATEGORIES, [
+    'missing_document',
+    'period_exceeded',
+    'course_boundary',
+    'other',
+  ])
+  assert.deepEqual(FREEZE_REJECTION_CATEGORY_LABELS, {
+    missing_document: 'Belge eksik',
+    period_exceeded: 'Süre aşıldı',
+    course_boundary: 'Kur sınırı',
+    other: 'Diğer',
+  })
+  for (const rejectionCategory of FREEZE_REJECTION_CATEGORIES)
+    assert.deepEqual(planFreezeRejection({ freeze: freeze(), input: { rejectionCategory } }), {
+      rejectionCategory,
+    })
+})
+
+test('DOM-KAY-024, K-29: eksik ya da geçersiz ret nedeni Türkçe hatayla reddedilir', () => {
+  for (const input of [
+    {},
+    { rejectionCategory: '' },
+    { rejectionCategory: null },
+    { rejectionCategory: 'health' },
+  ]) {
+    const parsed = rejectFreezeSchema.safeParse(input)
+    assert.equal(parsed.success, false, JSON.stringify(input))
+    assert.equal(parsed.error?.issues[0]?.message, 'Ret nedenini seçin.')
+    assert.throws(() => planFreezeRejection({ freeze: freeze(), input }), { name: 'ZodError' })
+  }
+})
+
+test('K-20, K-29: ret gövdesinde serbest metin alanı reddedilir', () => {
+  for (const field of ['note', 'decisionNote', 'reasonNote', 'diagnosis'])
+    assert.equal(
+      rejectFreezeSchema.safeParse({ rejectionCategory: 'other', [field]: 'Kalp ameliyatı' })
+        .success,
+      false,
+      field,
+    )
 })
 
 test('DOM-DIL-052: aşama saklanmaz, durumdan ve tarihlerden türetilir', () => {

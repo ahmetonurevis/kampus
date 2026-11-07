@@ -2947,7 +2947,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt dondurmayı reddet
-         * @description Yönetici reddeder; gövde almaz, serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.
+         * @description Yönetici kapalı listeden ret nedeni seçerek reddeder (K-29): `missing_document`, `period_exceeded`, `course_boundary`, `other`. Kategori zorunludur, kayda yazılır ve talep eden kursiyer, veli ya da personel yanıtında görünür. Eksik ya da geçersiz kategori ve bilinmeyen alan 400; serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.
          */
         post: operations["rejectEnrollmentFreeze"];
         delete?: never;
@@ -32290,6 +32290,8 @@ export interface operations {
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
                             decidedAt: string | null;
+                            /** @description Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29) */
+                            rejectionCategory: ("missing_document" | "period_exceeded" | "course_boundary" | "other") | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32442,6 +32444,8 @@ export interface operations {
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
                             decidedAt: string | null;
+                            /** @description Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29) */
+                            rejectionCategory: ("missing_document" | "period_exceeded" | "course_boundary" | "other") | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32580,6 +32584,8 @@ export interface operations {
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
                             decidedAt: string | null;
+                            /** @description Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29) */
+                            rejectionCategory: ("missing_document" | "period_exceeded" | "course_boundary" | "other") | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32723,6 +32729,8 @@ export interface operations {
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
                             decidedAt: string | null;
+                            /** @description Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29) */
+                            rejectionCategory: ("missing_document" | "period_exceeded" | "course_boundary" | "other") | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32832,7 +32840,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    rejectionCategory: "missing_document" | "period_exceeded" | "course_boundary" | "other";
+                };
+            };
+        };
         responses: {
             /** @description Default Response */
             200: {
@@ -32866,6 +32881,8 @@ export interface operations {
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
                             decidedAt: string | null;
+                            /** @description Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29) */
+                            rejectionCategory: ("missing_document" | "period_exceeded" | "course_boundary" | "other") | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -33009,6 +33026,8 @@ export interface operations {
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
                             decidedAt: string | null;
+                            /** @description Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29) */
+                            rejectionCategory: ("missing_document" | "period_exceeded" | "course_boundary" | "other") | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */

@@ -1477,6 +1477,58 @@ test.describe('kayıt dondurma', () => {
     await expect(detail.getByText('Gerekçe')).toHaveCount(0)
   })
 
+  test('DOM-KAY-024, K-29: ret nedeni listeden zorunlu seçilir, kayda yazılır, ayrıntıda görünür', async ({
+    page,
+    tenant,
+    loginAs,
+    api,
+  }) => {
+    const school = await tenant({ type: 'language_school', roles: ['onburo'], students: ['s1'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(FREEZE_URL)
+    const area = section(page)
+    await area.getByRole('button', { name: 'Dondurma talebi aç' }).click()
+    const form = page.getByRole('dialog', { name: 'Dondurma talebi aç' })
+    await form.getByLabel('Kursiyer').selectOption('s1')
+    await form.getByLabel('Planlanan dönüş').fill(dayAfter(60))
+    await form.getByRole('button', { name: 'Talebi aç' }).click()
+    await expect(toast(page, 'Dondurma talebi açıldı.')).toBeVisible()
+
+    await area.getByRole('button', { name: /dondurmasını reddet$/ }).click()
+    const decision = page.getByRole('dialog', { name: 'Dondurmayı reddet' })
+    // Yalnız kapalı liste: serbest metin alanı yok, varsayılan seçim yok.
+    await expect(decision.getByRole('textbox')).toHaveCount(0)
+    const category = decision.getByLabel('Ret nedeni')
+    await expect(category.getByRole('option')).toHaveText([
+      'Ret nedeni seçin',
+      'Belge eksik',
+      'Süre aşıldı',
+      'Kur sınırı',
+      'Diğer',
+    ])
+    await decision.getByRole('button', { name: 'Reddet' }).click()
+    await expect(decision.getByText('Ret nedenini seçin.')).toBeVisible()
+    await expect(decision).toBeVisible()
+
+    await category.selectOption({ label: 'Belge eksik' })
+    await decision.getByRole('button', { name: 'Reddet' }).click()
+    await expect(toast(page, 'Dondurma reddedildi.')).toBeVisible()
+    await expect(decision).toBeHidden()
+    await expect(area.getByText('Reddedildi')).toBeVisible()
+
+    await area.getByRole('button', { name: /dondurma ayrıntısı$/ }).click()
+    const detail = page.getByRole('dialog', { name: 'Dondurma ayrıntısı' })
+    await expect(detail.getByText('Ret nedeni')).toBeVisible()
+    await expect(detail.getByText('Belge eksik')).toBeVisible()
+
+    // Kalıcılık API sorgusuyla: talep eden personel aynı kategoriyi okur.
+    const clerk = await api(school.user('onburo'))
+    const listed = await clerk.get('/api/v1/finance/enrollment-freezes?status=rejected')
+    expect(listed.status).toBe(200)
+    const rows = (listed.body as { data: { rejectionCategory: string | null }[] }).data
+    expect(rows.map((row) => row.rejectionCategory)).toEqual(['missing_document'])
+  })
+
   test('DOM-DIL-052: okulda kayıt dondurma bölümü yoktur', async ({ page, tenant, loginAs }) => {
     const school = await tenant({ roles: ['onburo'], students: ['s1'] })
     await loginAs(school.user('onburo'))

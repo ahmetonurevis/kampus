@@ -24,6 +24,7 @@ import {
  *
  * - Serbest metin yoktur (K-20, KVKK m.6): neden yalnız kategoridir, sağlık nedeni "belgeli neden"
  *   altında kalır; talepte, kararda ve belgede yazılacak metin alanı bulunmaz.
+ * - Ret nedeni kapalı listedir ve zorunludur (K-29): talep eden sonucun nedenini görür, ayrıntı yazılmaz.
  * - Başlangıç kur sınırındadır; kur ortası (`isMidCourse`) yalnız belge beyanıyla olur. Belgenin
  *   kendisi ve tanımı saklanmaz: yalnız alındı beyanı tutulur.
  * - Etki başlangıç gününde doğar (`applyFreezeStart`): ileri tarihli onay günlük işle başlar.
@@ -52,6 +53,21 @@ export const FREEZE_REASON_LABELS: Readonly<Record<FreezeReason, string>> = {
   military: 'Askerlik',
   relocation: 'Taşınma',
   work_school_schedule: 'İş veya okul takvimi',
+  other: 'Diğer',
+}
+
+/** Ret nedeni kapalı listedir (K-29); serbest metin yine yoktur, sağlık ayrıntısı taşımaz (K-20). */
+export const FREEZE_REJECTION_CATEGORIES = [
+  'missing_document',
+  'period_exceeded',
+  'course_boundary',
+  'other',
+] as const
+export type FreezeRejectionCategory = (typeof FREEZE_REJECTION_CATEGORIES)[number]
+export const FREEZE_REJECTION_CATEGORY_LABELS: Readonly<Record<FreezeRejectionCategory, string>> = {
+  missing_document: 'Belge eksik',
+  period_exceeded: 'Süre aşıldı',
+  course_boundary: 'Kur sınırı',
   other: 'Diğer',
 }
 
@@ -106,6 +122,12 @@ export const freezeFormSchema = z.object({
   documentReceived: z.boolean(),
 })
 export type FreezeFormValues = z.output<typeof freezeFormSchema>
+
+/** Ret gövdesi ve karar formu: kategori zorunlu, bilinmeyen alan reddedilir (K-29, K-20). */
+export const rejectFreezeSchema = z.strictObject({
+  rejectionCategory: z.enum(FREEZE_REJECTION_CATEGORIES, 'Ret nedenini seçin.'),
+})
+export type RejectFreezeInput = z.input<typeof rejectFreezeSchema>
 
 /** Kuralın okuduğu dondurma satırı (`enrollment_freezes`). */
 export type FreezeFacts = {
@@ -283,8 +305,14 @@ export function planFreezeApproval(context: {
   return { midCourse, startsNow: context.freeze.startDate <= context.today }
 }
 
-export function planFreezeRejection(context: { freeze: Pick<FreezeFacts, 'status'> }): void {
+/** Ret (K-29): kategori saklanır; kursiyerin kaydı değişmez. */
+export function planFreezeRejection(context: {
+  freeze: Pick<FreezeFacts, 'status'>
+  input: unknown
+}): z.output<typeof rejectFreezeSchema> {
+  const data = rejectFreezeSchema.parse(context.input)
   assertRequested(context.freeze)
+  return data
 }
 
 /** Etki doğarken dondurulacak gruplar: kapanmamış grubun aktif üyelikleri. */

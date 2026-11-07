@@ -1,5 +1,5 @@
 {
-  "id": "a20e70e9-092d-4ef1-bfe7-f7a685c4e0f4",
+  "id": "35164737-c7d1-4164-b03c-72f4d73e6aaa",
   "prevId": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "version": "7",
   "dialect": "postgresql",
@@ -5154,6 +5154,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "rejection_category": {
+          "name": "rejection_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "started_at": {
           "name": "started_at",
           "type": "timestamp with time zone",
@@ -5317,6 +5323,14 @@
         "enrollment_freezes_reason_check": {
           "name": "enrollment_freezes_reason_check",
           "value": "\"enrollment_freezes\".\"reason\" in ('documented', 'military', 'relocation', 'work_school_schedule', 'other')"
+        },
+        "enrollment_freezes_rejection_category_check": {
+          "name": "enrollment_freezes_rejection_category_check",
+          "value": "\"enrollment_freezes\".\"rejection_category\" in ('missing_document', 'period_exceeded', 'course_boundary', 'other')"
+        },
+        "enrollment_freezes_rejection_check": {
+          "name": "enrollment_freezes_rejection_check",
+          "value": "(\"enrollment_freezes\".\"rejection_category\" is not null) = (\"enrollment_freezes\".\"status\" = 'rejected')"
         },
         "enrollment_freezes_dates_check": {
           "name": "enrollment_freezes_dates_check",

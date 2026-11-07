@@ -120,6 +120,9 @@ export const REDACTED_PATHS = [
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
+  // kvkk: Ç — kayıt dondurmada ret nedeni kategorisi (K-29, DOM-KAY-024).
+  'rejectionCategory',
+  '*.rejectionCategory',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).

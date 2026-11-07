@@ -14,8 +14,10 @@ import {
 
 import {
   FREEZE_REASONS,
+  FREEZE_REJECTION_CATEGORIES,
   FREEZE_STATUSES,
   type FreezeReason,
+  type FreezeRejectionCategory,
   type FreezeStatus,
 } from '@kampus/school-core/lib/enrollment-freezes.ts'
 
@@ -30,7 +32,8 @@ import { oneOf, requiredColumns } from './columns.ts'
  * - `started_at` etkinin doğduğu andır; onay ileri tarihliyse günlük iş yazar. Kayıt durumu öğrencinin
  *   `frozenAt` bayrağından türetilir (DOM-KAY-026); bayrak bu sütunla aynı transaction'da yazılır.
  * - Serbest metin kolonu yoktur (K-20, KVKK m.6): neden yalnız kategoridir, sağlık nedeni `documented`
- *   altında kalır; karar ve belge için de yazılacak metin alanı bulunmaz.
+ *   altında kalır; karar ve belge için de yazılacak metin alanı bulunmaz. Ret nedeni kapalı listedir
+ *   (`rejection_category`, K-29), yalnız reddedilen kayıtta doludur.
  * - Belgenin kendisi ve tanımı tutulmaz (kural yalnız alındı beyanı ister): `document_received`.
  * - Aşama (`scheduled`, `frozen`, `overdue`) saklanmaz, durumdan ve tarihlerden türetilir.
  * - Kursiyerin tek açık kaydı olur: tekil kısmi indeks, eşzamanlı talebin son savunmasıdır.
@@ -59,6 +62,8 @@ export const enrollmentFreezes = pgTable(
     // kvkk: K
     decidedByUserId: text('decided_by_user_id'),
     decidedAt: timestamp('decided_at', { withTimezone: true }),
+    // kvkk: Ç (reşit olmayan kursiyerin kayıt kararı; sağlık ayrıntısı taşımaz, K-20)
+    rejectionCategory: text('rejection_category').$type<FreezeRejectionCategory>(),
     startedAt: timestamp('started_at', { withTimezone: true }),
     /** Dönüşte eski grup uygun değildi; kursiyer yeniden yerleştirilir. */
     needsPlacement: boolean('needs_placement').notNull().default(false),
@@ -68,6 +73,15 @@ export const enrollmentFreezes = pgTable(
     primaryKey({ name: 'enrollment_freezes_pkey', columns: [table.institutionId, table.id] }),
     check('enrollment_freezes_status_check', oneOf(table.status, FREEZE_STATUSES)),
     check('enrollment_freezes_reason_check', oneOf(table.reason, FREEZE_REASONS)),
+    check(
+      'enrollment_freezes_rejection_category_check',
+      oneOf(table.rejectionCategory, FREEZE_REJECTION_CATEGORIES),
+    ),
+    // Ret nedeni zorunludur ve yalnız reddedilen kayıtta bulunur (K-29).
+    check(
+      'enrollment_freezes_rejection_check',
+      sql`(${table.rejectionCategory} is not null) = (${table.status} = 'rejected')`,
+    ),
     check('enrollment_freezes_dates_check', sql`${table.returnDate} > ${table.startDate}`),
     // Kur ortası dondurma yalnız belgeli nedenle olur (DOM-DIL-052).
     check(

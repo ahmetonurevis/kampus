@@ -1,6 +1,7 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 import type {
   FreezeStatus,
+  RejectFreezeInput,
   RequestFreezeInput,
 } from '@kampus/school-core/lib/enrollment-freezes.ts'
 
@@ -12,6 +13,7 @@ import { useApiQuery } from './use-api-query.ts'
 
 // Kayıt dondurma kancaları (`/finance/enrollment-freezes`; DOM-DIL-052, DOM-KAY-024, -026, IST-084).
 // Onay ve dönüş grup doluluğunu ve öğrencinin kayıt durumunu değiştirir: ikisi de tazelenir.
+// Ret kapalı listeden kategori ister (K-29); onay gövde almaz.
 
 export type EnrollmentFreeze =
   operations['listEnrollmentFreezes']['responses'][200]['content']['application/json']['data'][number]
@@ -61,12 +63,17 @@ export function useApproveEnrollmentFreeze() {
 
 export function useRejectEnrollmentFreeze() {
   return useApiCommand({
-    request: (client, input: { freezeId: string; version: number }, headers) =>
+    request: (
+      client,
+      { freezeId, rejectionCategory }: RejectFreezeInput & { freezeId: string; version: number },
+      headers,
+    ) =>
       client.POST('/api/v1/finance/enrollment-freezes/{freezeId}/reject', {
         params: {
-          path: { freezeId: input.freezeId },
+          path: { freezeId },
           header: { ...headers, 'if-match': requireIfMatch(headers) },
         },
+        body: { rejectionCategory },
       }),
     invalidates: [FREEZES_KEY],
     version: (input) => input.version,

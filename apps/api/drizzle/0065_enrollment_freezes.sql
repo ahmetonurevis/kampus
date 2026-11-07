@@ -12,6 +12,7 @@ CREATE TABLE "enrollment_freezes" (
 	"requested_by_user_id" text NOT NULL,
 	"decided_by_user_id" text,
 	"decided_at" timestamp with time zone,
+	"rejection_category" text,
 	"started_at" timestamp with time zone,
 	"needs_placement" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -21,6 +22,8 @@ CREATE TABLE "enrollment_freezes" (
 	CONSTRAINT "enrollment_freezes_pkey" PRIMARY KEY("institution_id","id"),
 	CONSTRAINT "enrollment_freezes_status_check" CHECK ("enrollment_freezes"."status" in ('requested', 'approved', 'rejected', 'ended', 'cancelled')),
 	CONSTRAINT "enrollment_freezes_reason_check" CHECK ("enrollment_freezes"."reason" in ('documented', 'military', 'relocation', 'work_school_schedule', 'other')),
+	CONSTRAINT "enrollment_freezes_rejection_category_check" CHECK ("enrollment_freezes"."rejection_category" in ('missing_document', 'period_exceeded', 'course_boundary', 'other')),
+	CONSTRAINT "enrollment_freezes_rejection_check" CHECK (("enrollment_freezes"."rejection_category" is not null) = ("enrollment_freezes"."status" = 'rejected')),
 	CONSTRAINT "enrollment_freezes_dates_check" CHECK ("enrollment_freezes"."return_date" > "enrollment_freezes"."start_date"),
 	CONSTRAINT "enrollment_freezes_document_check" CHECK (not "enrollment_freezes"."mid_course" or "enrollment_freezes"."document_received"),
 	CONSTRAINT "enrollment_freezes_decision_check" CHECK (("enrollment_freezes"."decided_at" is null) = ("enrollment_freezes"."decided_by_user_id" is null)
@@ -63,6 +66,8 @@ COMMENT ON COLUMN "enrollment_freezes"."requested_by_user_id" IS 'Talebi açan k
 COMMENT ON COLUMN "enrollment_freezes"."decided_by_user_id" IS 'Kararı veren yönetici; karar gerekçesi serbest metin olarak tutulmaz (K-20).';
 --> statement-breakpoint
 COMMENT ON COLUMN "enrollment_freezes"."decided_at" IS 'Karar anı.';
+--> statement-breakpoint
+COMMENT ON COLUMN "enrollment_freezes"."rejection_category" IS 'Ret nedeni kategorisi (K-29): missing_document (belge eksik), period_exceeded (süre aşıldı), course_boundary (kur sınırı), other (diğer). Yalnız rejected durumunda dolu ve zorunludur; talep edene gösterilir. Serbest metin ve sağlık ayrıntısı tutulmaz (K-20).';
 --> statement-breakpoint
 COMMENT ON COLUMN "enrollment_freezes"."started_at" IS 'Etkinin doğduğu an; öğrencinin frozenAt bayrağıyla aynı işlemde yazılır.';
 --> statement-breakpoint

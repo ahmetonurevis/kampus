@@ -11,8 +11,10 @@ import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
 import {
   FREEZE_PHASES,
   FREEZE_REASONS,
+  FREEZE_REJECTION_CATEGORIES,
   FREEZE_STATUSES,
   freezesAvailableFor,
+  rejectFreezeSchema,
   requestFreezeSchema,
 } from '@kampus/school-core/lib/enrollment-freezes.ts'
 import { GROUP_MEMBER_STATUSES } from '@kampus/school-core/lib/language-groups.ts'
@@ -60,6 +62,10 @@ const freezeSchema = z.object({
   midCourse: z.boolean().describe('Başlangıç kur ortasına denk geliyor; belge bilgisi zorunludur'),
   documentReceived: z.boolean().describe('Belge alındı beyanı; dosya içeriği alınmaz'),
   decidedAt: z.string().nullable(),
+  rejectionCategory: z
+    .enum(FREEZE_REJECTION_CATEGORIES)
+    .nullable()
+    .describe('Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)'),
   startedAt: z.string().nullable().describe('Etkinin doğduğu an'),
   needsPlacement: z.boolean().describe('Dönüşte eski grup uygun değildi; yeniden yerleştirilir'),
   placementRenewalRequired: z
@@ -218,15 +224,16 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
   typed.post(
     `${BASE}/:freezeId/reject`,
     {
-      preValidation: [...guard('enrollment.freezeDecide'), requireIfMatch()],
+      preValidation: [...guard('enrollment.freezeDecide'), requireIfMatch(), captureInput()],
       schema: {
         operationId: 'rejectEnrollmentFreeze',
         tags: ['enrollment-freezes'],
         summary: 'Kayıt dondurmayı reddet',
         description:
-          'Yönetici reddeder; gövde almaz, serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.',
+          'Yönetici kapalı listeden ret nedeni seçerek reddeder (K-29): `missing_document`, `period_exceeded`, `course_boundary`, `other`. Kategori zorunludur, kayda yazılır ve talep eden kursiyer, veli ya da personel yanıtında görünür. Eksik ya da geçersiz kategori ve bilinmeyen alan 400; serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.',
         headers: versionedHeaders,
         params: freezeParams,
+        body: rejectFreezeSchema,
         response: { 200: freezeResponseSchema, ...commandErrors },
       },
     },
@@ -235,6 +242,7 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
         contextOf(request),
         request.params.freezeId,
         versionOf(request),
+        request.commandInput,
         options(request, 'optional').idempotency,
       )
       return freezeResponseSchema.parse(sendBody(reply, result))

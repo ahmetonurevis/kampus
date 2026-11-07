@@ -102,6 +102,39 @@ describe('PostgreSQL 16: kayıt dondurma eşzamanlılığı', { skip: PG_SKIP },
     assert.equal(names.includes('reason'), true)
   })
 
+  test('DOM-KAY-024, K-29: kısıt nedensiz reddi ve listede olmayan ret nedenini kabul etmez', async () => {
+    const t = await tenant()
+    const created = await post(t.cookie, BASE, REQUEST)
+    assert.equal(created.statusCode, 201, created.body)
+    const id: string = created.json<Json>().data.id
+    const where = and(eq(enrollmentFreezes.institutionId, t.id), eq(enrollmentFreezes.id, id))
+    const decision = { decidedByUserId: 'u-test', decidedAt: FIXED_NOW }
+    await assert.rejects(
+      db
+        .update(enrollmentFreezes)
+        .set({ status: 'rejected', ...decision })
+        .where(where),
+    )
+    await assert.rejects(
+      db
+        .update(enrollmentFreezes)
+        .set({ status: 'rejected', rejectionCategory: 'health' as never, ...decision })
+        .where(where),
+    )
+    await assert.rejects(
+      db.update(enrollmentFreezes).set({ rejectionCategory: 'other' }).where(where),
+    )
+    const rejected = await post(
+      t.cookie,
+      `${BASE}/${id}/reject`,
+      { rejectionCategory: 'missing_document' },
+      { 'if-match': '"1"' },
+    )
+    assert.equal(rejected.statusCode, 200, rejected.body)
+    const [row] = await db.select().from(enrollmentFreezes).where(where)
+    assert.equal(row?.rejectionCategory, 'missing_document')
+  })
+
   test('DOM-DIL-052: eşzamanlı iki talepten biri açılır, öteki 409', async () => {
     const t = await tenant()
     const responses = await Promise.all([
@@ -124,7 +157,7 @@ describe('PostgreSQL 16: kayıt dondurma eşzamanlılığı', { skip: PG_SKIP },
     const headers = { 'if-match': '"1"' }
     const responses = await Promise.all([
       post(t.cookie, `${BASE}/${id}/approve`, undefined, headers),
-      post(t.cookie, `${BASE}/${id}/reject`, undefined, headers),
+      post(t.cookie, `${BASE}/${id}/reject`, { rejectionCategory: 'other' }, headers),
     ])
     assert.deepEqual(responses.map((item) => item.statusCode).sort(), [200, 409])
     const [row] = await db

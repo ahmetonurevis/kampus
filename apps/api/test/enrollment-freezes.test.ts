@@ -53,6 +53,7 @@ const REQUEST = {
   startDate: '2026-10-20',
   returnDate: '2026-12-20',
 }
+const REJECTION = { rejectionCategory: 'period_exceeded' }
 
 describe('kayıt dondurma uçları', () => {
   let db: Database
@@ -217,6 +218,19 @@ describe('kayıt dondurma uçları', () => {
   const rowsOf = (t: School) =>
     db.select().from(enrollmentFreezes).where(eq(enrollmentFreezes.institutionId, t.id))
   const studentOf = (t: School, id: string) => findRecord(db, t.id, 'students', id)
+  const auditsOf = async (t: School, id: string, action: string) =>
+    (
+      await db
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.institutionId, t.id),
+            eq(auditLog.entityId, id),
+            eq(auditLog.action, action),
+          ),
+        )
+    ).length
   const membersOf = (t: School, groupId: string) =>
     db
       .select()
@@ -274,7 +288,7 @@ describe('kayıt dondurma uçları', () => {
         403,
       )
       assert.equal(
-        (await send('POST', `${url}/reject`, cookie, undefined, version(1))).statusCode,
+        (await send('POST', `${url}/reject`, cookie, REJECTION, version(1))).statusCode,
         403,
       )
     }
@@ -299,7 +313,7 @@ describe('kayıt dondurma uçları', () => {
       404,
     )
     assert.equal(
-      (await send('POST', `${url}/reject`, a.cookie, undefined, version(1))).statusCode,
+      (await send('POST', `${url}/reject`, a.cookie, REJECTION, version(1))).statusCode,
       404,
     )
     assert.equal(
@@ -383,6 +397,7 @@ describe('kayıt dondurma uçları', () => {
     )
     assert.equal(decided.statusCode, 200, decided.body)
     assert.equal(decided.body.includes(detail), false)
+    assert.equal(decided.json<Json>().data.rejectionCategory, null, 'onayda ret nedeni yoktur')
     const stored = await rowOf(t, row.id)
     assert.equal(JSON.stringify(stored).includes(detail), false)
     const audits = await db
@@ -401,6 +416,7 @@ describe('kayıt dondurma uçları', () => {
       'decidedByUserId',
       'institutionId',
       'reason',
+      'rejectionCategory',
       'requestedByUserId',
       'status',
       'studentId',
@@ -494,7 +510,7 @@ describe('kayıt dondurma uçları', () => {
     const groupId = await group(t, ['s-adult'])
     const row = await requested(t, today)
     const url = `${BASE}/${String(row.id)}`
-    const rejected = await send('POST', `${url}/reject`, t.cookie, undefined, version(1))
+    const rejected = await send('POST', `${url}/reject`, t.cookie, REJECTION, version(1))
     assert.equal(rejected.statusCode, 200, rejected.body)
     assert.equal(rejected.json<Json>().data.status, 'rejected')
     assert.equal((await studentOf(t, 's-adult'))?.data.frozenAt, undefined)
@@ -504,10 +520,192 @@ describe('kayıt dondurma uçları', () => {
     assert.equal(again.statusCode, 409)
     assert.equal(again.json<Json>().code, 'enrollment_freeze_decided')
     // Sürüm tutmaz.
-    const stale = await send('POST', `${url}/reject`, t.cookie, undefined, version(1))
+    const stale = await send(
+      'POST',
+      `${url}/reject`,
+      t.cookie,
+      { rejectionCategory: 'other' },
+      version(1),
+    )
     assert.equal(stale.statusCode, 409)
+    assert.equal((await rowOf(t, row.id))?.rejectionCategory, 'period_exceeded')
     // Reddedilenden sonra yeni talep açılabilir.
     assert.equal((await request(t.cookie, today)).statusCode, 201)
+  })
+
+  test('DOM-KAY-024, K-29: eksik ya da geçersiz ret nedeni 400 ve kayıt değişmez', async () => {
+    const t = await school()
+    const row = await requested(t, today)
+    const url = `${BASE}/${String(row.id)}/reject`
+    const before = await rowOf(t, row.id)
+    assert.equal(before?.rejectionCategory, null)
+
+    const missing = await send('POST', url, t.cookie, undefined, version(1))
+    assert.equal(missing.statusCode, 400, missing.body)
+    assert.equal(missing.json<Json>().code, 'validation_failed')
+    for (const body of [
+      {},
+      { rejectionCategory: '' },
+      { rejectionCategory: null },
+      { rejectionCategory: 'health' },
+      { rejectionCategory: 'Belge eksik' },
+    ]) {
+      const response = await send('POST', url, t.cookie, body, version(1))
+      assert.equal(response.statusCode, 400, JSON.stringify(body))
+      const [issue] = response.json<Json>().issues
+      assert.deepEqual(issue.path, ['rejectionCategory'])
+      assert.equal(issue.message, 'Ret nedenini seçin.')
+    }
+    assert.deepEqual(await rowOf(t, row.id), before)
+    assert.equal(await auditsOf(t, row.id, 'enrollment.freeze.reject'), 0)
+    assert.equal((await studentOf(t, 's-adult'))?.data.frozenAt, undefined)
+  })
+
+  test('K-20, K-29: ret gövdesinde serbest metin 400, hiçbir yere yazılmaz', async () => {
+    const t = await school()
+    const row = await requested(t)
+    const url = `${BASE}/${String(row.id)}/reject`
+    const before = await rowOf(t, row.id)
+    const detail = 'Kalp ameliyatı raporu eksik'
+    for (const field of ['note', 'decisionNote', 'reasonNote', 'documentNote', 'text']) {
+      const response = await send(
+        'POST',
+        url,
+        t.cookie,
+        { ...REJECTION, [field]: detail },
+        version(1),
+      )
+      assert.equal(response.statusCode, 400, field)
+      assert.equal(response.body.includes(detail), false, field)
+    }
+    assert.equal(
+      (await send('POST', url, t.cookie, { rejectionCategory: detail }, version(1))).statusCode,
+      400,
+    )
+    assert.deepEqual(await rowOf(t, row.id), before)
+    assert.equal(await auditsOf(t, row.id, 'enrollment.freeze.reject'), 0)
+    assert.equal(logs.join('\n').includes(detail), false, 'ayrıntı loglanmaz')
+  })
+
+  test('DOM-KAY-024, K-29: ret nedeni kalıcıdır, denetime yalnız alan adı düşer', async () => {
+    const t = await school()
+    for (const rejectionCategory of [
+      'missing_document',
+      'period_exceeded',
+      'course_boundary',
+      'other',
+    ]) {
+      const row = await requested(t)
+      const rejected = await send(
+        'POST',
+        `${BASE}/${String(row.id)}/reject`,
+        t.cookie,
+        { rejectionCategory },
+        version(1),
+      )
+      assert.equal(rejected.statusCode, 200, rejected.body)
+      const body = rejected.json<Json>().data
+      assert.equal(body.status, 'rejected')
+      assert.equal(body.phase, 'rejected')
+      assert.equal(body.rejectionCategory, rejectionCategory)
+      const stored = await rowOf(t, row.id)
+      assert.equal(stored?.status, 'rejected')
+      assert.equal(stored?.rejectionCategory, rejectionCategory)
+      assert.equal(stored?.version, 2)
+      assert.ok(stored?.decidedAt)
+
+      const audits = await db
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.institutionId, t.id),
+            eq(auditLog.entityId, row.id),
+            eq(auditLog.action, 'enrollment.freeze.reject'),
+          ),
+        )
+      assert.equal(audits.length, 1)
+      assert.equal(JSON.stringify(audits[0]?.changes).includes('rejectionCategory'), true)
+      assert.equal(JSON.stringify(audits[0]?.changes).includes(rejectionCategory), false)
+    }
+  })
+
+  test('DOM-KAY-024, K-29: ret nedeni talep eden kursiyer, veli ve personel yanıtında görünür', async () => {
+    const t = await school()
+    const adult = await learner(t, 's-adult')
+    const parent = await guardian(t, 's-minor')
+    const clerk = await member(t, 'onburo')
+
+    const opened = new Map<string, { cookie: string; id: string }>()
+    for (const [name, cookie, studentId] of [
+      ['kursiyer', adult, 's-adult'],
+      ['veli', parent, 's-minor'],
+    ] as const) {
+      const created = await request(cookie, { ...REQUEST, studentId })
+      assert.equal(created.statusCode, 201, created.body)
+      const id: string = created.json<Json>().data.id
+      assert.equal(created.json<Json>().data.rejectionCategory, null)
+      opened.set(name, { cookie, id })
+      const rejected = await send(
+        'POST',
+        `${BASE}/${id}/reject`,
+        t.cookie,
+        { rejectionCategory: 'course_boundary' },
+        version(1),
+      )
+      assert.equal(rejected.statusCode, 200, rejected.body)
+    }
+    for (const [name, { cookie, id }] of opened) {
+      const detail = await send('GET', `${BASE}/${id}`, cookie)
+      assert.equal(detail.statusCode, 200, name)
+      assert.equal(detail.json<Json>().data.rejectionCategory, 'course_boundary', name)
+      const list = (await send('GET', BASE, cookie)).json<Json>()
+      assert.equal(list.meta.total, 1, name)
+      assert.equal(list.data[0].rejectionCategory, 'course_boundary', name)
+    }
+    const staff = (await send('GET', `${BASE}?status=rejected`, clerk)).json<Json>()
+    assert.equal(staff.meta.total, 2)
+    for (const item of staff.data) assert.equal(item.rejectionCategory, 'course_boundary')
+  })
+
+  test('DOM-KAY-024, K-29: aynı anahtarla ret ilk yanıtı tekrarlar', async () => {
+    const t = await school()
+    const row = await requested(t)
+    const url = `${BASE}/${String(row.id)}/reject`
+    const headers = { ...version(1), 'idempotency-key': 'test-freeze-reject-1' }
+    const first = await send('POST', url, t.cookie, REJECTION, headers)
+    assert.equal(first.statusCode, 200, first.body)
+    const replay = await send('POST', url, t.cookie, REJECTION, headers)
+    assert.equal(replay.statusCode, 200)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.equal(replay.json<Json>().data.rejectionCategory, REJECTION.rejectionCategory)
+    assert.equal(await auditsOf(t, row.id, 'enrollment.freeze.reject'), 1)
+  })
+
+  test('DOM-KAY-024, K-29: kısıt ret nedenini yalnız reddedilen kayıtta ve listeden kabul eder', async () => {
+    const t = await school()
+    const row = await requested(t)
+    const where = and(eq(enrollmentFreezes.institutionId, t.id), eq(enrollmentFreezes.id, row.id))
+    const decision = { decidedByUserId: 'u-test', decidedAt: FIXED_NOW }
+    await assert.rejects(
+      db
+        .update(enrollmentFreezes)
+        .set({ status: 'rejected', ...decision })
+        .where(where),
+      'nedensiz ret',
+    )
+    await assert.rejects(
+      db.update(enrollmentFreezes).set({ rejectionCategory: 'other' }).where(where),
+      'bekleyen talepte ret nedeni',
+    )
+    await assert.rejects(
+      db
+        .update(enrollmentFreezes)
+        .set({ status: 'rejected', rejectionCategory: 'health' as never, ...decision })
+        .where(where),
+      'listede olmayan kategori',
+    )
+    assert.equal((await rowOf(t, row.id))?.status, 'requested')
   })
 
   test('DOM-DIL-052: mükerrer talep 409; aynı anahtar ilk yanıtı tekrarlar', async () => {

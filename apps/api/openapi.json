@@ -68687,6 +68687,23 @@
                               "null"
                             ]
                           },
+                          "rejectionCategory": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "missing_document",
+                                  "period_exceeded",
+                                  "course_boundary",
+                                  "other"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)"
+                          },
                           "startedAt": {
                             "description": "Etkinin doğduğu an",
                             "type": [
@@ -68758,6 +68775,7 @@
                           "midCourse",
                           "documentReceived",
                           "decidedAt",
+                          "rejectionCategory",
                           "startedAt",
                           "needsPlacement",
                           "placementRenewalRequired",
@@ -69013,6 +69031,23 @@
                             "null"
                           ]
                         },
+                        "rejectionCategory": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "missing_document",
+                                "period_exceeded",
+                                "course_boundary",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)"
+                        },
                         "startedAt": {
                           "description": "Etkinin doğduğu an",
                           "type": [
@@ -69084,6 +69119,7 @@
                         "midCourse",
                         "documentReceived",
                         "decidedAt",
+                        "rejectionCategory",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -69290,6 +69326,23 @@
                             "null"
                           ]
                         },
+                        "rejectionCategory": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "missing_document",
+                                "period_exceeded",
+                                "course_boundary",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)"
+                        },
                         "startedAt": {
                           "description": "Etkinin doğduğu an",
                           "type": [
@@ -69361,6 +69414,7 @@
                         "midCourse",
                         "documentReceived",
                         "decidedAt",
+                        "rejectionCategory",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -69587,6 +69641,23 @@
                             "null"
                           ]
                         },
+                        "rejectionCategory": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "missing_document",
+                                "period_exceeded",
+                                "course_boundary",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)"
+                        },
                         "startedAt": {
                           "description": "Etkinin doğduğu an",
                           "type": [
@@ -69658,6 +69729,7 @@
                         "midCourse",
                         "documentReceived",
                         "decidedAt",
+                        "rejectionCategory",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -69767,7 +69839,32 @@
         "tags": [
           "enrollment-freezes"
         ],
-        "description": "Yönetici reddeder; gövde almaz, serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.",
+        "description": "Yönetici kapalı listeden ret nedeni seçerek reddeder (K-29): `missing_document`, `period_exceeded`, `course_boundary`, `other`. Kategori zorunludur, kayda yazılır ve talep eden kursiyer, veli ya da personel yanıtında görünür. Eksik ya da geçersiz kategori ve bilinmeyen alan 400; serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rejectionCategory": {
+                    "type": "string",
+                    "enum": [
+                      "missing_document",
+                      "period_exceeded",
+                      "course_boundary",
+                      "other"
+                    ]
+                  }
+                },
+                "required": [
+                  "rejectionCategory"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "schema": {
@@ -69884,6 +69981,23 @@
                             "null"
                           ]
                         },
+                        "rejectionCategory": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "missing_document",
+                                "period_exceeded",
+                                "course_boundary",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)"
+                        },
                         "startedAt": {
                           "description": "Etkinin doğduğu an",
                           "type": [
@@ -69955,6 +70069,7 @@
                         "midCourse",
                         "documentReceived",
                         "decidedAt",
+                        "rejectionCategory",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -70181,6 +70296,23 @@
                             "null"
                           ]
                         },
+                        "rejectionCategory": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "missing_document",
+                                "period_exceeded",
+                                "course_boundary",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ret nedeni kategorisi; yalnız reddedilen kayıtta dolu, serbest metin yok (K-29)"
+                        },
                         "startedAt": {
                           "description": "Etkinin doğduğu an",
                           "type": [
@@ -70252,6 +70384,7 @@
                         "midCourse",
                         "documentReceived",
                         "decidedAt",
+                        "rejectionCategory",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",

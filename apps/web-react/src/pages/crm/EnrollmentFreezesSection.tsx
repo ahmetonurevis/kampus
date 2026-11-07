@@ -6,8 +6,12 @@ import {
   FREEZE_PHASE_LABELS,
   FREEZE_REASON_LABELS,
   FREEZE_REASONS,
+  FREEZE_REJECTION_CATEGORIES,
+  FREEZE_REJECTION_CATEGORY_LABELS,
   freezeFormSchema,
+  rejectFreezeSchema,
   type FreezeFormValues,
+  type RejectFreezeInput,
 } from '@kampus/school-core/lib/enrollment-freezes.ts'
 import { ENROLLMENT_STATUS_LABELS } from '@kampus/school-core/lib/enrollment-status.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
@@ -41,13 +45,14 @@ type Row = EnrollmentFreeze & { name: string; reasonLabel: string; phaseLabel: s
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['name', 'returnDate', 'phaseLabel']
 const REQUEST_FORM = 'dondurma-formu'
+const REJECTION_FORM = 'dondurma-ret-formu'
 
 const shortDate = (day: string) => dateLabel(day, { year: 'numeric' })
 
 /**
  * Kayıt dondurma (DOM-DIL-052, DOM-KAY-024, -026; IST-084): yalnız dil okulunda görünür. Ön büro ve
  * yönetici talep açar ve dönüşü işler, kararı yönetici verir. Neden yalnız kategoridir, serbest metin
- * alanı yoktur (K-20). Kur ortası belge alındı beyanı ister; dosya alınmaz. Taksit planı burada değişmez, MEBBİS'e bir şey işlenmez (H-24, doğrulanmalı).
+ * alanı yoktur (K-20); ret nedeni kapalı listeden seçilir (K-29). Kur ortası belge alındı beyanı ister; dosya alınmaz. Taksit planı burada değişmez, MEBBİS'e bir şey işlenmez (H-24, doğrulanmalı).
  */
 export function EnrollmentFreezesSection() {
   const { session } = useAuth()
@@ -170,12 +175,11 @@ export function EnrollmentFreezesSection() {
       />
       {requesting ? <RequestModal onClose={() => setRequesting(false)} /> : null}
       {viewing ? <DetailModal row={viewing} onClose={() => setViewing(null)} /> : null}
-      {deciding ? (
-        <DecisionModal
-          row={deciding.row}
-          approve={deciding.approve}
-          onClose={() => setDeciding(null)}
-        />
+      {deciding?.approve ? (
+        <ApprovalModal row={deciding.row} onClose={() => setDeciding(null)} />
+      ) : null}
+      {deciding && !deciding.approve ? (
+        <RejectionModal row={deciding.row} onClose={() => setDeciding(null)} />
       ) : null}
       {returning ? <ReturnModal row={returning} onClose={() => setReturning(null)} /> : null}
     </section>
@@ -350,6 +354,9 @@ function DetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
     ...(row.endedDate ? ([['Bitiş', shortDate(row.endedDate)]] as const) : []),
     ['Kur ortası', row.midCourse ? 'Evet' : 'Hayır'],
     ['Belge', row.documentReceived ? 'Alındı' : 'Yok'],
+    ...(row.rejectionCategory
+      ? ([['Ret nedeni', FREEZE_REJECTION_CATEGORY_LABELS[row.rejectionCategory]]] as const)
+      : []),
     ['Gruplar', row.groups.map((group) => group.name).join(', ') || 'Grup yok'],
   ]
   return (
@@ -384,30 +391,76 @@ function DetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
   )
 }
 
-function DecisionModal({
-  row,
-  approve,
-  onClose,
-}: {
-  row: Row
-  approve: boolean
-  onClose: () => void
-}) {
-  const approval = useApproveEnrollmentFreeze()
-  const rejection = useRejectEnrollmentFreeze()
-  const command = approve ? approval : rejection
+function ApprovalModal({ row, onClose }: { row: Row; onClose: () => void }) {
+  const command = useApproveEnrollmentFreeze()
   const busy = command.isPending
   async function confirm() {
     const outcome = await command.submit({ freezeId: row.id, version: row.version })
-    if (outcome.status === 'success')
-      notify.success(approve ? 'Dondurma onaylandı.' : 'Dondurma reddedildi.')
+    if (outcome.status === 'success') notify.success('Dondurma onaylandı.')
     if (outcome.status !== 'busy') onClose()
   }
   return (
     <Modal
       open
       onOpenChange={(open) => (open ? undefined : onClose())}
-      title={approve ? 'Dondurmayı onayla' : 'Dondurmayı reddet'}
+      title="Dondurmayı onayla"
+      description={`${row.name} · ${shortDate(row.startDate)} – ${shortDate(row.returnDate)}`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
+            Vazgeç
+          </Button>
+          <Button disabled={busy} aria-busy={busy || undefined} onClick={() => void confirm()}>
+            Onayla
+          </Button>
+        </>
+      }
+    >
+      <div className="grid gap-3">
+        <p className="text-sm">
+          Kur ortası ve süre koşulları onay anındaki bilgiyle yeniden denetlenir. Karar için gerekçe
+          yazılmaz; sağlık ayrıntısı kaydedilmez.
+        </p>
+        {row.groups.length > 1 ? (
+          <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
+            Kursiyerin birden çok programda kaydı var. Onay bütün gruplarını dondurur:{' '}
+            {row.groups.map((group) => group.name).join(', ')}.
+          </p>
+        ) : null}
+        <InstallmentNotice row={row} />
+      </div>
+    </Modal>
+  )
+}
+
+function RejectionModal({ row, onClose }: { row: Row; onClose: () => void }) {
+  const command = useRejectEnrollmentFreeze()
+  // Varsayılan seçenek yok: ret nedeni yöneticinin bilinçli seçimidir (K-29).
+  const form = useForm<RejectFreezeInput>({ resolver: zodResolver(rejectFreezeSchema) })
+  const busy = command.isPending || form.formState.isSubmitting
+  const submit = form.handleSubmit(async ({ rejectionCategory }) => {
+    const outcome = await command.submit(
+      { freezeId: row.id, version: row.version, rejectionCategory },
+      {
+        setError: (name: string, error: { type: string; message: string }) => {
+          form.setError(name === 'rejectionCategory' ? name : 'root.server', error)
+        },
+      },
+    )
+    if (outcome.status === 'success') notify.success('Dondurma reddedildi.')
+    // 409: talep karara bağlanmış ya da değişmiş, liste tazelendi; eski sürümle kalınmaz.
+    if (
+      outcome.status === 'success' ||
+      (outcome.status === 'failed' && outcome.error.status === 409)
+    )
+      onClose()
+  })
+  const errors = form.formState.errors
+  return (
+    <Modal
+      open
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      title="Dondurmayı reddet"
       description={`${row.name} · ${shortDate(row.startDate)} – ${shortDate(row.returnDate)}`}
       footer={
         <>
@@ -415,31 +468,45 @@ function DecisionModal({
             Vazgeç
           </Button>
           <Button
-            variant={approve ? 'default' : 'destructive'}
+            type="submit"
+            form={REJECTION_FORM}
+            variant="destructive"
             disabled={busy}
             aria-busy={busy || undefined}
-            onClick={() => void confirm()}
           >
-            {approve ? 'Onayla' : 'Reddet'}
+            Reddet
           </Button>
         </>
       }
     >
-      <div className="grid gap-3">
+      <form
+        id={REJECTION_FORM}
+        noValidate
+        onSubmit={(event) => void submit(event)}
+        className="grid gap-3"
+      >
         <p className="text-sm">
-          {approve
-            ? 'Kur ortası ve süre koşulları onay anındaki bilgiyle yeniden denetlenir.'
-            : 'Talep kapanır, kursiyerin kaydı değişmez.'}{' '}
-          Karar için gerekçe yazılmaz; sağlık ayrıntısı kaydedilmez.
+          Talep kapanır, kursiyerin kaydı değişmez. Seçilen neden talep edene görünür; gerekçe
+          yazılmaz, sağlık ayrıntısı kaydedilmez.
         </p>
-        {approve && row.groups.length > 1 ? (
-          <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
-            Kursiyerin birden çok programda kaydı var. Onay bütün gruplarını dondurur:{' '}
-            {row.groups.map((group) => group.name).join(', ')}.
+        <FormField id="dondurma-ret-nedeni" label="Ret nedeni" error={errors.rejectionCategory}>
+          {(control) => (
+            <NativeSelect {...control} {...form.register('rejectionCategory')}>
+              <NativeSelectOption value="">Ret nedeni seçin</NativeSelectOption>
+              {FREEZE_REJECTION_CATEGORIES.map((category) => (
+                <NativeSelectOption key={category} value={category}>
+                  {FREEZE_REJECTION_CATEGORY_LABELS[category]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+        {errors.root?.server?.message ? (
+          <p role="alert" className="text-sm text-danger">
+            {errors.root.server.message}
           </p>
         ) : null}
-        {approve ? <InstallmentNotice row={row} /> : null}
-      </div>
+      </form>
     </Modal>
   )
 }

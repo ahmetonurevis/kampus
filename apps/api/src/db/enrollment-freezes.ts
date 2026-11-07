@@ -1,6 +1,10 @@
 import { and, asc, count, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 
-import type { FreezeReason, FreezeStatus } from '@kampus/school-core/lib/enrollment-freezes.ts'
+import type {
+  FreezeReason,
+  FreezeRejectionCategory,
+  FreezeStatus,
+} from '@kampus/school-core/lib/enrollment-freezes.ts'
 import type { GroupMemberStatus } from '@kampus/school-core/lib/language-groups.ts'
 
 import type { Database } from './client.ts'
@@ -27,6 +31,7 @@ export interface StoredFreeze {
   documentReceived: boolean
   decidedByUserId: string | null
   decidedAt: string | null
+  rejectionCategory: FreezeRejectionCategory | null
   startedAt: string | null
   needsPlacement: boolean
   createdAt: string
@@ -52,6 +57,7 @@ const COLUMNS = {
   documentReceived: enrollmentFreezes.documentReceived,
   decidedByUserId: enrollmentFreezes.decidedByUserId,
   decidedAt: enrollmentFreezes.decidedAt,
+  rejectionCategory: enrollmentFreezes.rejectionCategory,
   startedAt: enrollmentFreezes.startedAt,
   needsPlacement: enrollmentFreezes.needsPlacement,
   createdAt: enrollmentFreezes.createdAt,
@@ -180,6 +186,7 @@ export async function updateFreeze(
       | 'midCourse'
       | 'decidedByUserId'
       | 'decidedAt'
+      | 'rejectionCategory'
       | 'startedAt'
       | 'endedDate'
       | 'needsPlacement'

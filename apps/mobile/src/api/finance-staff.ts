@@ -17,9 +17,11 @@ import {
   type RecordPaymentBody,
   type usePaymentList,
 } from '@kampus/react-shared/use-payment-commands.ts'
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
 import {
   amountInputValue,
+  isOpeningImport,
   PAYMENT_METHODS,
   paymentFormSchema,
   reversePaymentSchema,
@@ -56,12 +58,16 @@ export const canReversePayment = (role: MemberRole) => role === 'yonetici'
 export function financeTotalRows(totals: {
   totalCents: number
   paidCents: number
+  openingImportCents?: number
   remainingCents: number
   overdueCents: number
 }): readonly (readonly [string, string])[] {
+  // Dosyadan aktarılan geçmiş ödeme borcu kapatır, tahsilat değildir (DOM-FIN-014).
+  const opening = totals.openingImportCents ?? 0
   return [
     ['Toplam eğitim bedeli', money(totals.totalCents)],
-    ['Tahsil edilen', money(totals.paidCents)],
+    ['Tahsil edilen', money(totals.paidCents - opening)],
+    ...(opening > 0 ? ([['Açılış aktarımı', money(opening)]] as const) : []),
     ['Kalan bakiye', money(totals.remainingCents)],
     ['Gecikmiş tutar', money(totals.overdueCents)],
   ]
@@ -123,7 +129,10 @@ export function invoiceFacts(row: InvoiceRow): readonly (readonly [string, strin
     ['Taksit tutarı', money(row.amount)],
     ['Durum', row.status],
     ['Vade tarihi', day(row.dueDate)],
-    ['Tahsilat tarihi', row.paidAt ? day(row.paidAt) : 'Henüz tahsil edilmedi'],
+    [
+      isOpeningImport(row) ? 'Ödeme tarihi' : 'Tahsilat tarihi',
+      row.paidAt ? day(row.paidAt) : 'Henüz tahsil edilmedi',
+    ],
     ['Ödeme yöntemi', row.paidAt ? (row.method ?? '—') : '—'],
     ['Kayıt numarası', row.id.toUpperCase()],
   ]
@@ -295,7 +304,7 @@ export function paymentListQuery(state: ListState, search: string) {
 
 export const paymentReceipt = (
   payment: Pick<PaymentRecord, 'receiptYear' | 'receiptNumber'>,
-): string => `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`
+): string => receiptNumberLabel(payment)
 
 export const paymentStatus = (payment: Pick<PaymentRecord, 'reversedAt'>) =>
   payment.reversedAt === null ? 'Geçerli' : 'İptal edildi'

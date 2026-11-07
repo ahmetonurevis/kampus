@@ -269,7 +269,8 @@ function repricedTerms(
       { path: ['discounts'] },
     )
   const student = state.students.find((item) => item.id === source.studentId)
-  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır (DOM-FIN-022).
+  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır: kardeş sözleşmenin yılında
+  // kayıtlı olmalıdır (DOM-FIN-022, K-22).
   if (discounts.includes('sibling'))
     requireSiblingDiscountEligible(state, {
       studentId: source.studentId,
@@ -277,12 +278,26 @@ function repricedTerms(
         .filter((item) => Boolean(student?.parentId) && item.parentId === student?.parentId)
         .map((item) => item.id),
       tuitionCents: source.grossCents,
+      academicYear: source.academicYear ?? state.academicYear,
+      currentAcademicYear: state.academicYear,
     })
   assertEarlyPaymentOnUpfront(paymentTerm, discounts)
+  // Sözleşmedeki referans kalemi hakkın uygulanmış tutarıyla kalır, tarifeden yeniden hesaplanmaz
+  // (K-14); başka kalem tavanı aşırırsa reddedilir, kısaltılmaz.
+  const referralLine = source.discounts?.find((line) => line.kind === 'referral')
   const lines = discountLines(context.tariff.discounts, source.grossCents, discounts, {
     canApproveCapException: context.canApproveCapException,
     paymentTerm,
+    referral: { amountCents: referralLine?.amountCents ?? 0, trimToCap: false },
   })
+  // Referans kalemi yalnız kullanılan bir hakla gelir (DOM-FIN-024); ek protokolde hak işaretlenmez,
+  // bu yüzden yeni eklenemez.
+  if (discounts.includes('referral') && referralLine === undefined)
+    throw new DomainError(
+      'referral_reward_required',
+      'Referans indirimi ek protokolle eklenmez; kesin kayıtta ya da yenilemede referans hakkıyla kullanılır.',
+      { path: ['discounts'] },
+    )
   const total = lines.reduce((sum, line) => sum + line.amountCents, 0)
   const netCents = source.grossCents - total - (source.scholarship?.amountCents ?? 0)
   if (netCents < 0)

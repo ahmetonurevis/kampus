@@ -14,6 +14,12 @@ import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
 import { FEE_DISCOUNT_KINDS, FEE_ITEM_KINDS } from './fee-tariffs.ts'
 import {
+  referralRewardIdSchema,
+  referralUseOf,
+  requireUsableReferralReward,
+  type ReferralRewardFacts,
+} from './finance-referrals.ts'
+import {
   requireAwardableProgram,
   scholarshipAmount,
   type ScholarshipProgram,
@@ -27,6 +33,7 @@ import {
   type PriceIndexEntry,
   type RenewalCeiling,
 } from './renewal-ceiling.ts'
+import { assertCourseOfferReady, type RenewalCourseOffer } from './renewal-course-offer.ts'
 import { mayRun, renewalPreconditions, type Renewal } from './school-workflows.ts'
 
 /**
@@ -35,6 +42,8 @@ import { mayRun, renewalPreconditions, type Renewal } from './school-workflows.t
  * taksitlerini yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı işlemdir (`renewal-activate`).
  * Öğrenim ücreti yayımlı tarifeden ve artış tavanından çıkar; indirim tarifedeki türlerden, burs
  * yalnız bildirilmiş programdan gelir. Yetki ve kapsam core `mayRun` + `renewalPreconditions`.
+ * Dil okulunda teklif son kurun onaylı kur sonu kararından başlar (dil-okulu.md DOM-DIL-070,
+ * `lib/renewal-course-offer.ts`): önizleme kararı bekleyen teklifi işaretler, plan reddeder.
  */
 
 const MAX_MONEY_CENTS = 100_000_000
@@ -57,6 +66,8 @@ const renewalFields = {
   extras: z.array(z.enum(FEE_ITEM_KINDS, 'Ek hizmet geçersiz.')).max(10).default([]),
   /** Bu yılın burs programı (DOM-FIN-025); yalnız yönetici. */
   scholarshipProgramId: z.uuid('Burs programı geçersiz.').optional(),
+  /** Velinin kullanacağı referans hakkı (DOM-FIN-024); `referral` kalemiyle birlikte. */
+  referralRewardId: referralRewardIdSchema.optional(),
 }
 
 export const renewalQuoteSchema = z.strictObject(renewalFields)
@@ -93,8 +104,15 @@ export interface RenewalContext {
   priceIndexes: readonly PriceIndexEntry[]
   scholarshipProgram?: ScholarshipProgram | null
   scholarshipAwardedCount?: number
+  /**
+   * Dil okulunda son kurun kur sonu kararı dayanağı (DOM-DIL-070); servis yükler. Okulda verilmez,
+   * yenileme kurdan bağımsızdır.
+   */
+  courseOffer?: RenewalCourseOffer | null
   /** Öğrencinin yenileme yılında arşivlenmemiş burs ataması var mı; servis yükler (DOM-FIN-025). */
   scholarshipStudentAwarded?: boolean
+  /** Gövdede seçilen referans hakkı; servis kurum kilidi altında yükler (DOM-FIN-024). */
+  referralReward?: ReferralRewardFacts | null
   /**
    * Önceki eğitim yıllarından ödenmemiş öğrenim ücreti (kuruş; DOM-KAY-025). Ödeme dağılımları
    * State dışında olduğu için servis `outstandingTuitionCents` ile hesaplar; verilmezse 0.
@@ -118,22 +136,56 @@ export interface RenewalPrice {
   tuitionCents: number
   discounts: DiscountLine[]
   discountCents: number
+  /** Kullanılan referans hakkı; yoksa `null` (DOM-FIN-024). */
+  referralRewardId: string | null
   scholarship: { programId: string; amountCents: number } | null
   /** İndirim ve burstan sonra kalan öğrenim ücreti. */
   netCents: number
   extras: ExtraLine[]
   installments: number[]
+  /** Teklifin kur dayanağı; okulda `null`. `ready` dışındaki durumda plan yazılmaz. */
+  courseOffer: RenewalCourseOffer | null
   /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`. */
   paymentTerm: ContractPaymentTerm | null
   /** Önceki yıllardan ödenmemiş öğrenim ücreti; sıfırdan büyükse plan yönetici onayı ister. */
   outstandingTuitionCents: number
 }
 
-function requireRenewalRole(session: Session): void {
+export function requireRenewalRole(session: Session): void {
   if (!mayRun(session, 'renewal'))
     throw new DomainError('permission_denied', 'Bu işlem için rolünüzün yetkisi yok.', {
       kind: 'forbidden',
     })
+}
+
+/**
+ * Hedef düzeyin artış tavanı ve uygulanabilecek en yüksek ücreti (DOM-FIN-002, -005). Plan, önizleme
+ * ve yeni yıl listesi aynı hesabı çalıştırır (`lib/renewal-bulk.ts`).
+ */
+export function renewalTuitionLimit(
+  state: State,
+  input: { studentId: string; targetGrade: number; year: number; announcedCents: number },
+  context: Pick<RenewalContext, 'previousTariff' | 'priceIndexes'>,
+): { ceiling: RenewalCeiling; maxTuitionCents: number } {
+  const previous = context.previousTariff
+    ? itemFor(context.previousTariff.items, 'tuition', String(input.targetGrade))
+    : undefined
+  const ceiling = renewalCeiling(state, {
+    studentId: input.studentId,
+    targetGrade: input.targetGrade,
+    year: input.year,
+    previousAnnouncedCents: previous
+      ? (previous.announcedAmountCents ?? previous.amountCents)
+      : null,
+    priceIndexes: context.priceIndexes,
+  })
+  return {
+    ceiling,
+    maxTuitionCents:
+      ceiling.status === 'applied'
+        ? Math.min(input.announcedCents, ceiling.ceilingCents)
+        : input.announcedCents,
+  }
 }
 
 /** Plan ve önizlemenin ortak fiyatı; State değişmez. */
@@ -158,6 +210,13 @@ function priceRenewal(
     )
   const level = String(target.grade)
   const canApprove = session.role === 'yonetici'
+  const referralReward = requireUsableReferralReward({
+    kinds: data.discounts,
+    rules: context.tariff.discounts,
+    rewardId: data.referralRewardId,
+    reward: context.referralReward ?? null,
+    ownerParentId: student.parentId || null,
+  })
   const price = priceEnrollmentOnTerm(context.tariff, {
     installmentCount: data.installmentCount,
     level,
@@ -165,37 +224,37 @@ function priceRenewal(
     discounts: data.discounts,
     extras: data.extras,
     canApproveCapException: canApprove,
+    referralRewardCents: referralReward?.amountCents,
   })
   assertExtrasFreeOfServices(price.extras, context.openStudentServiceKinds ?? [])
-  const previous = context.previousTariff
-    ? itemFor(context.previousTariff.items, 'tuition', level)
-    : undefined
-  const ceiling = renewalCeiling(state, {
-    studentId: student.id,
-    targetGrade: target.grade,
-    year: data.academicYear,
-    previousAnnouncedCents: previous
-      ? (previous.announcedAmountCents ?? previous.amountCents)
-      : null,
-    priceIndexes: context.priceIndexes,
-  })
   const announcedCents = price.grossCents
-  const maxTuitionCents =
-    ceiling.status === 'applied' ? Math.min(announcedCents, ceiling.ceilingCents) : announcedCents
+  const { ceiling, maxTuitionCents } = renewalTuitionLimit(
+    state,
+    {
+      studentId: student.id,
+      targetGrade: target.grade,
+      year: data.academicYear,
+      announcedCents,
+    },
+    context,
+  )
   const tuitionCents = data.tuitionCents ?? maxTuitionCents
   if (tuitionCents > announcedCents)
     throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {
       path: ['tuitionCents'],
     })
   assertWithinCeiling(tuitionCents, ceiling, ['tuitionCents'])
-  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır (DOM-FIN-022).
+  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır: kardeş yenileme yılında kayıtlı
+  // olmalıdır. Ücret, sözleşmeye yazılan (tavanla düşmüş olabilen) ücrettir (DOM-FIN-022, K-22).
   if (data.discounts.includes('sibling'))
     requireSiblingDiscountEligible(state, {
       studentId: student.id,
       siblingIds: state.students
         .filter((item) => Boolean(student.parentId) && item.parentId === student.parentId)
         .map((item) => item.id),
-      tuitionCents: announcedCents,
+      tuitionCents,
+      academicYear: data.academicYear,
+      currentAcademicYear: state.academicYear,
     })
   // İndirim ilan ücretinden hesaplanır (DOM-FIN-020); tavanla düşen ücreti karşılayamaz.
   const discountCents = price.discounts.reduce((sum, line) => sum + line.amountCents, 0)
@@ -233,11 +292,13 @@ function priceRenewal(
     tuitionCents,
     discounts: price.discounts,
     discountCents,
+    referralRewardId: referralReward?.id ?? null,
     scholarship: program === null ? null : { programId: program.id, amountCents: scholarshipCents },
     netCents,
     extras: price.extras,
     // Tam bursta öğrenim taksiti açılmaz.
     installments: netCents === 0 ? [] : installmentAmounts(netCents, data.installmentCount),
+    courseOffer: context.courseOffer ?? null,
     paymentTerm: price.paymentTerm,
     outstandingTuitionCents: context.outstandingTuitionCents ?? 0,
   }
@@ -308,7 +369,7 @@ export function quoteRenewal(
 }
 
 /** Ay sonunu aşan gün ayın son gününe çekilir (kesin kayıtla aynı plan). */
-function dueDateOf(start: Date, index: number): string {
+export function dueDateOf(start: Date, index: number): string {
   const lastDay = new Date(
     Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + index + 1, 0),
   ).getUTCDate()
@@ -338,6 +399,8 @@ export function planRenewal(
   renewal: Renewal
   contractId: string | null
   scholarshipAward: RenewalPrice['scholarship']
+  /** Bu yenilemede kullanılan referans hakkı; servis aynı işlemde işaretler (DOM-FIN-024). */
+  referralUse: { rewardId: string; amountCents: number } | null
 } {
   requireRenewalRole(session)
   const data = renewalPlanSchema.parse(input)
@@ -361,10 +424,12 @@ export function planRenewal(
       updatedAt: now,
     }
     state.renewals.unshift(entry)
-    return { renewal: entry, contractId: null, scholarshipAward: null }
+    return { renewal: entry, contractId: null, scholarshipAward: null, referralUse: null }
   }
   const { mode, tariffId, firstDueDate, debtApproved, ...quoteFields } = data
   const { student, oldClass, target, price } = priceRenewal(state, session, quoteFields, context)
+  // Kur sonu kararı onaylanmadan dil okulu yenilemesi yazılmaz (DOM-DIL-070).
+  if (price.courseOffer !== null) assertCourseOfferReady(price.courseOffer)
   requireDebtDecision(session, price.outstandingTuitionCents, debtApproved === true)
   if (tariffId !== price.tariffId)
     throw new DomainError(
@@ -455,13 +520,19 @@ export function planRenewal(
       discounts: price.discounts,
       extras: price.extras,
       scholarship: price.scholarship,
+      ...(price.courseOffer === null ? {} : { courseOffer: price.courseOffer }),
       ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
     },
     createdAt: now,
     updatedAt: now,
   }
   state.renewals.unshift(entry)
-  return { renewal: entry, contractId, scholarshipAward: price.scholarship }
+  return {
+    renewal: entry,
+    contractId,
+    scholarshipAward: price.scholarship,
+    referralUse: referralUseOf(price.referralRewardId, price.discounts),
+  }
 }
 
 // --- ÜFE ve TÜFE profili (DOM-FIN-005) ---------------------------------------------------------

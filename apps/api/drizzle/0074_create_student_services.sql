@@ -45,6 +45,7 @@ CREATE TABLE "student_services" (
 	CONSTRAINT "student_services_ended_check" CHECK (("student_services"."status" = 'ended') = ("student_services"."ended_date" is not null) and ("student_services"."ended_date" is null) = ("student_services"."end_reason" is null) and ("student_services"."ended_date" is null) = ("student_services"."ended_by_user_id" is null))
 );
 --> statement-breakpoint
+ALTER TABLE "invoices" DROP CONSTRAINT "invoices_fee_kind_check";--> statement-breakpoint
 ALTER TABLE "student_service_invoices" ADD CONSTRAINT "student_service_invoices_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "student_service_invoices" ADD CONSTRAINT "student_service_invoices_service_fkey" FOREIGN KEY ("institution_id","student_service_id") REFERENCES "public"."student_services"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "student_service_invoices" ADD CONSTRAINT "student_service_invoices_invoice_fkey" FOREIGN KEY ("institution_id","invoice_id") REFERENCES "public"."invoices"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
@@ -56,6 +57,12 @@ CREATE UNIQUE INDEX "student_services_student_kind_open_key" ON "student_service
 CREATE INDEX "student_services_student_idx" ON "student_services" USING btree ("institution_id","student_id");--> statement-breakpoint
 CREATE INDEX "student_services_tariff_idx" ON "student_services" USING btree ("institution_id","tariff_id");--> statement-breakpoint
 CREATE INDEX "student_services_contract_idx" ON "student_services" USING btree ("institution_id","contract_id") WHERE "student_services"."contract_id" is not null;--> statement-breakpoint
+-- Elle değiştirildi (ON-087): kulüp (`club`) kalem türü eklendi, kısıt genişler. Eski satırlar
+-- 0073'te doğrulanan dar kısıta uyduğu için yeni kısıta da uyar; 0072 ile aynı biçimde `not valid`
+-- eklenip hemen doğrulanır (doğrulama yalnız SHARE UPDATE EXCLUSIVE ister). Kısıt düşünce yorumu da
+-- düştüğü için aşağıda yeniden yazılır. Snapshot kısıtı tam tutar, `db:generate` fark üretmez.
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_fee_kind_check" CHECK ("invoices"."fee_kind" in ('tuition', 'breakfast', 'meal', 'transport', 'dormitory', 'stationery', 'uniform', 'tutoring', 'club')) NOT VALID;--> statement-breakpoint
+ALTER TABLE "invoices" VALIDATE CONSTRAINT "invoices_fee_kind_check";--> statement-breakpoint
 -- ELLE EKLENDİ (ON-087) başlangıç: Türkçe tablo ve kolon yorumları. Migration yeniden üretilirse bu blok korunur.
 COMMENT ON TABLE "student_services" IS 'Ek hizmet aboneliği (DOM-FIN-003; ON-087): öğrencinin dönem içinde servis, yemek, kulüp gibi hizmete yazılması ve çıkması. Ücret tarifeden hesaplanır, öğrenimden ayrı taksit açar (student_service_invoices). Aynı öğrenci ve türde tek açık abonelik olur.';
 --> statement-breakpoint
@@ -124,4 +131,8 @@ COMMENT ON COLUMN "student_service_invoices"."updated_at" IS 'Satırın son gün
 COMMENT ON COLUMN "student_service_invoices"."archived_at" IS 'Arşiv anı; bugün yazılmaz, zorunlu kolondur.';
 --> statement-breakpoint
 COMMENT ON COLUMN "student_service_invoices"."version" IS 'Satır sürümü; zorunlu kolondur.';
+--> statement-breakpoint
+COMMENT ON COLUMN "invoices"."fee_kind" IS 'Kalem türü anahtarı: tuition (öğrenim), breakfast, meal, transport, dormitory, stationery, uniform, tutoring, club (core FEE_ITEM_KINDS, DOM-FIN-004); core kaydında alan yoksa boş (eski kayıt, öğrenim sayılır).';
+--> statement-breakpoint
+COMMENT ON CONSTRAINT "invoices_fee_kind_check" ON "invoices" IS 'Kalem türü core FEE_ITEM_KINDS listesindedir ya da boştur; liste değişirse kısıt yeni migration ile güncellenir (ON-316). Kulüp (club) ON-087 ile eklendi.';
 -- ELLE EKLENDİ (ON-087) bitiş

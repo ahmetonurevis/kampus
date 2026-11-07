@@ -11,6 +11,7 @@ import {
   bankAccountLabel,
   bankAccountSchema,
   hasScholarshipContract,
+  installmentAmounts,
   planPayment,
   reversePayment,
   type PaymentContext,
@@ -353,6 +354,37 @@ test('DOM-FIN-001: tutar metinden kuruşa kayıpsız çevrilir', () => {
     assert.equal(parseAmountInput(input), null, input)
   assert.equal(amountInputValue(123_456), '1234,56')
   assert.equal(parseAmountInput(amountInputValue(5)), 5)
+})
+
+test('DOM-FIN-011, IST-105: taksit toplamı nete kuruşu kuruşuna eşittir; artan kuruş ilk taksitlere gider', () => {
+  assert.deepEqual(installmentAmounts(1_000, 3), [334, 333, 333])
+  assert.deepEqual(installmentAmounts(29_999_999, 4), [7_500_000, 7_500_000, 7_500_000, 7_499_999])
+  for (const cents of [1, 11, 2_850_001, 30_000_000, 99_999_999])
+    for (let count = 1; count <= 12; count += 1) {
+      if (cents < count) continue
+      const amounts = installmentAmounts(cents, count)
+      assert.equal(amounts.length, count)
+      assert.equal(
+        amounts.reduce((sum, amount) => sum + amount, 0),
+        cents,
+      )
+      // Büyük taksitler önde, aralarında en çok bir kuruş fark vardır.
+      assert.deepEqual(
+        [...amounts].sort((a, b) => b - a),
+        amounts,
+      )
+      assert.ok(amounts[0]! - amounts.at(-1)! <= 1)
+    }
+  // Kuruş taksit sayısından azsa sıfır tutarlı taksit doğardı; plan açılmaz.
+  for (const [cents, count] of [
+    [2, 3],
+    [11, 12],
+    [0, 1],
+    [100, 13],
+    [100, 0],
+    [10.5, 2],
+  ] as const)
+    rejects(() => installmentAmounts(cents, count), 'invalid_installment')
 })
 
 test('DOM-FIN-031: tahsilat formu nakit dışında referans ister', () => {

@@ -190,6 +190,26 @@ describe('ücret tarifesi uçları', () => {
     assert.equal(none.json().meta.total, 0)
   })
 
+  test('IST-104, DOM-FIN-002: KDV oranı yeni sürümle değişir; önceki sürüm eski oran ve tarihle kalır', async () => {
+    const a = await institution()
+    const first = (await create(a.cookie)).json().data
+    assert.equal((await publish(a.cookie, first.id, first.version)).statusCode, 200)
+    const raised = { ...TUITION, vatBasisPoints: 2000, vatEffectiveDate: '2026-06-01' }
+    const second = await create(a.cookie, { ...DRAFT, items: [raised] })
+    assert.equal(second.statusCode, 201, second.body)
+    const { id, version } = second.json().data
+    assert.equal((await publish(a.cookie, id, version)).statusCode, 200)
+
+    const old = (await send('GET', `/api/v1/fee-tariffs/${String(first.id)}`, a.cookie)).json()
+    assert.equal(old.data.status, 'superseded')
+    assert.equal(old.data.items[0].vatBasisPoints, 1000)
+    assert.equal(old.data.items[0].vatEffectiveDate, '2026-01-01')
+    const current = (await send('GET', `/api/v1/fee-tariffs/${String(id)}`, a.cookie)).json()
+    assert.equal(current.data.status, 'published')
+    assert.equal(current.data.items[0].vatBasisPoints, 2000)
+    assert.equal(current.data.items[0].vatEffectiveDate, '2026-06-01')
+  })
+
   test('DOM-FIN-006: birim kurum türüne uyar; dil okulunda ders saati kabul edilir', async () => {
     const school = await institution()
     const wrong = (

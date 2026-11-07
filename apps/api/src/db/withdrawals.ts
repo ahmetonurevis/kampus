@@ -1,6 +1,7 @@
 import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
+import type { ReconciliationWithdrawal } from '@kampus/school-core/lib/finance-reconciliation.ts'
 import type { ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
@@ -230,6 +231,25 @@ export async function refundsPaidInPeriod(
     ...row,
     maskedIban: refundIban === null ? null : `TR** **** ${refundIban.slice(-4)}`,
   }))
+}
+
+/** Mutabakat için kurumun ayrılışları (ON-085); IBAN ve hesap sahibi seçilmez. */
+export function withdrawalsForReconciliation(
+  db: Database,
+  institutionId: string,
+): Promise<ReconciliationWithdrawal[]> {
+  return db
+    .select({
+      studentId: studentWithdrawals.studentId,
+      contractId: studentWithdrawals.contractId,
+      withdrawalDate: studentWithdrawals.withdrawalDate,
+      refundCents: studentWithdrawals.refundCents,
+      debtCents: studentWithdrawals.debtCents,
+      refundPaidDate: studentWithdrawals.refundPaidDate,
+      breakdown: studentWithdrawals.breakdown,
+    })
+    .from(studentWithdrawals)
+    .where(eq(studentWithdrawals.institutionId, institutionId))
 }
 
 /** Yalnız ödenmemiş iade ve beklenen sürüm güncellenir; tutmazsa `false`. */

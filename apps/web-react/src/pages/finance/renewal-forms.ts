@@ -1,7 +1,9 @@
 // Kayıt yenileme ekranının saf mantığı (IST-100; DOM-FIN-002, -005, -020, -023, -025; DOM-KAY-020):
 // form değerleri, gövde dönüşümü, hedef sınıf seçenekleri, ücret özeti satırları ve ÜFE/TÜFE formu.
-// Ücretin kendisi sunucuda hesaplanır (önizleme ucu); ekran yalnız biçimler.
+// Ücretin kendisi sunucuda hesaplanır (önizleme ucu); ekran yalnız biçimler. Dil okulunda teklifin
+// kur sonu kararı dayanağı da önizlemeden gelir (DOM-DIL-070).
 import { z } from 'zod'
+import { PROGRESSION_OUTCOMES } from '@kampus/school-core/cefr/progression.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   carriedOverTariffNote,
@@ -19,6 +21,10 @@ import {
 import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import { createPriceIndexSchema } from '@kampus/school-core/lib/renewals.ts'
 import type { RenewalCeiling } from '@kampus/school-core/lib/renewal-ceiling.ts'
+import {
+  COURSE_OFFER_MESSAGES,
+  type RenewalCourseOffer,
+} from '@kampus/school-core/lib/renewal-course-offer.ts'
 
 export const RENEWAL_MODES = ['renew', 'graduate'] as const
 export type RenewalMode = (typeof RENEWAL_MODES)[number]
@@ -37,6 +43,7 @@ export const renewalFormSchema = z
     discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
     extras: z.array(z.enum(FEE_ITEM_KINDS)),
     scholarshipProgramId: z.string(),
+    referralRewardId: z.string(),
     installmentCount: z.string(),
     firstDueDate: z.string(),
   })
@@ -73,6 +80,7 @@ export const renewalDefaults = (): RenewalFormValues => ({
   discounts: [],
   extras: [],
   scholarshipProgramId: '',
+  referralRewardId: '',
   installmentCount: '8',
   firstDueDate: '',
 })
@@ -91,6 +99,10 @@ export function renewalQuoteBody(values: RenewalFormValues, academicYear: number
     ...(values.scholarshipProgramId === ''
       ? {}
       : { scholarshipProgramId: values.scholarshipProgramId }),
+    // Kalem kaldırılınca seçili hak gitmez (sunucu 422 `referral_discount_required`).
+    ...(values.referralRewardId !== '' && values.discounts.includes('referral')
+      ? { referralRewardId: values.referralRewardId }
+      : {}),
   }
 }
 
@@ -199,6 +211,25 @@ export type RenewalQuoteView = {
   paymentTerm?: ContractPaymentTerm | null
   /** Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025); sıfırdan büyükse yönetici onayı. */
   outstandingTuitionCents: number
+  /** Dil okulunda kur sonu kararı dayanağı; okulda `null`. */
+  courseOffer?: RenewalCourseOffer | null
+}
+
+/**
+ * Teklifin kur sonu kararı notu (DOM-DIL-070). `blocking`: karar onaylı değil, plan yazılmaz;
+ * sunucu da 422 ile reddeder. Okulda not yok.
+ */
+export function courseOfferNotice(
+  offer: RenewalCourseOffer | null | undefined,
+): { blocking: boolean; text: string } | null {
+  if (!offer) return null
+  if (offer.status !== 'ready') return { blocking: true, text: COURSE_OFFER_MESSAGES[offer.status] }
+  const outcome = offer.outcome === null ? '' : PROGRESSION_OUTCOMES[offer.outcome].label
+  const target =
+    offer.outcome === 'passed'
+      ? `teklif ${offer.level ?? ''} seviyesine açılır`
+      : `teklif aynı seviyede (${offer.level ?? ''}) kalır`
+  return { blocking: false, text: `Kur sonu kararı: ${outcome}; ${target}.` }
 }
 
 const discountLabel = (kind: string) => DISCOUNT_LINE_LABELS[kind as DiscountLineKind] ?? 'İndirim'
@@ -233,6 +264,55 @@ export function quoteLines(quote: RenewalQuoteView) {
   }
 }
 
+// --- Yeni yılın toplu planı (IST-105, ON-086) ---------------------------------------------------
+
+export const renewalBulkFormSchema = z.object({
+  installmentCount: z
+    .string()
+    .trim()
+    .regex(/^(?:[1-9]|1[0-2])$/, 'Taksit sayısını 1 ile 12 arasında girin.'),
+  firstDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk taksit tarihini seçin.'),
+  discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
+  extras: z.array(z.enum(FEE_ITEM_KINDS)),
+  scholarshipProgramId: z.string(),
+})
+export type RenewalBulkFormValues = z.input<typeof renewalBulkFormSchema>
+
+export const renewalBulkDefaults = (): RenewalBulkFormValues => ({
+  installmentCount: '8',
+  firstDueDate: '',
+  discounts: [],
+  extras: [],
+  scholarshipProgramId: '',
+})
+
+/** Önizleme gövdesi; onay aynı gövdeye önizlemenin tarifesini ekler. */
+export function renewalBulkBody(
+  values: z.output<typeof renewalBulkFormSchema>,
+  academicYear: number,
+  rows: readonly { studentId: string; targetClassId: string }[],
+) {
+  return {
+    academicYear,
+    installmentCount: Number(values.installmentCount),
+    firstDueDate: values.firstDueDate,
+    discounts: [...values.discounts],
+    extras: [...values.extras],
+    rows: rows.map(({ studentId, targetClassId }) => ({ studentId, targetClassId })),
+    ...(values.scholarshipProgramId === ''
+      ? {}
+      : { scholarshipProgramId: values.scholarshipProgramId }),
+  }
+}
+
+/** Listedeki tavan hücresi: tutar ya da neden uygulanmadığı (DOM-FIN-005). */
+export function ceilingCell(ceiling: RenewalCeiling | null): string {
+  if (ceiling === null) return '—'
+  if (ceiling.status === 'entry_grade') return 'Uygulanmaz'
+  if (ceiling.status === 'no_base') return 'Hesaplanamadı'
+  return money(ceiling.ceilingCents)
+}
+
 export const RENEWAL_SERVER_FIELDS = [
   'studentId',
   'targetClassId',
@@ -240,6 +320,7 @@ export const RENEWAL_SERVER_FIELDS = [
   'discounts',
   'extras',
   'scholarshipProgramId',
+  'referralRewardId',
   'installmentCount',
   'firstDueDate',
 ] as const
@@ -304,3 +385,8 @@ export function priceIndexBody(values: z.output<typeof priceIndexFormSchema>) {
 }
 
 export const bulletinText = (day: string) => dateLabel(day, { year: 'numeric' })
+
+/** Toplu planda seçilecek indirimler: referans hakkı öğrenci başına seçilir, toplu planda sunulmaz (DOM-FIN-024). */
+export const bulkDiscountKinds = <Kind extends string>(
+  discounts: readonly { kind: Kind }[],
+): Kind[] => discounts.map((item) => item.kind).filter((kind) => kind !== 'referral')

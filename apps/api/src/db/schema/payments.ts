@@ -14,7 +14,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
-import type { PaymentMethod } from '@kampus/school-core/lib/payments.ts'
+import type { InvoiceMethod, PaymentMethod } from '@kampus/school-core/lib/payments.ts'
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 
@@ -75,6 +75,8 @@ export const payments = pgTable(
     mebbisRecordedAt: timestamp('mebbis_recorded_at', { withTimezone: true }),
     // kvkk: K
     mebbisRecordedByUserId: text('mebbis_recorded_by_user_id'),
+    // e-Özel işaretindeki kaynağın kişisel veri içermeyen özeti (IST-085); MEBBİS ucunda boş kalır.
+    mebbisFingerprint: text('mebbis_fingerprint'),
     ...requiredColumns(),
   },
   (table) => [
@@ -158,3 +160,12 @@ export const PAYMENT_METHOD_KEYS = {
   'Kredi kartı': 'card',
   Senet: 'promissory_note',
 } as const satisfies Record<PaymentMethod, string>
+
+/**
+ * Taksitin `payment_method` önbelleğinin anahtarları: tahsilat yöntemleri ve dosyadan aktarılan geçmiş
+ * ödeme (DOM-FIN-014). `payments.method` bunu kabul etmez; açılış aktarımı tahsilat değildir.
+ */
+export const INVOICE_METHOD_KEYS = {
+  ...PAYMENT_METHOD_KEYS,
+  'Açılış aktarımı': 'opening_import',
+} as const satisfies Record<InvoiceMethod, string>

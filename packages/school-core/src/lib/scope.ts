@@ -211,6 +211,7 @@ const PROSPECT_TEACHER_VISIBLE = {
   marketingConsentHistory: false,
   profileEdits: false,
   lostReason: false,
+  lostToInstitution: false,
   lostAt: false,
   meeting: false,
   stageReverts: false,

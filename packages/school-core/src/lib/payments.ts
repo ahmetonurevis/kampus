@@ -16,13 +16,18 @@ import { isValidTurkishIban } from './withdrawals.ts'
 
 // --- Taksit bölme ve tahsilat yöntemleri (kesin kayıt, tahsilat ve çevrimdışı demo ortak çekirdeği) ---
 
+/**
+ * Neti taksitlere kuruş kaybetmeden böler; artan kuruş ilk taksitlere gider (DOM-FIN-011). Her
+ * taksit en az bir kuruştur: kuruş taksit sayısından azsa sıfır tutarlı taksit açılmaz.
+ */
 export function installmentAmounts(cents: number, count: number) {
   if (
     !Number.isSafeInteger(cents) ||
     cents <= 0 ||
     !Number.isInteger(count) ||
     count < 1 ||
-    count > 12
+    count > 12 ||
+    cents < count
   )
     throw new DomainError('invalid_installment', 'Taksit tutarı veya sayısı geçersiz.')
   const base = Math.floor(cents / count)
@@ -38,6 +43,19 @@ export const PAYMENT_METHOD_LABELS = {
   'Kredi kartı': 'Kredi kartı',
   Senet: 'Senet',
 } as const satisfies Record<PaymentMethod, string>
+/**
+ * Dosyadan aktarılan geçmiş ödemenin taksit işareti (DOM-FIN-014): taksit ödenmiştir ama Kampüs'te
+ * tahsilat kaydı yoktur, kasayı ve dönem tahsilatını değiştirmez. `PAYMENT_METHODS`'a girmez: hiçbir
+ * tahsilat bu yöntemle alınamaz, `payments` tablosuna yazılamaz. Yalnız taksitin `method` alanında
+ * bulunur; `paidAt` ile `method` birlikte dolu kuralı (ADR 0010) böylece sahte yöntem gerektirmez.
+ */
+export const OPENING_IMPORT_METHOD = 'Açılış aktarımı'
+/** Taksitin `method` alanının alabileceği değerler. */
+export const INVOICE_METHODS = [...PAYMENT_METHODS, OPENING_IMPORT_METHOD] as const
+export type InvoiceMethod = (typeof INVOICE_METHODS)[number]
+/** Taksit dosyadan aktarılmış geçmiş ödeme mi; ödendi görünür, tahsilat sayılmaz. */
+export const isOpeningImport = (invoice: { method?: string | null }): boolean =>
+  invoice.method === OPENING_IMPORT_METHOD
 /** Tahsilat girdisi; API gövde şeması ve web/mobil form şemasıdır. */
 export const paymentInputSchema = z.object({
   method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
@@ -142,15 +160,24 @@ const MAX_AMOUNT_CENTS = 100_000_000
 
 /**
  * Kullanıcı tutarını kuruşa çevirir: `1.234,56`, `1234,56`, `1234.5`. En fazla iki ondalık kabul
- * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`.
+ * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`; kasa
+ * sayımı (DOM-FIN-036) sıfırı ve kendi üst sınırını `options` ile verir.
  */
-export function parseAmountInput(text: string): number | null {
+export function parseAmountInput(
+  text: string,
+  options: { allowZero?: boolean; maxCents?: number } = {},
+): number | null {
   const value = text.trim()
   const grouped = /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
   if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(value)) return null
   const [whole = '', fraction = ''] = (grouped ? value.replaceAll('.', '') : value).split(/[.,]/)
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
-  return Number.isSafeInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS ? cents : null
+  const aboveFloor = options.allowZero ? cents >= 0 : cents > 0
+  return Number.isSafeInteger(cents) &&
+    aboveFloor &&
+    cents <= (options.maxCents ?? MAX_AMOUNT_CENTS)
+    ? cents
+    : null
 }
 
 /** Kuruşu form alanına yazılacak metne çevirir (`1234,56`). */

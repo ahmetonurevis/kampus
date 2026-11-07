@@ -65,5 +65,9 @@ export function studentStatementDocument(
     doc.paragraph(
       `Taksitlere dağıtılmayan ${money(statement.unappliedCents)} iade alacağıdır; kalan tutardan düşülmemiştir.`,
     )
+  if (statement.openingImportCents > 0)
+    doc.paragraph(
+      `Ödenen tutarın ${money(statement.openingImportCents)} kısmı açılış aktarımıdır: önceki kayıtlardan aktarılmıştır, Kampüs tahsilatı ve dekontu yoktur.`,
+    )
   return doc.finish()
 }

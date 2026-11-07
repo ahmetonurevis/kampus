@@ -8,6 +8,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { loadFinanceRecords } from '../src/db/finance-mirror-store.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { installmentRemindersJob } from '../src/jobs/installment-reminders.ts'
@@ -23,6 +24,7 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import { lazySession } from './support/finance-sessions.ts'
 import { tempStorage } from './support/files-sample.ts'
 
 /**
@@ -101,7 +103,7 @@ describe('vade ve gecikme taraması', () => {
       ],
       FIXED_NOW,
     )
-    return { ...created, adminCookie: await signInAs(app, created.admin) }
+    return { ...created, adminSession: lazySession(app, created.admin) }
   }
   async function member(institutionId: string, role: Role, recordId = SID) {
     const links = [
@@ -249,7 +251,7 @@ describe('vade ve gecikme taraması', () => {
       url: '/api/v1/payments',
       headers: {
         origin: TEST_ORIGIN,
-        cookie: a.adminCookie,
+        cookie: await a.adminSession(),
         'content-type': 'application/json',
         'idempotency-key': key(),
       },
@@ -277,7 +279,7 @@ describe('vade ve gecikme taraması', () => {
       url: `/api/v1/payments/${String(id)}/reverse`,
       headers: {
         origin: TEST_ORIGIN,
-        cookie: a.adminCookie,
+        cookie: await a.adminSession(),
         'content-type': 'application/json',
         'idempotency-key': key(),
         'if-match': `"${String(version)}"`,
@@ -349,8 +351,8 @@ describe('vade ve gecikme taraması', () => {
     const payer = await member(a.id, 'veli')
     const custodial = await member(a.id, 'veli')
     const restricted = await member(a.id, 'veli')
-    await setBond(a.adminCookie, payer.membershipId, { isPayer: true })
-    await setBond(a.adminCookie, restricted.membershipId, {
+    await setBond(await a.adminSession(), payer.membershipId, { isPayer: true })
+    await setBond(await a.adminSession(), restricted.membershipId, {
       custody: 'none',
       contactRestricted: true,
     })
@@ -369,9 +371,9 @@ describe('vade ve gecikme taraması', () => {
     const keeper = await member(a.id, 'veli')
     const payer = await member(a.id, 'veli')
     const restricted = await member(a.id, 'veli')
-    await setBond(a.adminCookie, payer.membershipId, { custody: 'none', isPayer: true })
+    await setBond(await a.adminSession(), payer.membershipId, { custody: 'none', isPayer: true })
     // İletişim kısıtlı veli ödeyici olamaz (`guardian_restricted_payer`); kısıtlı veli hiç almaz.
-    await setBond(a.adminCookie, restricted.membershipId, {
+    await setBond(await a.adminSession(), restricted.membershipId, {
       custody: 'none',
       contactRestricted: true,
     })
@@ -439,6 +441,222 @@ describe('vade ve gecikme taraması', () => {
     }
     const morning = await run(a.id, new Date('2026-10-06T05:00:00.000Z'))
     assert.deepEqual([morning.skipped, morning.created], [null, 1])
+  })
+
+  const remind = (cookie: string, id: string, headers: Record<string, string> = {}) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/v1/finance/invoices/${id}/remind`,
+      headers: { origin: TEST_ORIGIN, cookie, 'content-type': 'application/json', ...headers },
+      payload: '{}',
+    })
+  const reminderAtOf = async (institutionId: string, id: string) => {
+    const [row] = await loadFinanceRecords(db, institutionId, 'invoices', { ids: [id] })
+    assert.ok(row)
+    return { reminderAt: row.data.reminderAt, version: row.version }
+  }
+  const auditActions = async (institutionId: string) =>
+    (
+      await db
+        .select({ action: auditLog.action })
+        .from(auditLog)
+        .where(eq(auditLog.institutionId, institutionId))
+    ).map((row) => row.action)
+
+  test('DOM-FIN-035, ON-113: gecikmiş taksitte hatırlatma veliye gider, reminderAt ve denetim yazılır', async () => {
+    const a = await institution([invoice('late', at(-2))])
+    const parent = await member(a.id, 'veli')
+    const response = await remind(await a.adminSession(), 'late')
+    assert.equal(response.statusCode, 200, response.body)
+    assert.equal(response.json().data.reminder, 'sent')
+    assert.equal(response.json().data.changes.updated, 1)
+    assert.deepEqual(await seen(parent.cookie), [
+      {
+        kind: 'installment_overdue',
+        subjectId: 'late',
+        title: `${STUDENT?.name.split(' ')[0] ?? ''} için taksit vadesi geçti.`,
+      },
+    ])
+    assert.equal((await reminderAtOf(a.id, 'late')).reminderAt, FIXED_NOW.toISOString())
+    const actions = await auditActions(a.id)
+    assert.ok(actions.includes('invoice.remind'))
+    assert.ok(actions.includes('notification.create'))
+  })
+
+  test('DOM-FIN-035, ON-113: ön büro hatırlatır; aynı gün ikinci istek bildirim ve sürüm değiştirmez', async () => {
+    const a = await institution([invoice('late', at(-2))])
+    const desk = await member(a.id, 'onburo')
+    assert.equal((await remind(desk.cookie, 'late')).statusCode, 200)
+    const first = await reminderAtOf(a.id, 'late')
+
+    const second = await remind(await a.adminSession(), 'late')
+    assert.equal(second.statusCode, 200, second.body)
+    assert.equal(second.json().data.reminder, 'already_sent')
+    assert.equal(second.json().data.changes.updated, 0)
+    assert.equal((await stored(a.id)).length, 1)
+    assert.deepEqual(await reminderAtOf(a.id, 'late'), first)
+  })
+
+  test('DOM-FIN-035, ON-113: aynı Idempotency-Key ilk yanıtı tekrarlar', async () => {
+    const a = await institution([invoice('late', at(-2))])
+    const headers = { 'idempotency-key': key() }
+    const first = await remind(await a.adminSession(), 'late', headers)
+    const replay = await remind(await a.adminSession(), 'late', headers)
+    assert.equal(replay.statusCode, 200, replay.body)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(replay.json(), first.json())
+    assert.equal((await stored(a.id)).length, 1)
+  })
+
+  test('DOM-FIN-035, ON-113: ertesi gün yeniden hatırlatılır; o gün tarama aynı taksite ikinci bildirim yazmaz', async () => {
+    const a = await institution([invoice('late', at(-2))])
+    assert.equal((await remind(await a.adminSession(), 'late')).statusCode, 200)
+    // Elle hatırlatılan gün tarama taksiti atlar.
+    assert.equal((await run(a.id)).created, 0)
+    assert.equal((await stored(a.id)).length, 1)
+    // Ertesi gün tarama ilk gecikme bildirimini yazar; elle hatırlatma o gün yeni bildirim açmaz.
+    const nextDay = at(1)
+    assert.equal((await run(a.id, nextDay)).created, 1)
+    const later = await buildTestApp(db, { logs, clock: () => nextDay })
+    try {
+      const response = await later.inject({
+        method: 'POST',
+        url: '/api/v1/finance/invoices/late/remind',
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie: await a.adminSession(),
+          'content-type': 'application/json',
+        },
+        payload: '{}',
+      })
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(response.json().data.reminder, 'already_sent')
+      assert.equal((await reminderAtOf(a.id, 'late')).reminderAt, nextDay.toISOString())
+      assert.equal((await stored(a.id)).length, 2)
+
+      // İki gün sonra elle hatırlatma yine gider.
+      const twoDays = at(2)
+      const third = await buildTestApp(db, { logs, clock: () => twoDays })
+      try {
+        const again = await third.inject({
+          method: 'POST',
+          url: '/api/v1/finance/invoices/late/remind',
+          headers: {
+            origin: TEST_ORIGIN,
+            cookie: await a.adminSession(),
+            'content-type': 'application/json',
+          },
+          payload: '{}',
+        })
+        assert.equal(again.json().data.reminder, 'sent', again.body)
+        assert.equal((await stored(a.id)).length, 3)
+      } finally {
+        await third.close()
+      }
+    } finally {
+      await later.close()
+    }
+  })
+
+  test('DOM-FIN-035, ON-113: ödenmiş, vadesi gelmemiş ve arşivli öğrencinin taksiti 422; kayıt değişmez', async () => {
+    const a = await institution([
+      invoice('paid', at(-2), { paidAt: at(-1).toISOString(), method: 'Banka havalesi' }),
+      invoice('today', at(0)),
+      invoice('future', at(5)),
+      invoice('archived', at(-2), { studentId: OTHER?.id }),
+    ])
+    await db.execute(sql`
+      update records set archived_at = now()
+      where institution_id = ${a.id} and collection = 'students' and id = ${OTHER?.id ?? ''}`)
+    for (const [id, code] of [
+      ['paid', 'invoice_already_paid'],
+      ['today', 'invoice_not_overdue'],
+      ['future', 'invoice_not_overdue'],
+      ['archived', 'invoice_student_archived'],
+    ] as const) {
+      const before = await reminderAtOf(a.id, id)
+      const response = await remind(await a.adminSession(), id)
+      assert.equal(response.statusCode, 422, response.body)
+      assert.equal(response.json().code, code)
+      assert.deepEqual(await reminderAtOf(a.id, id), before)
+    }
+    assert.deepEqual(await stored(a.id), [])
+  })
+
+  test('DOM-FIN-035, ON-113: kısmi ödenmiş gecikmiş taksit hatırlatılır; tam dağıtılmış taksit 422', async () => {
+    const a = await institution([invoice('part', at(-3)), invoice('full', at(-4))])
+    const paid = await app.inject({
+      method: 'POST',
+      url: '/api/v1/payments',
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: await a.adminSession(),
+        'content-type': 'application/json',
+        'idempotency-key': key(),
+      },
+      payload: JSON.stringify({
+        studentId: SID,
+        amountCents: 15_000,
+        method: 'Banka havalesi',
+        reference: 'TR-REM-MANUAL',
+      }),
+    })
+    assert.equal(paid.statusCode, 201, paid.body)
+    assert.equal((await remind(await a.adminSession(), 'part')).json().data.reminder, 'sent')
+    const full = await remind(await a.adminSession(), 'full')
+    assert.equal(full.statusCode, 422, full.body)
+    assert.equal(full.json().code, 'invoice_already_paid')
+  })
+
+  test('DOM-YTK-040, ON-113: finans modülü kapalı 403; bildirim merkezi kapalıysa 422 ve reminderAt yazılmaz', async () => {
+    const closed = await institution([invoice('late', at(-2))], {
+      enabledModules: { finance: false },
+    })
+    const forbidden = await remind(await closed.adminSession(), 'late')
+    assert.equal(forbidden.statusCode, 403, forbidden.body)
+    assert.equal(forbidden.json().code, 'module_disabled')
+
+    const silent = await institution([invoice('late', at(-2))], {
+      enabledModules: { communication: false },
+    })
+    const response = await remind(await silent.adminSession(), 'late')
+    assert.equal(response.statusCode, 422, response.body)
+    assert.equal(response.json().code, 'notifications_disabled')
+    assert.equal((await reminderAtOf(silent.id, 'late')).reminderAt, null)
+    assert.deepEqual(await stored(silent.id), [])
+  })
+
+  test('DOM-FIN-035, ON-113: oturumsuz 401, yetkisiz rol 403, If-Match 400; kayıt değişmez', async () => {
+    const a = await institution([invoice('late', at(-2))])
+    const anonymous = await app.inject({
+      method: 'POST',
+      url: '/api/v1/finance/invoices/late/remind',
+      headers: { origin: TEST_ORIGIN },
+    })
+    assert.equal(anonymous.statusCode, 401)
+    for (const role of ['veli', 'ogrenci', 'ogretmen'] as const) {
+      const user = await member(a.id, role)
+      const response = await remind(user.cookie, 'late')
+      assert.equal(response.statusCode, 403, `${role}: ${response.body}`)
+    }
+    const versioned = await remind(await a.adminSession(), 'late', { 'if-match': '"1"' })
+    assert.equal(versioned.statusCode, 400, versioned.body)
+    assert.equal(versioned.json().code, 'if_match_not_supported')
+    assert.equal((await reminderAtOf(a.id, 'late')).reminderAt, null)
+    assert.deepEqual(await stored(a.id), [])
+  })
+
+  test('DOM-YTK-001, ON-113: başka kurumun taksiti olmayan kimlikle aynı 404, B değişmez', async () => {
+    const a = await institution([invoice('own', at(-2))])
+    const b = await institution([invoice('foreign', at(-2))])
+    const before = await reminderAtOf(b.id, 'foreign')
+    for (const id of ['foreign', 'yok']) {
+      const response = await remind(await a.adminSession(), id)
+      assert.equal(response.statusCode, 404, response.body)
+      assert.equal(response.json().code, 'not_found')
+    }
+    assert.deepEqual(await reminderAtOf(b.id, 'foreign'), before)
+    assert.deepEqual(await stored(b.id), [])
   })
 
   test('iş tanımı: kuyruk adı ve beş alanlı cron; dilim saatten kısa değil', () => {

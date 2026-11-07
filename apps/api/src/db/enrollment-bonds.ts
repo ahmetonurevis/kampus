@@ -39,6 +39,31 @@ export async function loadParentBonds(
 }
 
 /**
+ * Kurumun bütün etkin veli kaydı bağları: toplu aktarımda (IST-007) hangi velinin eşleşeceği dosya
+ * çözülmeden bilinmez, kural (`hasNonCustodialBond`) satır satır bu listeye bakar.
+ */
+export async function loadInstitutionParentBonds(
+  db: Database,
+  institutionId: string,
+): Promise<(ParentBond & { parentId: string })[]> {
+  const rows = await db
+    .select({
+      parentId: studentGuardians.parentId,
+      custody: studentGuardians.custody,
+      contactRestricted: studentGuardians.isContactRestricted,
+    })
+    .from(studentGuardians)
+    .where(
+      and(
+        eq(studentGuardians.institutionId, institutionId),
+        isNull(studentGuardians.archivedAt),
+        isNotNull(studentGuardians.parentId),
+      ),
+    )
+  return rows.flatMap((row) => (row.parentId === null ? [] : [{ ...row, parentId: row.parentId }]))
+}
+
+/**
  * Veli kaydının kurumdaki etkin veli hesabı (DOM-KAY-013, ON-128). Hesap, kaydın etkin bağlarına
  * davetle yazılan üyeliktir (`student_guardians.membership_id`, DOM-YTK-071); üyelik bu kurumun,
  * `veli` rolünde ve devre dışı değilse döner. Kayıt ile hesap tek kişiye eşlenir (core

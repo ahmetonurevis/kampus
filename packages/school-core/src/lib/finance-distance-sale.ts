@@ -4,9 +4,8 @@ import { money } from './format.ts'
 
 /**
  * Uzaktan (çevrim içi) satışta cayma hakkı (docs/domain/finans.md DOM-FIN-042; IST-078). Çevrim içi
- * paket satışı henüz yoktur: bu dosya kuralı ve ön bilgilendirme verisini tutar, paket satışı ekranı
- * (ON-059) ile çevrim içi ödeme akışı (ON-072) çağırır. Ayrılış hesabına bağlanması satış kanalının
- * kaydedilmesini bekler.
+ * paket satışı yoktur (K-07: satışı yönetici ve ön büro yapar): bu dosya kuralı ve ön bilgilendirme
+ * verisini tutar, çağıranı yoktur. Kanal açılırsa ekran ve ayrılış hesabına bağlanma o işle yazılır.
  *
  * **Doğrulanmalı (H-17):** çevrim içi kurs ya da paket satışına uygulanması, süre, istisnalar ve
  * ÖÖKY iade kuralıyla ilişki hukukçu cevabını bekler. 14 gün ister listesi §4.3'teki genel cayma

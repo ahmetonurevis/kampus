@@ -61,6 +61,14 @@ const TARIFF: EnrollmentTariff = {
     { kind: 'staff_child', percentBasisPoints: 8_000, amountCents: null },
   ],
 }
+/** Kardeş %30 + peşin %30: toplam tavanı aşar (DOM-FIN-021). */
+const OVER_CAP_TARIFF: EnrollmentTariff = {
+  ...TARIFF,
+  discounts: [
+    { kind: 'early_payment', percentBasisPoints: 3_000, amountCents: null },
+    { kind: 'sibling', percentBasisPoints: 3_000, amountCents: null },
+  ],
+}
 const request = {
   level: '7',
   institutionType: 'school',
@@ -169,7 +177,7 @@ test('DOM-FIN-021: toplam indirim %50yi aşamaz; personel çocuğu yalnız yöne
     12_000_000,
   )
   assert.throws(
-    () => priceEnrollment(TARIFF, { ...request, discounts: ['sibling', 'referral'] }),
+    () => priceEnrollment(OVER_CAP_TARIFF, { ...request, discounts: ['sibling', 'early_payment'] }),
     isDomainError('discount_cap_exceeded'),
   )
   assert.throws(
@@ -804,6 +812,8 @@ test('DOM-FIN-022: sıra son yürürlükteki sözleşmenin ilan ücreti, eşitli
       studentId,
       siblingIds: [elder.id, younger.id],
       tuitionCents,
+      academicYear: state.academicYear,
+      currentAcademicYear: state.academicYear,
     })
   state.contracts = [
     contract(elder.id, '2025-09-01T09:00:00.000Z', 10_000_000),
@@ -823,6 +833,45 @@ test('DOM-FIN-022: sıra son yürürlükteki sözleşmenin ilan ücreti, eşitli
   // Pasif kardeş sayılmaz.
   younger.isActive = false
   assert.throws(check(elder.id, 1), isDomainError('sibling_discount_ineligible'))
+})
+
+test('DOM-FIN-022, K-22: kardeş indirimin yılında kayıtlı olmalıdır; eski sözleşme cari yıla, sözleşmesiz öğrenci yalnız cari yıla sayılır', () => {
+  const state = createSeed(new Date(NOW))
+  const [child, sibling] = state.students
+  assert.ok(child && sibling)
+  const current = state.academicYear
+  const check = (academicYear: number) => () =>
+    requireSiblingDiscountEligible(state, {
+      studentId: child.id,
+      siblingIds: [sibling.id],
+      tuitionCents: 1,
+      academicYear,
+      currentAcademicYear: current,
+    })
+  const contract = (academicYear?: number) => ({
+    id: 'test-c-kardes',
+    studentId: sibling.id,
+    date: NOW,
+    amount: 9_000_000,
+    title: 'Sözleşme',
+    ...(academicYear === undefined ? {} : { academicYear }),
+  })
+  // Sözleşmesiz etkin kardeş (dosyadan aktarılan): cari yılda kayıtlı, sonraki yılda değil.
+  state.contracts = []
+  assert.doesNotThrow(check(current))
+  assert.throws(check(current + 1), isDomainError('sibling_discount_ineligible'))
+  // Yılı yazılmamış eski sözleşme cari yıla aittir.
+  state.contracts = [contract()]
+  assert.doesNotThrow(check(current))
+  assert.throws(check(current + 1), isDomainError('sibling_discount_ineligible'))
+  // Kardeşin yalnız önceki yıl sözleşmesi var: cari yılda da kaydı yoktur.
+  state.contracts = [contract(current - 1)]
+  assert.throws(check(current), isDomainError('sibling_discount_ineligible'))
+  state.contracts = [contract(current)]
+  assert.doesNotThrow(check(current))
+  // Dondurulan kardeş aktif kayıt sayılmaz; öğrenci `isActive` kalır (DOM-KAY-024).
+  Object.assign(sibling, { frozenAt: NOW })
+  assert.throws(check(current), isDomainError('sibling_discount_ineligible'))
 })
 
 test('DOM-KAY-013: telefon eşleşmesi öneri döndürür, boş telefon eşleşmez', () => {
@@ -1230,8 +1279,8 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   )
   assert.equal(ok.ok && ok.price.netCents, 18_000_000)
   const capped = previewEnrollment(
-    TARIFF,
-    { lessonHours: '', discounts: ['sibling', 'referral'], extras: [] },
+    OVER_CAP_TARIFF,
+    { lessonHours: '', discounts: ['sibling', 'early_payment'], extras: [] },
     school,
   )
   assert.equal(capped.ok, false)
@@ -1239,6 +1288,23 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   assert.throws(() =>
     previewEnrollment(null as never, { lessonHours: '', discounts: [], extras: [] }, school),
   )
+})
+
+test('DOM-FIN-024, K-14: önizleme seçili hakkın sabit tutarını gösterir; hak seçilmeden kalem reddedilir', () => {
+  const school = { institutionType: 'school', level: '7' } as const
+  const values = { lessonHours: '', discounts: ['referral' as const], extras: [] }
+  // Tarife %30 der (6.000.000 kuruş); hak kayıt yılının 1.250.000 kuruşunu taşır.
+  const fixed = previewEnrollment(TARIFF, values, { ...school, referralRewardCents: 1_250_000 })
+  assert.equal(fixed.ok, true)
+  assert.deepEqual(fixed.ok && fixed.price.discounts, [
+    { kind: 'referral', amountCents: 1_250_000 },
+  ])
+  assert.equal(fixed.ok && fixed.price.netCents, 18_750_000)
+  const trimmed = previewEnrollment(TARIFF, values, { ...school, referralRewardCents: 30_000_000 })
+  assert.equal(trimmed.ok && trimmed.price.netCents, 10_000_000)
+  const missing = previewEnrollment(TARIFF, values, school)
+  assert.equal(missing.ok, false)
+  assert.equal(!missing.ok && missing.message.includes('referans hakkı seçin'), true)
 })
 
 test('DOM-FIN-010: form açıkken tarife değiştiyse kayıt yazılmaz (409)', () => {

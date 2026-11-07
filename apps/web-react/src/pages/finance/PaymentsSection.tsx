@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   PAYMENT_METHOD_LABELS,
@@ -90,7 +91,7 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
       payments.data?.data.map((payment): PaymentRow => ({
         id: payment.id,
         paidAt: payment.paidAt,
-        receipt: `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`,
+        receipt: receiptNumberLabel(payment),
         studentName: payment.studentName ?? '—',
         method: payment.method,
         reference: payment.reference ?? '—',

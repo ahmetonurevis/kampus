@@ -304,9 +304,11 @@ test.describe('Kayıt İşlemleri', () => {
     await expect(page.getByText(/-10\.000,00/)).toBeVisible()
     await proceed.click()
     await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
-    // Kardeş indirimi mevcut veliye bağlı aktif öğrenci ister; yeni velide sunucu reddeder.
+    // Kardeş indirimi aynı yılda aktif kardeş ister (K-22); yeni velide sunucu reddeder.
     await expect(
-      page.getByText('Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.'),
+      page.getByText(
+        'Kardeş indirimi için aynı veliye bağlı ve aynı eğitim yılında aktif kaydı olan bir kardeş gerekir.',
+      ),
     ).toBeVisible()
 
     await page.getByRole('button', { name: 'Geri' }).click()

@@ -17,6 +17,7 @@ import {
   addProspectNote,
   changeProspectStage,
   createProspect,
+  prospectLossBreakdown,
   scheduleProspectMeeting,
   recordTrialResult,
   revertProspectStage,
@@ -35,6 +36,7 @@ import {
   findScholarshipProgram,
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
+import { findReferralReward } from '../db/finance-referrals.ts'
 import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -51,6 +53,7 @@ import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { loadEffectiveTariff, withTariffCarryOver } from './fee-tariffs.ts'
+import { settleEnrollmentReferral } from './finance-referrals.ts'
 import { auditWork } from './task-work.ts'
 import {
   runCommand,
@@ -264,7 +267,8 @@ export function enrollProspectCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['prospect.enroll']
-  const { identity, scholarshipProgramId, guardian } = enrollProspectSchema.parse(input)
+  const { identity, scholarshipProgramId, guardian, referralRewardId, discounts } =
+    enrollProspectSchema.parse(input)
   // Seçilen mevcut velinin bağları: kısıtlı ya da velayetsiz veli kesin kayıtta bağlanamaz
   // (core `parent_not_guardian`; DOM-ILT-070, -074).
   const existingParentId =
@@ -278,7 +282,11 @@ export function enrollProspectCommand(
       action: 'prospect.enroll',
       collections: spec.collections,
       stores: FINANCE_TABLE_STORES,
-      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
+      // Yeni sözleşme sona eklenir; yalnız kardeş sırası öteki sözleşmeleri okur (DOM-FIN-022, K-22).
+      loadScope: {
+        invoices: APPEND_ONLY,
+        ...(discounts.includes('sibling') ? {} : { contracts: APPEND_ONLY }),
+      },
       ...(options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -319,6 +327,10 @@ export function enrollProspectCommand(
                 await findScholarshipProgram(tx, ctx.institutionId, scholarshipProgramId),
                 await countScholarshipAwards(tx, ctx.institutionId, scholarshipProgramId),
               ]
+        const referralReward =
+          referralRewardId === undefined
+            ? null
+            : await findReferralReward(tx, ctx.institutionId, referralRewardId)
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -333,6 +345,7 @@ export function enrollProspectCommand(
               today: dayKey(ctx.now),
               scholarshipProgram,
               scholarshipAwardedCount,
+              referralReward,
               guardianBonds,
             })
           },
@@ -368,6 +381,7 @@ export function enrollProspectCommand(
             ['programId', 'studentId', 'amountCents'],
           )
         }
+        await settleEnrollmentReferral(tx, ctx, result)
         // Veli–öğrenci bağı: veli velayet sahibi ve ödeyici olarak kurulur (DOM-ILT-070, -074);
         // yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Kuralı core `planGuardianLink`
         // verir; yeni öğrencinin başka bağı olmadığı için değişmezler boş kümeye uygulanır.
@@ -443,6 +457,14 @@ const PROSPECT_MATCH = z.object({
  * Adayın telefonuyla ya da kardeş adayının kesin kaydıyla eşleşen veliler; ön büroya öneridir,
  * birleştirmez (DOM-KAY-013).
  */
+/** Kayıp aday kırılımı (IST-117, DOM-KAY-005); arşivlenen aday sayılmaz, rol denetimi rotadadır. */
+export async function prospectLossBreakdownFor(ctx: ServiceContext) {
+  const lost = await loadRecords(ctx.db, ctx.institutionId, ['prospects'], {
+    match: [{ kind: 'equals', field: 'stage', values: ['Vazgeçti'] }],
+  })
+  return prospectLossBreakdown(lost.map((row) => row.data))
+}
+
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()

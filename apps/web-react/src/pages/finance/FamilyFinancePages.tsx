@@ -1,4 +1,4 @@
-import { use, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import {
   CONTRACT_APPROVAL_METHOD_LABELS,
@@ -19,11 +19,14 @@ import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
-import { ViewScopeContext } from '@/layout/view-scope.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { FamilyEnrollmentCertificate } from '../crm/FamilyEnrollmentCertificate.tsx'
 import { ContractApprovalPanel } from './ContractApprovalPanel.tsx'
+import { FinanceChildFrame, type FinanceChild } from './FinanceChildFrame.tsx'
 import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
+import { FamilyReferralRewards } from './ReferralRewardsSection.tsx'
+import { FamilyPackagesSection } from './FamilyPackagesSection.tsx'
 import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
 
@@ -31,37 +34,40 @@ import { invoiceRow } from './finance-rows.ts'
 const PHONE_QUERY = '(max-width: 650px)'
 const CONTACT_PATH = '/veli/randevu-mesaj'
 
-/** Seçili çocuk yoksa (bağlı öğrenci bulunmayan veli hesabı) tek boş durum. */
-function NoChild({ page }: { page: NavPage }) {
-  return (
-    <>
-      <PageHeading title={page.title} description={page.description} />
-      <EmptyState
-        title="Bağlı öğrenci bulunamadı."
-        description="Hesabınıza bağlı bir öğrenci olduğunda ödeme bilgileri burada görünür."
-      />
-    </>
-  )
+/**
+ * Seçili çocuğun adı ve sınıfı; adı okunamazsa sayfa yine çalışır (yalnız özet düşer). Ödeyicisi
+ * olunan çocuğun öğrenci kaydı veliye kapalıdır (velayet kapsamı); ad ve sınıf finans seçicisinin
+ * listesinden gelir (ON-313, K-04).
+ */
+function ChildSummary({ child }: { child: FinanceChild }) {
+  if (child.payer) return <SummaryCard name={child.payer.name} className={child.payer.className} />
+  return <StudentSummary childId={child.id} />
 }
 
-/** Seçili çocuğun adı ve sınıfı; adı okunamazsa sayfa yine çalışır (yalnız özet düşer). */
-function ChildSummary({ childId }: { childId: string }) {
+function StudentSummary({ childId }: { childId: string }) {
   const student = useCoreItem('students', childId)
   const schoolClass = useCoreItem('classes', student.data?.record.classId ?? null)
   if (student.error)
     return <QueryError error={student.error} onRetry={() => void student.refetch()} />
   if (!student.data) return null
   return (
+    <SummaryCard
+      name={student.data.record.name}
+      className={schoolClass.data?.record.name ?? null}
+    />
+  )
+}
+
+function SummaryCard({ name, className }: { name: string; className: string | null }) {
+  return (
     <section
       aria-label="Öğrenci özeti"
       className="panel mb-6 flex flex-wrap items-center gap-4 rounded-card border bg-surface px-6 py-5"
     >
-      <Avatar name={student.data.record.name} size="large" />
+      <Avatar name={name} size="large" />
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold [overflow-wrap:anywhere]">
-          {student.data.record.name}
-        </h2>
-        <p className="text-sm text-muted-foreground">{schoolClass.data?.record.name ?? ''}</p>
+        <h2 className="text-lg font-semibold [overflow-wrap:anywhere]">{name}</h2>
+        <p className="text-sm text-muted-foreground">{className ?? ''}</p>
       </div>
     </section>
   )
@@ -69,25 +75,31 @@ function ChildSummary({ childId }: { childId: string }) {
 
 /**
  * Veli Finans & Ödeme Planı (`finans`) ve Dekontlar (`dekontlar`): seçili çocuğun taksitleri.
- * Seçili çocuk kabuktan gelir (`ViewScopeContext`, adreste `?cocuk=`); veli yalnız kendi
- * çocuklarını görür (kapsam sunucuda). Veli çevrim içi ödeme yapamaz, bkz. `FamilyInvoicesView`.
+ * Seçili çocuk kabuktan (`?cocuk=`) ya da finans seçicisinden (ödeyicisi olunan çocuk, `?odenen=`;
+ * ON-313, K-04) gelir; veli yalnız kendi çocuklarını ve ödediği öğrenciyi görür (kapsam
+ * sunucuda). Veli çevrim içi ödeme yapamaz, bkz. `FamilyInvoicesView`.
  */
 export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts: boolean }) {
   useDocumentTitle(page.title)
-  const childId = use(ViewScopeContext)
-  if (!childId) return <NoChild page={page} />
+  const { session } = useAuth()
+  const languageSchool = session?.institution?.type === 'language_school'
   return (
-    <>
-      <PageHeading title={page.title} description={page.description} />
-      <ChildSummary childId={childId} />
-      <FamilyInvoicesView
-        audience="parent"
-        studentId={childId}
-        receiptsOnly={receipts}
-        title={receipts ? 'Ödeme dekontları' : 'Taksit listesi'}
-      />
-      {receipts ? null : <ChildStatement childId={childId} />}
-    </>
+    <FinanceChildFrame page={page}>
+      {(child) => (
+        <>
+          <ChildSummary child={child} />
+          <FamilyInvoicesView
+            audience="parent"
+            studentId={child.id}
+            receiptsOnly={receipts}
+            title={receipts ? 'Ödeme dekontları' : 'Taksit listesi'}
+          />
+          {receipts ? null : <ChildStatement childId={child.id} />}
+          {receipts ? null : <FamilyReferralRewards />}
+          {languageSchool && !receipts ? <FamilyPackagesSection studentId={child.id} /> : null}
+        </>
+      )}
+    </FinanceChildFrame>
   )
 }
 
@@ -101,14 +113,15 @@ function ChildStatement({ childId }: { childId: string }) {
  */
 export function ParentPayPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
-  const childId = use(ViewScopeContext)
-  if (!childId) return <NoChild page={page} />
   return (
-    <>
-      <PageHeading title={page.title} description={page.description} />
-      <ChildSummary childId={childId} />
-      <NextInstallment childId={childId} />
-    </>
+    <FinanceChildFrame page={page}>
+      {(child) => (
+        <>
+          <ChildSummary child={child} />
+          <NextInstallment childId={child.id} />
+        </>
+      )}
+    </FinanceChildFrame>
   )
 }
 
@@ -184,20 +197,28 @@ function NextInstallment({ childId }: { childId: string }) {
 }
 
 /**
- * Veli Sözleşmeler (`sozlesmeler`): seçili çocuğun sözleşme sürümleri ve taksit taahhütnamesi
- * PDF'leri. Ödeyici onayı bekleyen sürüm "İncele ve onayla" ile sağ panelde açılır (`?onay=`,
- * IST-092); onaylı sürüm onayın biçimini ve gününü gösterir.
+ * Veli Sözleşmeler (`sozlesmeler`): seçili çocuğun öğrenci belgesi (K-32), sözleşme sürümleri ve
+ * taksit taahhütnamesi PDF'leri. Ödeyici onayı bekleyen sürüm "İncele ve onayla" ile sağ panelde açılır (`?onay=`,
+ * IST-092); onaylı sürüm onayın biçimini ve gününü gösterir. Velayeti olmayan ödeyici veli
+ * (ON-313, K-04) sözleşmeyi ve durumunu görür; öğrenci belgesi velayet kapsamındadır, onay
+ * yetkisi de velayetli veliye açıktır (`contract.approve`), bu yüzden ikisi de çizilmez.
  */
 export function ParentContractsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
-  const childId = use(ViewScopeContext)
-  if (!childId) return <NoChild page={page} />
   return (
-    <>
-      <PageHeading title={page.title} description={page.description} />
-      <ChildSummary childId={childId} />
-      <ContractsWithApproval childId={childId} />
-    </>
+    <FinanceChildFrame page={page}>
+      {(child) => (
+        <>
+          <ChildSummary child={child} />
+          {child.payer ? null : <FamilyEnrollmentCertificate studentId={child.id} />}
+          {child.payer ? (
+            <Contracts childId={child.id} onApprove={null} />
+          ) : (
+            <ContractsWithApproval childId={child.id} />
+          )}
+        </>
+      )}
+    </FinanceChildFrame>
   )
 }
 
@@ -220,7 +241,8 @@ function Contracts({
   onApprove,
 }: {
   childId: string
-  onApprove: (contractId: string) => void
+  /** `null`: onay düğmesi yok (velayetsiz ödeyici veli). */
+  onApprove: ((contractId: string) => void) | null
 }) {
   const contracts = useCoreAll('contracts', { filters: { studentId: childId } })
   if (contracts.error)
@@ -259,7 +281,7 @@ function Contracts({
               </p>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              {status === 'awaiting_approval' ? (
+              {status === 'awaiting_approval' && onApprove ? (
                 <Button
                   aria-label={`${contract.title} ${contractVersionLabel(contract)} incele ve onayla`}
                   onClick={() => onApprove(contract.id)}
@@ -297,7 +319,8 @@ function Contracts({
 
 /**
  * Öğrenci Ödemelerim (`odemelerim`): kendi taksitleri, salt okunur. Öğrenci ödemeleri telefonda
- * gösterilmez (mobil uygulama sayfayı menüden de çıkarır); dar ekranda veri hiç okunmaz.
+ * gösterilmez (mobil uygulama sayfayı menüden de çıkarır); dar ekranda veri hiç okunmaz. Öğrenci
+ * belgesi ödeme bilgisi değildir (K-32): telefonda da görünür, ücret verisi okumaz.
  */
 export function StudentPaymentsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -305,6 +328,7 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
+      <OwnEnrollmentCertificate />
       {phone ? (
         <EmptyState
           icon="Wallet"
@@ -315,10 +339,27 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
         <>
           <FamilyInvoicesView audience="student" studentId="" title="Ödemelerim" />
           <OwnStatement />
+          <FamilyReferralRewards />
+          <OwnPackages />
         </>
       )}
     </>
   )
+}
+
+/** Öğrencinin kendi belgesi; öğrenci kimliği oturum bağından gelir (K-32). */
+function OwnEnrollmentCertificate() {
+  const { session } = useAuth()
+  const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
+  return studentId ? <FamilyEnrollmentCertificate studentId={studentId} /> : null
+}
+
+/** Dil okulu kursiyerinin kendi paketleri; öğrenci kimliği oturum bağından gelir (IST-078). */
+function OwnPackages() {
+  const { session } = useAuth()
+  const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
+  if (!studentId || session?.institution?.type !== 'language_school') return null
+  return <FamilyPackagesSection studentId={studentId} />
 }
 
 /** Öğrencinin kendi ekstresi; öğrenci kimliği oturum bağından gelir. */

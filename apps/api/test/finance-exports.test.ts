@@ -494,6 +494,7 @@ describe('muhasebe dışa aktarımı', () => {
       studentId,
       totalCents: NET,
       paidCents: 1_000_000,
+      openingImportCents: 0,
       openCents: NET - 1_000_000,
       overdueCents: 0,
       overdueCount: 0,

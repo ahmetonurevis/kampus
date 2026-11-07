@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { dateLabel, dayKey, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
+import { isOpeningImport, OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -30,6 +31,7 @@ import {
   type InvoiceRow,
 } from './finance-rows.ts'
 import { InvoicePresets } from './InvoicePresets.tsx'
+import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { LookupError } from '../academic/AcademicParts.tsx'
 
 const INVOICE_URL_FILTERS = { status: 'durum', branchId: 'kampus', classId: 'sinif' }
@@ -148,7 +150,9 @@ export function InvoicesSection({
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) =>
-          row.paidAt ? (
+          isOpeningImport(row) ? (
+            OPENING_IMPORT_METHOD
+          ) : row.paidAt ? (
             <PdfButton
               type="receipt"
               recordId={row.id}
@@ -156,13 +160,16 @@ export function InvoicesSection({
               ariaLabel={`${row.studentName} ${row.installment}. taksit dekontunu görüntüle`}
             />
           ) : (
-            <Button
-              size="sm"
-              aria-label={`${row.studentName} ${row.installment}. taksiti tahsil et`}
-              onClick={() => onOpenPayment(row.id)}
-            >
-              Tahsil et
-            </Button>
+            <span className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                aria-label={`${row.studentName} ${row.installment}. taksiti tahsil et`}
+                onClick={() => onOpenPayment(row.id)}
+              >
+                Tahsil et
+              </Button>
+              <InvoiceRemindButton row={row} size="sm" />
+            </span>
           ),
       },
     ],

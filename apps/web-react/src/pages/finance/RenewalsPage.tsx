@@ -39,9 +39,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
@@ -58,6 +56,7 @@ import { notify } from '@/lib/notify.ts'
 import {
   bulletinText,
   ceilingLines,
+  courseOfferNotice,
   priceIndexBody,
   priceIndexDefaults,
   priceIndexFormSchema,
@@ -77,7 +76,10 @@ import {
   type RenewalFormValues,
   type RenewalQuoteView,
 } from './renewal-forms.ts'
+import { ChoiceFieldset } from './RenewalChoices.tsx'
 import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
+import { ReferralRewardField } from './ReferralRewardField.tsx'
+import { RenewalYearSection } from './RenewalYearSection.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -277,6 +279,13 @@ export function RenewalsPage({ page }: { page: NavPage }) {
           onRowClick={(row) => openRecord(row.id)}
         />
       </section>
+      {staff ? (
+        <RenewalYearSection
+          academicYear={academicYear}
+          institutionType={session?.institution?.type ?? 'school'}
+          canApprove={role === 'yonetici'}
+        />
+      ) : null}
       {staff ? (
         <PriceIndexSection canManage={role === 'yonetici'} academicYear={academicYear} />
       ) : null}
@@ -503,7 +512,10 @@ function PlanModal({
     resolver: zodResolver(renewalFormSchema),
     defaultValues: renewalDefaults(),
   })
-  const [studentId, mode] = useWatch({ control: form.control, name: ['studentId', 'mode'] })
+  const [studentId, mode, discounts] = useWatch({
+    control: form.control,
+    name: ['studentId', 'mode', 'discounts'],
+  })
   // Önceki yıldan öğrenim ücreti borcu (DOM-KAY-025, ON-057): plan yöneticinin açık onayını ister.
   const [debtApproved, setDebtApproved] = useState(false)
   const debtCents = preview !== null && preview !== 'graduate' ? preview.outstandingTuitionCents : 0
@@ -576,6 +588,10 @@ function PlanModal({
     )
 
   const lines = preview !== null && preview !== 'graduate' ? quoteLines(preview) : null
+  // Dil okulunda onaysız kur sonu kararı planı engeller (DOM-DIL-070); önizleme yine görünür.
+  const offerNotice =
+    preview !== null && preview !== 'graduate' ? courseOfferNotice(preview.courseOffer) : null
+  const blocked = offerNotice?.blocking === true
   return (
     <Modal
       open
@@ -590,7 +606,7 @@ function PlanModal({
               Bilgileri düzenle
             </Button>
             <Button
-              disabled={busy || debtBlocked}
+              disabled={busy || blocked || debtBlocked}
               aria-busy={busy || undefined}
               onClick={() => void confirm()}
             >
@@ -744,6 +760,15 @@ function PlanModal({
               control={form.control}
               disabled={locked}
             />
+            {discounts.includes('referral') ? (
+              <ReferralRewardField
+                id="yenileme-referans-hakki"
+                query={studentId ? { familyOfStudentId: studentId } : null}
+                error={errors.referralRewardId}
+                disabled={locked}
+                register={form.register('referralRewardId')}
+              />
+            ) : null}
             <ChoiceGroup
               legend="Ek hizmetler"
               hint="Velinin talep ettiği hizmetler ayrı taksit olarak açılır."
@@ -798,6 +823,16 @@ function PlanModal({
           <h3 id="yenileme-ozeti" className="text-sm font-semibold">
             Yeni dönem ödeme özeti
           </h3>
+          {offerNotice ? (
+            <p
+              role={offerNotice.blocking ? 'alert' : 'status'}
+              className={
+                offerNotice.blocking ? 'text-sm text-danger' : 'text-sm text-muted-foreground'
+              }
+            >
+              {offerNotice.text}
+            </p>
+          ) : null}
           {lines.pricing.map((line) => (
             <p key={line} className="text-sm text-muted-foreground">
               {line}
@@ -862,45 +897,22 @@ function ChoiceGroup({
   >['control']
   disabled: boolean
 }) {
-  if (options.length === 0) return null
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">{legend}</legend>
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => {
-          const selected = field.value as readonly string[]
-          return (
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {options.map((option) => {
-                const id = `yenileme-${name}-${option.value}`
-                return (
-                  <div key={option.value} className="flex items-center gap-2.5">
-                    <Checkbox
-                      id={id}
-                      checked={selected.includes(option.value)}
-                      disabled={disabled}
-                      onCheckedChange={(checked) =>
-                        field.onChange(
-                          checked === true
-                            ? [...selected, option.value]
-                            : selected.filter((value) => value !== option.value),
-                        )
-                      }
-                    />
-                    <Label htmlFor={id} className="font-normal">
-                      {option.label}
-                    </Label>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        }}
-      />
-    </fieldset>
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <ChoiceFieldset
+          legend={legend}
+          hint={hint}
+          idPrefix={`yenileme-${name}`}
+          options={options}
+          selected={field.value as readonly string[]}
+          onChange={field.onChange}
+          disabled={disabled}
+        />
+      )}
+    />
   )
 }
 

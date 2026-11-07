@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
+import {
+  assertPaymentDayOpen,
+  assertReversalDayOpen,
+} from '@kampus/school-core/lib/finance-day-closings.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
@@ -35,6 +39,7 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
+import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { serviceInvoiceIdsAmong } from '../db/finance-student-services.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -49,6 +54,7 @@ import {
   type IdempotencyRequest,
   type LoadScope,
 } from './operation-runner.ts'
+import { earnReferralRewardOnPayment, revertReferralRewardOnReversal } from './finance-referrals.ts'
 import { readScope } from './read-scope.ts'
 import { dayRange } from './list-filters.ts'
 
@@ -173,6 +179,12 @@ export function recordPaymentCommand(
           reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
         const accounts = await listBankAccounts(tx, ctx.institutionId)
         const bankAccountIds = accounts.map((account) => account.id)
+        // Kurum kilidi altında: kapanışla aynı anda güne tahsilat yazılamaz (DOM-FIN-036).
+        const dayClosed = await isFinanceDayClosed(
+          tx,
+          ctx.institutionId,
+          data.paidDate ?? dayKey(ctx.now),
+        )
         return {
           scalars,
           run: (state, { now }) => {
@@ -180,6 +192,7 @@ export function recordPaymentCommand(
               now,
               institutionType,
             })
+            assertPaymentDayOpen(dayClosed)
             return planPayment(state, data, {
               allocated,
               cashEnabled,
@@ -213,6 +226,7 @@ export function recordPaymentCommand(
           data: { paymentId: id },
           dedupeKey: id,
         })
+        await earnReferralRewardOnPayment(tx, ctx, plan.studentId)
       },
     },
     () => {
@@ -252,6 +266,8 @@ export async function reversePaymentCommand(
         if (payment === null) throw new NotFoundError()
         if (payment.version !== expectedVersion) throw new ConflictError()
         const withdrawals = await withdrawalsForReversal(tx, ctx.institutionId, payment.studentId)
+        // İptal iptal gününe yazılır: tahsilatın günü kapalı olabilir, bugün kapalıysa olmaz.
+        const todayClosed = await isFinanceDayClosed(tx, ctx.institutionId, dayKey(ctx.now))
         const serviceInvoiceIds =
           withdrawals.length === 0
             ? []
@@ -264,6 +280,7 @@ export async function reversePaymentCommand(
           scalars,
           run: (state, { now }) => {
             requireAuthorized(actor, 'payment.reverse', {}, state, { now, institutionType })
+            assertReversalDayOpen(todayClosed)
             return reversePayment(
               state,
               {
@@ -294,6 +311,7 @@ export async function reversePaymentCommand(
         const payment = await findPayment(tx, ctx.institutionId, paymentId)
         if (payment === null) throw new NotFoundError()
         view = paymentView(payment, true)
+        await revertReferralRewardOnReversal(tx, ctx, payment.studentId)
       },
     },
     () => {

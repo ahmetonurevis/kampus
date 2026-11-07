@@ -1,5 +1,5 @@
 {
-  "id": "f345d1fe-e4e3-47a9-8186-5bd7d6bfdc00",
+  "id": "77cfaca8-140f-41ce-a93c-2c5d1b5838de",
   "prevId": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "version": "7",
   "dialect": "postgresql",
@@ -5843,6 +5843,782 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.lesson_package_hour_entries": {
+      "name": "lesson_package_hour_entries",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sale_id": {
+          "name": "sale_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hours": {
+          "name": "hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_date": {
+          "name": "occurred_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_by_user_id": {
+          "name": "recorded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "lesson_package_hour_entries_source_key": {
+          "name": "lesson_package_hour_entries_source_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sale_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"lesson_package_hour_entries\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "lesson_package_hour_entries_sale_idx": {
+          "name": "lesson_package_hour_entries_sale_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sale_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "lesson_package_hour_entries_institution_id_institutions_id_fk": {
+          "name": "lesson_package_hour_entries_institution_id_institutions_id_fk",
+          "tableFrom": "lesson_package_hour_entries",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lesson_package_hour_entries_sale_fkey": {
+          "name": "lesson_package_hour_entries_sale_fkey",
+          "tableFrom": "lesson_package_hour_entries",
+          "tableTo": "lesson_package_sales",
+          "columnsFrom": [
+            "institution_id",
+            "sale_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "lesson_package_hour_entries_pkey": {
+          "name": "lesson_package_hour_entries_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "lesson_package_hour_entries_kind_check": {
+          "name": "lesson_package_hour_entries_kind_check",
+          "value": "\"lesson_package_hour_entries\".\"kind\" in ('consumed', 'refunded')"
+        },
+        "lesson_package_hour_entries_source_check": {
+          "name": "lesson_package_hour_entries_source_check",
+          "value": "\"lesson_package_hour_entries\".\"source_type\" in ('lesson', 'withdrawal')"
+        },
+        "lesson_package_hour_entries_hours_check": {
+          "name": "lesson_package_hour_entries_hours_check",
+          "value": "\"lesson_package_hour_entries\".\"hours\" between 1 and 2000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.lesson_package_sales": {
+      "name": "lesson_package_sales",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "package_id": {
+          "name": "package_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "package_name": {
+          "name": "package_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "course_id": {
+          "name": "course_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tariff_id": {
+          "name": "tariff_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tariff_version": {
+          "name": "tariff_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchased_hours": {
+          "name": "purchased_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hourly_cents": {
+          "name": "hourly_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_cents": {
+          "name": "gross_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "expires_date": {
+          "name": "expires_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sold_at": {
+          "name": "sold_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sold_by_user_id": {
+          "name": "sold_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "lesson_package_sales_contract_key": {
+          "name": "lesson_package_sales_contract_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contract_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "lesson_package_sales_student_idx": {
+          "name": "lesson_package_sales_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "lesson_package_sales_package_idx": {
+          "name": "lesson_package_sales_package_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "package_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "lesson_package_sales_tariff_idx": {
+          "name": "lesson_package_sales_tariff_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tariff_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "lesson_package_sales_course_idx": {
+          "name": "lesson_package_sales_course_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"lesson_package_sales\".\"course_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "lesson_package_sales_institution_id_institutions_id_fk": {
+          "name": "lesson_package_sales_institution_id_institutions_id_fk",
+          "tableFrom": "lesson_package_sales",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lesson_package_sales_package_fkey": {
+          "name": "lesson_package_sales_package_fkey",
+          "tableFrom": "lesson_package_sales",
+          "tableTo": "lesson_packages",
+          "columnsFrom": [
+            "institution_id",
+            "package_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "lesson_package_sales_course_fkey": {
+          "name": "lesson_package_sales_course_fkey",
+          "tableFrom": "lesson_package_sales",
+          "tableTo": "courses",
+          "columnsFrom": [
+            "institution_id",
+            "course_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "lesson_package_sales_contract_fkey": {
+          "name": "lesson_package_sales_contract_fkey",
+          "tableFrom": "lesson_package_sales",
+          "tableTo": "contracts",
+          "columnsFrom": [
+            "institution_id",
+            "contract_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "lesson_package_sales_tariff_fkey": {
+          "name": "lesson_package_sales_tariff_fkey",
+          "tableFrom": "lesson_package_sales",
+          "tableTo": "fee_tariffs",
+          "columnsFrom": [
+            "institution_id",
+            "tariff_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "lesson_package_sales_pkey": {
+          "name": "lesson_package_sales_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "lesson_package_sales_kind_check": {
+          "name": "lesson_package_sales_kind_check",
+          "value": "\"lesson_package_sales\".\"kind\" in ('course', 'hours', 'private')"
+        },
+        "lesson_package_sales_level_check": {
+          "name": "lesson_package_sales_level_check",
+          "value": "\"lesson_package_sales\".\"level\" is null or \"lesson_package_sales\".\"level\" in ('Pre-A1', 'A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'B2+', 'C1', 'C2')"
+        },
+        "lesson_package_sales_hours_check": {
+          "name": "lesson_package_sales_hours_check",
+          "value": "\"lesson_package_sales\".\"purchased_hours\" between 1 and 2000"
+        },
+        "lesson_package_sales_amounts_check": {
+          "name": "lesson_package_sales_amounts_check",
+          "value": "\"lesson_package_sales\".\"hourly_cents\" > 0 and \"lesson_package_sales\".\"gross_cents\" > 0 and \"lesson_package_sales\".\"net_cents\" > 0 and \"lesson_package_sales\".\"net_cents\" <= \"lesson_package_sales\".\"gross_cents\""
+        },
+        "lesson_package_sales_currency_check": {
+          "name": "lesson_package_sales_currency_check",
+          "value": "\"lesson_package_sales\".\"currency\" = 'TRY'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.lesson_packages": {
+      "name": "lesson_packages",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "course_id": {
+          "name": "course_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lesson_hours": {
+          "name": "lesson_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hourly_cents": {
+          "name": "hourly_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "validity_days": {
+          "name": "validity_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "lesson_packages_name_key": {
+          "name": "lesson_packages_name_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"lesson_packages\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "lesson_packages_course_idx": {
+          "name": "lesson_packages_course_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"lesson_packages\".\"course_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "lesson_packages_institution_id_institutions_id_fk": {
+          "name": "lesson_packages_institution_id_institutions_id_fk",
+          "tableFrom": "lesson_packages",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lesson_packages_course_fkey": {
+          "name": "lesson_packages_course_fkey",
+          "tableFrom": "lesson_packages",
+          "tableTo": "courses",
+          "columnsFrom": [
+            "institution_id",
+            "course_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "lesson_packages_pkey": {
+          "name": "lesson_packages_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "lesson_packages_kind_check": {
+          "name": "lesson_packages_kind_check",
+          "value": "\"lesson_packages\".\"kind\" in ('course', 'hours', 'private')"
+        },
+        "lesson_packages_level_check": {
+          "name": "lesson_packages_level_check",
+          "value": "\"lesson_packages\".\"level\" is null or \"lesson_packages\".\"level\" in ('Pre-A1', 'A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'B2+', 'C1', 'C2')"
+        },
+        "lesson_packages_hours_check": {
+          "name": "lesson_packages_hours_check",
+          "value": "\"lesson_packages\".\"lesson_hours\" is null or \"lesson_packages\".\"lesson_hours\" between 1 and 2000"
+        },
+        "lesson_packages_course_kind_check": {
+          "name": "lesson_packages_course_kind_check",
+          "value": "\"lesson_packages\".\"kind\" <> 'course' or (\"lesson_packages\".\"course_id\" is not null and \"lesson_packages\".\"lesson_hours\" is null)"
+        },
+        "lesson_packages_hours_kind_check": {
+          "name": "lesson_packages_hours_kind_check",
+          "value": "\"lesson_packages\".\"kind\" = 'course' or \"lesson_packages\".\"lesson_hours\" is not null"
+        },
+        "lesson_packages_hourly_check": {
+          "name": "lesson_packages_hourly_check",
+          "value": "\"lesson_packages\".\"hourly_cents\" is null or \"lesson_packages\".\"hourly_cents\" > 0"
+        },
+        "lesson_packages_validity_check": {
+          "name": "lesson_packages_validity_check",
+          "value": "\"lesson_packages\".\"validity_days\" is null or \"lesson_packages\".\"validity_days\" between 1 and 1825"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.scholarship_awards": {
       "name": "scholarship_awards",
       "schema": "",
@@ -6193,479 +6969,6 @@
         "scholarship_programs_capacity_check": {
           "name": "scholarship_programs_capacity_check",
           "value": "\"scholarship_programs\".\"capacity\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.student_service_invoices": {
-      "name": "student_service_invoices",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_service_id": {
-          "name": "student_service_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "student_service_invoices_invoice_key": {
-          "name": "student_service_invoices_invoice_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "student_service_invoices_institution_id_institutions_id_fk": {
-          "name": "student_service_invoices_institution_id_institutions_id_fk",
-          "tableFrom": "student_service_invoices",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "student_service_invoices_service_fkey": {
-          "name": "student_service_invoices_service_fkey",
-          "tableFrom": "student_service_invoices",
-          "tableTo": "student_services",
-          "columnsFrom": [
-            "institution_id",
-            "student_service_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "student_service_invoices_invoice_fkey": {
-          "name": "student_service_invoices_invoice_fkey",
-          "tableFrom": "student_service_invoices",
-          "tableTo": "invoices",
-          "columnsFrom": [
-            "institution_id",
-            "invoice_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "student_service_invoices_pkey": {
-          "name": "student_service_invoices_pkey",
-          "columns": [
-            "institution_id",
-            "student_service_id",
-            "invoice_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.student_services": {
-      "name": "student_services",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tariff_id": {
-          "name": "tariff_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tariff_version": {
-          "name": "tariff_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fee_level": {
-          "name": "fee_level",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "unit": {
-          "name": "unit",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tariff_amount_cents": {
-          "name": "tariff_amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "contract_id": {
-          "name": "contract_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "ended_date": {
-          "name": "ended_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "end_reason": {
-          "name": "end_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ended_by_user_id": {
-          "name": "ended_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "student_services_student_kind_open_key": {
-          "name": "student_services_student_kind_open_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "kind",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"student_services\".\"status\" = 'active' and \"student_services\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "student_services_student_idx": {
-          "name": "student_services_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "student_services_tariff_idx": {
-          "name": "student_services_tariff_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tariff_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "student_services_contract_idx": {
-          "name": "student_services_contract_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "contract_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"student_services\".\"contract_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "student_services_institution_id_institutions_id_fk": {
-          "name": "student_services_institution_id_institutions_id_fk",
-          "tableFrom": "student_services",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "student_services_tariff_fkey": {
-          "name": "student_services_tariff_fkey",
-          "tableFrom": "student_services",
-          "tableTo": "fee_tariffs",
-          "columnsFrom": [
-            "institution_id",
-            "tariff_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "student_services_contract_fkey": {
-          "name": "student_services_contract_fkey",
-          "tableFrom": "student_services",
-          "tableTo": "contracts",
-          "columnsFrom": [
-            "institution_id",
-            "contract_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "student_services_pkey": {
-          "name": "student_services_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "student_services_kind_check": {
-          "name": "student_services_kind_check",
-          "value": "\"student_services\".\"kind\" in ('transport', 'meal', 'breakfast', 'club', 'tutoring', 'dormitory')"
-        },
-        "student_services_unit_check": {
-          "name": "student_services_unit_check",
-          "value": "\"student_services\".\"unit\" in ('year', 'month', 'lesson_hour', 'item')"
-        },
-        "student_services_status_check": {
-          "name": "student_services_status_check",
-          "value": "\"student_services\".\"status\" in ('active', 'ended')"
-        },
-        "student_services_end_reason_check": {
-          "name": "student_services_end_reason_check",
-          "value": "\"student_services\".\"end_reason\" is null or \"student_services\".\"end_reason\" in ('request', 'withdrawal')"
-        },
-        "student_services_amount_check": {
-          "name": "student_services_amount_check",
-          "value": "\"student_services\".\"amount_cents\" > 0 and \"student_services\".\"amount_cents\" <= \"student_services\".\"tariff_amount_cents\""
-        },
-        "student_services_currency_check": {
-          "name": "student_services_currency_check",
-          "value": "\"student_services\".\"currency\" = 'TRY'"
-        },
-        "student_services_dates_check": {
-          "name": "student_services_dates_check",
-          "value": "(\"student_services\".\"end_date\" is null or \"student_services\".\"end_date\" >= \"student_services\".\"start_date\") and (\"student_services\".\"ended_date\" is null or \"student_services\".\"ended_date\" >= \"student_services\".\"start_date\")"
-        },
-        "student_services_ended_check": {
-          "name": "student_services_ended_check",
-          "value": "(\"student_services\".\"status\" = 'ended') = (\"student_services\".\"ended_date\" is not null) and (\"student_services\".\"ended_date\" is null) = (\"student_services\".\"end_reason\" is null) and (\"student_services\".\"ended_date\" is null) = (\"student_services\".\"ended_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

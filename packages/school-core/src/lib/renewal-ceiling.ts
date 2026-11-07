@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
+import { enrolledSiblings, siblingIdsOf } from './enrollment-siblings.ts'
 import { DomainError } from './errors.ts'
 import {
   TUITION_INCREASE_EXTRA_BASIS_POINTS,
@@ -8,6 +9,7 @@ import {
   type PriceIndexRates,
 } from './fee-tariffs.ts'
 import { money } from './format.ts'
+import { renewalCourseOfferSchema } from './renewal-course-offer.ts'
 import { contractPaymentTermSchema } from './payment-terms.ts'
 
 /**
@@ -70,6 +72,8 @@ export const renewalPricingSchema = z.object({
   discounts: z.array(lineSchema),
   extras: z.array(lineSchema),
   scholarship: z.object({ programId: z.string(), amountCents: z.number().int() }).nullable(),
+  /** Dil okulunda teklifin başladığı kur sonu kararı (DOM-DIL-070); okulda yok. */
+  courseOffer: renewalCourseOfferSchema.optional(),
   /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); eski kayıtta ve eski tarifede yoktur. */
   paymentTerm: contractPaymentTermSchema
     .optional()
@@ -110,10 +114,31 @@ function contractBaseCents(state: CeilingState, contract: Contract): number {
   )
 }
 
-function hasActiveSibling(state: CeilingState, studentId: string): boolean {
-  const parentId = state.students.find((item) => item.id === studentId)?.parentId
-  return state.students.some(
-    (item) => item.id !== studentId && item.parentId === parentId && item.isActive,
+/** Hedef yıldan önceki son sözleşmenin yılı ve indirimsiz ücreti; yeni yıl listesinde gösterilir. */
+export function latestContractTuition(
+  state: CeilingState,
+  studentId: string,
+  year: number,
+): { academicYear: number; tuitionCents: number } | null {
+  const latest = priorContracts(state, studentId, year).at(-1)
+  return latest
+    ? { academicYear: latest.year, tuitionCents: contractBaseCents(state, latest.contract) }
+    : null
+}
+
+/**
+ * İndirimin koşulu hedef yılda sürüyor mu: aynı veliye bağlı ve hedef yılda aktif kaydı olan kardeş
+ * var mı. Kardeş indirimi kuralıyla aynı tanımdır (DOM-FIN-022, K-22; `enrolledSiblings`); kardeşi
+ * etkin ama yenileme yılında kaydı (yenileme planı) olmayan çocukta koşul kalkmıştır.
+ */
+function hasEnrolledSibling(state: CeilingState, studentId: string, year: number): boolean {
+  return (
+    enrolledSiblings(state, {
+      studentId,
+      siblingIds: siblingIdsOf(state.students, studentId),
+      academicYear: year,
+      currentAcademicYear: state.academicYear,
+    }).length > 0
   )
 }
 
@@ -144,8 +169,8 @@ function ratesBetween(
 
 /**
  * Baz (DOM-FIN-005): devam eden öğrencide son sözleşmenin indirimsiz ücreti; sözleşmesi olmayanda
- * önceki yılın ilan ücreti. Kardeşi kalmayan öğrencinin kardeş indirimi varsa baz kayıt yılındaki
- * indirimsiz ücrettir ve her yıl sırayla artırılır; cari sözleşme değişmez (DOM-FIN-023). Baz
+ * önceki yılın ilan ücreti. Son sözleşmesi kardeş indirimli öğrencinin hedef yılda aktif kaydı olan
+ * kardeşi yoksa (DOM-FIN-022'deki tanım) baz kayıt yılındaki indirimsiz ücrettir ve her yıl sırayla artırılır; cari sözleşme değişmez (DOM-FIN-023). Baz
  * bulunamazsa (ör. sisteme önceki yıl verisi girilmemiş kurum) tavan hesaplanamaz: `no_base`.
  */
 export function renewalCeiling(
@@ -185,7 +210,7 @@ export function renewalCeiling(
   }
   const lostSibling =
     latest.contract.discounts?.some((item) => item.kind === 'sibling') === true &&
-    !hasActiveSibling(state, input.studentId)
+    !hasEnrolledSibling(state, input.studentId, input.year)
   const first = contracts[0]
   if (lostSibling && first)
     return applied(contractBaseCents(state, first.contract), 'enrollment_contract', first.year, {

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { scholarshipAwards, scholarshipPrograms } from './schema/finance-scholarships.ts'
@@ -181,6 +181,27 @@ export async function hasStudentScholarshipAward(
     )
     .limit(1)
   return row !== undefined
+}
+
+/** Yılda arşivlenmemiş bursu olan öğrenciler; toplu yenileme önizlemesinde tek sorgu. */
+export async function studentsWithScholarshipAward(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+  academicYear: number,
+): Promise<Set<string>> {
+  if (studentIds.length === 0) return new Set()
+  const rows = await db
+    .select({ studentId: scholarshipAwards.studentId })
+    .from(scholarshipAwards)
+    .where(
+      and(
+        activeAward(institutionId),
+        inArray(scholarshipAwards.studentId, [...studentIds]),
+        eq(scholarshipAwards.academicYear, academicYear),
+      ),
+    )
+  return new Set(rows.map((row) => row.studentId))
 }
 
 export async function insertScholarshipAward(

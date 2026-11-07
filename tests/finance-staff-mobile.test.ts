@@ -329,4 +329,20 @@ describe('ON-123 mobil yönetici finans ve ön büro tahsilat takibi', () => {
     const inProgress = paymentCommandFailure(apiError(409, 'idempotency_in_progress'))
     assert.equal(inProgress.conflict, false)
   })
+
+  test('ON-323, ON-123: taksit ve tahsilat listeleri tazelenirken önceki sayfa soluk ve meşgul, tazeleme duyurulur', () => {
+    // Kayıt Yenileme ve veli taksit listesiyle (ON-321, ON-322) aynı karar ve gösterge.
+    for (const [file, pending] of [
+      ['finance-invoices.tsx', 'Taksitler güncelleniyor…'],
+      ['finance-payments.tsx', 'Tahsilatlar güncelleniyor…'],
+    ] as const) {
+      const url = new URL(`../apps/mobile/src/api/screens/${file}`, import.meta.url)
+      const source = readFileSync(url, 'utf8')
+      assert.match(source, /const refreshing = listRefreshing\(list\)/, file)
+      assert.match(source, /accessibilityState=\{\{ busy: refreshing \}\}/, file)
+      assert.match(source, /opacity: refreshing \? /, file)
+      assert.match(source, /accessibilityLiveRegion="polite"/, file)
+      assert.ok(source.includes(`'${pending}'`), file)
+    }
+  })
 })

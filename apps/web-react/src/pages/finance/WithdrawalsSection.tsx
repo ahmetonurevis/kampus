@@ -5,6 +5,7 @@ import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   contractLineRows,
   contractLinesToShow,
+  paidTuitionLabel,
   payerDecisionSchema,
   payRefundSchema,
   refundApprovalRequired,
@@ -13,6 +14,7 @@ import {
   WITHDRAWAL_REASON_LABELS,
   WITHDRAWAL_REASONS,
   withdrawalFormSchema,
+  withdrawalTargetLabel,
   type PayerDecisionInput,
   type PayRefundInput,
   type PayRefundOutput,
@@ -21,6 +23,7 @@ import {
   type WithdrawalFormValues,
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import {
   REAUTHENTICATION_CODE,
   usePayRefund,
@@ -251,9 +254,11 @@ function BreakdownRows({ rows }: { rows: readonly (readonly [string, string])[] 
 function ContractBreakdown({
   breakdown,
   payers,
+  institutionType,
 }: {
   breakdown: WithdrawalBreakdown
   payers?: readonly WithdrawalContractPayer[] | undefined
+  institutionType: InstitutionType
 }) {
   const lines = contractLinesToShow(breakdown.contracts)
   const decision = breakdown.payerDecision
@@ -268,6 +273,7 @@ function ContractBreakdown({
                 line,
                 breakdown.deductionBasisPoints,
                 payers?.find((item) => item.contractId === line.contractId)?.payerName,
+                institutionType,
               )}
             />
           </dl>
@@ -311,6 +317,10 @@ function ContractBreakdown({
   )
 }
 
+/**
+ * Hesap dökümü; ekran ve iade belgesi aynı sözlerle yazar (IST-110). Ödenen ücret okulda "öğrenim
+ * ücreti", dil okulu ve kursta "kurs ücreti"dir (DOM-KAY-012).
+ */
 function BreakdownList({
   breakdown,
   payers,
@@ -318,8 +328,12 @@ function BreakdownList({
   breakdown: WithdrawalBreakdown
   payers?: readonly WithdrawalContractPayer[]
 }) {
+  const { session } = useAuth()
+  const institutionType = session?.institution.type ?? 'school'
   if (contractLinesToShow(breakdown.contracts).length > 0)
-    return <ContractBreakdown breakdown={breakdown} payers={payers} />
+    return (
+      <ContractBreakdown breakdown={breakdown} payers={payers} institutionType={institutionType} />
+    )
   const extras = breakdown.extras.reduce((sum, line) => sum + line.paidCents - line.usedCents, 0)
   const lines: readonly [string, string][] = [
     ['Hesap tabanı (net ücret)', money(breakdown.baseCents)],
@@ -332,7 +346,7 @@ function BreakdownList({
     ...(breakdown.scholarshipExempt
       ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as [string, string][])
       : []),
-    ['Ödenen öğrenim ücreti', money(breakdown.paidCents)],
+    [paidTuitionLabel(institutionType), money(breakdown.paidCents)],
     ...(breakdown.extras.length > 0
       ? ([['Ek hizmet bakiyesi', money(extras)]] as [string, string][])
       : []),
@@ -586,7 +600,11 @@ function StartModal({ onClose }: { onClose: () => void }) {
               />
             )}
           </FormField>
-          <FormField id="ayrilis-hedef" label="Gittiği okul (varsa)" error={errors.targetSchool}>
+          <FormField
+            id="ayrilis-hedef"
+            label={`${withdrawalTargetLabel(session?.institution.type)} (varsa)`}
+            error={errors.targetSchool}
+          >
             {(control) => (
               <Input {...control} {...form.register('targetSchool')} disabled={locked} />
             )}

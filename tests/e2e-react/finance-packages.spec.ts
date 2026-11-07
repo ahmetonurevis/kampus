@@ -270,7 +270,7 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await expect(page.getByRole('region', { name: 'Paket saat raporu' })).toHaveCount(0)
   })
 
-  test('K-21, DOM-DIL-051, DOM-FIN-040: ön büro saati girer; yönetici uyarıyı ve tutarı görüp onaylar', async ({
+  test('K-21, DOM-DIL-051, DOM-FIN-040, DOM-KAY-012: ön büro saati girer; yönetici uyarıyı ve tutarı görüp onaylar', async ({
     api,
     loginAs,
     tenant,
@@ -333,6 +333,11 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await start.getByRole('button', { name: 'Hesabı göster' }).click()
     await expect(start.getByRole('alert')).toHaveCount(0)
     await expect(start).toContainText('Kullanım (12 / 40 ders saati, kayıttan)')
+    // Dil okulunda gidilen yer "kurum", ödenen ücret "kurs ücreti"dir (DOM-KAY-012, ON-323).
+    await expect(start.getByLabel('Gittiği kurum (varsa)')).toBeVisible()
+    await expect(start).toContainText('Ödenen kurs ücreti')
+    await expect(start).not.toContainText('Gittiği okul')
+    await expect(start).not.toContainText('öğrenim ücreti')
     await start.getByRole('checkbox', { name: /iade tutarını inceledim/ }).check()
     await start.getByRole('button', { name: 'Ayrılışı onayla' }).click()
     await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()

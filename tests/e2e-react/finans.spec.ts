@@ -809,7 +809,7 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Tahsilat dosyası' })).toHaveCount(0)
   })
 
-  test('DOM-FIN-041: yönetici hesabı önizler, ayrılışı onaylar, iadeyi öder; ön büro yalnız görür', async ({
+  test('DOM-FIN-041, DOM-KAY-012: yönetici hesabı önizler, ayrılışı onaylar, iadeyi öder; ön büro yalnız görür', async ({
     page,
     loginAs,
     api,
@@ -835,9 +835,12 @@ test.describe('Finans: tahsilat', () => {
     await dialog.getByLabel('Öğrenci').selectOption({ label: name })
     await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
     await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    // Okulda gidilen yer ve ödenen ücret okul sözleriyle yazılır (DOM-KAY-012, ON-323).
+    await expect(dialog.getByLabel('Gittiği okul (varsa)')).toBeVisible()
     await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
     await expect(dialog.getByText('Hesap önizlemesi')).toBeVisible()
     await expect(dialog).toContainText('Hak edilen')
+    await expect(dialog).toContainText('Ödenen öğrenim ücreti')
     // Önizleme kayıt yazmaz.
     const before = (await client.get('/api/v1/collections/students/s21')).body as typeof student
     expect(before.data.record.isActive).toBe(true)

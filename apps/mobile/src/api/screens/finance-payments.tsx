@@ -44,6 +44,7 @@ import {
   type PaymentFilters,
   type PaymentRecord,
 } from '../finance-staff.ts'
+import { listRefreshing } from '../finance-list.ts'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import type { MemberRole } from '../session-state.ts'
@@ -61,13 +62,15 @@ const MEBBIS_OPTIONS = [{ value: 'pending', label: 'İşlenmemiş' }]
 /**
  * Tahsilat geçmişi (web `PaymentsSection` eşi; DOM-FIN-030, -032, -033): her ödeme ayrı satırdır, en
  * yeni önce. Arama, yöntem, MEBBİS ve ödeme günü süzgeci sunucudadır; ters aralık gönderilmez.
- * Dokununca ayrıntı açılır: MEBBİS işareti ve (yalnız yönetici) gerekçeli iptal.
+ * Dokununca ayrıntı açılır: MEBBİS işareti ve (yalnız yönetici) gerekçeli iptal. Yeni sayfa gelene
+ * kadar önceki satırlar soluk ve meşgul kalır, tazeleme duyurulur (ON-323).
  */
 export function FinancePayments({ role }: { role: MemberRole }) {
   const { state, setSearch, setFilter, setIndex, clear } = useListMemory('finans:tahsilatlar')
   const search = useDebouncedValue(state.search)
   const query = useMemo(() => paymentListQuery(state, search), [state, search])
   const list = usePaymentList(query)
+  const refreshing = listRefreshing(list)
   const total = list.data?.meta.total
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
@@ -137,7 +140,15 @@ export function FinancePayments({ role }: { role: MemberRole }) {
         )
       ) : (
         <>
-          <View style={{ gap: 10 }} accessibilityRole="list">
+          <T muted size={14} accessibilityLiveRegion="polite">
+            {refreshing ? 'Tahsilatlar güncelleniyor…' : `${String(total ?? rows.length)} tahsilat`}
+          </T>
+          <View
+            style={{ gap: 10, opacity: refreshing ? 0.55 : 1 }}
+            accessibilityRole="list"
+            accessibilityState={{ busy: refreshing }}
+            aria-busy={refreshing}
+          >
             {rows.map((row) => {
               const item = paymentListItem(row)
               return (

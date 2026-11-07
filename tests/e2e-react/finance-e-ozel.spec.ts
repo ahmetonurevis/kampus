@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test'
 
 import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // e-Özel işlem listesi (IST-085, DOM-KAY-015): dil okulunda "Finans > e-Özel işlem listesi". Veri
 // yazan test kendi dil okulunu kurar. Okulda sekme yoktur, adresle de açılmaz.
@@ -14,6 +14,17 @@ const ADMIN_URL = '/yonetici/finans?gorunum=e-ozel'
 const FRONT_OFFICE_URL = '/onburo/tahsilat-takip?gorunum=e-ozel'
 const TABLE = 'e-Özel işlem listesi'
 const tableOf = (page: Page) => page.getByRole('table', { name: TABLE })
+const KIND_LABELS = { learner: 'Kursiyer', fee: 'Ücret/dekont' } as const
+
+/**
+ * "Tür" süzgecini seçer ve yeni yanıtı bekler: süzgeç değişince eski sayfa yeni yanıt gelene kadar
+ * soluk olarak ekranda kalır (ON-319). Beklemeden satır düğmesine basılırsa eski sayfanın düğmeleri
+ * de eşleşir.
+ */
+async function filterKind(page: Page, kind: keyof typeof KIND_LABELS) {
+  await page.getByRole('combobox', { name: /^Tür/ }).selectOption(kind)
+  await expectEveryRow(tableOf(page).locator('tbody tr td:nth-child(2)'), KIND_LABELS[kind], true)
+}
 
 test.describe('e-Özel işlem listesi', () => {
   test('IST-085: yönetici kursiyeri işler, işaret kim/ne zaman ile görünür ve geri alınır, dosya iner', async ({
@@ -29,7 +40,7 @@ test.describe('e-Özel işlem listesi', () => {
     await loginAs(school.user('yonetici'))
     await page.goto(ADMIN_URL)
     const table = tableOf(page)
-    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('learner')
+    await filterKind(page, 'learner')
     const markButton = table.getByRole('button', { name: /işlendi olarak işaretle/ })
     await expect(markButton).toHaveCount(1)
     await expect(page.getByRole('combobox', { name: /^e-Özel durumu/ })).toHaveValue('pending')
@@ -74,7 +85,7 @@ test.describe('e-Özel işlem listesi', () => {
     await loginAs(school.user('onburo'))
     await page.goto(FRONT_OFFICE_URL)
     const table = tableOf(page)
-    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('learner')
+    await filterKind(page, 'learner')
     const show = table.getByRole('button', { name: /kimlik numarasını göster/ })
     await expect(show).toHaveCount(1)
     await expect(table.getByText(/^\*{7}/)).toBeVisible()
@@ -114,7 +125,7 @@ test.describe('e-Özel işlem listesi', () => {
     await loginAs(school.user('yonetici'))
     await page.goto(ADMIN_URL)
     const table = tableOf(page)
-    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('learner')
+    await filterKind(page, 'learner')
     let staleReads = 2
     await page.route('**/learners/s16/identity', (route) => {
       if (staleReads === 0) return route.continue()
@@ -173,7 +184,7 @@ test.describe('e-Özel işlem listesi', () => {
     await loginAs(school.user('yonetici'))
     await page.goto(ADMIN_URL)
     const table = tableOf(page)
-    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('fee')
+    await filterKind(page, 'fee')
     await table.getByRole('button', { name: /işlendi olarak işaretle/ }).click()
     await expect(table.getByRole('button', { name: /işlendi olarak işaretle/ })).toHaveCount(0)
 
@@ -207,7 +218,7 @@ test.describe('e-Özel işlem listesi', () => {
     await loginAs(school.user('onburo'))
     await page.goto(FRONT_OFFICE_URL)
     const table = tableOf(page)
-    await page.getByRole('combobox', { name: /^Tür/ }).selectOption('learner')
+    await filterKind(page, 'learner')
     await expect(table.getByRole('button', { name: /işlendi olarak işaretle/ })).toHaveCount(1)
     await page.getByLabel('Gün (başlangıç)').fill('2030-01-01')
     await page.getByLabel('Gün (bitiş)').fill('2029-01-01')

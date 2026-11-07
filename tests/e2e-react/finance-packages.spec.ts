@@ -216,7 +216,7 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await expect(salePanel(page).getByRole('button', { name: 'Süreyi uzat' })).toBeVisible()
   })
 
-  test('IST-114, DOM-FIN-057: yönetici paket saat raporunu dönemle görür, CSV indirir; ön büroda rapor yok', async ({
+  test('IST-114, DOM-FIN-058: yönetici paket saat raporunu dönemle görür, CSV indirir; ön büroda rapor yok', async ({
     api,
     loginAs,
     tenant,

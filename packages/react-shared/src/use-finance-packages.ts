@@ -187,7 +187,7 @@ export function useSetPackageUsedHours() {
 export type PackageReportQuery = { from: string; to: string; page: number; pageSize: number }
 
 /**
- * Paket saat raporu (IST-114, DOM-FIN-057): toplam ve ay dökümü bütün satırlardan, satırlar sayfalı;
+ * Paket saat raporu (IST-114, DOM-FIN-058): toplam ve ay dökümü bütün satırlardan, satırlar sayfalı;
  * yalnız yönetici okur. Saat girişi ve satış paket anahtarını tazeler, rapor da onunla tazelenir.
  */
 export function usePackageReport(query: PackageReportQuery, options: { enabled?: boolean } = {}) {

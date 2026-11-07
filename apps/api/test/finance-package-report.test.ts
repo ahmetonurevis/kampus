@@ -29,7 +29,7 @@ import {
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
- * Paket saat bakiyesi ve kullanılan saat raporu uçları (IST-114; DOM-FIN-057, DOM-DIL-051, K-21).
+ * Paket saat bakiyesi ve kullanılan saat raporu uçları (IST-114; DOM-FIN-058, DOM-DIL-051, K-21).
  * Her test kendi dil okulunu kurar: s3 kursiyerdir, saat ücreti 500 ₺, 40 saatlik paket 20.000 ₺.
  */
 

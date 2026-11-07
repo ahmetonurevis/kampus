@@ -13,7 +13,7 @@ import {
 import { dayKey } from './format.ts'
 
 /**
- * Paket saat bakiyesi ve kullanılan saat raporu (IST-114; docs/domain/finans.md DOM-FIN-057,
+ * Paket saat bakiyesi ve kullanılan saat raporu (IST-114; docs/domain/finans.md DOM-FIN-058,
  * dil-okulu.md DOM-DIL-051). Bakiye saklanmaz, saat hareketlerinden hesaplanır. Rapor dönemin
  * açılış kalanı + satılan − kullanılan − iade edilen = kapanış kalanı eşitliğini saat ve kuruşta
  * tutar; ay dökümü ve satış satırları aynı hesaptan toplanır, toplamlar bakiyeye eşittir.

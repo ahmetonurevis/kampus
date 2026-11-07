@@ -86,7 +86,7 @@ function periodError(from: string, to: string): string | null {
 const monthLabel = (month: string) => MONTH_FORMAT.format(new Date(`${month}-01T00:00:00.000Z`))
 
 /**
- * Paket saat raporu (IST-114, DOM-FIN-057; yalnız dil okulu, yalnız yönetici): dönemde satılan,
+ * Paket saat raporu (IST-114, DOM-FIN-058; yalnız dil okulu, yalnız yönetici): dönemde satılan,
  * kullanılan, iade edilen ve süresi dolan saat; gelir kullanılan saat payıyla tanınır, kalan saat
  * ertelenmiş gelirdir. Hesap sunucudadır; toplam ve ay dökümü bütün satırlardan gelir. Dosya taze
  * oturum ister: oturum eskiyse parola sorulup yinelenir.

@@ -19,7 +19,7 @@ import { mapOperationError } from './operation-runner.ts'
 import { assertReadable, readScope } from './read-scope.ts'
 
 /**
- * Paket saat bakiyesi ve kullanılan saat raporu (IST-114; docs/domain/finans.md DOM-FIN-057,
+ * Paket saat bakiyesi ve kullanılan saat raporu (IST-114; docs/domain/finans.md DOM-FIN-058,
  * dil-okulu.md DOM-DIL-051). Hesap core `lib/finance-package-report.ts`'tedir; servis yalnız yükler,
  * kapsamı uygular ve sayfayı keser.
  */

@@ -112,7 +112,7 @@ export const saleListQuery = z.strictObject({
   packageId: z.uuid('Paket geçersiz.').optional(),
 })
 
-// --- Bakiye ve rapor (IST-114; DOM-FIN-057) ------------------------------------------------------
+// --- Bakiye ve rapor (IST-114; DOM-FIN-058) ------------------------------------------------------
 
 const hours = (description: string) => z.number().int().describe(description)
 const cents = (description: string) => z.number().int().describe(`${description}, kuruş`)

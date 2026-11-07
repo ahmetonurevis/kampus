@@ -12,7 +12,7 @@ import {
 
 import { isDomainError } from './support/domain-error.ts'
 
-// Paket saat bakiyesi ve kullanılan saat raporu (IST-114; DOM-FIN-057, DOM-DIL-051, K-21).
+// Paket saat bakiyesi ve kullanılan saat raporu (IST-114; DOM-FIN-058, DOM-DIL-051, K-21).
 
 const TODAY = '2026-12-15'
 const lesson = (hours: number, occurredDate: string): PackageReportEntry => ({

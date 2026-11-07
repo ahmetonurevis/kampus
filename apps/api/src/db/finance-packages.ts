@@ -428,7 +428,7 @@ export async function archiveManualHourEntries(
 }
 
 /**
- * Bakiye ve rapor girdisi (IST-114, DOM-FIN-057): satışlar ve saat hareketleri. Arşivli satırlardan
+ * Bakiye ve rapor girdisi (IST-114, DOM-FIN-058): satışlar ve saat hareketleri. Arşivli satırlardan
  * yalnız `manual` gelir: elle girilen toplamın değişiklikleri kendi gününe fark olarak düşsün (K-21).
  * `studentId` verilirse yalnız o öğrencinin satışları. Rapor kurum geneli okur, sayfalanmaz; sayfa
  * core hesabından sonra kesilir, çünkü toplamlar bütün satırlardan gelir.

@@ -2,7 +2,12 @@
 import { money } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import { date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
-import { INSTALLMENT_COLUMNS, studentFields } from './finance-shared.ts'
+import {
+  INSTALLMENT_COLUMNS,
+  learnerTerm,
+  studentFields,
+  type LearnerTermOptions,
+} from './finance-shared.ts'
 import type { TemplateOptions } from './shared.ts'
 
 const COMMITMENT_BLOCK_MM = 29
@@ -10,12 +15,12 @@ const COMMITMENT_BLOCK_MM = 29
 /**
  * Taksit taahhütnamesi: öğrencinin güncel ödeme planı, tahsilat özeti ve imza alanı.
  * `collectedCents` sunucu bakiyesidir; kısmi ödemeleri de sayar. Verilmezse yalnız tam kapanan
- * taksitler sayılır (`data.paid`).
+ * taksitler sayılır (`data.paid`). `institutionType` kayıtlı kişinin adını seçer (öğrenci/kursiyer).
  */
 export function paymentPlanDocument(
   measurer: TextMeasurer,
   data: DocumentDataMap['payment-plan'],
-  options: TemplateOptions & { collectedCents?: number },
+  options: TemplateOptions & LearnerTermOptions & { collectedCents?: number },
 ): PdfDocument {
   const collected = options.collectedCents ?? data.paid
   const doc = new DocumentLayout(measurer, {
@@ -28,7 +33,7 @@ export function paymentPlanDocument(
       'Tahsilat durumu belgenin oluşturulduğu andaki kayıtlardır; sözleşme veya resmî makbuz yerine geçmez.',
   })
   doc.heading('Taksit taahhütnamesi')
-  doc.fields(studentFields(data))
+  doc.fields(studentFields(data, learnerTerm(options.institutionType)))
   doc.metrics([
     ['TOPLAM BEDEL', money(data.total)],
     ['TAHSİL EDİLEN', money(collected)],

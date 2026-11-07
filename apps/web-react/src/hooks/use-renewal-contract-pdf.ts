@@ -60,6 +60,8 @@ export function useRenewalContractPdf(request: RenewalContractRequest, enabled: 
   const institutionId = useActiveInstitutionId()
   const { session } = useAuth()
   const institution = session?.institution.name ?? 'Kampüs'
+  // Yenileme bugün yalnız okulda açıktır; tür yine geçirilir ki terim şablonla tek yerden seçilsin.
+  const institutionType = session?.institution.type
   const { renewalId, version, contractId, studentId, context, canReadRates } = request
   return useQuery<DocumentPdf, DocumentPdfError>({
     queryKey: institutionKey(
@@ -92,6 +94,7 @@ export function useRenewalContractPdf(request: RenewalContractRequest, enabled: 
           contractDocument(measurer, documentData(state, 'contract', contractId), {
             institution,
             renewal,
+            ...(institutionType ? { institutionType } : {}),
           }),
         )
         return { blob, pages, filename: documentFilename('contract', contractId) }

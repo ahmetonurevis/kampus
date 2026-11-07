@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import { paymentPlanDocument } from '../src/lib/pdf/templates/payment-plan.ts'
 import { allTexts, measurer, texts } from './support/pdf-measurer.ts'
 
@@ -58,5 +59,22 @@ test('IST-105: taksit sayısı ne olursa olsun taahhüt ile imza aynı sayfadad�
     const page = pages.find((item) => texts(item).includes(COMMITMENT))
     assert.ok(page, `${String(count)} taksitte taahhüt cümlesi yok`)
     assert.ok(texts(page).includes(signature), `${String(count)} taksitte imza ayrı sayfada`)
+  }
+})
+
+test('ADR 0008, DOM-KAY-012: dil okulunda taahhütname "kursiyer" der; okulda ve tür yokken "öğrenci"', () => {
+  const data = planOf()
+  for (const options of [OPTIONS, { ...OPTIONS, institutionType: 'school' as const }]) {
+    const school = allTexts(paymentPlanDocument(measurer, data, options))
+    assert.ok(school.includes('Öğrenci'))
+    assert.ok(school.includes('Okul numarası / Sınıf'))
+    assert.equal(school.includes('Kursiyer'), false)
+  }
+  for (const institutionType of INSTITUTION_TYPES.filter((type) => type !== 'school')) {
+    const all = allTexts(paymentPlanDocument(measurer, data, { ...OPTIONS, institutionType }))
+    assert.ok(all.includes('Kursiyer'), institutionType)
+    assert.ok(all.includes('Kursiyer numarası / Sınıf'), institutionType)
+    assert.equal(all.includes('Öğrenci'), false, institutionType)
+    assert.equal(all.includes('Okul numarası / Sınıf'), false, institutionType)
   }
 })

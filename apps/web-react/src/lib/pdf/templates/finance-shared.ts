@@ -8,6 +8,13 @@ type Fields = Parameters<DocumentLayout['fields']>[0]
 export type LearnerTerm = 'Öğrenci' | 'Kursiyer'
 
 /**
+ * Kayıtlı kişiyi adlandıran şablonların seçeneği: etkin kurumun türü (oturumdaki
+ * `institution.type`). Okulda "öğrenci", dil okulu ve kursta "kursiyer" yazılır (ADR 0008 karar 1,
+ * DOM-KAY-012). Verilmezse okul metni kullanılır.
+ */
+export type LearnerTermOptions = { institutionType?: InstitutionType }
+
+/**
  * Belgede kayıtlı kişinin adı (ADR 0008 karar 1; core terminolojideki `learner`): okulda öğrenci,
  * okul dışındaki türlerde (dil okulu, kurs) kursiyer. Tür bilinmiyorsa okul sayılır.
  */

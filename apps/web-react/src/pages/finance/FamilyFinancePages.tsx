@@ -21,6 +21,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { FamilyEnrollmentCertificate } from '../crm/FamilyEnrollmentCertificate.tsx'
 import { ContractApprovalPanel } from './ContractApprovalPanel.tsx'
 import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
@@ -190,8 +191,8 @@ function NextInstallment({ childId }: { childId: string }) {
 }
 
 /**
- * Veli Sözleşmeler (`sozlesmeler`): seçili çocuğun sözleşme sürümleri ve taksit taahhütnamesi
- * PDF'leri. Ödeyici onayı bekleyen sürüm "İncele ve onayla" ile sağ panelde açılır (`?onay=`,
+ * Veli Sözleşmeler (`sozlesmeler`): seçili çocuğun öğrenci belgesi (K-32), sözleşme sürümleri ve
+ * taksit taahhütnamesi PDF'leri. Ödeyici onayı bekleyen sürüm "İncele ve onayla" ile sağ panelde açılır (`?onay=`,
  * IST-092); onaylı sürüm onayın biçimini ve gününü gösterir.
  */
 export function ParentContractsPage({ page }: { page: NavPage }) {
@@ -202,6 +203,7 @@ export function ParentContractsPage({ page }: { page: NavPage }) {
     <>
       <PageHeading title={page.title} description={page.description} />
       <ChildSummary childId={childId} />
+      <FamilyEnrollmentCertificate studentId={childId} />
       <ContractsWithApproval childId={childId} />
     </>
   )
@@ -303,7 +305,8 @@ function Contracts({
 
 /**
  * Öğrenci Ödemelerim (`odemelerim`): kendi taksitleri, salt okunur. Öğrenci ödemeleri telefonda
- * gösterilmez (mobil uygulama sayfayı menüden de çıkarır); dar ekranda veri hiç okunmaz.
+ * gösterilmez (mobil uygulama sayfayı menüden de çıkarır); dar ekranda veri hiç okunmaz. Öğrenci
+ * belgesi ödeme bilgisi değildir (K-32): telefonda da görünür, ücret verisi okumaz.
  */
 export function StudentPaymentsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -311,6 +314,7 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
+      <OwnEnrollmentCertificate />
       {phone ? (
         <EmptyState
           icon="Wallet"
@@ -327,6 +331,13 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
       )}
     </>
   )
+}
+
+/** Öğrencinin kendi belgesi; öğrenci kimliği oturum bağından gelir (K-32). */
+function OwnEnrollmentCertificate() {
+  const { session } = useAuth()
+  const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
+  return studentId ? <FamilyEnrollmentCertificate studentId={studentId} /> : null
 }
 
 /** Dil okulu kursiyerinin kendi paketleri; öğrenci kimliği oturum bağından gelir (IST-078). */

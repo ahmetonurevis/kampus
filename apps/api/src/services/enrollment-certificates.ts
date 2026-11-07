@@ -17,6 +17,7 @@ import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { mapOperationError } from './operation-runner.ts'
+import { readScope } from './read-scope.ts'
 
 /** Belgenin okuduğu öğrenci alanları; kimlik, iletişim ve veli alanları hiç ayrıştırılmaz. */
 const studentFacts = z.object({
@@ -119,4 +120,20 @@ export async function issueEnrollmentCertificate(
     })
     return certificate
   })
+}
+
+/**
+ * Ailenin belgesi (`GET /finance/students/:id/enrollment-certificate`; K-32, ON-304). Kapsam core'dan
+ * gelir (`scope.studentIds`): veli velayetli ve kısıtsız bağlı çocuğunu, öğrenci kendisini alır
+ * (DOM-ILT-070, DOM-ILT-074). Ödeyici bağı kasıtlı olarak sayılmaz (`financeStudentIds` değil): K-04
+ * finans okumasını açar, kişinin kayıt belgesini değil. Kapsam dışı öğrenci olmayanla aynı 404'tür,
+ * denetim yazılmaz.
+ */
+export async function issueFamilyEnrollmentCertificate(
+  ctx: ServiceContext,
+  studentId: string,
+): Promise<EnrollmentCertificate> {
+  const scope = await readScope(ctx)
+  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  return issueEnrollmentCertificate(ctx, studentId)
 }

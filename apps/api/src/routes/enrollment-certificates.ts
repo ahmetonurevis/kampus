@@ -1,11 +1,17 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
-import { ENROLLMENT_CERTIFICATE_ROLES } from '@kampus/school-core/lib/enrollment-certificate.ts'
+import {
+  ENROLLMENT_CERTIFICATE_FAMILY_ROLES,
+  ENROLLMENT_CERTIFICATE_ROLES,
+} from '@kampus/school-core/lib/enrollment-certificate.ts'
 
 import { errorResponseSchema } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
-import { issueEnrollmentCertificate } from '../services/enrollment-certificates.ts'
+import {
+  issueEnrollmentCertificate,
+  issueFamilyEnrollmentCertificate,
+} from '../services/enrollment-certificates.ts'
 import { authenticatedErrors } from './common.schemas.ts'
 import {
   enrollmentCertificateParamsSchema,
@@ -13,8 +19,10 @@ import {
 } from './enrollment-certificates.schemas.ts'
 
 /**
- * Öğrenci belgesi verisi (docs/domain/kayit-ve-crm.md DOM-KAY-027; ON-049). PDF web'de bu yanıttan
- * üretilir. Yalnız yönetici ve ön büro, modül `crm`; veli ve öğrenci talebi OG-807'dedir.
+ * Öğrenci belgesi verisi (docs/domain/kayit-ve-crm.md DOM-KAY-027; ON-049, ON-304). PDF web'de bu
+ * yanıttan üretilir. İki uç aynı belgeyi düzenler: personel `/prospects` altında (modül `crm`), aile
+ * `/finance` altında (modül `finance`). Kapalı aday modülü ailenin belgesini kapatmaz; aile ucunun
+ * bağlı olduğu modül, düğmeyi taşıyan aile sayfalarıyla aynıdır (K-32).
  */
 export function registerEnrollmentCertificateRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
@@ -40,6 +48,33 @@ export function registerEnrollmentCertificateRoutes(app: FastifyInstance) {
     },
     async (request) => ({
       data: await issueEnrollmentCertificate(contextOf(request), request.params.studentId),
+    }),
+  )
+
+  typed.get(
+    '/api/v1/finance/students/:studentId/enrollment-certificate',
+    {
+      preValidation: [
+        app.requireModule('finance'),
+        app.requireRole(ENROLLMENT_CERTIFICATE_FAMILY_ROLES),
+      ],
+      schema: {
+        operationId: 'getFamilyEnrollmentCertificate',
+        tags: ['prospects'],
+        summary: 'Velinin çocuğu ya da öğrencinin kendisi için öğrenci belgesi verisi',
+        description:
+          'Personel ucuyla aynı belgeyi düzenler (DOM-KAY-027, K-32): içerik izin listesidir, her başarılı istek yeni belge kimliği üretir ve aktör rolüyle denetim kaydına `enrollment_certificate.issue` olarak yazılır. Veli velayetli ve iletişim kısıtı olmayan bağlı çocuğunu, öğrenci kendisini alır (DOM-ILT-070, DOM-ILT-074); ödeyici bağı belge açmaz. Kapsam dışı, olmayan, arşivlenmiş ya da başka kurumun öğrencisi aynı 404. Ayrılan ve mezun öğrenci 422 `enrollment_certificate_inactive`. Roller: `veli`, `ogrenci` (diğerleri 403); `crm` modülü kapalı olsa da çalışır, `finance` modülü kapalıysa 403 `module_disabled`.',
+        params: enrollmentCertificateParamsSchema,
+        response: {
+          200: enrollmentCertificateResponseSchema,
+          ...authenticatedErrors,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => ({
+      data: await issueFamilyEnrollmentCertificate(contextOf(request), request.params.studentId),
     }),
   )
 }

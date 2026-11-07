@@ -3648,6 +3648,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/students/{studentId}/enrollment-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Velinin çocuğu ya da öğrencinin kendisi için öğrenci belgesi verisi
+         * @description Personel ucuyla aynı belgeyi düzenler (DOM-KAY-027, K-32): içerik izin listesidir, her başarılı istek yeni belge kimliği üretir ve aktör rolüyle denetim kaydına `enrollment_certificate.issue` olarak yazılır. Veli velayetli ve iletişim kısıtı olmayan bağlı çocuğunu, öğrenci kendisini alır (DOM-ILT-070, DOM-ILT-074); ödeyici bağı belge açmaz. Kapsam dışı, olmayan, arşivlenmiş ya da başka kurumun öğrencisi aynı 404. Ayrılan ve mezun öğrenci 422 `enrollment_certificate_inactive`. Roller: `veli`, `ogrenci` (diğerleri 403); `crm` modülü kapalı olsa da çalışır, `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFamilyEnrollmentCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -38714,6 +38734,122 @@ export interface operations {
         };
     };
     getEnrollmentCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * Format: uuid
+                             * @description Belge kimliği; aynı düzenlemenin denetim satırının kimliğidir
+                             */
+                            documentId: string;
+                            /**
+                             * Format: date-time
+                             * @description Düzenleme anı (UTC); belgede Europe/Istanbul günü yazılır
+                             */
+                            issuedAt: string;
+                            /** @description Kurum adı (IST-013 unvanı gelene kadar kayıtlı ad) */
+                            institutionName: string;
+                            /**
+                             * @description Terimi belirler: öğrenci ya da kursiyer
+                             * @enum {string}
+                             */
+                            institutionType: "school" | "language_school";
+                            /** @description Öğrencinin ya da kursiyerin adı */
+                            learnerName: string;
+                            /** @description Okul numarası; kayıtta yoksa `null` */
+                            schoolNumber: string | null;
+                            /** @description Sınıf adı; okunamıyorsa `null` */
+                            className: string | null;
+                            /** @description Dil okulunda sürmekte olan kurlar, ada göre sıralı; okulda hep boş */
+                            courseNames: string[];
+                            /** @description Etkin eğitim yılının başlangıcı: 2026 → 2026–2027; kurum ayarı yoksa `null` */
+                            academicYear: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFamilyEnrollmentCertificate: {
         parameters: {
             query?: never;
             header?: never;

@@ -17,8 +17,11 @@ import { DomainError } from './errors.ts'
  * yoktur. Borç belgeyi engellemez (DOM-KAY-025). Saftır; kimlik üretimi ve denetim kaydı servistedir.
  */
 
-/** Belgeyi düzenleyen roller; veli ve öğrenci talep akışı OG-807'dedir. */
+/** Herhangi bir öğrenciye belge düzenleyen personel rolleri. */
 export const ENROLLMENT_CERTIFICATE_ROLES = ['yonetici', 'onburo'] as const
+
+/** Yalnız kapsamındaki öğrencinin belgesini indiren aile rolleri (K-32, ON-304). */
+export const ENROLLMENT_CERTIFICATE_FAMILY_ROLES = ['veli', 'ogrenci'] as const
 
 export const enrollmentCertificateSchema = z.strictObject({
   documentId: z.uuid().describe('Belge kimliği; aynı düzenlemenin denetim satırının kimliğidir'),

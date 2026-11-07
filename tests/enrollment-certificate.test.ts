@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import {
   academicYearLabel,
   buildEnrollmentCertificate,
+  ENROLLMENT_CERTIFICATE_FAMILY_ROLES,
   ENROLLMENT_CERTIFICATE_ROLES,
   enrollmentCertificateSchema,
   type EnrollmentCertificateInput,
@@ -96,6 +97,12 @@ test('DOM-KAY-027: eğitim yılı etiketi; ayar yoksa null', () => {
   assert.equal(academicYearLabel(null), null)
 })
 
-test('DOM-KAY-027: yalnız yönetici ve ön büro düzenler', () => {
+test('DOM-KAY-027: personelde yalnız yönetici ve ön büro düzenler', () => {
   assert.deepEqual([...ENROLLMENT_CERTIFICATE_ROLES], ['yonetici', 'onburo'])
+})
+
+test('DOM-KAY-027, K-32: aile rolleri veli ve öğrencidir, personelle kesişmez', () => {
+  assert.deepEqual([...ENROLLMENT_CERTIFICATE_FAMILY_ROLES], ['veli', 'ogrenci'])
+  const staff: readonly string[] = ENROLLMENT_CERTIFICATE_ROLES
+  assert.ok(ENROLLMENT_CERTIFICATE_FAMILY_ROLES.every((role) => !staff.includes(role)))
 })

@@ -8,8 +8,9 @@ import type { Download, Page } from '@playwright/test'
 import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
-// Öğrenci belgesi (ON-049, DOM-KAY-027): yönetici ve ön büro Kayıt İşlemleri'nden belgeyi açar ve
-// indirir; okulda "öğrenci", dil okulunda "kursiyer" terimi. Rol, kapsam, ayrılan/mezun reddi ve
+// Öğrenci belgesi (ON-049, ON-304, DOM-KAY-027): yönetici ve ön büro Kayıt İşlemleri'nden, veli
+// Sözleşmeler'den, öğrenci Ödemelerim'den belgeyi açar ve indirir (K-32); okulda "öğrenci", dil
+// okulunda "kursiyer" terimi. Rol, kapsam, ayrılan/mezun reddi ve
 // yanıt alanları API testindedir (`apps/api/test/enrollment-certificates.test.ts`), şablon metni
 // birim testindedir (`apps/web-react/tests/enrollment-certificate-pdf.test.ts`).
 
@@ -140,4 +141,98 @@ test('ON-049 DOM-KAY-024: liste açıkken ayrılan öğrencide sunucunun Türkç
   const preview = page.getByRole('dialog', { name: 'Öğrenci belgesi · Önizleme' })
   await expect(preview.getByRole('alert')).toContainText(message)
   await expect(preview.getByRole('button', { name: 'Yeniden dene' })).toBeVisible()
+})
+
+/** Aile düğmesini açar, PDF'i indirir ve indirilen dosyanın metnini döner. */
+async function downloadFamilyCertificate(page: Page, title: string) {
+  const open = page.getByRole('region', { name: title }).getByRole('button', { name: title })
+  await open.click()
+  const preview = page.getByRole('dialog', { name: `${title} · Önizleme` })
+  await expect(preview.getByRole('img', { name: `${title}, sayfa 1` })).toBeVisible()
+  const downloading = page.waitForEvent('download')
+  await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+  const text = await pdfText(await downloading)
+  await page.keyboard.press('Escape')
+  await expect(preview).toBeHidden()
+  await expect(open).toBeFocused()
+  return text
+}
+
+/** Denetim satırlarının aktör rolleri; yalnız bu öğrencinin belge düzenlemeleri. */
+async function issuedRoles(
+  admin: { get: (url: string) => Promise<{ status: number; body: unknown }> },
+  studentId: string,
+) {
+  const audit = await admin.get('/api/v1/audit-events?entityType=students&pageSize=100')
+  expect(audit.status).toBe(200)
+  const events = (
+    audit.body as { data: { action: string; entityId: string; actor: { role: string } }[] }
+  ).data
+  return events
+    .filter(
+      (event) => event.action === 'enrollment_certificate.issue' && event.entityId === studentId,
+    )
+    .map((event) => event.actor.role)
+}
+
+test('ON-304 K-32 DOM-KAY-027: veli seçili çocuğun belgesini indirir, denetime veli olarak yazılır', async ({
+  api,
+  loginAs,
+  tenant,
+}) => {
+  const school = await tenant({ roles: ['veli'], childIds: ['s1', 's2'] })
+  const page = await loginAs(school.user('veli'))
+  await page.goto('/veli/sozlesmeler?cocuk=s2')
+  const second = await downloadFamilyCertificate(page, 'Öğrenci belgesi')
+  expect(second).toContain('Ece Yılmaz')
+  expect(second).not.toContain(STUDENT.name)
+
+  await page.getByLabel('Çocuk seç').selectOption({ label: STUDENT.name })
+  await expect(page).toHaveURL(/[?&]cocuk=s1/)
+  const first = await downloadFamilyCertificate(page, 'Öğrenci belgesi')
+  expect(first).toContain(STUDENT.name)
+
+  const admin = await api(school.user('yonetici'))
+  expect(await issuedRoles(admin, 's1')).toEqual(['veli'])
+  expect(await issuedRoles(admin, 's2')).toEqual(['veli'])
+})
+
+test('ON-304 K-32 DOM-KAY-027: öğrenci kendi belgesini telefonda da indirir, ücret verisi okunmaz', async ({
+  api,
+  loginAs,
+  tenant,
+}) => {
+  const school = await tenant({ roles: ['ogrenci'] })
+  const page = await loginAs(school.user('ogrenci'))
+  const reads: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.includes('/collections/invoices')) reads.push(request.url())
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/ogrenci/odemelerim')
+  await expect(page.getByRole('heading', { name: 'Ödemeler telefonda gösterilmez' })).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  const text = await downloadFamilyCertificate(page, 'Öğrenci belgesi')
+  expect(text).toContain(STUDENT.name)
+  expect(text).toContain(STUDENT.number)
+  expect(reads).toEqual([])
+
+  const admin = await api(school.user('yonetici'))
+  expect(await issuedRoles(admin, STUDENT.id)).toEqual(['ogrenci'])
+})
+
+test('ON-304 K-32 DOM-KAY-027: dil okulunda veli düğmesi kursiyer belgesi adını taşır', async ({
+  loginAs,
+  tenant,
+}) => {
+  const school = await tenant({ type: 'language_school', roles: ['veli'], childIds: ['s1'] })
+  const page = await loginAs(school.user('veli'))
+  await page.goto('/veli/sozlesmeler')
+  const title = 'Kursiyer belgesi'
+  await page.getByRole('region', { name: title }).getByRole('button', { name: title }).click()
+  await expect(
+    page.getByRole('dialog', { name: `${title} · Önizleme` }).getByRole('img', {
+      name: `${title}, sayfa 1`,
+    }),
+  ).toBeVisible()
 })

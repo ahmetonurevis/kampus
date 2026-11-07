@@ -9,6 +9,7 @@ import {
   prospectAgeGroupRequired,
   prospectStageLabel,
 } from '@kampus/school-core/lib/prospects.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -139,6 +140,7 @@ function ProspectForm({
   onClose: () => void
 }) {
   const create = useCreateProspect()
+  const learner = learnerWords(type)
   const schema = useMemo(() => createFormSchema(type), [type])
   const form = useForm<CreateFormValues, unknown, Output>({
     resolver: zodResolver(schema),
@@ -298,7 +300,7 @@ function ProspectForm({
       {source === REFERRAL_SOURCE ? (
         <FormField
           id="aday-referans"
-          label="Referans veren öğrenci"
+          label={`Referans veren ${learner.noun}`}
           error={errors.referrerStudentId}
         >
           {(control) => (
@@ -309,7 +311,7 @@ function ProspectForm({
               disabled={busy || !students.data}
             >
               <NativeSelectOption value="">
-                {students.data ? 'Öğrenci seçin' : 'Öğrenciler yükleniyor…'}
+                {students.data ? `${learner.title} seçin` : `${learner.title}ler yükleniyor…`}
               </NativeSelectOption>
               {students.data
                 ?.filter((item) => item.record.isActive)

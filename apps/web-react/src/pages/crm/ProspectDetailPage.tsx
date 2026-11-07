@@ -10,6 +10,7 @@ import { useCoreAll, useCoreItem, type CoreRecord } from '@/hooks/use-core-colle
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
@@ -122,6 +123,7 @@ function Detail({
   const { session } = useAuth()
   const role = session?.role ?? 'onburo'
   const type = session?.institution.type ?? 'school'
+  const learner = learnerWords(type)
   // Kesin kayıt taksit ve sözleşme yazar: `crm` ve `finance` birlikte açık olmalıdır (liste ile aynı).
   const enrollModulesOpen = session?.modules.crm === true && session.modules.finance === true
   const contact = CONTACT_LABELS[prospectContactOwner(prospect)]
@@ -290,7 +292,8 @@ function Detail({
           />
           {enrolled ? (
             <p className="text-xs text-muted-foreground">
-              Kesin kayıt tamamlandı; öğrenci kaydı Kayıt İşlemleri ve öğrenci listelerinde görünür.
+              Kesin kayıt tamamlandı; {learner.noun} kaydı Kayıt İşlemleri ve {learner.noun}{' '}
+              listelerinde görünür.
             </p>
           ) : null}
           {enrolled && prospect.studentId && canManageGuardianAccounts(role) ? (

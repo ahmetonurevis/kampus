@@ -156,12 +156,13 @@ function countSummary(counts: Counts, ready: string): string {
   return parts.join(' · ')
 }
 
-export function studentImportSummary(result: StudentImportResult): string {
+/** Öğrenci aktarımının özeti; kayıtlı kişi kurum türünün terimiyle yazılır (`learner`, DOM-KAY-012). */
+export function studentImportSummary(result: StudentImportResult, learner = 'öğrenci'): string {
   const guardians =
     result.invalidCount > 0
       ? ''
       : ` · ${result.newGuardianCount} yeni veli, ${result.existingGuardianCount} mevcut veli`
-  return `${countSummary(result, 'öğrenci yazılacak')}${guardians}`
+  return `${countSummary(result, `${learner} yazılacak`)}${guardians}`
 }
 
 export function installmentImportSummary(result: InstallmentImportResult): string {

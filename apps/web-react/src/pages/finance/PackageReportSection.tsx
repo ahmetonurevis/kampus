@@ -15,6 +15,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
@@ -49,8 +50,9 @@ const hoursColumn = (key: keyof Row, label: string): DataColumn<Row> => ({
   label,
   cell: (row) => `${String(row[key])} saat`,
 })
-const COLUMNS: readonly DataColumn<Row>[] = [
-  { key: 'studentName', label: 'Öğrenci' },
+/** Sütunlar; kayıtlı kişi sütunu kurum türünün terimini taşır (DOM-KAY-012). */
+const columnsFor = (learner: string): readonly DataColumn<Row>[] => [
+  { key: 'studentName', label: learner },
   { key: 'packageName', label: 'Paket' },
   {
     key: 'soldDate',
@@ -92,6 +94,7 @@ const monthLabel = (month: string) => MONTH_FORMAT.format(new Date(`${month}-01T
  * oturum ister: oturum eskiyse parola sorulup yinelenir.
  */
 export function PackageReportSection() {
+  const learner = useEnrollmentLearner()
   const today = dayKey()
   const [from, setFrom] = useState(`${today.slice(0, 7)}-01`)
   const [to, setTo] = useState(today)
@@ -105,11 +108,12 @@ export function PackageReportSection() {
   const exporter = usePackageReportExport()
   const data = invalid === null ? report.data?.data : undefined
 
+  const columns = useMemo(() => columnsFor(learner.title), [learner])
   const rows = useMemo(
     () =>
       data?.lines.map((line): Row => ({
         id: line.saleId,
-        studentName: line.studentName ?? 'Kaydı bulunamayan öğrenci',
+        studentName: line.studentName ?? `Kaydı bulunamayan ${learner.noun}`,
         packageName: `${line.packageName} (${PACKAGE_KIND_LABELS[line.kind]})`,
         soldDate: line.soldDate,
         openingHours: line.openingHours,
@@ -121,7 +125,7 @@ export function PackageReportSection() {
         recognizedCents: line.recognizedCents,
         closingDeferredCents: line.closingDeferredCents,
       })),
-    [data],
+    [data, learner],
   )
 
   async function download() {
@@ -279,7 +283,7 @@ export function PackageReportSection() {
         rows={invalid === null ? rows : []}
         total={invalid === null ? (report.data?.meta.total ?? 0) : 0}
         sortable={NO_SORT}
-        columns={COLUMNS}
+        columns={columns}
         mobileColumns={MOBILE_COLUMNS}
         caption="Satış bazında paket saatleri"
         search={false}

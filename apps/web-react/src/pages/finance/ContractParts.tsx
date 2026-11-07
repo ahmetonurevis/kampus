@@ -21,6 +21,7 @@ import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 
 type InvoiceRecord = State['invoices'][number]
 
@@ -97,8 +98,9 @@ export function ContractFacts({
   status: ContractStatus
   studentName?: string | undefined
 }) {
+  const learner = useEnrollmentLearner()
   const facts: [string, string][] = [
-    ...(studentName ? ([['Öğrenci', studentName]] as [string, string][]) : []),
+    ...(studentName ? ([[learner.title, studentName]] as [string, string][]) : []),
     ['Sürüm', contractVersionLabel(contract)],
     ['Durum', CONTRACT_STATUS_LABELS[status]],
     ['Sözleşme tarihi', day(contract.date)],

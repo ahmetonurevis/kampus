@@ -64,7 +64,7 @@ test('IST-088 DOM-DIL-070: ön büro onaylı geçti kararından üst seviye tekl
 
   await offers.getByRole('button', { name: 'Deniz Yılmaz için teklif aç' }).click()
   const dialog = page.getByRole('dialog', { name: 'Yenileme teklifi aç' })
-  await expect(dialog.getByLabel('Öğrenci')).toHaveValue('s1')
+  await expect(dialog.getByLabel('Kursiyer')).toHaveValue('s1')
   await expect(dialog.getByLabel('Paket', { exact: true })).toHaveValue(/.+/)
   await dialog.getByLabel('Taksit sayısı').selectOption('2')
   await dialog.getByRole('button', { name: 'Ücreti göster' }).click()

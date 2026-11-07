@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
@@ -76,6 +77,7 @@ export function ScholarshipsSection({
   canManage: boolean
   academicYear: number
 }) {
+  const learner = useEnrollmentLearner()
   const programList = useListState('burs-programlari')
   const awardList = useListState('burs-atamalari')
   const programs = useScholarshipPrograms({
@@ -147,7 +149,7 @@ export function ScholarshipsSection({
   )
   const awardColumns = useMemo<DataColumn<AwardRow>[]>(
     () => [
-      { key: 'studentName', label: 'Öğrenci' },
+      { key: 'studentName', label: learner.title },
       { key: 'programName', label: 'Program' },
       { key: 'amount', label: 'Burs tutarı', cell: (row) => money(row.amountCents) },
       {
@@ -183,7 +185,7 @@ export function ScholarshipsSection({
           ) : null,
       },
     ],
-    [canManage],
+    [canManage, learner],
   )
 
   return (

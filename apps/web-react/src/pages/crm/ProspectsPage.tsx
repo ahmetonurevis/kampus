@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -110,7 +111,7 @@ export function ProspectsPage({ page }: { page: NavPage }) {
     () => [
       {
         key: 'name',
-        label: 'Aday öğrenci',
+        label: `Aday ${learnerWords(type).noun}`,
         cell: (row) => (
           <span className="person-cell flex items-center gap-2.5">
             <Avatar name={row.name} size="small" />
@@ -232,7 +233,7 @@ export function ProspectsPage({ page }: { page: NavPage }) {
           filters={filters}
           columns={columns}
           mobileColumns={MOBILE_COLUMNS}
-          caption="Aday öğrenciler"
+          caption={`Aday ${learnerWords(type).plural}`}
           empty="Henüz aday kaydı yok."
           loading={prospects.isPending}
           fetching={prospects.isFetching && !prospects.isPending}

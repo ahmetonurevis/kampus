@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { notify } from '@/lib/notify.ts'
 import {
   canManageGuardianAccounts,
@@ -119,7 +120,7 @@ export function GuardianInvitationsSection() {
   )
 }
 
-/** Davetteki öğrencilerin adları; kayıt okunamazsa kimlik yerine "öğrenci" yazılır. */
+/** Davetteki öğrencilerin adları; kayıt okunamazsa kimlik yerine kurum türünün terimi ("öğrenci" ya da "kursiyer") yazılır. */
 function StudentNames({ ids }: { ids: readonly string[] }) {
   return (
     <>
@@ -135,12 +136,14 @@ function StudentNames({ ids }: { ids: readonly string[] }) {
 
 function StudentName({ id }: { id: string }) {
   const student = useCoreItem('students', id)
-  return <>{student.data?.record.name ?? 'öğrenci'}</>
+  const learner = useEnrollmentLearner()
+  return <>{student.data?.record.name ?? learner.noun}</>
 }
 
 function CancelDialog({ row, onClose }: { row: GuardianInvitationRow; onClose: () => void }) {
   const cancel = useCancelGuardianInvitation()
   const { run, reauthModal } = useReauthRetry()
+  const learner = useEnrollmentLearner()
   const busy = cancel.isPending
 
   async function confirm() {
@@ -159,7 +162,7 @@ function CancelDialog({ row, onClose }: { row: GuardianInvitationRow; onClose: (
             <AlertDialogTitle>Veli davetini iptal et</AlertDialogTitle>
             <AlertDialogDescription>
               {row.name} ({row.email}) daveti kapanır ve listeden düşer. Davetle açılan veli hesabı
-              ve öğrenci bağları silinmez.
+              ve {learner.noun} bağları silinmez.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

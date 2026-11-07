@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
@@ -79,6 +80,7 @@ function SalesTable({
   canApproveCapException: boolean
   academicYear: number
 }) {
+  const learner = useEnrollmentLearner()
   const list = useListState('paket-satislari', { urlPrefix: 'satis_' })
   const studentId = filterText(list.state.filters.studentId)
   const packageId = filterText(list.state.filters.packageId)
@@ -108,7 +110,7 @@ function SalesTable({
   )
   const columns = useMemo<DataColumn<SaleRow>[]>(
     () => [
-      { key: 'studentName', label: 'Öğrenci' },
+      { key: 'studentName', label: learner.title },
       { key: 'packageName', label: 'Paket' },
       { key: 'hours', label: 'Kalan / satın alınan' },
       {
@@ -140,13 +142,13 @@ function SalesTable({
         ),
       },
     ],
-    [openSale],
+    [openSale, learner],
   )
   const filters = useMemo(
     () => [
       {
         key: 'studentId',
-        label: 'Öğrenci',
+        label: learner.title,
         type: 'select' as const,
         options: (students.data ?? [])
           .map((item) => ({ value: item.id, label: item.record.name }))
@@ -162,7 +164,7 @@ function SalesTable({
         })),
       },
     ],
-    [packages.data, students.data],
+    [packages.data, students.data, learner],
   )
 
   return (

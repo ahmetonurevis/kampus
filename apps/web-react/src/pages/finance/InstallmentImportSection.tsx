@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { InstallmentImportResult } from '@kampus/react-shared/enrollment-imports.ts'
 import { useImportInstallments } from '@kampus/react-shared/use-enrollment-imports.ts'
 import type { DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { EnrollmentImportDialog, noteColumn, statusColumn } from '../crm/EnrollmentImportDialog.tsx'
 import {
   INSTALLMENT_SAMPLE_CSV,
@@ -13,10 +14,11 @@ import {
   type InstallmentImportTableRow,
 } from '../crm/enrollment-import-rows.ts'
 
-const COLUMNS: DataColumn<InstallmentImportTableRow>[] = [
+/** Sütunlar; kayıtlı kişi sütunu kurum türünün terimini taşır (DOM-KAY-012). */
+const columnsFor = (learner: string): DataColumn<InstallmentImportTableRow>[] => [
   { key: 'line', label: 'Satır' },
   statusColumn<InstallmentImportTableRow>(),
-  { key: 'student', label: 'Öğrenci' },
+  { key: 'student', label: learner },
   // Pencerede yatay kaydırma olmadan görünsün: onay öncesi asıl sağlama tutar ve ödeme durumudur.
   { key: 'installment', label: 'Taksit' },
   { key: 'amount', label: 'Tutar' },
@@ -40,6 +42,8 @@ const success = (result: InstallmentImportResult) =>
 export function InstallmentImportSection() {
   const [open, setOpen] = useState(false)
   const importer = useImportInstallments()
+  const learner = useEnrollmentLearner()
+  const columns = useMemo(() => columnsFor(learner.title), [learner])
   return (
     <section
       aria-labelledby="taksit-aktarim-baslik"
@@ -51,7 +55,7 @@ export function InstallmentImportSection() {
         </h2>
         <p className="text-sm text-muted-foreground">
           Canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel dosyasıyla yükleyin. Önce
-          öğrencileri Kayıt İşlemleri'nden aktarın.
+          {learner.plural}i Kayıt İşlemleri'nden aktarın.
         </p>
       </div>
       <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
@@ -69,17 +73,17 @@ export function InstallmentImportSection() {
             <code>tutar</code> (TL: 12.500,00 ya da 12500.00; 1.234 gibi belirsiz yazım hatadır) ya
             da <code>tutar kuruş</code> (1250000), <code>vade</code>; isteğe bağlı{' '}
             <code>öğrenci adı</code>, <code>ödeme tarihi</code>, <code>eğitim yılı</code>. En çok
-            5.000 satır. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır, yoksa sözleşmesiz
-            yazılır. Kayıtlı taksit atlanır. Ödeme tarihi yazılı taksit ödendi görünür ve Açılış
-            aktarımı diye işaretlenir; kasaya ve dönem tahsilatına yazılmaz, dekontu olmaz.
-            Dosyadaki ödeme yöntemi saklanmaz.
+            5.000 satır. {learner.titleGenitive} tek sözleşmesi varsa taksit ona bağlanır, yoksa
+            sözleşmesiz yazılır. Kayıtlı taksit atlanır. Ödeme tarihi yazılı taksit ödendi görünür
+            ve Açılış aktarımı diye işaretlenir; kasaya ve dönem tahsilatına yazılmaz, dekontu
+            olmaz. Dosyadaki ödeme yöntemi saklanmaz.
           </>
         }
         noun="Taksit"
         listKey="taksit-aktarim"
         sampleCsv={INSTALLMENT_SAMPLE_CSV}
         sampleFilename={INSTALLMENT_SAMPLE_FILENAME}
-        columns={COLUMNS}
+        columns={columns}
         mobileColumns={MOBILE_COLUMNS}
         searchKeys={SEARCH_KEYS}
         submit={importer.submit}

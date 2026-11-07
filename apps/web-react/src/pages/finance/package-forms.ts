@@ -172,8 +172,9 @@ export type SaleTariff = {
   paymentTerms?: readonly FeePaymentTerm[]
 }
 
+// Paket satışı yalnız dil okulundadır (IST-078); kayıtlı kişi orada kursiyerdir (DOM-KAY-012).
 export const saleFormSchema = z.object({
-  studentId: z.string().min(1, 'Öğrenci seçin.'),
+  studentId: z.string().min(1, 'Kursiyer seçin.'),
   packageId: z.string().min(1, 'Paket seçin.'),
   installmentCount: z.string().regex(/^\d{1,2}$/, 'Taksit sayısını seçin.'),
   firstDueDate: daySchema,

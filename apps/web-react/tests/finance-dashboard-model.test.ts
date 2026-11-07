@@ -38,6 +38,11 @@ test('IST-116: gecikmiş kartının notu öğrenci sayısını söyler, sıfırd
   assert.equal(overdueStudentsNote(1234), '1.234 öğrencide gecikmiş borç')
 })
 
+test('IST-116, DOM-KAY-012: dil okulu ve kursta borçlu kayıtlı kişi kursiyerdir', () => {
+  assert.equal(overdueStudentsNote(3, 'kursiyer'), '3 kursiyerde gecikmiş borç')
+  assert.equal(overdueStudentsNote(0, 'kursiyer'), 'Gecikmiş borç bulunmuyor')
+})
+
 test('IST-116: finans ve kayıt kartları Onur bloğundan kayıtlıdır, devir listesi kalkmıştır', () => {
   const registry = read('dashboard/dashboard-cards.tsx')
   const start = registry.lastIndexOf('// Onur: kayıt ve finans\n')

@@ -113,3 +113,13 @@ test('DOM-FIN-024, K-14: seçenek metninde aday yok; değer hakkın sabit tutar�
     /Öğrenci/,
   )
 })
+
+test('DOM-FIN-024, DOM-KAY-012: dil okulu ve kursta adı okunamayan hak sahibi kursiyerdir', () => {
+  assert.match(
+    referralOptionLabel(
+      { academicYear: 2026, referrerStudentName: null, amountCents: 150_000 },
+      'Kursiyer',
+    ),
+    /^2026 · Kursiyer · /,
+  )
+})

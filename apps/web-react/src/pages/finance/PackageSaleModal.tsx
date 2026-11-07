@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
@@ -132,6 +133,7 @@ function SaleForm({
   onClose,
   onSold,
 }: Omit<Props, 'academicYear'> & { tariff: SaleTariff; students: Option[]; packages: Option[] }) {
+  const learner = useEnrollmentLearner()
   const quote = useQuotePackageSale()
   const sell = useSellPackage()
   const [today] = useState(() => dayKey())
@@ -230,7 +232,7 @@ function SaleForm({
         onSubmit={(event) => void onPreview(event)}
         className="grid grid-cols-2 gap-4 max-[650px]:grid-cols-1 [&[hidden]]:hidden"
       >
-        <FormField id="satis-ogrenci" label="Öğrenci" error={errors.studentId}>
+        <FormField id="satis-ogrenci" label={learner.title} error={errors.studentId}>
           {(control) => (
             <NativeSelect
               {...control}
@@ -238,7 +240,7 @@ function SaleForm({
               className="w-full"
               disabled={busy}
             >
-              <NativeSelectOption value="">Öğrenci seçin</NativeSelectOption>
+              <NativeSelectOption value="">{learner.title} seçin</NativeSelectOption>
               {students.map((option) => (
                 <NativeSelectOption key={option.id} value={option.id}>
                   {option.label}
@@ -370,6 +372,7 @@ function SaleQuote({
   packageName: string
   focusRef: (node: HTMLHeadingElement | null) => void
 }) {
+  const learner = useEnrollmentLearner()
   const line = (label: string, value: string, strong = false) => (
     <div
       key={label}
@@ -385,7 +388,7 @@ function SaleQuote({
         Ücret önizlemesi
       </h3>
       <dl aria-label="Ücret önizlemesi" className="divide-y text-sm">
-        {line('Öğrenci', studentName)}
+        {line(learner.title, studentName)}
         {line('Paket', packageName)}
         {line('Ders saati', `${String(price.purchasedHours)} saat`)}
         {line('İlan edilen saat ücreti', money(price.announcedHourlyCents))}

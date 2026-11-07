@@ -9,6 +9,7 @@ import type { DashboardOf } from '@kampus/react-shared/dashboard.ts'
 import { useFinanceOverview } from '@kampus/react-shared/use-finance-exports.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { CollectionTrend } from '../dashboard/CollectionTrend.tsx'
 import {
   CardList,
@@ -57,6 +58,7 @@ function OverdueAmountCard({ ctx }: { ctx: DashboardCardContext<DashboardOf<'yon
   const [params] = useSearchParams()
   const branchSelected = params.has(BRANCH_PARAM)
   const query = useFinanceOverview(null, { enabled: !branchSelected })
+  const learner = useEnrollmentLearner()
   if (branchSelected) return null
   const overview = query.data?.data
   const points = overdueTrendPoints(overview?.months ?? [])
@@ -65,7 +67,7 @@ function OverdueAmountCard({ ctx }: { ctx: DashboardCardContext<DashboardOf<'yon
       label="Gecikmiş tutar"
       icon="Timer"
       value={money(overview?.overdueCents ?? 0)}
-      note={overdueStudentsNote(overview?.overdueStudents.length ?? 0)}
+      note={overdueStudentsNote(overview?.overdueStudents.length ?? 0, learner.noun)}
       href={dashboardHref(ctx.role, 'finans', { durum: 'gecikmis' })}
       state={combineStates(query)}
       spark={{ label: sparkLabel('Vade ayına göre gecikmiş tutar', points, money), points }}

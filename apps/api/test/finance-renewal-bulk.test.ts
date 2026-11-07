@@ -777,6 +777,64 @@ describe('IST-105: yeni yılın toplu yenileme uçları', () => {
     assert.equal(lower.statusCode, 200, lower.body)
   })
 
+  test('DOM-FIN-023, K-22: kardeş indirimli çocuğun tavan istisnası kardeşin yenileme yılındaki kaydına bakar', async () => {
+    const a = await ready()
+    // s3'ün kardeşi bu yıl kardeş indirimli; s3'ün yalnız bu yılın (2026) sözleşmesi var.
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'students',
+          id: 'test-indirimli',
+          data: { ...seedStudent, id: 'test-indirimli', name: 'Test İndirimli' },
+        },
+        {
+          collection: 'contracts',
+          id: 'test-contract-indirimli',
+          data: {
+            id: 'test-contract-indirimli',
+            studentId: 'test-indirimli',
+            date: FIXED_NOW.toISOString(),
+            amount: BASE_CENTS - 200_000,
+            title: 'Özel okul eğitim sözleşmesi',
+            academicYear: 2026,
+            // Tarife grubu tamdır ve var olan tarifeye bağlıdır; öteki kayıt tablo aynasına girmez.
+            tariffId: a.tariffId,
+            tariffVersion: 1,
+            grossCents: BASE_CENTS,
+            netCents: BASE_CENTS - 200_000,
+            discounts: [{ kind: 'sibling', amountCents: 200_000 }],
+            extras: [],
+            approvedByUserId: 'test',
+            payer: 'guardian',
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    // Kardeş indirimi seçilmese de velinin öteki öğrencilerinin sözleşmeleri okunur.
+    const lossOf = async () => {
+      const quote = await post(`${BASE}/quote`, a.admin, {
+        studentId: 'test-indirimli',
+        targetClassId: 'c1',
+        academicYear: YEAR,
+        installmentCount: 3,
+      })
+      assert.equal(quote.statusCode, 200, quote.body)
+      const list = (await get(listOf(), a.admin)).json()
+      const line = list.data.find(
+        (item: { studentId: string }) => item.studentId === 'test-indirimli',
+      )
+      assert.deepEqual(line.ceiling.discountLoss, quote.json().data.ceiling.discountLoss)
+      return quote.json().data.ceiling.discountLoss
+    }
+    assert.match((await lossOf())?.reason ?? '', /Kardeş indirimi koşulu kalktı/)
+    const elder = await post(PLAN, a.admin, a.planBody(ROWS('s3')), key())
+    assert.deepEqual(elder.json().data.summary, { planned: 1, skipped: 0, failed: 0 })
+    assert.equal(await lossOf(), null)
+  })
+
   test('DOM-FIN-013: ilanda olmayan taksit sayısı satırda reddedilir; ödeme koşulu sözleşmeye yazılır', async () => {
     const a = await institution()
     const id = randomUUID()

@@ -345,6 +345,33 @@ test('DOM-FIN-022, K-22: paket satışında kardeşin bu yıl kaydı yoksa indir
   assert.equal(quote().discountCents, 600_000)
 })
 
+test('DOM-FIN-022: paket satışında sıra sözleşmeye yazılacak brütle kurulur, ilan ücretiyle değil', () => {
+  const state = seed()
+  const siblings = state.students.filter((s) => s.parentId === 'p1')
+  state.contracts = state.contracts.filter((c) => !siblings.some((s) => s.id === c.studentId))
+  // Kardeşin paket sözleşmesi: brüt 19.000 ₺. Çocuğun paketi ilanda 20.000 ₺, ilan altı saat
+  // ücretiyle sözleşmeye 18.000 ₺ yazılır; ücreti düşük olan çocuktur.
+  state.contracts.push({
+    id: 'test-c-kardes-paket',
+    studentId: 's1',
+    date: NOW,
+    amount: 1_900_000,
+    title: 'Dil kursu paket sözleşmesi',
+    academicYear: CONTEXT.academicYear,
+    grossCents: 1_900_000,
+  } as State['contracts'][number])
+  const discounted = { ...HOURS_PACKAGE, hourlyCents: 45_000 }
+  const quote = quotePackageSale(
+    state,
+    { ...QUOTE, studentId: 's2', discounts: ['sibling'] },
+    NOW,
+    { ...CONTEXT, package: discounted },
+  )
+  assert.equal(quote.announcedCents, 2_000_000)
+  assert.equal(quote.grossCents, 1_800_000)
+  assert.deepEqual(quote.discounts, [{ kind: 'sibling', amountCents: 600_000 }])
+})
+
 test('DOM-FIN-002, DOM-FIN-003: tarife, düzey ve ek kalem ilanda yoksa satış yok', () => {
   assert.throws(
     () => quotePackageSale(seed(), QUOTE, NOW, { ...CONTEXT, tariff: null }),

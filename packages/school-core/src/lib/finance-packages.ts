@@ -415,7 +415,9 @@ function pricePackage(
       siblingIds: state.students
         .filter((item) => Boolean(student.parentId) && item.parentId === student.parentId)
         .map((item) => item.id),
-      tuitionCents: announcedCents,
+      // Sözleşmeye yazılacak brüt: kardeşin sözleşmesindeki brütle ve ek protokoldeki
+      // karşılaştırmayla aynı ölçü; ilan altı fiyat ilan ücretine göre sırayı bozmaz.
+      tuitionCents: grossCents,
       academicYear: context.academicYear,
       currentAcademicYear: context.academicYear,
     })

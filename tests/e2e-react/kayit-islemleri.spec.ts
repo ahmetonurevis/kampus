@@ -616,8 +616,15 @@ test.describe('Kayıt İşlemleri', () => {
     await page.getByLabel('Paket ders saati').fill('20')
     await proceed.click()
     await expect(page.getByText('Kursiyerin kendisi', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Rızayı veli ya da kursiyer kendi hesabından verir/)).toBeVisible()
     await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
     await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+    // Velisiz kayıtta sonuç metni veli demez (DOM-KAY-012).
+    const result = page.getByRole('region', { name: `${name} kaydedildi` })
+    await expect(
+      result.getByText('Kursiyer, sözleşme ve taksit planı oluşturuldu.', { exact: true }),
+    ).toBeVisible()
+    await expect(result.getByText(/veli, sözleşme/)).toHaveCount(0)
 
     const saved = await prospectOf(client, 'e2e-kyt-yetiskin')
     expect(saved.record.stage).toBe('Kayıt oldu')
@@ -794,6 +801,8 @@ test.describe('Kayıt İşlemleri', () => {
 
     const notice = page.getByRole('region', { name: 'Açık rıza durumu' })
     await expect(notice).toContainText('rızayı kendisi verir')
+    await expect(notice).toContainText('Kursiyer 18 yaşını doldurduğu için')
+    await expect(notice).toContainText('Hesap bu kursiyere bağlı değilse')
     await expect(notice).not.toContainText('velayet sahibi veli')
   })
 

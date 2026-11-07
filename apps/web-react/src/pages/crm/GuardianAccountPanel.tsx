@@ -144,7 +144,7 @@ function GuardianAccountForm({
         setError: (name, error) =>
           form.setError(name as Path<GuardianAccountFormValues>, {
             type: error.type,
-            message: guardianAccountErrorMessage(error.type, error.message),
+            message: guardianAccountErrorMessage(error.type, error.message, learner),
           }),
         fieldFor: guardianAccountFieldFor,
         silent: isReauthenticationRequired,

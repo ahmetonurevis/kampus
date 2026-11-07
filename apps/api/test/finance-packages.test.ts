@@ -1521,10 +1521,12 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       }
     })
 
-    test('DOM-YTK-001: başka kurumun satışı hesaba girmez', async () => {
+    test('DOM-YTK-001, DOM-KAY-012: başka kurumun satışı hesaba girmez; ileti kursiyer der', async () => {
       const a = await withPackage({ tuition: false })
       const b = await ready()
-      assertError(await quote(b.admin), 422, 'withdrawal_contract_missing')
+      const missing = await quote(b.admin)
+      assertError(missing, 422, 'withdrawal_contract_missing')
+      assert.equal(missing.json().message, 'Kursiyerin sözleşmesi bulunamadı.')
       assert.equal((await hourRows(b.id)).length, 0)
       assert.equal((await hourRows(a.id)).length, 1)
     })

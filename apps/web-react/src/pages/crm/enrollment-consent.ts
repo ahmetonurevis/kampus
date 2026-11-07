@@ -1,38 +1,68 @@
 import type { ConsentPurpose } from '@kampus/school-core/lib/consent-purposes.ts'
 import { isUnderAdultAge } from '@kampus/school-core/lib/age.ts'
+import type { LearnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import type { ConsentStatusView } from '@kampus/react-shared/use-consents.ts'
-import { STAFF_CONSENT_INFO } from '../../components/consent/consent-model.ts'
 
 // Kesin kayıt ekranının rıza bilgilendirmesi (IST-016, IST-017; DOM-YTK-057, DOM-YTK-061,
 // DOM-KAY-003). Kayıt formunu yalnız personel kullanır ve personel rıza veremez (API 403); öğrenci
 // de form bitmeden oluşmaz. Bu yüzden formda rıza adımı yoktur: form rızayı beklemez, kayıttan
-// sonra hangi rızanın kimden bekleneceğini söyler. Saf işlevlerdir.
+// sonra hangi rızanın kimden bekleneceğini söyler. Kayıtlı kişi okulda "öğrenci", dil okulu ve
+// kursta "kursiyer"dir (DOM-KAY-012, ADR 0008 karar 1); metinler `learnerWords(type)` sözleriyle
+// yazılır. Saf işlevlerdir.
+
+const CONSENT_PLACE = 'web panelinde hesap menüsü, Ayarlar, Rızalarım'
+
+/**
+ * Personelin rıza bilgisi: rızayı kimin verdiği. Okulda ortak `STAFF_CONSENT_INFO` metniyle aynıdır;
+ * dil okulu ve kursta "kursiyer" der.
+ */
+export function staffConsentInfo(learner: LearnerWords): string {
+  return `Rızayı veli ya da ${learner.noun} kendi hesabından verir.`
+}
 
 /** Kontrol adımındaki bilgi: rıza kaydı engellemez (DOM-YTK-061). */
-export const ENROLLMENT_CONSENT_NOTE = `Açık rıza bu formda alınmaz ve kaydı engellemez. ${STAFF_CONSENT_INFO} Kayıt tamamlanınca beklenen rızalar listelenir.`
+export function enrollmentConsentNote(learner: LearnerWords): string {
+  return `Açık rıza bu formda alınmaz ve kaydı engellemez. ${staffConsentInfo(learner)} Kayıt tamamlanınca beklenen rızalar listelenir.`
+}
 
-export const GUARDIAN_GUIDANCE =
-  'Rızayı velayet sahibi veli kendi hesabından verir: web panelinde hesap menüsü, Ayarlar, Rızalarım.'
-export const SELF_GUIDANCE =
-  'Öğrenci 18 yaşını doldurduğu için rızayı kendisi verir: kendi hesabıyla web panelinde hesap menüsü, Ayarlar, Rızalarım.'
-export const UNKNOWN_GRANTOR_GUIDANCE = `${STAFF_CONSENT_INFO} Yeri: web panelinde hesap menüsü, Ayarlar, Rızalarım.`
-/** Rızalarım hesabın bağlı olduğu öğrencileri listeler; bağ kayıtla birlikte kurulmaz. */
-export const ACCOUNT_LINK_NOTE =
-  'Hesap bu öğrenciye bağlı değilse öğrenci Rızalarım bölümünde görünmez; önce hesap bağlantısı kurulmalıdır.'
+export const GUARDIAN_GUIDANCE = `Rızayı velayet sahibi veli kendi hesabından verir: ${CONSENT_PLACE}.`
+
+export function selfGuidance(learner: LearnerWords): string {
+  return `${learner.title} 18 yaşını doldurduğu için rızayı kendisi verir: kendi hesabıyla ${CONSENT_PLACE}.`
+}
+
+export function unknownGrantorGuidance(learner: LearnerWords): string {
+  return `${staffConsentInfo(learner)} Yeri: ${CONSENT_PLACE}.`
+}
+
+/** Rızalarım hesabın bağlı olduğu kişileri listeler; bağ kayıtla birlikte kurulmaz. */
+export function accountLinkNote(learner: LearnerWords): string {
+  return `Hesap bu ${learner.dative} bağlı değilse ${learner.noun} Rızalarım bölümünde görünmez; önce hesap bağlantısı kurulmalıdır.`
+}
+
 /** Veli hesabı kesin kayıtla açılmaz; personel ayrıca açar (ON-290, DOM-YTK-071). */
-export const GUARDIAN_ACCOUNT_MISSING_NOTE =
-  'Velinin bu öğrenciye bağlı bir hesabı yoksa öğrenci Rızalarım bölümünde görünmez ve veli rıza veremez. Hesabı "Veli hesabı aç" ile açabilirsiniz.'
-export const GUARDIAN_ACCOUNT_INVITED_NOTE =
-  'Veli hesabı açıldı. Veli e-postadaki bağlantıyla parolasını belirleyip giriş yapınca bu öğrenci Rızalarım bölümünde görünür ve rızayı oradan verir.'
+export function guardianAccountMissingNote(learner: LearnerWords): string {
+  return `Velinin bu ${learner.dative} bağlı bir hesabı yoksa ${learner.noun} Rızalarım bölümünde görünmez ve veli rıza veremez. Hesabı "Veli hesabı aç" ile açabilirsiniz.`
+}
+
+export function guardianAccountInvitedNote(learner: LearnerWords): string {
+  return `Veli hesabı açıldı. Veli e-postadaki bağlantıyla parolasını belirleyip giriş yapınca bu ${learner.noun} Rızalarım bölümünde görünür ve rızayı oradan verir.`
+}
 
 /**
  * Beklenen rızanın altındaki hesap notu: yetişkin kursiyer kendi hesabıyla verir (eski not);
  * veli için bekleyen veli daveti varsa hesabın açıldığı, yoksa açılması gerektiği yazılır.
  */
-export function accountNote(input: { adult: boolean; invited: boolean }): string {
-  if (input.adult) return ACCOUNT_LINK_NOTE
-  return input.invited ? GUARDIAN_ACCOUNT_INVITED_NOTE : GUARDIAN_ACCOUNT_MISSING_NOTE
+export function accountNote(input: {
+  adult: boolean
+  invited: boolean
+  learner: LearnerWords
+}): string {
+  if (input.adult) return accountLinkNote(input.learner)
+  return input.invited
+    ? guardianAccountInvitedNote(input.learner)
+    : guardianAccountMissingNote(input.learner)
 }
 export const CONSENT_OPTIONAL_NOTE =
   'Rıza vermek zorunlu değildir; verilmemesi kaydı ve temel eğitim hizmetini etkilemez.'
@@ -57,10 +87,10 @@ export interface EnrollmentConsentSummary {
   granted: ConsentPurpose[]
 }
 
-function guidanceFor(grantor: ConsentStatusView['grantor']): string {
+function guidanceFor(grantor: ConsentStatusView['grantor'], learner: LearnerWords): string {
   if (grantor === 'guardian') return GUARDIAN_GUIDANCE
-  if (grantor === 'self') return SELF_GUIDANCE
-  return UNKNOWN_GRANTOR_GUIDANCE
+  if (grantor === 'self') return selfGuidance(learner)
+  return unknownGrantorGuidance(learner)
 }
 
 /**
@@ -74,6 +104,7 @@ export function enrollmentConsentSummary(input: {
   statuses: readonly ConsentStatusView[]
   textState: (purpose: ConsentPurpose) => ConsentTextState
   adult: boolean
+  learner: LearnerWords
 }): EnrollmentConsentSummary {
   const groups = new Map<string, ConsentPurpose[]>()
   const unavailable: ConsentPurpose[] = []
@@ -87,7 +118,7 @@ export function enrollmentConsentSummary(input: {
       unavailable.push(purpose)
       continue
     }
-    const guidance = guidanceFor(input.adult ? 'self' : grantor)
+    const guidance = guidanceFor(input.adult ? 'self' : grantor, input.learner)
     groups.set(guidance, [...(groups.get(guidance) ?? []), purpose])
   }
   return {

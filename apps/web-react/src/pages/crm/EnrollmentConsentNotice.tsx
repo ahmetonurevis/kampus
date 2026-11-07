@@ -2,6 +2,7 @@ import { isApiError } from '@kampus/api-client/errors.ts'
 import { useConsentStatus, useConsentTexts } from '@kampus/react-shared/use-consents.ts'
 import { useGuardianInvitations } from '@kampus/react-shared/use-guardian-invitations.ts'
 import { useAuth } from '@/auth/use-auth.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { NO_TEXT_INFO, STUDENT_PURPOSES, purposeLabel } from '@/components/consent/consent-model.ts'
 import { QueryError } from '@/components/QueryError.tsx'
 import {
@@ -42,6 +43,7 @@ export function EnrollmentConsentNotice({
     enabled: !adult && canManageGuardianAccounts(session?.role),
   })
   const invited = hasPendingInvitation(invitations.data?.data ?? [], studentId)
+  const learner = useEnrollmentLearner()
 
   return (
     <section aria-labelledby="kayit-riza" className="grid w-full gap-3 border-t pt-4">
@@ -62,8 +64,9 @@ export function EnrollmentConsentNotice({
             statuses: status.data.data,
             textState: (purpose) => states[STUDENT_PURPOSES.indexOf(purpose)] ?? 'loading',
             adult,
+            learner,
           })}
-          note={accountNote({ adult, invited })}
+          note={accountNote({ adult, invited, learner })}
         />
       ) : (
         <p role="status" className="text-sm text-muted-foreground">

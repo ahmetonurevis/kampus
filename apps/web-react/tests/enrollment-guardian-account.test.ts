@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { GuardianInvitation } from '@kampus/react-shared/guardian-invitations.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import {
   canManageGuardianAccounts,
   enrollmentParentId,
@@ -14,7 +15,7 @@ import {
   guardianInvitationRow,
   hasPendingInvitation,
   isGuardianRecord,
-  MEMBER_EXISTS_MESSAGE,
+  memberExistsMessage,
 } from '../src/pages/crm/enrollment-guardian-account.ts'
 
 const NOW = Date.parse('2026-11-04T09:00:00.000Z')
@@ -109,10 +110,14 @@ test('ON-290, DOM-YTK-071: hata kodları alana gider; member_exists yöneticiye 
   assert.equal(guardianAccountFieldFor({ code: 'guardian_link_exists' }), 'root.server')
   assert.equal(guardianAccountFieldFor({ code: 'guardian_identity_mismatch' }), 'root.server')
   assert.equal(guardianAccountFieldFor({ code: 'not_found' }), undefined)
-  assert.equal(guardianAccountErrorMessage('member_exists', 'sunucu'), MEMBER_EXISTS_MESSAGE)
-  assert.match(MEMBER_EXISTS_MESSAGE, /kurum yöneticisine/)
+  const school = learnerWords('school')
   assert.equal(
-    guardianAccountErrorMessage('invitation_exists', 'Bekleyen davet var.'),
+    guardianAccountErrorMessage('member_exists', 'sunucu', school),
+    memberExistsMessage(school),
+  )
+  assert.match(memberExistsMessage(school), /kurum yöneticisine/)
+  assert.equal(
+    guardianAccountErrorMessage('invitation_exists', 'Bekleyen davet var.', school),
     'Bekleyen davet var.',
   )
   assert.equal(focusableField('email'), true)
@@ -141,4 +146,15 @@ test('ON-290: bekleyen davet satırı ve öğrencinin bekleyen daveti', () => {
   assert.equal(hasPendingInvitation([invitation()], 's-2'), false)
   assert.equal(hasPendingInvitation([invitation({ status: 'canceled' })], 's-1'), false)
   assert.equal(hasPendingInvitation([], 's-1'), false)
+})
+
+test('DOM-KAY-012: member_exists iletisi okulda "öğrenciye", dil okulunda "kursiyere" der', () => {
+  assert.match(memberExistsMessage(learnerWords('school')), /hesabın bu öğrenciye bağlanması/)
+  const message = guardianAccountErrorMessage(
+    'member_exists',
+    'sunucu',
+    learnerWords('language_school'),
+  )
+  assert.match(message, /hesabın bu kursiyere bağlanması/)
+  assert.doesNotMatch(message, /öğrenci/)
 })

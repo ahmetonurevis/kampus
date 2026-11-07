@@ -6,11 +6,13 @@ import {
   GUARDIAN_REQUIRED_FORM_MESSAGE,
   type EnrollmentFormValues,
 } from '@kampus/school-core/lib/enrollment.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { navigation } from '@kampus/school-core/modules/full-navigation.ts'
 import {
   BIRTH_DATE_ADULT_FOR_MINOR_MESSAGE,
   BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
   birthDateAgeGroupMismatch,
+  enrollmentDoneSummary,
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
@@ -272,4 +274,23 @@ test('ON-116, ON-120: dolu yer aktif öğrenciler ve sınıfa planlanmış yenil
   assert.equal(seatsTaken('c8', 20, renewals), 22)
   assert.equal(seatsTaken('c9', 0, renewals), 1)
   assert.equal(seatsTaken('c1', 5, []), 5)
+})
+
+test('DOM-KAY-012: kesin kayıt sonucu velisiz kursiyerde veli demez; mevcut veliye bağlamada veli oluşturulmaz', () => {
+  const school = learnerWords('school')
+  assert.equal(
+    enrollmentDoneSummary('new', school),
+    'Öğrenci, veli, sözleşme ve taksit planı oluşturuldu.',
+  )
+  assert.equal(
+    enrollmentDoneSummary('new', learnerWords('language_school')),
+    'Kursiyer, veli, sözleşme ve taksit planı oluşturuldu.',
+  )
+  assert.equal(
+    enrollmentDoneSummary('existing', school),
+    'Öğrenci, sözleşme ve taksit planı oluşturuldu; öğrenci mevcut veliye bağlandı.',
+  )
+  const adult = enrollmentDoneSummary('self', learnerWords('language_school'))
+  assert.equal(adult, 'Kursiyer, sözleşme ve taksit planı oluşturuldu.')
+  assert.doesNotMatch(adult, /veli/i)
 })

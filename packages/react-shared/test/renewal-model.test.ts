@@ -124,3 +124,52 @@ test('DOM-KAY-020: mezuniyette ücret bölümü yoktur, tamamlanan geçiş bildi
   )
   assert.deepEqual(sections[0]?.lines.slice(1), ['9-A → Mezuniyet', 'Dönem geçişi uygulanmış.'])
 })
+
+test('DOM-FIN-002, DOM-FIN-005: plan anındaki ücret kararı ilan, tavan, ödeme koşulu ve bursla yazılır', () => {
+  const [, pricing] = renewalDetailSections(
+    detail({
+      tuitionCents: null,
+      discountCents: null,
+      scholarshipCents: 1_000_000,
+      pricing: {
+        tariffId: 't-1',
+        tariffVersion: 1,
+        tariffCarriedOverFromYear: 2026,
+        announcedCents: 30_000_000,
+        ceiling: { status: 'entry_grade' },
+        paymentTerm: { kind: 'upfront' },
+      },
+    } as Partial<RenewalDetail>),
+  )
+  assert.deepEqual(pricing?.lines, [
+    'Bu eğitim yılının ücreti süresinde ilan edilmediği için önceki yılın (2026–2027) tarifesi uygulanır.',
+    'İlan edilen ücret: 300.000,00 ₺',
+    'Kademenin başlangıç sınıfı: artış tavanı uygulanmaz, ücret ilanla sınırlıdır.',
+    'Ödeme koşulu: Peşin · tek ödeme',
+    'Burs: −10.000,00 ₺',
+    'Net eğitim bedeli: 250.000,00 ₺',
+  ])
+})
+
+test('DOM-FIN-005: tavan bazı sözleşmeden ya da kayıt yılından gelir; indirim kaybı nedeni eklenir', () => {
+  const applied = {
+    status: 'applied',
+    baseCents: 20_000_000,
+    baseYear: 2025,
+    rates: [],
+    extraBasisPoints: 0,
+    ceilingCents: 22_000_000,
+  }
+  assert.match(
+    ceilingLines({ ...applied, baseSource: 'contract' } as Parameters<typeof ceilingLines>[0])[0] ??
+      '',
+    /son sözleşmedeki ücret/,
+  )
+  const enrollment = ceilingLines({
+    ...applied,
+    baseSource: 'enrollment_contract',
+    discountLoss: { reason: 'Kardeş indirimi koşulu kalktı.' },
+  } as Parameters<typeof ceilingLines>[0])
+  assert.match(enrollment[0] ?? '', /kayıt yılındaki indirimsiz ücret/)
+  assert.equal(enrollment[2], 'Kardeş indirimi koşulu kalktı.')
+})

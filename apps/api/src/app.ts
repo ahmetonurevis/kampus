@@ -39,6 +39,7 @@ import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
+import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-children.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
@@ -140,6 +141,17 @@ export const REDACTED_PATHS = [
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
+  // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
+  // (DOM-KAY-009); veli telefonu `*.phone` ile gizlenir.
+  'signatoryName',
+  '*.signatoryName',
+  'guardian.name',
+  '*.guardian.name',
+  // Aday `interest` ve imza yetkilisi ucunun üst düzey `name` alanı yalnız istek gövdesinde gelir;
+  // gövde loglanmadığından maske yok, genel `name` de başka kayıtların adıdır (ON-315, testte).
+  // Paket uzatma ve kullanılan saat düzeltmesi (ON-300, DOM-DIL-051), ek protokol, tahsilat ters
+  // kaydı ve gün sonu yeniden açma gövdesindeki gerekçe `reason` adıyla gelir: aşağıdaki
+  // `reason`/`*.reason` gizler (finance-log-redaction.test.ts).
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
@@ -425,6 +437,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
   registerEnrollmentCertificateRoutes(app)
+  registerFinancePayerChildrenRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

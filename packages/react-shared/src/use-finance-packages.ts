@@ -135,6 +135,24 @@ export function usePackageSales(query: {
   })
 }
 
+/**
+ * Öğrencinin paket saat bakiyesi (`/finance/students/:id/package-balance`; IST-114, DOM-DIL-051):
+ * satış başına ve toplam satılan, kullanılan, iade edilen, kalan ve süresi dolan saat. Saat burada
+ * hesaplanmaz, sunucudan okunur. Anahtar paket önekindedir: satış, uzatma ve saat girişi tazeler.
+ * Veli ve öğrenci yanıtında tutar yoktur (K-40).
+ */
+export function useStudentPackageBalance(studentId: string, options: { enabled?: boolean } = {}) {
+  return useApiQuery({
+    key: [...PACKAGES_KEY, 'balance', studentId],
+    enabled: (options.enabled ?? true) && studentId !== '',
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/students/{studentId}/package-balance', {
+        params: { path: { studentId } },
+        signal,
+      }),
+  })
+}
+
 export type CourseOfferListQuery = NonNullable<
   operations['listCourseOffers']['parameters']['query']
 >

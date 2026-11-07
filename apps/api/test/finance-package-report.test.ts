@@ -298,6 +298,74 @@ describe('IST-114: paket saat bakiyesi ve kullanılan saat raporu uçları', () 
     }
   })
 
+  test('ON-310, DOM-DIL-051: aile bakiyesi satış listesiyle aynı saati verir; süresi dolan saat ayrıdır', async () => {
+    const a = await ready()
+    const first = await a.sell()
+    const second = await a.sell()
+    await setUsed(a.admin, first.id, 6, 1)
+    await lesson(a.id, second.id, 3, '2026-10-01')
+    const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: 's3' }])
+    const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's3' }])
+    type ListedSale = {
+      id: string
+      packageName: string
+      expiresDate: string | null
+      status: string
+      purchasedHours: number
+      consumedHours: number
+      refundedHours: number
+      remainingHours: number
+    }
+    type BalanceSale = Omit<ListedSale, 'id' | 'consumedHours'> & {
+      saleId: string
+      usedHours: number
+      expiredHours: number
+    }
+    // Aile ekranının eskiden satış listesinden gösterdiği alanlar; bakiye aynılarını vermeli.
+    const shown = (sale: ListedSale) => ({
+      id: sale.id,
+      packageName: sale.packageName,
+      expiresDate: sale.expiresDate,
+      status: sale.status,
+      purchasedHours: sale.purchasedHours,
+      usedHours: sale.consumedHours,
+      refundedHours: sale.refundedHours,
+      remainingHours: sale.remainingHours,
+    })
+    const fromBalance = (sale: BalanceSale) => ({
+      id: sale.saleId,
+      packageName: sale.packageName,
+      expiresDate: sale.expiresDate,
+      status: sale.status,
+      purchasedHours: sale.purchasedHours,
+      usedHours: sale.usedHours,
+      refundedHours: sale.refundedHours,
+      remainingHours: sale.remainingHours,
+    })
+    const compare = async (cookie: string, expectExpired: boolean) => {
+      const listed = await get(`${SALES}?page=1&pageSize=100&studentId=s3`, cookie)
+      assert.equal(listed.statusCode, 200, listed.body)
+      const balance = await get(balanceUrl('s3'), cookie)
+      assert.equal(balance.statusCode, 200, balance.body)
+      const sales = listed.json().data as ListedSale[]
+      const { data } = balance.json() as { data: { sales: BalanceSale[]; expiredHours: number } }
+      const byId = <T extends { id: string }>(rows: T[]) =>
+        [...rows].sort((x, y) => x.id.localeCompare(y.id))
+      assert.equal(sales.length, 2)
+      assert.deepEqual(byId(data.sales.map(fromBalance)), byId(sales.map(shown)))
+      for (const sale of data.sales)
+        assert.equal(sale.expiredHours, expectExpired ? sale.remainingHours : 0)
+      assert.equal(data.expiredHours, expectExpired ? 34 + 37 : 0)
+    }
+    for (const cookie of [parent, student]) await compare(cookie, false)
+    now = new Date('2027-05-01T09:00:00.000Z')
+    try {
+      for (const cookie of [parent, student]) await compare(cookie, true)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
   test('DOM-DIL-051, H-19: süresi dolan saat silinmez; bakiye ve rapor süresi dolan saati ayrı verir', async () => {
     const a = await ready()
     const sale = await a.sell()

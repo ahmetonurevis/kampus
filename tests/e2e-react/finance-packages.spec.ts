@@ -14,6 +14,7 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 const ADMIN_URL = '/yonetici/finans?gorunum=paket'
 const DESK_URL = '/onburo/tahsilat-takip?gorunum=paket'
+const WITHDRAWALS_URL = '/yonetici/finans?gorunum=ayrilis'
 const PACKAGE = '40 saatlik paket'
 const HOURS_BODY = { kind: 'hours', name: PACKAGE, lessonHours: 40, validityDays: 180 }
 const HOURLY = 50_000
@@ -213,6 +214,75 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await dialog.getByRole('button', { name: 'Satışı onayla' }).click()
     await expect(page.getByText('Paket satışı kaydedildi. Sözleşme onay bekliyor.')).toBeVisible()
     await expect(salePanel(page).getByRole('button', { name: 'Süreyi uzat' })).toBeVisible()
+  })
+
+  test('K-21, DOM-DIL-051, DOM-FIN-040: ön büro saati girer; yönetici uyarıyı ve tutarı görüp onaylar', async ({
+    api,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await languageSchool(tenant, ['onburo'])
+    const admin = await api(school.user('yonetici'))
+    await sellThroughApi(admin, await createPackage(admin))
+    const student = (await admin.get('/api/v1/collections/students/s1')).body as {
+      data: { record: { name: string } }
+    }
+    const name = student.data.record.name
+
+    // Saat girilmeden yöneticinin önizlemesi açık uyarı verir; onay işaretsiz açılmaz.
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(WITHDRAWALS_URL)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const start = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await start.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+    await start.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await start.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(start.getByRole('alert')).toContainText('Kullanılan saat girilmedi')
+    await expect(start.getByRole('button', { name: 'Ayrılışı onayla' })).toBeDisabled()
+    await start.getByRole('button', { name: 'Bilgileri düzenle' }).click()
+    await start.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(start.getByRole('checkbox', { name: /iade tutarını inceledim/ })).not.toBeChecked()
+
+    // Ön büro saati girer; aşım alanda, gerekçesiz giriş formda reddedilir.
+    await loginAs(school.user('onburo'))
+    await page.goto(DESK_URL)
+    await salesList(page)
+      .getByRole('button', { name: /satış ayrıntısını aç/ })
+      .first()
+      .click()
+    const panel = salePanel(page)
+    await expect(panel.getByRole('note')).toContainText('Kullanılan saat girilmedi')
+    await panel.getByRole('button', { name: 'Kullanılan saati gir' }).click()
+    const used = page.getByRole('dialog', { name: 'Kullanılan saati gir' })
+    await used.getByLabel('Kullanılan toplam saat').fill('41')
+    await used.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(used.getByText('Gerekçeyi yazın.')).toBeVisible()
+    await used.getByLabel('Gerekçe').fill('Devam çizelgesine göre')
+    await used.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(used.getByText('Kullanılan saat alınan saati aşamaz.')).toBeVisible()
+    await used.getByLabel('Kullanılan toplam saat').fill('12')
+    await used.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Kullanılan saat kaydedildi.')).toBeVisible()
+    await expect(panel.getByRole('note')).toHaveCount(0)
+    await expect(panel.getByText('12 saat')).toBeVisible()
+    await expect(panel.getByText('28 saat')).toBeVisible()
+    // Ön büro ayrılış başlatamaz (DOM-FIN-052, K-21).
+    await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
+    await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
+
+    // Yönetici yeni hesabı görür, tutarı onaylar.
+    await loginAs(school.user('yonetici'))
+    await page.goto(WITHDRAWALS_URL)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    await start.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+    await start.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await start.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(start.getByRole('alert')).toHaveCount(0)
+    await expect(start).toContainText('Kullanım (12 / 40 ders saati, kayıttan)')
+    await start.getByRole('checkbox', { name: /iade tutarını inceledim/ }).check()
+    await start.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    await admin.dispose()
   })
 
   test('K-07, DOM-DIL-051: veli kalan saati görür, satın alma düğmesi yoktur', async ({

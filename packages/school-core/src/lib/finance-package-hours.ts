@@ -20,3 +20,7 @@ export function packageHourBalance(
     remainingHours: purchasedHours - consumedHours - refundedHours,
   }
 }
+
+/** Saat hiç girilmediyse iade hesabı sıfır saate dayanır ve fazla çıkabilir; ekran uyarır (K-21). */
+export const packageUsedHoursRecorded = (entries: readonly { kind: PackageHourKind }[]): boolean =>
+  entries.some((entry) => entry.kind === 'consumed')

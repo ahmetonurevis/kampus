@@ -66562,6 +66562,11 @@
                           "maximum": 9007199254740991,
                           "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
                         },
+                        "usedHoursRecorded": {
+                          "default": false,
+                          "description": "Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)",
+                          "type": "boolean"
+                        },
                         "expiresDate": {
                           "description": "Son kullanma günü; boşsa süresiz",
                           "type": [
@@ -66601,6 +66606,7 @@
                         "consumedHours",
                         "refundedHours",
                         "remainingHours",
+                        "usedHoursRecorded",
                         "expiresDate",
                         "status",
                         "soldAt"
@@ -66857,6 +66863,11 @@
                             "maximum": 9007199254740991,
                             "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
                           },
+                          "usedHoursRecorded": {
+                            "default": false,
+                            "description": "Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)",
+                            "type": "boolean"
+                          },
                           "expiresDate": {
                             "description": "Son kullanma günü; boşsa süresiz",
                             "type": [
@@ -66902,6 +66913,7 @@
                           "consumedHours",
                           "refundedHours",
                           "remainingHours",
+                          "usedHoursRecorded",
                           "expiresDate",
                           "status",
                           "soldAt",
@@ -67129,6 +67141,11 @@
                           "maximum": 9007199254740991,
                           "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
                         },
+                        "usedHoursRecorded": {
+                          "default": false,
+                          "description": "Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)",
+                          "type": "boolean"
+                        },
                         "expiresDate": {
                           "description": "Son kullanma günü; boşsa süresiz",
                           "type": [
@@ -67219,6 +67236,7 @@
                         "consumedHours",
                         "refundedHours",
                         "remainingHours",
+                        "usedHoursRecorded",
                         "expiresDate",
                         "status",
                         "soldAt",
@@ -67488,6 +67506,11 @@
                           "maximum": 9007199254740991,
                           "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
                         },
+                        "usedHoursRecorded": {
+                          "default": false,
+                          "description": "Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)",
+                          "type": "boolean"
+                        },
                         "expiresDate": {
                           "description": "Son kullanma günü; boşsa süresiz",
                           "type": [
@@ -67527,6 +67550,320 @@
                         "consumedHours",
                         "refundedHours",
                         "remainingHours",
+                        "usedHoursRecorded",
+                        "expiresDate",
+                        "status",
+                        "soldAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/package-sales/{saleId}/set-used-hours": {
+      "post": {
+        "operationId": "setPackageSaleUsedHours",
+        "summary": "Kullanılan saati elle gir",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Yoklama bağı (OG-116, OG-144) gelene kadar personel satışın o güne kadar kullanılan toplam saatini girer; ayrılıştaki iade bu saate dayanır (K-21, DOM-DIL-051, DOM-FIN-040). Azaltılabilir; gerekçe zorunludur ve yalnız denetim kaydına yazılır, eski değer arşivli saat hareketinde kalır. Alınan saati aşarsa 422 `package_used_exceeds_purchased`, derslerden yazılan saatin altına inerse 422 `package_used_below_lessons`, aynı değer 422 `package_used_hours_unchanged`, ayrılış hesabına girmiş satış 422 `package_sale_closed`. Olmayan ya da başka kurumun satışı 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "usedHours": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2000
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "usedHours",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "saleId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "packageId": {
+                          "type": "string"
+                        },
+                        "packageName": {
+                          "type": "string",
+                          "description": "Satış anındaki ad"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ]
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Satış anındaki seviye",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string",
+                          "description": "Satışın açtığı sözleşme"
+                        },
+                        "tariffId": {
+                          "type": "string"
+                        },
+                        "tariffVersion": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "hourlyCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "purchasedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satın alınan saat"
+                        },
+                        "consumedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tüketilen saat"
+                        },
+                        "refundedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade edilen saat"
+                        },
+                        "remainingHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
+                        },
+                        "usedHoursRecorded": {
+                          "default": false,
+                          "description": "Kullanılan saat girildi mi; `false` ise iade hesabı sıfır saate dayanır (K-21)",
+                          "type": "boolean"
+                        },
+                        "expiresDate": {
+                          "description": "Son kullanma günü; boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "expired",
+                            "depleted"
+                          ],
+                          "description": "`expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir."
+                        },
+                        "soldAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "packageId",
+                        "packageName",
+                        "kind",
+                        "courseId",
+                        "level",
+                        "studentId",
+                        "contractId",
+                        "tariffId",
+                        "tariffVersion",
+                        "hourlyCents",
+                        "grossCents",
+                        "netCents",
+                        "purchasedHours",
+                        "consumedHours",
+                        "refundedHours",
+                        "remainingHours",
+                        "usedHoursRecorded",
                         "expiresDate",
                         "status",
                         "soldAt"
@@ -76237,7 +76574,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.",
+        "description": "Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -76471,6 +76808,10 @@
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991
                                   },
+                                  "usedHoursMissing": {
+                                    "description": "Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)",
+                                    "type": "boolean"
+                                  },
                                   "scholarshipExempt": {
                                     "type": "boolean"
                                   },
@@ -76549,6 +76890,12 @@
                                 "payer"
                               ],
                               "additionalProperties": false
+                            },
+                            "refundApprovedCents": {
+                              "description": "Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok",
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -76713,7 +77060,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.",
+        "description": "Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -76789,6 +77136,19 @@
                           "reason"
                         ],
                         "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "approvedRefundCents": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
                       },
                       {
                         "type": "null"
@@ -77042,6 +77402,10 @@
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991
                                   },
+                                  "usedHoursMissing": {
+                                    "description": "Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)",
+                                    "type": "boolean"
+                                  },
                                   "scholarshipExempt": {
                                     "type": "boolean"
                                   },
@@ -77120,6 +77484,12 @@
                                 "payer"
                               ],
                               "additionalProperties": false
+                            },
+                            "refundApprovedCents": {
+                              "description": "Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok",
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -77575,6 +77945,10 @@
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991
                                     },
+                                    "usedHoursMissing": {
+                                      "description": "Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)",
+                                      "type": "boolean"
+                                    },
                                     "scholarshipExempt": {
                                       "type": "boolean"
                                     },
@@ -77653,6 +78027,12 @@
                                   "payer"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "refundApprovedCents": {
+                                "description": "Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok",
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
                               }
                             },
                             "required": [
@@ -78072,6 +78452,10 @@
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991
                                   },
+                                  "usedHoursMissing": {
+                                    "description": "Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)",
+                                    "type": "boolean"
+                                  },
                                   "scholarshipExempt": {
                                     "type": "boolean"
                                   },
@@ -78150,6 +78534,12 @@
                                 "payer"
                               ],
                               "additionalProperties": false
+                            },
+                            "refundApprovedCents": {
+                              "description": "Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok",
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -78614,6 +79004,10 @@
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991
                                   },
+                                  "usedHoursMissing": {
+                                    "description": "Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)",
+                                    "type": "boolean"
+                                  },
                                   "scholarshipExempt": {
                                     "type": "boolean"
                                   },
@@ -78692,6 +79086,12 @@
                                 "payer"
                               ],
                               "additionalProperties": false
+                            },
+                            "refundApprovedCents": {
+                              "description": "Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok",
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [

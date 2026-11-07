@@ -954,6 +954,9 @@ test.describe('Finans: tahsilat', () => {
     await expect(dialog.getByRole('region', { name: 'Toplam' })).toContainText('Kalan borç')
     await expect(dialog).toContainText('paketlerin kalan saati iade edilmiş yazılır')
 
+    // K-21: paket içeren ayrılışta yönetici tutarı işaretlemeden onay açılmaz.
+    await expect(dialog.getByRole('button', { name: 'Ayrılışı onayla' })).toBeDisabled()
+    await dialog.getByRole('checkbox', { name: /iade tutarını inceledim/ }).check()
     await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
     await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
     await page

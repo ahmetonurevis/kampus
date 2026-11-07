@@ -10,10 +10,12 @@ import {
   packageHourBalance,
   packageQuoteSchema,
   packageSaleStatus,
+  packageUsedHoursRecorded,
   planPackageCreate,
   planPackageExtension,
   planPackageHourEntry,
   planPackageUpdate,
+  planPackageUsedHours,
   quotePackageSale,
   sellPackage,
   sellPackageSchema,
@@ -32,6 +34,8 @@ import { findPublishedTariff } from '../db/fee-tariffs.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import {
   archiveLessonPackage,
+  archiveManualHourEntries,
+  bumpPackageSaleVersion,
   extendPackageSale,
   findLessonPackage,
   findPackageSale,
@@ -304,6 +308,7 @@ function saleView(
   return {
     ...sale,
     ...balance,
+    usedHoursRecorded: packageUsedHoursRecorded(entries),
     status: packageSaleStatus(
       { expiresDate: sale.expiresDate, remainingHours: balance.remainingHours },
       today,
@@ -529,6 +534,84 @@ export function extendPackageSaleCommand(
         body = {
           data: saleView(await reloadSale(tx, ctx, id), entries.get(id) ?? [], dayKey(ctx.now)),
         }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/** Pasif ya da arşivli kursiyerin saati ayrılış hesabına girmiştir (DOM-FIN-041). */
+async function studentIsActive(tx: Database, ctx: ServiceContext, studentId: string) {
+  const [row] = await loadRecordsByIds(tx, ctx.institutionId, 'students', [studentId])
+  return row !== undefined && row.data.isActive !== false
+}
+
+/**
+ * Kullanılan saati elle yazar (K-21, DOM-DIL-051): yoklama bağı (OG-116, OG-144) yokken ayrılışta
+ * fazla iade çıkmasın diye. Eski değer arşivli harekette kalır; gerekçe yalnız denetim kaydındadır.
+ *
+ * TODO(package-attendance): yoklama bağı gelince bu komut kaldırılabilir.
+ */
+export function setPackageUsedHoursCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: SALE_ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'package.used_hours',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const sale = await reloadSale(tx, ctx, id)
+        if (sale.version !== expectedVersion) throw new ConflictError()
+        const [entries, studentActive] = await Promise.all([
+          loadPackageHourEntries(tx, ctx.institutionId, [id]),
+          studentIsActive(tx, ctx, sale.studentId),
+        ])
+        return {
+          run: () => planPackageUsedHours(sale, entries.get(id) ?? [], input, { studentActive }),
+        }
+      },
+      after: async (tx, plan) => {
+        const saved = await bumpPackageSaleVersion(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await archiveManualHourEntries(tx, ctx.institutionId, { saleId: id, now: ctx.now })
+        const today = dayKey(ctx.now)
+        await insertPackageHourEntry(tx, ctx.institutionId, {
+          id: randomUUID(),
+          saleId: id,
+          kind: 'consumed',
+          hours: plan.manualHours,
+          occurredDate: today,
+          sourceType: 'manual',
+          sourceId: id,
+          recordedByUserId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        await tx.insert(auditLog).values({
+          institutionId: ctx.institutionId,
+          actorUserId: ctx.actor.userId,
+          actorRole: ctx.actor.role,
+          action: 'package.used_hours',
+          entityType: entity.type,
+          entityId: entity.id,
+          changes: { fields: ['usedHours'] },
+          reason: plan.reason,
+          createdAt: ctx.now,
+        })
+        const entries = await loadPackageHourEntries(tx, ctx.institutionId, [id])
+        body = { data: saleView(await reloadSale(tx, ctx, id), entries.get(id) ?? [], today) }
       },
     },
     () => ({ statusCode: 200, body }),

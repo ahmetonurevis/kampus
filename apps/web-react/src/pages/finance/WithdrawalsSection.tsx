@@ -7,6 +7,7 @@ import {
   contractLinesToShow,
   payerDecisionSchema,
   payRefundSchema,
+  refundApprovalRequired,
   refundPayerOptions,
   WITHDRAWAL_PAYER_LABELS,
   WITHDRAWAL_REASON_LABELS,
@@ -72,6 +73,8 @@ const REFUND_FORM = 'iade-formu'
  * Ayrılış ve iade (ADR 0006 karar 10; DOM-FIN-040, -041; DOM-KAY-024; IST-110). Son günü en yakın
  * iade önce gelir. Yönetici hesabı önizler, onaylar ve iadeyi ödenmiş işaretler; ön büro yalnız
  * listeyi görür. Onay ve ödeme taze oturum ister: oturum eskiyse parola sorulup işlem tekrarlanır.
+ * Paket içeren ayrılışta yönetici iade tutarını görüp ayrıca onaylar; kullanılan saat girilmemişse
+ * önizleme açık uyarı verir (K-21).
  */
 const isRefundStatus = (value: unknown): value is keyof typeof STATUS_LABELS =>
   typeof value === 'string' && Object.hasOwn(STATUS_LABELS, value)
@@ -289,6 +292,11 @@ function ContractBreakdown({
               ]}
             />
           ) : null}
+          {breakdown.refundApprovedCents === undefined ? null : (
+            <BreakdownRows
+              rows={[['Yöneticinin onayladığı iade', money(breakdown.refundApprovedCents)]]}
+            />
+          )}
           <div className="flex justify-between gap-4 py-1.5 font-semibold">
             <dt>İade</dt>
             <dd>{money(breakdown.refundCents)}</dd>
@@ -360,6 +368,10 @@ function StartModal({ onClose }: { onClose: () => void }) {
   const preview = quoted?.breakdown ?? null
   // Ödeyiciler farklı ve iade varken iadeyi kimin alacağı yöneticinin kararıdır (K-12).
   const needsDecision = Boolean(quoted?.payersDiffer && quoted.breakdown.refundCents > 0)
+  // Paket içeren ayrılışta iade tutarı yönetici onayından geçer; onay gördüğü tutara bağlıdır (K-21).
+  const needsApproval = preview !== null && refundApprovalRequired(preview)
+  const [refundApproved, setRefundApproved] = useState(false)
+  const missingHours = preview?.contracts?.filter((line) => line.usedHoursMissing) ?? []
   const decisionForm = useForm<PayerDecisionInput>({
     resolver: zodResolver(payerDecisionSchema),
     defaultValues: { payer: '', reason: '' },
@@ -412,7 +424,10 @@ function StartModal({ onClose }: { onClose: () => void }) {
       },
       fields,
     )
-    if (outcome.status === 'success') setQuoted(outcome.data.data)
+    if (outcome.status === 'success') {
+      setRefundApproved(false)
+      setQuoted(outcome.data.data)
+    }
   })
 
   async function send() {
@@ -424,6 +439,7 @@ function StartModal({ onClose }: { onClose: () => void }) {
           ...rest,
           targetSchool: targetSchool.trim() || null,
           ...(needsDecision ? { payerDecision: decisionForm.getValues() } : {}),
+          ...(needsApproval && preview ? { approvedRefundCents: preview.refundCents } : {}),
         },
       },
       fields,
@@ -433,6 +449,9 @@ function StartModal({ onClose }: { onClose: () => void }) {
       onClose()
     } else if (outcome.status === 'failed' && outcome.error.code === REAUTHENTICATION_CODE)
       setReauth(true)
+    // Tutar önizlemeden sonra değiştiyse eski tutarın onayı geçmez: hesap yeniden görülür (K-21).
+    else if (outcome.status === 'failed' && outcome.error.code === 'withdrawal_refund_changed')
+      setQuoted(null)
   }
   // Karar gerekiyorsa önce alanlar doğrulanır; kararsız onay sunucuya gitmez.
   const confirm = needsDecision ? decisionForm.handleSubmit(() => send()) : send
@@ -464,7 +483,7 @@ function StartModal({ onClose }: { onClose: () => void }) {
             </Button>
             <Button
               variant="destructive"
-              disabled={busy}
+              disabled={busy || (needsApproval && !refundApproved)}
               aria-busy={busy || undefined}
               onClick={() => void confirm()}
             >
@@ -606,6 +625,13 @@ function StartModal({ onClose }: { onClose: () => void }) {
               Yürürlükteki {preview.contracts?.length} sözleşme hesaba girdi.
             </p>
           ) : null}
+          {missingHours.length > 0 ? (
+            <p role="alert" className="mb-3 rounded-md border bg-warning-soft p-3 text-sm">
+              Kullanılan saat girilmedi: {missingHours.map((line) => line.title).join(', ')}. İade
+              sıfır saate göre hesaplandı ve fazla çıkabilir. Onaydan önce saati paket satışı
+              ayrıntısından girin.
+            </p>
+          ) : null}
           <BreakdownList breakdown={preview} payers={quoted?.payers ?? []} />
           {needsDecision ? (
             <div className="mt-4 grid gap-4 border-t pt-4">
@@ -645,6 +671,19 @@ function StartModal({ onClose }: { onClose: () => void }) {
                 )}
               </FormField>
             </div>
+          ) : null}
+          {needsApproval ? (
+            <label className="mt-4 flex items-start gap-2 border-t pt-4 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={refundApproved}
+                disabled={busy}
+                onChange={(event) => setRefundApproved(event.target.checked)}
+                className="mt-0.5 size-4"
+              />
+              Paket içeren bu ayrılışta {money(preview.refundCents)} iade tutarını inceledim,
+              onaylıyorum.
+            </label>
           ) : null}
           <p className="mt-3 text-sm text-muted-foreground">
             Onayla öğrenci pasifleşir, açık taksitler iptal edilir, ileri tarihli etüt, servis ve

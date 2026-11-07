@@ -84271,6 +84271,123 @@
         }
       }
     },
+    "/api/v1/finance/payer-children": {
+      "get": {
+        "operationId": "listFinancePayerChildren",
+        "summary": "Velinin ödeyicisi olduğu çocuklar",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Veli finans sayfalarının çocuk seçicisi için ödeyicisi olunan öğrenciler (K-04, DOM-FIN-052, DOM-ILT-074). Velayeti olmayan ödeyici veli çocuğu `/me` çocuk listesinde görmez; finans sayfaları bu listeyle o çocuğun taksit, dekont ve sözleşmesini açar. Akademik ve iletişim ekranları bu listeyi kullanmaz. Velayetli ödeyicinin çocuğu da listededir. İletişim kısıtlı veli ödeyici olamaz, listesi boştur. Yalnız ad ve güncel sınıf adı döner (KVKK asgarisi); sıralama ada göre. Başka kurumun öğrencisi listede yoktur. Rol: `veli`; diğer roller 403, modül kapalı 403.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Öğrenci kimliği"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Öğrencinin adı"
+                          },
+                          "className": {
+                            "description": "Güncel sınıf ya da kur grubu adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "className"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

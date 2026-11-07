@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { PROGRESSION_OUTCOMES, type ProgressionOutcome } from '../cefr/progression.ts'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { DomainError } from './errors.ts'
+import { receiptNumberLabel } from './finance-receipt.ts'
 import { dayKey } from './format.ts'
 
 /**
@@ -250,7 +251,7 @@ export function eOzelFeeItems(
     const reversed = payment.reversedAt !== null
     if (reversed && payment.mebbisRecordedAt === null) return []
     const date = dayKey(payment.paidAt)
-    const receipt = `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`
+    const receipt = receiptNumberLabel(payment)
     const item: EOzelItem = {
       ...NO_FIELDS,
       kind: 'fee',

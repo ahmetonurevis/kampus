@@ -1,0 +1,2 @@
+ALTER TABLE "submission_versions" ADD COLUMN "draft_revision" integer;--> statement-breakpoint
+ALTER TABLE "submission_versions" ADD CONSTRAINT "submission_versions_draft_revision_check" CHECK ("submission_versions"."draft_revision" is null or ("submission_versions"."draft_revision" >= 1 and "submission_versions"."body" is not null));

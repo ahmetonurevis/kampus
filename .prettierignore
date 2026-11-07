@@ -9,3 +9,10 @@ apps/mobile/android
 apps/mobile/ios
 apps/mobile/.expo
 __pycache__
+# drizzle-kit üretir; elle düzenlenmez
+apps/api/drizzle/meta
+# Uygulama şemalarından üretilir (pnpm --filter @kampus/api openapi)
+apps/api/openapi.json
+# Üretilir (pnpm --filter @kampus/api-client generate)
+packages/api-client/src/schema.d.ts
+.lighthouseci

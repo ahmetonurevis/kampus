@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { restoreSnapshot } from '../../packages/school-core/src/lib/demo-persistence.js'
+import { restoreSnapshot } from '../../packages/school-core/src/lib/demo-persistence.ts'
 const stored = async (page) =>
   restoreSnapshot(await page.evaluate(() => localStorage.getItem('kampus-private-school-v1')))
 async function save(page) {

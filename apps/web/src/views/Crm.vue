@@ -5,13 +5,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { z } from 'zod'
 import { state, action, id, branchById } from '../stores/demo.js'
 import { dateLabel, dayKey, money } from '../lib/format.js'
-import {
-  prospectSchema,
-  registrationSchema,
-  enrollProspect,
-  requiredText,
-  installmentAmounts,
-} from '../lib/domain.js'
+import { requiredText } from '../lib/domain.js'
+import { prospectSchema } from '../lib/prospects.js'
+import { installmentAmounts } from '../lib/payments.js'
+import { registrationSchema, enrollProspect } from '../lib/enrollment.js'
 import { previewPdf, pendingDocuments } from '../lib/download.js'
 import PageHeading from '../components/PageHeading.vue'
 import DataTable from '../components/DataTable.vue'

@@ -1,0 +1,28 @@
+{
+  "name": "@kampus/react-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test --test-concurrency=4 'test/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@kampus/api-client": "workspace:*",
+    "@kampus/school-core": "workspace:*",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "5.105.0",
+    "react": ">=19.0.0 <20"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "5.105.0",
+    "@types/react": "19.2.18",
+    "better-auth": "1.7.10",
+    "react": "19.2.3"
+  }
+}

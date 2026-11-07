@@ -39,6 +39,7 @@ import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
+import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-children.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
@@ -436,6 +437,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
   registerEnrollmentCertificateRoutes(app)
+  registerFinancePayerChildrenRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

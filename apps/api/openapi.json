@@ -82750,6 +82750,196 @@
         }
       }
     },
+    "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
+      "get": {
+        "operationId": "getEnrollmentCertificate",
+        "summary": "Öğrenci belgesi verisi",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Okulda öğrenci, dil okulunda kursiyer belgesinin içeriği: kurum adı, ad, okul numarası, sınıf, sürmekte olan kurlar, eğitim yılı, düzenleme anı ve belge kimliği (core `buildEnrollmentCertificate`, DOM-KAY-027). Kimlik numarası, doğum tarihi, veli, sağlık, ücret, borç ve disiplin bilgisi yanıtta yoktur; borç belgeyi engellemez (DOM-KAY-025). Belge resmî değildir, e-Okul ve e-Özel belgesinin yerine geçmez. Her başarılı istek yeni belge kimliği üretir ve denetim kaydına `enrollment_certificate.issue` olarak yazılır (yalnız alan adları; DOM-YTK-052); belge kimliği denetim satırının kimliğidir. Ayrılan ve mezun öğrenci 422 `enrollment_certificate_inactive`. Olmayan, arşivlenmiş ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "Belge kimliği; aynı düzenlemenin denetim satırının kimliğidir"
+                        },
+                        "issuedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                          "description": "Düzenleme anı (UTC); belgede Europe/Istanbul günü yazılır"
+                        },
+                        "institutionName": {
+                          "type": "string",
+                          "description": "Kurum adı (IST-013 unvanı gelene kadar kayıtlı ad)"
+                        },
+                        "institutionType": {
+                          "type": "string",
+                          "enum": [
+                            "school",
+                            "language_school"
+                          ],
+                          "description": "Terimi belirler: öğrenci ya da kursiyer"
+                        },
+                        "learnerName": {
+                          "type": "string",
+                          "description": "Öğrencinin ya da kursiyerin adı"
+                        },
+                        "schoolNumber": {
+                          "description": "Okul numarası; kayıtta yoksa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "description": "Sınıf adı; okunamıyorsa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "courseNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Dil okulunda sürmekte olan kurlar, ada göre sıralı; okulda hep boş"
+                        },
+                        "academicYear": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Etkin eğitim yılının başlangıcı: 2026 → 2026–2027; kurum ayarı yoksa `null`"
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "issuedAt",
+                        "institutionName",
+                        "institutionType",
+                        "learnerName",
+                        "schoolNumber",
+                        "className",
+                        "courseNames",
+                        "academicYear"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

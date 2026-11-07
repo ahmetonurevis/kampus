@@ -29,6 +29,7 @@ import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/pla
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
+import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
@@ -423,6 +424,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerEnrollmentImportRoutes(app)
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
+  registerEnrollmentCertificateRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

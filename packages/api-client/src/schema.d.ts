@@ -3628,6 +3628,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrenci belgesi verisi
+         * @description Okulda öğrenci, dil okulunda kursiyer belgesinin içeriği: kurum adı, ad, okul numarası, sınıf, sürmekte olan kurlar, eğitim yılı, düzenleme anı ve belge kimliği (core `buildEnrollmentCertificate`, DOM-KAY-027). Kimlik numarası, doğum tarihi, veli, sağlık, ücret, borç ve disiplin bilgisi yanıtta yoktur; borç belgeyi engellemez (DOM-KAY-025). Belge resmî değildir, e-Okul ve e-Özel belgesinin yerine geçmez. Her başarılı istek yeni belge kimliği üretir ve denetim kaydına `enrollment_certificate.issue` olarak yazılır (yalnız alan adları; DOM-YTK-052); belge kimliği denetim satırının kimliğidir. Ayrılan ve mezun öğrenci 422 `enrollment_certificate_inactive`. Olmayan, arşivlenmiş ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getEnrollmentCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -38666,6 +38686,122 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEnrollmentCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * Format: uuid
+                             * @description Belge kimliği; aynı düzenlemenin denetim satırının kimliğidir
+                             */
+                            documentId: string;
+                            /**
+                             * Format: date-time
+                             * @description Düzenleme anı (UTC); belgede Europe/Istanbul günü yazılır
+                             */
+                            issuedAt: string;
+                            /** @description Kurum adı (IST-013 unvanı gelene kadar kayıtlı ad) */
+                            institutionName: string;
+                            /**
+                             * @description Terimi belirler: öğrenci ya da kursiyer
+                             * @enum {string}
+                             */
+                            institutionType: "school" | "language_school";
+                            /** @description Öğrencinin ya da kursiyerin adı */
+                            learnerName: string;
+                            /** @description Okul numarası; kayıtta yoksa `null` */
+                            schoolNumber: string | null;
+                            /** @description Sınıf adı; okunamıyorsa `null` */
+                            className: string | null;
+                            /** @description Dil okulunda sürmekte olan kurlar, ada göre sıralı; okulda hep boş */
+                            courseNames: string[];
+                            /** @description Etkin eğitim yılının başlangıcı: 2026 → 2026–2027; kurum ayarı yoksa `null` */
+                            academicYear: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

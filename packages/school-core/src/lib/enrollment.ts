@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
-import { isContractInForce } from './contract-status.ts'
+import { contractsInForce, enrolledSiblings, type SiblingState } from './enrollment-siblings.ts'
 import { daySchema, requiredText, type ContractTerms, type MakeId } from './domain.ts'
 import { installmentAmounts } from './payments.ts'
 import { DomainError } from './errors.ts'
@@ -207,39 +207,16 @@ export function itemFor(
 }
 
 /**
- * Kardeş kuralının okuduğu kayıtlar. `frozenAt` dondurma işlemiyle (DOM-KAY-024, ON-067) gelir;
- * öğrenci dondurulunca `isActive` true kalır.
- */
-type SiblingState = Pick<State, 'contracts'> & {
-  students: readonly (Pick<State['students'][number], 'id' | 'isActive'> & {
-    frozenAt?: string | null
-  })[]
-}
-
-/** Öğrencinin yürürlükteki sözleşmeleri, eğitim yılı ve tarihe göre eskiden yeniye. */
-function contractsInForce(state: SiblingState, studentId: string) {
-  return state.contracts
-    .filter((item) => item.studentId === studentId && isContractInForce(item, state.contracts))
-    .sort(
-      (a, b) =>
-        (a.academicYear ?? 0) - (b.academicYear ?? 0) ||
-        Date.parse(a.date) - Date.parse(b.date) ||
-        a.id.localeCompare(b.id),
-    )
-}
-
-/**
  * Kardeş indirimi, aynı eğitim yılında aktif kaydı olan kardeşi bulunan ikinci ve sonraki çocuğa
  * uygulanır (DOM-FIN-022, K-22).
  *
- * Aktif kayıt: öğrenci ayrılmamış, mezun olmamış ve dondurulmamıştır; o yıla ait yürürlükte
- * sözleşmesi vardır. Yenilemede kardeşin planı o yılın sözleşmesini yazdığı için plan da kayıt
- * sayılır. Yılı yazılmamış eski sözleşme cari yıla aittir (`renewalCeiling` ile aynı). Sözleşmesi hiç
- * olmayan etkin kardeş (dosyadan aktarılan öğrenci) yalnız cari yılda kayıtlı sayılır.
+ * Aktif kayıt `enrolledSiblings`'tir (`lib/enrollment-siblings.ts`); koşulun kalktığı yenilemenin tavan
+ * istisnası (`renewalCeiling`, DOM-FIN-023) aynı tanımı okur.
  *
  * Tarife sıra tanımlamadığı için varsayılan geçerlidir, ikinci çocuk ücreti düşük olandır: kayıtlı
- * çocuklardan o yılın öğrenim ücreti (son yürürlükteki sözleşmenin ilan ücreti; eski sözleşmede
- * tutar) en yüksek olan ilk çocuktur ve indirim almaz. Eşit ücrette önce kaydolan öndedir; kesin
+ * çocuklardan o yılın öğrenim ücreti (son yürürlükteki sözleşmeye yazılan brüt ücret; brütü olmayan
+ * eski sözleşmede tutar) en yüksek olan ilk çocuktur ve indirim almaz. Çocuğun ücreti de sözleşmesine
+ * yazılacak brüttür; ilan altı fiyatlı pakette ilan ücreti değil. Eşit ücrette önce kaydolan öndedir; kesin
  * kayıttaki aday her zaman sonradır. Sözleşmesiz kardeşin ücreti bilinmediği için aday lehine öne
  * sayılır.
  */
@@ -258,18 +235,7 @@ export function requireSiblingDiscountEligible(
     currentAcademicYear: number
   },
 ): void {
-  const { academicYear, currentAcademicYear } = child
-  const enrolled = state.students.flatMap((student) => {
-    if (student.id === child.studentId || !child.siblingIds.includes(student.id)) return []
-    if (!student.isActive || student.frozenAt) return []
-    const contracts = contractsInForce(state, student.id)
-    const ofYear = contracts.filter(
-      (item) => (item.academicYear ?? currentAcademicYear) === academicYear,
-    )
-    if (ofYear.length === 0 && (contracts.length > 0 || academicYear !== currentAcademicYear))
-      return []
-    return [{ id: student.id, first: contracts[0], latest: ofYear.at(-1) }]
-  })
+  const enrolled = enrolledSiblings(state, child)
   if (enrolled.length === 0)
     throw new DomainError(
       'sibling_discount_ineligible',

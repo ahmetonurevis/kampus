@@ -16,13 +16,18 @@ import { isValidTurkishIban } from './withdrawals.ts'
 
 // --- Taksit bölme ve tahsilat yöntemleri (kesin kayıt, tahsilat ve çevrimdışı demo ortak çekirdeği) ---
 
+/**
+ * Neti taksitlere kuruş kaybetmeden böler; artan kuruş ilk taksitlere gider (DOM-FIN-011). Her
+ * taksit en az bir kuruştur: kuruş taksit sayısından azsa sıfır tutarlı taksit açılmaz.
+ */
 export function installmentAmounts(cents: number, count: number) {
   if (
     !Number.isSafeInteger(cents) ||
     cents <= 0 ||
     !Number.isInteger(count) ||
     count < 1 ||
-    count > 12
+    count > 12 ||
+    cents < count
   )
     throw new DomainError('invalid_installment', 'Taksit tutarı veya sayısı geçersiz.')
   const base = Math.floor(cents / count)

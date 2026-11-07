@@ -94,19 +94,35 @@ const saleSchema = z.object({
   soldAt: z.string(),
 })
 export const saleResponse = dataResponse(saleSchema)
-const listedSaleSchema = saleSchema.extend({ studentName: z.string().nullable() })
+
+/** Okuma uçlarında tutar alanı role özgüdür: veli ve öğrenci yanıtında anahtar yoktur (K-40). */
+const STAFF_ONLY = 'Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).'
+const staffOnly = <T extends z.ZodType>(schema: T, description: string) =>
+  schema.optional().describe(`${description}. ${STAFF_ONLY}`)
+const listedSaleSchema = saleSchema.extend({
+  hourlyCents: staffOnly(
+    z.number().int(),
+    'Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır',
+  ),
+  grossCents: staffOnly(z.number().int(), 'Saat × uygulanan saat ücreti, kuruş'),
+  netCents: staffOnly(z.number().int(), 'İndirimden sonra öğrenim ücreti, kuruş'),
+  studentName: z.string().nullable(),
+})
 export const saleListResponse = z.object({ data: z.array(listedSaleSchema), meta: pageMetaSchema })
 export const saleDetailResponse = dataResponse(
   listedSaleSchema.extend({
-    invoices: z.array(
-      z.object({
-        id: z.string(),
-        installment: z.number().int(),
-        amountCents: z.number().int(),
-        dueDate: z.string(),
-        paidAt: z.string().nullable(),
-        feeKind: z.string().nullable(),
-      }),
+    invoices: staffOnly(
+      z.array(
+        z.object({
+          id: z.string(),
+          installment: z.number().int(),
+          amountCents: z.number().int(),
+          dueDate: z.string(),
+          paidAt: z.string().nullable(),
+          feeKind: z.string().nullable(),
+        }),
+      ),
+      'Sözleşmenin yalnız bu satışa ait taksitleri',
     ),
   }),
 )

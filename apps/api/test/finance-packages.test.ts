@@ -722,6 +722,48 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     assertError(await get(`${SALES}?bilinmeyen=1`, a.admin), 400)
   })
 
+  test('K-40, DOM-FIN-058: veli ve öğrenci satış listesinde ve ayrıntısında tutar anahtarı yok; personelde var', async () => {
+    const a = await ready()
+    const own = await sold(a)
+    const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: 's3' }])
+    const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's3' }])
+    const desk = await member(a.id, 'onburo')
+    const amountKeys = [
+      'hourlyCents',
+      'grossCents',
+      'netCents',
+      'discounts',
+      'discountCents',
+      'installments',
+      'invoices',
+    ]
+    const hourKeys = ['purchasedHours', 'consumedHours', 'remainingHours', 'expiresDate', 'status']
+    for (const cookie of [parent, student]) {
+      const listed = await get(SALES, cookie)
+      assert.equal(listed.statusCode, 200, listed.body)
+      const detail = await get(`${SALES}/${own.id}`, cookie)
+      assert.equal(detail.statusCode, 200, detail.body)
+      for (const row of [listed.json().data[0], detail.json().data]) {
+        for (const amountKey of amountKeys) assert.equal(amountKey in row, false, amountKey)
+        for (const hourKey of hourKeys) assert.equal(hourKey in row, true, hourKey)
+        assert.equal(row.packageName, HOURS_BODY.name)
+        assert.equal(row.purchasedHours, 40)
+        assert.equal(row.status, 'active')
+      }
+    }
+    for (const cookie of [a.admin, desk]) {
+      const listed = (await get(SALES, cookie)).json().data[0]
+      const detail = (await get(`${SALES}/${own.id}`, cookie)).json().data
+      for (const row of [listed, detail]) {
+        assert.equal(row.hourlyCents, HOURLY)
+        assert.equal(row.grossCents, 40 * HOURLY)
+        assert.equal(typeof row.netCents, 'number')
+      }
+      assert.equal(detail.invoices.length, 4)
+      assert.equal(typeof detail.invoices[0].amountCents, 'number')
+    }
+  })
+
   test('DOM-DIL-051, H-19: süre dolunca saat silinmez; uzatma If-Match ve gerekçe ister, denetime yazılır', async () => {
     const a = await ready()
     const sale = await sold(a)

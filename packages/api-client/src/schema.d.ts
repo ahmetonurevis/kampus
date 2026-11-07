@@ -2669,7 +2669,7 @@ export interface paths {
         };
         /**
          * Paket satışlarını listele
-         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yalnız saat, son kullanma, durum ve paket adını alır, tutar anahtarı yanıtta yoktur (K-40). `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
          */
         get: operations["listPackageSales"];
         put?: never;
@@ -2693,7 +2693,7 @@ export interface paths {
         };
         /**
          * Paket satışı ayrıntısı
-         * @description Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         * @description Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Tutar alanları ve taksitler (`invoices`) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yanıtında anahtar yoktur, taksit kendi bölümünde görünür (K-40). Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
          */
         get: operations["getPackageSale"];
         put?: never;
@@ -31455,10 +31455,12 @@ export interface operations {
                             contractId: string;
                             tariffId: string;
                             tariffVersion: number;
-                            /** @description Uygulanan saat ücreti; iade bu ücretle hesaplanır */
-                            hourlyCents: number;
-                            grossCents: number;
-                            netCents: number;
+                            /** @description Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            hourlyCents?: number;
+                            /** @description Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            grossCents?: number;
+                            /** @description İndirimden sonra öğrenim ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            netCents?: number;
                             /** @description Satın alınan saat */
                             purchasedHours: number;
                             /** @description Tüketilen saat */
@@ -31749,10 +31751,12 @@ export interface operations {
                             contractId: string;
                             tariffId: string;
                             tariffVersion: number;
-                            /** @description Uygulanan saat ücreti; iade bu ücretle hesaplanır */
-                            hourlyCents: number;
-                            grossCents: number;
-                            netCents: number;
+                            /** @description Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            hourlyCents?: number;
+                            /** @description Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            grossCents?: number;
+                            /** @description İndirimden sonra öğrenim ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            netCents?: number;
                             /** @description Satın alınan saat */
                             purchasedHours: number;
                             /** @description Tüketilen saat */
@@ -31775,7 +31779,8 @@ export interface operations {
                             status: "active" | "expired" | "depleted";
                             soldAt: string;
                             studentName: string | null;
-                            invoices: {
+                            /** @description Sözleşmenin yalnız bu satışa ait taksitleri. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
+                            invoices?: {
                                 id: string;
                                 installment: number;
                                 amountCents: number;

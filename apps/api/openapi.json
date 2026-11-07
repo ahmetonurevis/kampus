@@ -66710,7 +66710,7 @@
         "tags": [
           "finance-packages"
         ],
-        "description": "Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
+        "description": "Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yalnız saat, son kullanma, durum ve paket adını alır, tutar anahtarı yanıtta yoktur (K-40). `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
         "parameters": [
           {
             "schema": {
@@ -66824,17 +66824,19 @@
                             "maximum": 9007199254740991
                           },
                           "hourlyCents": {
+                            "description": "Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                             "type": "integer",
                             "minimum": -9007199254740991,
-                            "maximum": 9007199254740991,
-                            "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                            "maximum": 9007199254740991
                           },
                           "grossCents": {
+                            "description": "Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           },
                           "netCents": {
+                            "description": "İndirimden sonra öğrenim ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
@@ -66906,9 +66908,6 @@
                           "contractId",
                           "tariffId",
                           "tariffVersion",
-                          "hourlyCents",
-                          "grossCents",
-                          "netCents",
                           "purchasedHours",
                           "consumedHours",
                           "refundedHours",
@@ -67025,7 +67024,7 @@
         "tags": [
           "finance-packages"
         ],
-        "description": "Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
+        "description": "Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Tutar alanları ve taksitler (`invoices`) yalnız `yonetici` ve `onburo` yanıtındadır; veli ve öğrenci yanıtında anahtar yoktur, taksit kendi bölümünde görünür (K-40). Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
         "parameters": [
           {
             "schema": {
@@ -67102,17 +67101,19 @@
                           "maximum": 9007199254740991
                         },
                         "hourlyCents": {
+                          "description": "Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                           "type": "integer",
                           "minimum": -9007199254740991,
-                          "maximum": 9007199254740991,
-                          "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                          "maximum": 9007199254740991
                         },
                         "grossCents": {
+                          "description": "Saat × uygulanan saat ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
                         "netCents": {
+                          "description": "İndirimden sonra öğrenim ücreti, kuruş. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
@@ -67172,6 +67173,7 @@
                           ]
                         },
                         "invoices": {
+                          "description": "Sözleşmenin yalnız bu satışa ait taksitleri. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).",
                           "type": "array",
                           "items": {
                             "type": "object",
@@ -67229,9 +67231,6 @@
                         "contractId",
                         "tariffId",
                         "tariffVersion",
-                        "hourlyCents",
-                        "grossCents",
-                        "netCents",
                         "purchasedHours",
                         "consumedHours",
                         "refundedHours",
@@ -67240,8 +67239,7 @@
                         "expiresDate",
                         "status",
                         "soldAt",
-                        "studentName",
-                        "invoices"
+                        "studentName"
                       ],
                       "additionalProperties": false
                     }

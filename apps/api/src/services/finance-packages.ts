@@ -388,10 +388,28 @@ async function studentNames(ctx: ServiceContext, ids: readonly string[]) {
 const institutionWide = (ctx: ServiceContext) =>
   ctx.actor.role === 'yonetici' || ctx.actor.role === 'onburo'
 
+/** Satış satırının tutar alanları; yalnız yönetici ve ön büro yanıtında (K-40, DOM-FIN-058). */
+const SALE_AMOUNT_FIELDS = ['hourlyCents', 'grossCents', 'netCents', 'invoices'] as const
+type SaleAmountField = (typeof SALE_AMOUNT_FIELDS)[number]
+
+type FamilySaleView<T> = Omit<T, SaleAmountField> & Partial<Pick<T, SaleAmountField & keyof T>>
+
+/**
+ * Veli ve öğrenci yanıtı: saat, son kullanma, durum ve paket adı kalır; saat ücreti, brüt ve net
+ * ücret ile taksitler silinir (K-40). Yalnız şemadan düşmesine güvenilmez, alan yanıtta hiç yoktur.
+ */
+function forReader<T extends object>(ctx: ServiceContext, sale: T): FamilySaleView<T> {
+  const view: FamilySaleView<T> = { ...sale }
+  if (institutionWide(ctx)) return view
+  for (const field of SALE_AMOUNT_FIELDS) Reflect.deleteProperty(view, field)
+  return view
+}
+
 /**
  * Kapsam `/finance/students/:id/balance` ile aynıdır: yönetici ve ön büro kurum geneli, veli bağlı
  * çocuğu ve ödeyicisi olduğu öğrenci, öğrenci kendisi (DOM-FIN-052, K-04). Kapsam `studentId`
- * süzgeciyle daraltılır, genişletilmez. Varsayılan sıra yeni satış önce.
+ * süzgeciyle daraltılır, genişletilmez. Varsayılan sıra yeni satış önce. Veli ve öğrenci satırında
+ * tutar alanı yoktur (K-40).
  */
 export async function listPackageSalesFor(
   ctx: ServiceContext,
@@ -433,10 +451,12 @@ export async function listPackageSalesFor(
   ])
   const today = dayKey(ctx.now)
   return {
-    items: items.map((sale) => ({
-      ...saleView(sale, entries.get(sale.id) ?? [], today),
-      studentName: names.get(sale.studentId) ?? null,
-    })),
+    items: items.map((sale) =>
+      forReader(ctx, {
+        ...saleView(sale, entries.get(sale.id) ?? [], today),
+        studentName: names.get(sale.studentId) ?? null,
+      }),
+    ),
     total,
   }
 }
@@ -451,27 +471,35 @@ const storedInvoiceSchema = z.object({
 
 /**
  * Satış ayrıntısı: satın alınan, kullanılan ve kalan saat (IST-078), son kullanma günü ve
- * sözleşmenin yalnız kendi taksitleri (DOM-FIN-012). Kapsam listeyle aynı; kapsam dışı 404.
+ * sözleşmenin yalnız kendi taksitleri (DOM-FIN-012). Kapsam listeyle aynı; kapsam dışı 404. Tutar ve
+ * taksit yalnız yönetici ve ön büroya döner (K-40).
  */
 export async function getPackageSaleFor(ctx: ServiceContext, id: string) {
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   const sale = await findPackageSale(ctx.db, ctx.institutionId, id)
   if (sale === null) throw new NotFoundError()
-  if (!institutionWide(ctx) && !financeStudentIds(scope).has(sale.studentId))
-    throw new NotFoundError()
-  const [entries, names, contracts] = await Promise.all([
+  const wide = institutionWide(ctx)
+  if (!wide && !financeStudentIds(scope).has(sale.studentId)) throw new NotFoundError()
+  const [entries, names] = await Promise.all([
     loadPackageHourEntries(ctx.db, ctx.institutionId, [id]),
     studentNames(ctx, [sale.studentId]),
-    loadFinanceRecords(ctx.db, ctx.institutionId, 'contracts', { ids: [sale.contractId] }),
   ])
-  const invoiceIds = z.array(z.string()).catch([]).parse(contracts[0]?.data.invoiceIds)
+  const view = {
+    ...saleView(sale, entries.get(id) ?? [], dayKey(ctx.now)),
+    studentName: names.get(sale.studentId) ?? null,
+  }
+  // Veli ve öğrenci taksiti kendi bölümünde görür; sözleşme ve taksit burada hiç yüklenmez (K-40).
+  if (!wide) return forReader(ctx, view)
+  const [contract] = await loadFinanceRecords(ctx.db, ctx.institutionId, 'contracts', {
+    ids: [sale.contractId],
+  })
+  const invoiceIds = z.array(z.string()).catch([]).parse(contract?.data.invoiceIds)
   const invoices = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     ids: invoiceIds,
   })
   return {
-    ...saleView(sale, entries.get(id) ?? [], dayKey(ctx.now)),
-    studentName: names.get(sale.studentId) ?? null,
+    ...view,
     invoices: invoices
       .map((row) => {
         const invoice = storedInvoiceSchema.parse(row.data)

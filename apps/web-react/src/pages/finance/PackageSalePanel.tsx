@@ -38,6 +38,7 @@ const hoursText = (hours: number) => `${String(hours)} saat`
  * edilen ve kalan saat, son kullanma ve sözleşmenin kendi taksitleri. Süre dolunca kalan saat
  * silinmez; kursiyerin seçimine göre süre uzatılır ya da iade hesabına girer (H-19, doğrulanmalı).
  * Yoklama bağı gelene kadar kullanılan saati personel girer (K-21); girilmemişse uyarı görünür.
+ * Tutar ve taksit yalnız yönetici ve ön büro yanıtında gelir (K-40); gelmezse satır çizilmez.
  */
 export function PackageSalePanel({ saleId, onClose }: { saleId: string; onClose: () => void }) {
   return (
@@ -92,14 +93,18 @@ function SaleDetail({ saleId }: { saleId: string }) {
           <dt className="text-muted-foreground">Son kullanma</dt>
           <dd>{sale.expiresDate ? dayText(sale.expiresDate) : 'Süresiz'}</dd>
         </div>
-        <div className="flex flex-wrap justify-between gap-x-4 py-1.5">
-          <dt className="text-muted-foreground">Uygulanan saat ücreti</dt>
-          <dd>{money(sale.hourlyCents)}</dd>
-        </div>
-        <div className="flex flex-wrap justify-between gap-x-4 py-1.5">
-          <dt className="text-muted-foreground">Öğrenim ücreti</dt>
-          <dd>{money(sale.netCents)}</dd>
-        </div>
+        {sale.hourlyCents === undefined ? null : (
+          <div className="flex flex-wrap justify-between gap-x-4 py-1.5">
+            <dt className="text-muted-foreground">Uygulanan saat ücreti</dt>
+            <dd>{money(sale.hourlyCents)}</dd>
+          </div>
+        )}
+        {sale.netCents === undefined ? null : (
+          <div className="flex flex-wrap justify-between gap-x-4 py-1.5">
+            <dt className="text-muted-foreground">Öğrenim ücreti</dt>
+            <dd>{money(sale.netCents)}</dd>
+          </div>
+        )}
         <div className="flex flex-wrap justify-between gap-x-4 py-1.5">
           <dt className="text-muted-foreground">Satış tarihi</dt>
           <dd>{dayText(sale.soldAt)}</dd>
@@ -111,20 +116,24 @@ function SaleDetail({ saleId }: { saleId: string }) {
           da iade hesabına girer.
         </p>
       ) : null}
-      <h4 className="mb-1 text-sm font-medium">Taksitler</h4>
-      <ul aria-label="Satışın taksitleri" className="mb-6 divide-y text-sm">
-        {sale.invoices.map((invoice) => (
-          <li key={invoice.id} className="flex flex-wrap justify-between gap-x-4 py-1.5">
-            <span className="text-muted-foreground">
-              {invoice.installment}. taksit · {dayText(invoice.dueDate)}
-            </span>
-            <span>
-              {money(invoice.amountCents)}
-              {invoice.paidAt ? ' · Ödendi' : ''}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {sale.invoices ? (
+        <>
+          <h4 className="mb-1 text-sm font-medium">Taksitler</h4>
+          <ul aria-label="Satışın taksitleri" className="mb-6 divide-y text-sm">
+            {sale.invoices.map((invoice) => (
+              <li key={invoice.id} className="flex flex-wrap justify-between gap-x-4 py-1.5">
+                <span className="text-muted-foreground">
+                  {invoice.installment}. taksit · {dayText(invoice.dueDate)}
+                </span>
+                <span>
+                  {money(invoice.amountCents)}
+                  {invoice.paidAt ? ' · Ödendi' : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         {canEnterHours ? (
           <Button onClick={() => setEnteringHours(true)}>Kullanılan saati gir</Button>

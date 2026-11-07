@@ -22,11 +22,16 @@ import { studentWithdrawals } from '../../src/db/schema/withdrawals.ts'
 import { AppError, databaseErrorInfo, mapDatabaseError } from '../../src/errors.ts'
 import type { ServiceContext } from '../../src/plugins/authenticate.ts'
 import { createFeeTariffCommand, publishFeeTariffCommand } from '../../src/services/fee-tariffs.ts'
+import {
+  amendContractCommand,
+  approveContractCommand,
+  setContractSignatoryCommand,
+} from '../../src/services/finance-contracts.ts'
 import type { CommandResponse } from '../../src/services/operation-runner.ts'
 import { recordPaymentCommand, reversePaymentCommand } from '../../src/services/payments.ts'
 import { payRefundCommand, withdrawStudentCommand } from '../../src/services/withdrawals.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from '../support/app.ts'
-import { contractTerms, insertTestTariff } from '../support/finance-terms.ts'
+import { contractTerms, insertTestTariff, TEST_TARIFF_ID } from '../support/finance-terms.ts'
 import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
 
 /**
@@ -614,5 +619,133 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
       [first, second].map((item) => (item.status === 'fulfilled' ? item.value : item.reason)),
       [true, false],
     )
+  })
+
+  /** Onaylanmış, kardeş indirimi ilanlı tarifeye bağlı 2026 sözleşmesi (net 100.000 ₺). */
+  async function approvedContract(ctx: ServiceContext) {
+    assert.ok(STUDENT)
+    await insertTestTariff(db, ctx.institutionId)
+    await db
+      .update(feeTariffs)
+      .set({ discounts: [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }] })
+      .where(
+        and(eq(feeTariffs.institutionId, ctx.institutionId), eq(feeTariffs.id, TEST_TARIFF_ID)),
+      )
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'students' as const, id: STUDENT.id, data: { ...STUDENT } },
+        {
+          collection: 'parents' as const,
+          id: STUDENT.parentId,
+          data: { id: STUDENT.parentId, name: PARENT_NAME, studentIds: [STUDENT.id] },
+        },
+        {
+          collection: 'contracts' as const,
+          id: 'pg-fam-contract',
+          data: {
+            id: 'pg-fam-contract',
+            studentId: STUDENT.id,
+            date: '2026-09-01T09:00:00.000Z',
+            amount: NET,
+            title: 'Özel okul eğitim sözleşmesi',
+            invoiceIds: [],
+            academicYear: 2026,
+            ...contractTerms({ grossCents: NET, netCents: NET }),
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const options = (expectedVersion: number) => ({ idempotency: null, expectedVersion })
+    /** Komut gövdesindeki sözleşmenin yeni sürümü. */
+    const versionOf = (response: CommandResponse) => {
+      const { records: changed } = (response.body as { data: { records: { version: number }[] } })
+        .data
+      assert.equal(changed.length, 1, JSON.stringify(response.body))
+      return changed[0]?.version ?? 0
+    }
+    const signed = await setContractSignatoryCommand(
+      ctx,
+      'pg-fam-contract',
+      { name: 'Murat Kurucu', role: 'founder' },
+      options(1),
+    )
+    assert.equal(signed.statusCode, 200)
+    const approved = await approveContractCommand(
+      ctx,
+      'pg-fam-contract',
+      { accepted: true },
+      options(versionOf(signed)),
+    )
+    assert.equal(approved.statusCode, 200)
+    return versionOf(approved)
+  }
+
+  test('DOM-FIN-022, K-22: kilit dışı aile okumasından sonra kaydolan kardeşin sözleşmesi ek protokolde yüklenir', async () => {
+    assert.ok(STUDENT)
+    const ctx = await context()
+    const version = await approvedContract(ctx)
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, ctx.institutionId)
+      held.open()
+      await release.opened
+      // Ek protokol kardeş kümesini kilitsiz okudu ve kilitte bekliyor: bu sırada daha düşük
+      // ücretli kardeş kesin kayıt olur. Sözleşmesi yüklenmezse "aday lehine öne" sayılır ve
+      // ilk çocuk olan öğrenci yanlışlıkla indirim alır.
+      await insertMissingRecords(
+        tx,
+        ctx.institutionId,
+        [
+          {
+            collection: 'students' as const,
+            id: 'pg-fam-kardes',
+            data: { ...STUDENT, id: 'pg-fam-kardes', name: 'Test Kardeş', isActive: true },
+          },
+          {
+            collection: 'contracts' as const,
+            id: 'pg-fam-kardes-contract',
+            data: {
+              id: 'pg-fam-kardes-contract',
+              studentId: 'pg-fam-kardes',
+              date: '2026-09-02T09:00:00.000Z',
+              amount: NET / 2,
+              title: 'Özel okul eğitim sözleşmesi',
+              academicYear: 2026,
+            },
+          },
+        ],
+        FIXED_NOW,
+      )
+    })
+    await held.opened
+    const amended = amendContractCommand(
+      ctx,
+      'pg-fam-contract',
+      {
+        reason: 'Kardeş indirimi istendi.',
+        installmentCount: 3,
+        firstDueDate: '2026-11-15',
+        discounts: ['sibling'],
+      },
+      { idempotency: keyed(), expectedVersion: version },
+    )
+    amended.catch(() => {})
+    try {
+      await untilLockWait('advisory')
+    } finally {
+      release.open()
+      await holder
+    }
+    // Kardeşin sözleşmesi görülür: öğrenci yüksek ücretli ilk çocuktur, indirim almaz.
+    await assertRejected(amended, 422, 'sibling_discount_ineligible')
+    const [contracts] = await db
+      .select({ n: count() })
+      .from(records)
+      .where(and(eq(records.institutionId, ctx.institutionId), eq(records.collection, 'contracts')))
+    assert.equal(contracts?.n, 2)
   })
 })

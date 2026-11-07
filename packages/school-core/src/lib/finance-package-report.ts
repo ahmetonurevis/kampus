@@ -1,7 +1,11 @@
 import { addDays } from './academic-years.ts'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { assertFinancePeriod, type FinancePeriod } from './finance-export.ts'
-import { packageHourBalance, packageUsedHoursRecorded } from './finance-package-hours.ts'
+import {
+  packageHourBalance,
+  packageUsedHoursRecorded,
+  settledHourEntries,
+} from './finance-package-hours.ts'
 import {
   packageSaleStatus,
   PACKAGE_KIND_LABELS,
@@ -63,7 +67,8 @@ interface HourEvent {
 }
 
 /**
- * Hareketleri güne yayar. Etkin ders ve ayrılış hareketi kendi gününe düşer. `manual` zinciri arşiv
+ * Hareketleri güne yayar. Etkin ders ve ayrılış hareketi kendi gününe düşer; ayrılış iadesi yazılmış
+ * satışta ayrılış gününden sonraki ders düşmez, çünkü ayrılış o saati ücrete yazmadı, iade etti. `manual` zinciri arşiv
  * sırasıyla okunur: her giriş bir öncekinden farkını kendi gününe yazar, son (etkin) giriş toplamı
  * tamamlar. Satıştan önceki gün satış gününe çekilir: dönem eşitliği satıştan önce hareket görmez.
  */
@@ -71,8 +76,10 @@ function hourEvents(sale: PackageReportSale): HourEvent[] {
   const soldDate = dayKey(sale.soldAt)
   const dateOf = (day: string) => (day < soldDate ? soldDate : day)
   const events: HourEvent[] = []
-  for (const entry of sale.entries) {
-    if (entry.sourceType === 'manual' || entry.archivedAt !== null) continue
+  // Ayrılış gününden sonraki ders bakiyeye girmez (`packageHourBalance` ile aynı küme, K-43).
+  const settled = settledHourEntries(sale.entries.filter((entry) => entry.archivedAt === null))
+  for (const entry of settled) {
+    if (entry.sourceType === 'manual') continue
     events.push({
       date: dateOf(entry.occurredDate),
       consumed: entry.kind === 'consumed' ? entry.hours : 0,

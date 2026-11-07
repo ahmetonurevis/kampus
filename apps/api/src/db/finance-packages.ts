@@ -327,6 +327,7 @@ export async function loadPackageHourEntries(
       hours: lessonPackageHourEntries.hours,
       sourceType: lessonPackageHourEntries.sourceType,
       sourceId: lessonPackageHourEntries.sourceId,
+      occurredDate: lessonPackageHourEntries.occurredDate,
     })
     .from(lessonPackageHourEntries)
     .where(

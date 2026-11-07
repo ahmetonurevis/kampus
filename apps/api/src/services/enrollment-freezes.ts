@@ -58,8 +58,8 @@ import { auditWork } from './task-work.ts'
 /**
  * Kayıt dondurma servisi (docs/domain/dil-okulu.md DOM-DIL-052; kayit-ve-crm.md DOM-KAY-024, -026;
  * IST-084). Kural core `lib/enrollment-freezes.ts`'tedir. Karar, öğrencinin bayrağı ve grup üyeliği
- * kurum kilidi altında tek transaction'dadır. Serbest metin loglanmaz, denetime yalnız alan adları
- * düşer. Taksit planına ve MEBBİS kaydına bu servis yazmaz: açık taksit sayısı yalnız bilgidir
+ * kurum kilidi altında tek transaction'dadır. Serbest metin tutulmaz (K-20), denetime yalnız alan
+ * adları düşer. Taksit planına ve MEBBİS kaydına bu servis yazmaz: açık taksit sayısı yalnız bilgidir
  * (erteleme ek protokolle; DOM-DIL-052), MEBBİS etkisi doğrulanmalı (H-24).
  */
 
@@ -234,23 +234,19 @@ export function requestFreezeCommand(
           id,
           studentId,
           reason: plan.reason,
-          reasonNote: plan.reasonNote,
           startDate: plan.startDate,
           returnDate: plan.returnDate,
           midCourse: plan.midCourse,
           documentReceived: plan.documentReceived,
-          documentNote: plan.documentNote,
           requestedByUserId: ctx.actor.userId,
           now: ctx.now,
         })
         await auditWork(tx, ctx, 'enrollment.freeze.request', { type: ENTITY, id }, [
           'reason',
-          'reasonNote',
           'startDate',
           'returnDate',
           'midCourse',
           'documentReceived',
-          'documentNote',
         ])
         result = await viewOf(tx, ctx, id)
       },
@@ -280,7 +276,6 @@ async function lockedFreeze(
 export function approveFreezeCommand(
   ctx: ServiceContext,
   freezeId: string,
-  input: unknown,
   expectedVersion: number,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
@@ -302,7 +297,6 @@ export function approveFreezeCommand(
             requireAuthorized(actor, 'enrollment.freezeDecide', {}, state, { now, institutionType })
             const plan = planFreezeApproval({
               freeze: { ...toFacts(row), documentReceived: row.documentReceived },
-              input,
               student: state.students.find((item) => item.id === row.studentId),
               freezes: freezes.map(toFacts),
               groups: learnerGroups.map(toCourseDates),
@@ -324,7 +318,6 @@ export function approveFreezeCommand(
             midCourse: plan.midCourse,
             decidedByUserId: ctx.actor.userId,
             decidedAt: ctx.now,
-            decisionNote: plan.note,
             ...(plan.startsNow ? { startedAt: ctx.now } : {}),
           },
           ctx.now,
@@ -334,7 +327,6 @@ export function approveFreezeCommand(
         await auditWork(tx, ctx, 'enrollment.freeze.approve', { type: ENTITY, id: freezeId }, [
           'status',
           'midCourse',
-          'decisionNote',
           ...(plan.startsNow ? ['startedAt'] : []),
         ])
         result = await viewOf(tx, ctx, freezeId)
@@ -351,7 +343,6 @@ export function approveFreezeCommand(
 export function rejectFreezeCommand(
   ctx: ServiceContext,
   freezeId: string,
-  input: unknown,
   expectedVersion: number,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
@@ -369,11 +360,11 @@ export function rejectFreezeCommand(
           scalars,
           run: (state, { now }) => {
             requireAuthorized(actor, 'enrollment.freezeDecide', {}, state, { now, institutionType })
-            return planFreezeRejection({ freeze: toFacts(row), input })
+            planFreezeRejection({ freeze: toFacts(row) })
           },
         }
       },
-      after: async (tx, plan) => {
+      after: async (tx) => {
         const saved = await updateFreeze(
           tx,
           ctx.institutionId,
@@ -383,14 +374,12 @@ export function rejectFreezeCommand(
             status: 'rejected',
             decidedByUserId: ctx.actor.userId,
             decidedAt: ctx.now,
-            decisionNote: plan.note,
           },
           ctx.now,
         )
         if (!saved) throw new ConflictError()
         await auditWork(tx, ctx, 'enrollment.freeze.reject', { type: ENTITY, id: freezeId }, [
           'status',
-          'decisionNote',
         ])
         result = await viewOf(tx, ctx, freezeId)
       },

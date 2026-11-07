@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../../src/app.ts'
 import type { Database } from '../../src/db/client.ts'
@@ -22,7 +22,6 @@ const BASE = '/api/v1/finance/enrollment-freezes'
 const REQUEST = {
   studentId: 's-1',
   reason: 'relocation',
-  reasonNote: 'Başka ile taşınıyorum',
   startDate: '2026-10-20',
   returnDate: '2026-12-20',
 }
@@ -63,13 +62,45 @@ describe('PostgreSQL 16: kayıt dondurma eşzamanlılığı', { skip: PG_SKIP },
     return { id: institution.id, cookie: await signInAs(app, institution.admin) }
   }
 
-  const post = (cookie: string, url: string, body: unknown, headers: Record<string, string> = {}) =>
+  const post = (
+    cookie: string,
+    url: string,
+    body?: unknown,
+    headers: Record<string, string> = {},
+  ) =>
     app.inject({
       method: 'POST',
       url,
-      headers: { origin: TEST_ORIGIN, 'content-type': 'application/json', cookie, ...headers },
-      payload: JSON.stringify(body),
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie,
+        ...headers,
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(body === undefined ? {} : { payload: JSON.stringify(body) }),
     })
+
+  test('DOM-KAY-024, K-20: kısıt sağlık kategorisini kabul etmez, serbest metin kolonu yoktur', async () => {
+    const t = await tenant()
+    const created = await post(t.cookie, BASE, REQUEST)
+    assert.equal(created.statusCode, 201, created.body)
+    const id: string = created.json<Json>().data.id
+    await assert.rejects(
+      db
+        .update(enrollmentFreezes)
+        .set({ reason: 'health' as never })
+        .where(and(eq(enrollmentFreezes.institutionId, t.id), eq(enrollmentFreezes.id, id))),
+    )
+    const columns = await db.execute(
+      sql`select column_name from information_schema.columns where table_name = 'enrollment_freezes'`,
+    )
+    const names = (columns as unknown as { rows: { column_name: string }[] }).rows.map(
+      (row) => row.column_name,
+    )
+    for (const name of ['reason_note', 'document_note', 'decision_note'])
+      assert.equal(names.includes(name), false, name)
+    assert.equal(names.includes('reason'), true)
+  })
 
   test('DOM-DIL-052: eşzamanlı iki talepten biri açılır, öteki 409', async () => {
     const t = await tenant()
@@ -92,8 +123,8 @@ describe('PostgreSQL 16: kayıt dondurma eşzamanlılığı', { skip: PG_SKIP },
     const id: string = created.json<Json>().data.id
     const headers = { 'if-match': '"1"' }
     const responses = await Promise.all([
-      post(t.cookie, `${BASE}/${id}/approve`, { note: 'Belgeler uygun' }, headers),
-      post(t.cookie, `${BASE}/${id}/reject`, { note: 'Belge eksik' }, headers),
+      post(t.cookie, `${BASE}/${id}/approve`, undefined, headers),
+      post(t.cookie, `${BASE}/${id}/reject`, undefined, headers),
     ])
     assert.deepEqual(responses.map((item) => item.statusCode).sort(), [200, 409])
     const [row] = await db

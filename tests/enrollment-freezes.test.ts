@@ -8,7 +8,10 @@ import {
   assertFreezeRequester,
   clearFreezeFlag,
   daysBetween,
+  FREEZE_REASON_LABELS,
+  FREEZE_REASONS,
   FREEZE_TOTAL_MAX_DAYS,
+  freezeFormSchema,
   freezePhase,
   freezesAvailableFor,
   frozenDaysUsed,
@@ -48,11 +51,9 @@ const seed = (): State => createSeed(new Date(NOW))
 const INPUT = {
   studentId: 's1',
   reason: 'relocation',
-  reasonNote: 'İş nedeniyle başka ile taşınıyorum',
   startDate: '2026-10-20',
   returnDate: '2027-01-20',
   documentReceived: false,
-  documentNote: null,
 } as const
 
 const group = (id: string, extra: Partial<LanguageGroup> = {}): LanguageGroup =>
@@ -112,7 +113,6 @@ test('DOM-DIL-052: 18 yaş altında talebi veli, üstünde kursiyer açar; perso
 test('DOM-DIL-052: kur sınırındaki başlangıç belge istemez; açık kayıt ikinci talebi engeller', () => {
   const plan = request()
   assert.equal(plan.midCourse, false)
-  assert.equal(plan.documentNote, null)
   rejectsWith('enrollment_freeze_open', () => request({ freezes: [freeze()] }))
   rejectsWith('enrollment_freeze_open', () =>
     request({ freezes: [freeze({ status: 'approved' })] }),
@@ -129,9 +129,46 @@ test('DOM-DIL-052: geçmiş başlangıç, ters dönüş ve pasif kursiyer redded
   )
   rejectsWith('student_not_found', () => request({ student: undefined }))
   rejectsWith('freeze_student_inactive', () => request({ student: { isActive: false } }))
-  assert.equal(requestFreezeSchema.safeParse({ ...INPUT, reasonNote: ' ' }).success, false)
   assert.equal(requestFreezeSchema.safeParse({ ...INPUT, reason: 'tatil' }).success, false)
   assert.equal(requestFreezeSchema.safeParse({ ...INPUT, extra: true }).success, false)
+})
+
+test('DOM-KAY-024, K-20: neden yalnız kategoridir; serbest metin ve sağlık kategorisi alınmaz', () => {
+  assert.deepEqual(
+    [...FREEZE_REASONS],
+    ['documented', 'military', 'relocation', 'work_school_schedule', 'other'],
+  )
+  assert.equal(FREEZE_REASON_LABELS.documented, 'Belgeli neden')
+  assert.equal(requestFreezeSchema.safeParse({ ...INPUT, reason: 'documented' }).success, true)
+  assert.equal(requestFreezeSchema.safeParse({ ...INPUT, reason: 'health' }).success, false)
+  for (const field of ['reasonNote', 'documentNote', 'decisionNote', 'note', 'diagnosis'])
+    assert.equal(
+      requestFreezeSchema.safeParse({ ...INPUT, [field]: 'Kalp ameliyatı' }).success,
+      false,
+      field,
+    )
+  assert.deepEqual(Object.keys(requestFreezeSchema.shape).sort(), [
+    'documentReceived',
+    'reason',
+    'returnDate',
+    'startDate',
+    'studentId',
+  ])
+  assert.deepEqual(Object.keys(freezeFormSchema.shape).sort(), [
+    'documentReceived',
+    'reason',
+    'returnDate',
+    'startDate',
+    'studentId',
+  ])
+  assert.deepEqual(Object.keys(request()).sort(), [
+    'documentReceived',
+    'midCourse',
+    'reason',
+    'returnDate',
+    'startDate',
+    'studentId',
+  ])
 })
 
 test('DOM-DIL-052: kur ortası başlangıç yalnız belge bilgisiyle olur; dosya içeriği alınmaz', () => {
@@ -139,10 +176,9 @@ test('DOM-DIL-052: kur ortası başlangıç yalnız belge bilgisiyle olur; dosya
   rejectsWith('freeze_document_required', () => request({ groups: [running] }))
   const plan = request({
     groups: [running],
-    input: { ...INPUT, documentReceived: true, documentNote: 'Nakil belgesi' },
+    input: { ...INPUT, documentReceived: true },
   })
   assert.equal(plan.midCourse, true)
-  assert.equal(plan.documentNote, 'Nakil belgesi')
   assert.equal('document' in plan, false)
 })
 
@@ -199,7 +235,6 @@ test('DOM-DIL-052: toplam dondurma 6 ayı geçemez, parçalar toplanır', () => 
 
 test('DOM-DIL-052: onay koşulları güncel veriyle denetler, karara bağlanmış talep değişmez', () => {
   const base = {
-    input: { note: 'Belgeler uygun' },
     student: { isActive: true },
     freezes: [],
     groups: [],
@@ -207,7 +242,6 @@ test('DOM-DIL-052: onay koşulları güncel veriyle denetler, karara bağlanmı�
   }
   const pending = { ...freeze(), documentReceived: false }
   assert.deepEqual(planFreezeApproval({ ...base, freeze: pending }), {
-    note: 'Belgeler uygun',
     midCourse: false,
     startsNow: false,
   })
@@ -233,11 +267,9 @@ test('DOM-DIL-052: onay koşulları güncel veriyle denetler, karara bağlanmı�
     planFreezeApproval({ ...base, freeze: { ...pending, status: 'approved' } }),
   )
   rejectsWith('enrollment_freeze_decided', () =>
-    planFreezeRejection({ freeze: { status: 'rejected' }, input: { note: 'Belge eksik' } }),
+    planFreezeRejection({ freeze: { status: 'rejected' } }),
   )
-  assert.deepEqual(planFreezeRejection({ freeze: pending, input: { note: 'Belge eksik' } }), {
-    note: 'Belge eksik',
-  })
+  assert.doesNotThrow(() => planFreezeRejection({ freeze: pending }))
 })
 
 test('DOM-DIL-052: aşama saklanmaz, durumdan ve tarihlerden türetilir', () => {

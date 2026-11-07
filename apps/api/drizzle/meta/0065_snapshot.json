@@ -1,5 +1,5 @@
 {
-  "id": "3f73ce8d-5161-4043-9b3e-591be08acac3",
+  "id": "a20e70e9-092d-4ef1-bfe7-f7a685c4e0f4",
   "prevId": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "version": "7",
   "dialect": "postgresql",
@@ -5104,12 +5104,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "reason_note": {
-          "name": "reason_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "start_date": {
           "name": "start_date",
           "type": "date",
@@ -5142,12 +5136,6 @@
           "notNull": true,
           "default": false
         },
-        "document_note": {
-          "name": "document_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "requested_by_user_id": {
           "name": "requested_by_user_id",
           "type": "text",
@@ -5163,12 +5151,6 @@
         "decided_at": {
           "name": "decided_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decision_note": {
-          "name": "decision_note",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -5334,11 +5316,7 @@
         },
         "enrollment_freezes_reason_check": {
           "name": "enrollment_freezes_reason_check",
-          "value": "\"enrollment_freezes\".\"reason\" in ('health', 'military', 'relocation', 'work_school_schedule', 'other')"
-        },
-        "enrollment_freezes_notes_check": {
-          "name": "enrollment_freezes_notes_check",
-          "value": "char_length(\"enrollment_freezes\".\"reason_note\") between 1 and 500\n        and (\"enrollment_freezes\".\"decision_note\" is null or char_length(\"enrollment_freezes\".\"decision_note\") between 1 and 500)\n        and (\"enrollment_freezes\".\"document_note\" is null or char_length(\"enrollment_freezes\".\"document_note\") between 1 and 200)"
+          "value": "\"enrollment_freezes\".\"reason\" in ('documented', 'military', 'relocation', 'work_school_schedule', 'other')"
         },
         "enrollment_freezes_dates_check": {
           "name": "enrollment_freezes_dates_check",
@@ -5350,7 +5328,7 @@
         },
         "enrollment_freezes_decision_check": {
           "name": "enrollment_freezes_decision_check",
-          "value": "(\"enrollment_freezes\".\"decided_at\" is null) = (\"enrollment_freezes\".\"decided_by_user_id\" is null)\n        and (\"enrollment_freezes\".\"decided_at\" is null) = (\"enrollment_freezes\".\"decision_note\" is null)\n        and (\"enrollment_freezes\".\"decided_at\" is null) = (\"enrollment_freezes\".\"status\" in ('requested', 'cancelled'))"
+          "value": "(\"enrollment_freezes\".\"decided_at\" is null) = (\"enrollment_freezes\".\"decided_by_user_id\" is null)\n        and (\"enrollment_freezes\".\"decided_at\" is null) = (\"enrollment_freezes\".\"status\" in ('requested', 'cancelled'))"
         },
         "enrollment_freezes_lifecycle_check": {
           "name": "enrollment_freezes_lifecycle_check",

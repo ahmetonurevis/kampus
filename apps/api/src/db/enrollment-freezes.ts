@@ -10,7 +10,7 @@ import { records } from './schema/records.ts'
 import { foldSearch, foldSql } from './text-search.ts'
 
 /**
- * Kayıt dondurma deposu (DOM-DIL-052). Serbest metinler loglanmaz. Grup üyeliğinin durum yazması
+ * Kayıt dondurma deposu (DOM-DIL-052). Serbest metin tutulmaz (K-20). Grup üyeliğinin durum yazması
  * kayıt akışındadır (`language_group_members`, DOM-DIL-040): satırın grubu ve kursiyeri değişmez.
  */
 
@@ -20,16 +20,13 @@ export interface StoredFreeze {
   studentName: string | null
   status: FreezeStatus
   reason: FreezeReason
-  reasonNote: string
   startDate: string
   returnDate: string
   endedDate: string | null
   midCourse: boolean
   documentReceived: boolean
-  documentNote: string | null
   decidedByUserId: string | null
   decidedAt: string | null
-  decisionNote: string | null
   startedAt: string | null
   needsPlacement: boolean
   createdAt: string
@@ -48,16 +45,13 @@ const COLUMNS = {
   studentName: sql<string | null>`${records.data} ->> 'name'`,
   status: enrollmentFreezes.status,
   reason: enrollmentFreezes.reason,
-  reasonNote: enrollmentFreezes.reasonNote,
   startDate: enrollmentFreezes.startDate,
   returnDate: enrollmentFreezes.returnDate,
   endedDate: enrollmentFreezes.endedDate,
   midCourse: enrollmentFreezes.midCourse,
   documentReceived: enrollmentFreezes.documentReceived,
-  documentNote: enrollmentFreezes.documentNote,
   decidedByUserId: enrollmentFreezes.decidedByUserId,
   decidedAt: enrollmentFreezes.decidedAt,
-  decisionNote: enrollmentFreezes.decisionNote,
   startedAt: enrollmentFreezes.startedAt,
   needsPlacement: enrollmentFreezes.needsPlacement,
   createdAt: enrollmentFreezes.createdAt,
@@ -155,12 +149,10 @@ export async function insertFreeze(
     id: string
     studentId: string
     reason: FreezeReason
-    reasonNote: string
     startDate: string
     returnDate: string
     midCourse: boolean
     documentReceived: boolean
-    documentNote: string | null
     requestedByUserId: string
     now: Date
   },
@@ -188,7 +180,6 @@ export async function updateFreeze(
       | 'midCourse'
       | 'decidedByUserId'
       | 'decidedAt'
-      | 'decisionNote'
       | 'startedAt'
       | 'endedDate'
       | 'needsPlacement'

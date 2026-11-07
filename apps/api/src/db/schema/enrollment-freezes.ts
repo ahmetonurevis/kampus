@@ -13,8 +13,6 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import {
-  FREEZE_DOCUMENT_NOTE_MAX,
-  FREEZE_NOTE_MAX,
   FREEZE_REASONS,
   FREEZE_STATUSES,
   type FreezeReason,
@@ -24,8 +22,6 @@ import {
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 
-const max = (value: number) => sql.raw(String(value))
-
 /**
  * Kayıt dondurma (docs/domain/dil-okulu.md DOM-DIL-052; kayit-ve-crm.md DOM-KAY-024, -026; IST-084;
  * kural core `lib/enrollment-freezes.ts`). Talep, karar, etki ve dönüş tek satırdır.
@@ -33,7 +29,9 @@ const max = (value: number) => sql.raw(String(value))
  * - `student_id` `records` kimliğidir, yabancı anahtar değildir (`student_withdrawals` gibi).
  * - `started_at` etkinin doğduğu andır; onay ileri tarihliyse günlük iş yazar. Kayıt durumu öğrencinin
  *   `frozenAt` bayrağından türetilir (DOM-KAY-026); bayrak bu sütunla aynı transaction'da yazılır.
- * - Belgenin kendisi tutulmaz (kural yalnız alındı beyanı ister): `document_received` ve kısa tanım.
+ * - Serbest metin kolonu yoktur (K-20, KVKK m.6): neden yalnız kategoridir, sağlık nedeni `documented`
+ *   altında kalır; karar ve belge için de yazılacak metin alanı bulunmaz.
+ * - Belgenin kendisi ve tanımı tutulmaz (kural yalnız alındı beyanı ister): `document_received`.
  * - Aşama (`scheduled`, `frozen`, `overdue`) saklanmaz, durumdan ve tarihlerden türetilir.
  * - Kursiyerin tek açık kaydı olur: tekil kısmi indeks, eşzamanlı talebin son savunmasıdır.
  */
@@ -47,10 +45,8 @@ export const enrollmentFreezes = pgTable(
     // kvkk: K
     studentId: text('student_id').notNull(),
     status: text('status').$type<FreezeStatus>().notNull(),
-    // kvkk: Ç (neden kategorisi sağlık ya da askerlik olabilir)
+    // kvkk: Ç (askerlik gibi kişisel durum; sağlık ayrıntısı taşımaz, K-20)
     reason: text('reason').$type<FreezeReason>().notNull(),
-    // kvkk: Ç
-    reasonNote: text('reason_note').notNull(),
     startDate: date('start_date', { mode: 'string' }).notNull(),
     /** Planlanan dönüş; kursiyer kendiliğinden dönmez. */
     returnDate: date('return_date', { mode: 'string' }).notNull(),
@@ -58,15 +54,11 @@ export const enrollmentFreezes = pgTable(
     endedDate: date('ended_date', { mode: 'string' }),
     midCourse: boolean('mid_course').notNull().default(false),
     documentReceived: boolean('document_received').notNull().default(false),
-    // kvkk: Ç
-    documentNote: text('document_note'),
     // kvkk: K
     requestedByUserId: text('requested_by_user_id').notNull(),
     // kvkk: K
     decidedByUserId: text('decided_by_user_id'),
     decidedAt: timestamp('decided_at', { withTimezone: true }),
-    // kvkk: Ç
-    decisionNote: text('decision_note'),
     startedAt: timestamp('started_at', { withTimezone: true }),
     /** Dönüşte eski grup uygun değildi; kursiyer yeniden yerleştirilir. */
     needsPlacement: boolean('needs_placement').notNull().default(false),
@@ -76,12 +68,6 @@ export const enrollmentFreezes = pgTable(
     primaryKey({ name: 'enrollment_freezes_pkey', columns: [table.institutionId, table.id] }),
     check('enrollment_freezes_status_check', oneOf(table.status, FREEZE_STATUSES)),
     check('enrollment_freezes_reason_check', oneOf(table.reason, FREEZE_REASONS)),
-    check(
-      'enrollment_freezes_notes_check',
-      sql`char_length(${table.reasonNote}) between 1 and ${max(FREEZE_NOTE_MAX)}
-        and (${table.decisionNote} is null or char_length(${table.decisionNote}) between 1 and ${max(FREEZE_NOTE_MAX)})
-        and (${table.documentNote} is null or char_length(${table.documentNote}) between 1 and ${max(FREEZE_DOCUMENT_NOTE_MAX)})`,
-    ),
     check('enrollment_freezes_dates_check', sql`${table.returnDate} > ${table.startDate}`),
     // Kur ortası dondurma yalnız belgeli nedenle olur (DOM-DIL-052).
     check(
@@ -92,7 +78,6 @@ export const enrollmentFreezes = pgTable(
     check(
       'enrollment_freezes_decision_check',
       sql`(${table.decidedAt} is null) = (${table.decidedByUserId} is null)
-        and (${table.decidedAt} is null) = (${table.decisionNote} is null)
         and (${table.decidedAt} is null) = (${table.status} in ('requested', 'cancelled'))`,
     ),
     check(

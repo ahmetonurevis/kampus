@@ -68652,15 +68652,13 @@
                           "reason": {
                             "type": "string",
                             "enum": [
-                              "health",
+                              "documented",
                               "military",
                               "relocation",
                               "work_school_schedule",
                               "other"
-                            ]
-                          },
-                          "reasonNote": {
-                            "type": "string"
+                            ],
+                            "description": "Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)"
                           },
                           "startDate": {
                             "type": "string"
@@ -68683,19 +68681,7 @@
                             "type": "boolean",
                             "description": "Belge alındı beyanı; dosya içeriği alınmaz"
                           },
-                          "documentNote": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
                           "decidedAt": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "decisionNote": {
                             "type": [
                               "string",
                               "null"
@@ -68766,15 +68752,12 @@
                           "status",
                           "phase",
                           "reason",
-                          "reasonNote",
                           "startDate",
                           "returnDate",
                           "endedDate",
                           "midCourse",
                           "documentReceived",
-                          "documentNote",
                           "decidedAt",
-                          "decisionNote",
                           "startedAt",
                           "needsPlacement",
                           "placementRenewalRequired",
@@ -68887,7 +68870,7 @@
         "tags": [
           "enrollment-freezes"
         ],
-        "description": "Kursiyer (18 yaş altında veli) ya da personel gerekçeyle açar (DOM-DIL-052). Küçük kursiyerin kendi talebi 403 `freeze_guardian_required`, 18 yaşını dolduranın velisi 403 `freeze_learner_required`; kapsam dışı öğrenci 404. Açık kayıt varsa 409 `enrollment_freeze_open`; ayrılmış ya da mezun kursiyer 409 `freeze_student_inactive`. Geçmiş başlangıç 422 `freeze_start_past`, başlangıçtan önceki dönüş 422 `freeze_return_before_start`, toplamda 6 ayı aşan süre 422 `freeze_limit_exceeded`. Kur ortasına denk gelen başlangıç belge alındı beyanı ister: yoksa 422 `freeze_document_required`; dosya içeriği alınmaz. Rol: `yonetici`, `onburo`, `ogrenci`, `veli`. Başarı 201 ve `Location`.",
+        "description": "Kursiyer (18 yaş altında veli) ya da personel neden kategorisini seçerek açar (DOM-DIL-052). Serbest metin neden ve sağlık ayrıntısı alınmaz; bilinmeyen alan 400 (DOM-KAY-024, K-20). Küçük kursiyerin kendi talebi 403 `freeze_guardian_required`, 18 yaşını dolduranın velisi 403 `freeze_learner_required`; kapsam dışı öğrenci 404. Açık kayıt varsa 409 `enrollment_freeze_open`; ayrılmış ya da mezun kursiyer 409 `freeze_student_inactive`. Geçmiş başlangıç 422 `freeze_start_past`, başlangıçtan önceki dönüş 422 `freeze_return_before_start`, toplamda 6 ayı aşan süre 422 `freeze_limit_exceeded`. Kur ortasına denk gelen başlangıç belge alındı beyanı ister: yoksa 422 `freeze_document_required`; dosya içeriği alınmaz. Rol: `yonetici`, `onburo`, `ogrenci`, `veli`. Başarı 201 ve `Location`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -68903,17 +68886,12 @@
                   "reason": {
                     "type": "string",
                     "enum": [
-                      "health",
+                      "documented",
                       "military",
                       "relocation",
                       "work_school_schedule",
                       "other"
                     ]
-                  },
-                  "reasonNote": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 500
                   },
                   "startDate": {
                     "type": "string",
@@ -68926,24 +68904,11 @@
                   "documentReceived": {
                     "default": false,
                     "type": "boolean"
-                  },
-                  "documentNote": {
-                    "default": null,
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 200
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
                   }
                 },
                 "required": [
                   "studentId",
                   "reason",
-                  "reasonNote",
                   "startDate",
                   "returnDate"
                 ],
@@ -69013,15 +68978,13 @@
                         "reason": {
                           "type": "string",
                           "enum": [
-                            "health",
+                            "documented",
                             "military",
                             "relocation",
                             "work_school_schedule",
                             "other"
-                          ]
-                        },
-                        "reasonNote": {
-                          "type": "string"
+                          ],
+                          "description": "Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)"
                         },
                         "startDate": {
                           "type": "string"
@@ -69044,19 +69007,7 @@
                           "type": "boolean",
                           "description": "Belge alındı beyanı; dosya içeriği alınmaz"
                         },
-                        "documentNote": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "decidedAt": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "decisionNote": {
                           "type": [
                             "string",
                             "null"
@@ -69127,15 +69078,12 @@
                         "status",
                         "phase",
                         "reason",
-                        "reasonNote",
                         "startDate",
                         "returnDate",
                         "endedDate",
                         "midCourse",
                         "documentReceived",
-                        "documentNote",
                         "decidedAt",
-                        "decisionNote",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -69307,15 +69255,13 @@
                         "reason": {
                           "type": "string",
                           "enum": [
-                            "health",
+                            "documented",
                             "military",
                             "relocation",
                             "work_school_schedule",
                             "other"
-                          ]
-                        },
-                        "reasonNote": {
-                          "type": "string"
+                          ],
+                          "description": "Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)"
                         },
                         "startDate": {
                           "type": "string"
@@ -69338,19 +69284,7 @@
                           "type": "boolean",
                           "description": "Belge alındı beyanı; dosya içeriği alınmaz"
                         },
-                        "documentNote": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "decidedAt": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "decisionNote": {
                           "type": [
                             "string",
                             "null"
@@ -69421,15 +69355,12 @@
                         "status",
                         "phase",
                         "reason",
-                        "reasonNote",
                         "startDate",
                         "returnDate",
                         "endedDate",
                         "midCourse",
                         "documentReceived",
-                        "documentNote",
                         "decidedAt",
-                        "decisionNote",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -69539,28 +69470,7 @@
         "tags": [
           "enrollment-freezes"
         ],
-        "description": "Yönetici gerekçeyle onaylar; koşullar onay anındaki veriyle yeniden denetlenir (DOM-DIL-052). Başlangıç günü geldiyse kayıt durumu `Dondurulmuş` olur, kapanmamış gruptaki üyelik dondurulur ve kapasitede yer tutmaz; ileri tarihli onay başlangıç günü işlenir. Taksit planı değişmez: erteleme ek protokolle yapılır ve kursiyere/veliye onaylatılır. MEBBİS kaydına yazmaz (H-24, doğrulanmalı). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "note": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 500
-                  }
-                },
-                "required": [
-                  "note"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
+        "description": "Yönetici onaylar; gövde almaz, serbest metin tutulmaz (K-20). Koşullar onay anındaki veriyle yeniden denetlenir (DOM-DIL-052). Başlangıç günü geldiyse kayıt durumu `Dondurulmuş` olur, kapanmamış gruptaki üyelik dondurulur ve kapasitede yer tutmaz; ileri tarihli onay başlangıç günü işlenir. Taksit planı değişmez: erteleme ek protokolle yapılır ve kursiyere/veliye onaylatılır. MEBBİS kaydına yazmaz (H-24, doğrulanmalı). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -69642,15 +69552,13 @@
                         "reason": {
                           "type": "string",
                           "enum": [
-                            "health",
+                            "documented",
                             "military",
                             "relocation",
                             "work_school_schedule",
                             "other"
-                          ]
-                        },
-                        "reasonNote": {
-                          "type": "string"
+                          ],
+                          "description": "Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)"
                         },
                         "startDate": {
                           "type": "string"
@@ -69673,19 +69581,7 @@
                           "type": "boolean",
                           "description": "Belge alındı beyanı; dosya içeriği alınmaz"
                         },
-                        "documentNote": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "decidedAt": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "decisionNote": {
                           "type": [
                             "string",
                             "null"
@@ -69756,15 +69652,12 @@
                         "status",
                         "phase",
                         "reason",
-                        "reasonNote",
                         "startDate",
                         "returnDate",
                         "endedDate",
                         "midCourse",
                         "documentReceived",
-                        "documentNote",
                         "decidedAt",
-                        "decisionNote",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -69874,28 +69767,7 @@
         "tags": [
           "enrollment-freezes"
         ],
-        "description": "Yönetici gerekçeyle reddeder; kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "note": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 500
-                  }
-                },
-                "required": [
-                  "note"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
+        "description": "Yönetici reddeder; gövde almaz, serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -69977,15 +69849,13 @@
                         "reason": {
                           "type": "string",
                           "enum": [
-                            "health",
+                            "documented",
                             "military",
                             "relocation",
                             "work_school_schedule",
                             "other"
-                          ]
-                        },
-                        "reasonNote": {
-                          "type": "string"
+                          ],
+                          "description": "Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)"
                         },
                         "startDate": {
                           "type": "string"
@@ -70008,19 +69878,7 @@
                           "type": "boolean",
                           "description": "Belge alındı beyanı; dosya içeriği alınmaz"
                         },
-                        "documentNote": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "decidedAt": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "decisionNote": {
                           "type": [
                             "string",
                             "null"
@@ -70091,15 +69949,12 @@
                         "status",
                         "phase",
                         "reason",
-                        "reasonNote",
                         "startDate",
                         "returnDate",
                         "endedDate",
                         "midCourse",
                         "documentReceived",
-                        "documentNote",
                         "decidedAt",
-                        "decisionNote",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",
@@ -70291,15 +70146,13 @@
                         "reason": {
                           "type": "string",
                           "enum": [
-                            "health",
+                            "documented",
                             "military",
                             "relocation",
                             "work_school_schedule",
                             "other"
-                          ]
-                        },
-                        "reasonNote": {
-                          "type": "string"
+                          ],
+                          "description": "Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)"
                         },
                         "startDate": {
                           "type": "string"
@@ -70322,19 +70175,7 @@
                           "type": "boolean",
                           "description": "Belge alındı beyanı; dosya içeriği alınmaz"
                         },
-                        "documentNote": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "decidedAt": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "decisionNote": {
                           "type": [
                             "string",
                             "null"
@@ -70405,15 +70246,12 @@
                         "status",
                         "phase",
                         "reason",
-                        "reasonNote",
                         "startDate",
                         "returnDate",
                         "endedDate",
                         "midCourse",
                         "documentReceived",
-                        "documentNote",
                         "decidedAt",
-                        "decisionNote",
                         "startedAt",
                         "needsPlacement",
                         "placementRenewalRequired",

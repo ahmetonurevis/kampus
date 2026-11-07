@@ -120,13 +120,6 @@ export const REDACTED_PATHS = [
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
-  // kvkk: Ç — kayıt dondurma gerekçesi, belge tanımı ve karar notu (DOM-DIL-052).
-  'reasonNote',
-  '*.reasonNote',
-  'documentNote',
-  '*.documentNote',
-  'decisionNote',
-  '*.decisionNote',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).

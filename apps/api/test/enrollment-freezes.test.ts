@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, getTableColumns } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
@@ -33,7 +33,6 @@ type Method = 'GET' | 'POST' | 'DELETE'
 
 const BASE = '/api/v1/finance/enrollment-freezes'
 const TODAY = '2026-10-06'
-const NOTE = { note: 'Belgeler uygun bulundu' }
 const COURSE = {
   name: 'Genel İngilizce B1.1',
   level: 'B1',
@@ -51,7 +50,6 @@ const SCHEDULE = [
 const REQUEST = {
   studentId: 's-adult',
   reason: 'relocation',
-  reasonNote: 'Başka ile taşınıyorum',
   startDate: '2026-10-20',
   returnDate: '2026-12-20',
 }
@@ -201,7 +199,7 @@ describe('kayıt dondurma uçları', () => {
       'POST',
       `${BASE}/${String(row.id)}/approve`,
       t.cookie,
-      NOTE,
+      undefined,
       version(row.version),
     )
     assert.equal(response.statusCode, 200, response.body)
@@ -271,8 +269,14 @@ describe('kayıt dondurma uçları', () => {
     const adult = await learner(t, 's-adult')
     for (const cookie of [clerk, adult, teacher]) {
       const url = `${BASE}/${String(row.id)}`
-      assert.equal((await send('POST', `${url}/approve`, cookie, NOTE, version(1))).statusCode, 403)
-      assert.equal((await send('POST', `${url}/reject`, cookie, NOTE, version(1))).statusCode, 403)
+      assert.equal(
+        (await send('POST', `${url}/approve`, cookie, undefined, version(1))).statusCode,
+        403,
+      )
+      assert.equal(
+        (await send('POST', `${url}/reject`, cookie, undefined, version(1))).statusCode,
+        403,
+      )
     }
     assert.equal(
       (await send('POST', `${BASE}/${String(row.id)}/return`, adult, undefined, version(1)))
@@ -290,8 +294,14 @@ describe('kayıt dondurma uçları', () => {
     const row = await requested(b)
     const url = `${BASE}/${String(row.id)}`
     assert.equal((await send('GET', url, a.cookie)).statusCode, 404)
-    assert.equal((await send('POST', `${url}/approve`, a.cookie, NOTE, version(1))).statusCode, 404)
-    assert.equal((await send('POST', `${url}/reject`, a.cookie, NOTE, version(1))).statusCode, 404)
+    assert.equal(
+      (await send('POST', `${url}/approve`, a.cookie, undefined, version(1))).statusCode,
+      404,
+    )
+    assert.equal(
+      (await send('POST', `${url}/reject`, a.cookie, undefined, version(1))).statusCode,
+      404,
+    )
     assert.equal(
       (await send('POST', `${url}/return`, a.cookie, undefined, version(1))).statusCode,
       404,
@@ -324,7 +334,6 @@ describe('kayıt dondurma uçları', () => {
     for (const body of [
       {},
       { ...REQUEST, reason: 'tatil' },
-      { ...REQUEST, reasonNote: ' ' },
       { ...REQUEST, startDate: '20-10-2026' },
       { ...REQUEST, documentReceived: 'evet' },
     ])
@@ -333,10 +342,9 @@ describe('kayıt dondurma uçları', () => {
 
     const row = await requested(t)
     const url = `${BASE}/${String(row.id)}`
-    assert.equal((await send('POST', `${url}/approve`, t.cookie, {}, version(1))).statusCode, 400)
-    assert.equal((await send('POST', `${url}/approve`, t.cookie, NOTE)).statusCode, 400)
+    assert.equal((await send('POST', `${url}/approve`, t.cookie)).statusCode, 400)
     assert.equal(
-      (await send('POST', `${BASE}/kimlik/approve`, t.cookie, NOTE, version(1))).statusCode,
+      (await send('POST', `${BASE}/kimlik/approve`, t.cookie, undefined, version(1))).statusCode,
       400,
     )
     assert.equal((await send('GET', `${BASE}?bilinmeyen=1`, t.cookie)).statusCode, 400)
@@ -344,6 +352,59 @@ describe('kayıt dondurma uçları', () => {
     assert.equal(stored?.status, 'requested')
     assert.equal(stored?.version, 1)
     assert.equal((await studentOf(t, 's-adult'))?.data.frozenAt, undefined)
+  })
+
+  test('DOM-KAY-024, K-20: serbest metin ve sağlık kategorisi alınmaz, hiçbir alana yazılmaz', async () => {
+    const t = await school()
+    const detail = 'Kalp ameliyatı raporu'
+    for (const body of [
+      { ...REQUEST, reason: 'health' },
+      { ...REQUEST, reasonNote: detail },
+      { ...REQUEST, documentReceived: true, documentNote: detail },
+      { ...REQUEST, decisionNote: detail },
+    ])
+      assert.equal((await request(t.cookie, body)).statusCode, 400, JSON.stringify(body))
+    assert.deepEqual(await rowsOf(t), [])
+
+    const created = await request(t.cookie, { ...REQUEST, reason: 'documented' })
+    assert.equal(created.statusCode, 201, created.body)
+    const row = created.json<Json>().data
+    assert.equal(row.reason, 'documented')
+    for (const field of ['reasonNote', 'documentNote', 'decisionNote'])
+      assert.equal(field in row, false, field)
+
+    // Karar gövde almaz: eski istemcinin gönderdiği not da saklanmaz.
+    const decided = await send(
+      'POST',
+      `${BASE}/${String(row.id)}/approve`,
+      t.cookie,
+      { note: detail },
+      version(1),
+    )
+    assert.equal(decided.statusCode, 200, decided.body)
+    assert.equal(decided.body.includes(detail), false)
+    const stored = await rowOf(t, row.id)
+    assert.equal(JSON.stringify(stored).includes(detail), false)
+    const audits = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, t.id), eq(auditLog.entityId, row.id)))
+    assert.equal(JSON.stringify(audits).includes(detail), false)
+    assert.equal(logs.join('\n').includes(detail), false, 'ayrıntı loglanmaz')
+
+    // Metin yazılabilecek kolon kalmadı: bütün `text` kolonlar kimlik ya da sabit değerdir.
+    const textColumns = Object.entries(getTableColumns(enrollmentFreezes))
+      .filter(([, column]) => column.getSQLType() === 'text')
+      .map(([name]) => name)
+      .sort()
+    assert.deepEqual(textColumns, [
+      'decidedByUserId',
+      'institutionId',
+      'reason',
+      'requestedByUserId',
+      'status',
+      'studentId',
+    ])
   })
 
   test('DOM-DIL-052: talep, onay ve ileri tarihli etki; denetim yalnız alan adı taşır', async () => {
@@ -358,13 +419,13 @@ describe('kayıt dondurma uçları', () => {
     assert.equal(row.midCourse, false)
 
     const fetched = await send('GET', `${BASE}/${String(row.id)}`, t.cookie)
-    assert.equal(fetched.json<Json>().data.reasonNote, REQUEST.reasonNote)
+    assert.equal(fetched.json<Json>().data.reason, REQUEST.reason)
 
     const decided = await send(
       'POST',
       `${BASE}/${String(row.id)}/approve`,
       t.cookie,
-      NOTE,
+      undefined,
       version(1),
     )
     assert.equal(decided.statusCode, 200, decided.body)
@@ -372,7 +433,6 @@ describe('kayıt dondurma uçları', () => {
     assert.equal(body.status, 'approved')
     assert.equal(body.phase, 'scheduled')
     assert.equal(body.startedAt, null)
-    assert.equal(body.decisionNote, NOTE.note)
     // Başlangıç gelmedi: öğrenci hâlâ aktif sayılır.
     assert.equal((await studentOf(t, 's-adult'))?.data.frozenAt, undefined)
 
@@ -384,8 +444,6 @@ describe('kayıt dondurma uçları', () => {
       'enrollment.freeze.approve',
       'enrollment.freeze.request',
     ])
-    assert.ok(!JSON.stringify(audits).includes(REQUEST.reasonNote))
-    assert.ok(!logs.join('\n').includes(REQUEST.reasonNote), 'gerekçe loglanmaz')
   })
 
   test('DOM-DIL-052, DOM-KAY-026: başlangıç günündeki onay etkiyi doğurur, grupta yer tutmaz', async () => {
@@ -436,23 +494,17 @@ describe('kayıt dondurma uçları', () => {
     const groupId = await group(t, ['s-adult'])
     const row = await requested(t, today)
     const url = `${BASE}/${String(row.id)}`
-    const rejected = await send(
-      'POST',
-      `${url}/reject`,
-      t.cookie,
-      { note: 'Belge eksik' },
-      version(1),
-    )
+    const rejected = await send('POST', `${url}/reject`, t.cookie, undefined, version(1))
     assert.equal(rejected.statusCode, 200, rejected.body)
     assert.equal(rejected.json<Json>().data.status, 'rejected')
     assert.equal((await studentOf(t, 's-adult'))?.data.frozenAt, undefined)
     assert.equal((await membersOf(t, groupId))[0]?.status, 'active')
 
-    const again = await send('POST', `${url}/approve`, t.cookie, NOTE, version(2))
+    const again = await send('POST', `${url}/approve`, t.cookie, undefined, version(2))
     assert.equal(again.statusCode, 409)
     assert.equal(again.json<Json>().code, 'enrollment_freeze_decided')
     // Sürüm tutmaz.
-    const stale = await send('POST', `${url}/reject`, t.cookie, NOTE, version(1))
+    const stale = await send('POST', `${url}/reject`, t.cookie, undefined, version(1))
     assert.equal(stale.statusCode, 409)
     // Reddedilenden sonra yeni talep açılabilir.
     assert.equal((await request(t.cookie, today)).statusCode, 201)
@@ -487,11 +539,9 @@ describe('kayıt dondurma uçları', () => {
     const accepted = await request(t.cookie, {
       ...midCourse,
       documentReceived: true,
-      documentNote: 'İkametgâh belgesi',
     })
     assert.equal(accepted.statusCode, 201, accepted.body)
     assert.equal(accepted.json<Json>().data.midCourse, true)
-    assert.equal(accepted.json<Json>().data.documentNote, 'İkametgâh belgesi')
     // Bilinmeyen alan (dosya içeriği) şemada yoktur.
     const withFile = await request(t.cookie, { ...midCourse, documentFile: 'base64' })
     assert.equal(withFile.statusCode, 400)
@@ -562,7 +612,7 @@ describe('kayıt dondurma uçları', () => {
       'POST',
       `${BASE}/${String(row.id)}/approve`,
       t.cookie,
-      NOTE,
+      undefined,
       version(1),
     )
     assert.equal(decided.statusCode, 200)

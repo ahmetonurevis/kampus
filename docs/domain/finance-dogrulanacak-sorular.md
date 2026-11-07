@@ -230,7 +230,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-DIL-052`.
 - **Soru:** Dil okulunda kayıt dondurma MEBBİS'teki kursiyer kaydında nasıl işlenmelidir (kayıt kapatılıp dönüşte yeniden mi açılır)?
 - **Bugünkü varsayım:** ÖÖKY'de dondurma hükmü bulunamadı; dondurma ayrılış sayılmaz ve taksit planı dondurma süresince ertelenir.
-- **Kodda:** Dondurma işlemi var (ON-067, `lib/enrollment-freezes.ts`) ama MEBBİS kaydına dair hiçbir alan ve adım yoktur; ekran "Bu işlem MEBBİS kaydını değiştirmez" der. Taksit planı otomatik değişmez: erteleme ek protokolle yapılır (uygulama biçimi karar bekliyor).
+- **Kodda:** Dondurma işlemi var (ON-067, `lib/enrollment-freezes.ts`) ama MEBBİS kaydına dair hiçbir alan ve adım yoktur; ekran "Bu işlem MEBBİS kaydını değiştirmez" der. Taksit planı otomatik değişmez: erteleme ek protokolle yapılır (K-25).
 - **Cevap değişirse:** Dondurmada "MEBBİS'e işlendi" işareti ve kayıt kapatma/yeniden açma adımı eklenir. Bu soru il/ilçe millî eğitim müdürlüğüne de yöneltilebilir.
 - **Cevap:** bekleniyor
 

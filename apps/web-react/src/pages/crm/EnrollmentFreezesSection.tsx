@@ -3,14 +3,10 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router'
 import {
-  decideFreezeSchema,
-  FREEZE_DOCUMENT_NOTE_MAX,
-  FREEZE_NOTE_MAX,
   FREEZE_PHASE_LABELS,
   FREEZE_REASON_LABELS,
   FREEZE_REASONS,
   freezeFormSchema,
-  type DecideFreezeInput,
   type FreezeFormValues,
 } from '@kampus/school-core/lib/enrollment-freezes.ts'
 import { ENROLLMENT_STATUS_LABELS } from '@kampus/school-core/lib/enrollment-status.ts'
@@ -32,7 +28,6 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { Textarea } from '@/components/ui/textarea'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
@@ -46,14 +41,13 @@ type Row = EnrollmentFreeze & { name: string; reasonLabel: string; phaseLabel: s
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['name', 'returnDate', 'phaseLabel']
 const REQUEST_FORM = 'dondurma-formu'
-const DECISION_FORM = 'dondurma-karari'
 
 const shortDate = (day: string) => dateLabel(day, { year: 'numeric' })
 
 /**
  * Kayıt dondurma (DOM-DIL-052, DOM-KAY-024, -026; IST-084): yalnız dil okulunda görünür. Ön büro ve
- * yönetici talep açar ve dönüşü işler, kararı yönetici verir. Kur ortası belge alındı beyanı ister;
- * dosya alınmaz. Taksit planı burada değişmez, MEBBİS'e bir şey işlenmez (H-24, doğrulanmalı).
+ * yönetici talep açar ve dönüşü işler, kararı yönetici verir. Neden yalnız kategoridir, serbest metin
+ * alanı yoktur (K-20). Kur ortası belge alındı beyanı ister; dosya alınmaz. Taksit planı burada değişmez, MEBBİS'e bir şey işlenmez (H-24, doğrulanmalı).
  */
 export function EnrollmentFreezesSection() {
   const { session } = useAuth()
@@ -196,12 +190,10 @@ function RequestModal({ onClose }: { onClose: () => void }) {
     resolver: zodResolver(freezeFormSchema),
     defaultValues: {
       studentId: '',
-      reason: 'health',
-      reasonNote: '',
+      reason: 'documented',
       startDate: today,
       returnDate: '',
       documentReceived: false,
-      documentNote: '',
     },
   })
   const errors = form.formState.errors
@@ -210,21 +202,16 @@ function RequestModal({ onClose }: { onClose: () => void }) {
     setError: (name: string, error: { type: string; message: string }) => {
       if (
         name === 'studentId' ||
-        name === 'reasonNote' ||
         name === 'startDate' ||
         name === 'returnDate' ||
-        name === 'documentReceived' ||
-        name === 'documentNote'
+        name === 'documentReceived'
       )
         form.setError(name, error)
       else form.setError('root.server', error)
     },
   }
   const submit = form.handleSubmit(async (values) => {
-    const outcome = await request.submit(
-      { ...values, documentNote: values.documentNote.trim() || null },
-      fields,
-    )
+    const outcome = await request.submit(values, fields)
     if (outcome.status === 'success') {
       notify.success('Dondurma talebi açıldı.')
       onClose()
@@ -276,7 +263,12 @@ function RequestModal({ onClose }: { onClose: () => void }) {
               </NativeSelect>
             )}
           </FormField>
-          <FormField id="dondurma-neden" label="Dondurma nedeni" error={errors.reason}>
+          <FormField
+            id="dondurma-neden"
+            label="Dondurma nedeni"
+            description="Sağlık nedeninde Belgeli neden seçilir; tanı ya da sağlık ayrıntısı istenmez."
+            error={errors.reason}
+          >
             {(control) => (
               <NativeSelect {...control} {...form.register('reason')}>
                 {FREEZE_REASONS.map((reason) => (
@@ -297,21 +289,6 @@ function RequestModal({ onClose }: { onClose: () => void }) {
               <Input {...control} {...form.register('returnDate')} type="date" min={today} />
             )}
           </FormField>
-          <div className="col-span-full">
-            <FormField id="dondurma-gerekce" label="Gerekçe" error={errors.reasonNote}>
-              {(control) => (
-                <Textarea
-                  {...control}
-                  {...form.register('reasonNote')}
-                  maxLength={FREEZE_NOTE_MAX}
-                  rows={3}
-                />
-              )}
-            </FormField>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Tanı veya sağlık ayrıntısı yazmayın; neden seçimi yeterlidir.
-            </p>
-          </div>
           <div className="col-span-full grid gap-1 text-sm">
             <label className="flex min-h-11 items-center gap-2">
               <input
@@ -327,17 +304,6 @@ function RequestModal({ onClose }: { onClose: () => void }) {
                 {errors.documentReceived.message}
               </p>
             ) : null}
-          </div>
-          <div className="col-span-full">
-            <FormField id="dondurma-belge" label="Belge tanımı (varsa)" error={errors.documentNote}>
-              {(control) => (
-                <Input
-                  {...control}
-                  {...form.register('documentNote')}
-                  maxLength={FREEZE_DOCUMENT_NOTE_MAX}
-                />
-              )}
-            </FormField>
           </div>
           {errors.root?.server?.message ? (
             <p role="alert" className="col-span-full text-sm text-danger">
@@ -379,13 +345,11 @@ function DetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
         : ENROLLMENT_STATUS_LABELS.active,
     ],
     ['Neden', row.reasonLabel],
-    ['Gerekçe', row.reasonNote],
     ['Başlangıç', shortDate(row.startDate)],
     ['Planlanan dönüş', shortDate(row.returnDate)],
     ...(row.endedDate ? ([['Bitiş', shortDate(row.endedDate)]] as const) : []),
     ['Kur ortası', row.midCourse ? 'Evet' : 'Hayır'],
-    ['Belge', row.documentReceived ? (row.documentNote ?? 'Alındı') : 'Yok'],
-    ...(row.decisionNote ? ([['Karar notu', row.decisionNote]] as const) : []),
+    ['Belge', row.documentReceived ? 'Alındı' : 'Yok'],
     ['Gruplar', row.groups.map((group) => group.name).join(', ') || 'Grup yok'],
   ]
   return (
@@ -432,29 +396,18 @@ function DecisionModal({
   const approval = useApproveEnrollmentFreeze()
   const rejection = useRejectEnrollmentFreeze()
   const command = approve ? approval : rejection
-  const form = useForm<DecideFreezeInput>({
-    resolver: zodResolver(decideFreezeSchema),
-    defaultValues: { note: '' },
-  })
-  const busy = command.isPending || form.formState.isSubmitting
-  const title = approve ? 'Dondurmayı onayla' : 'Dondurmayı reddet'
-  const submit = form.handleSubmit(async (body) => {
-    const outcome = await command.submit(
-      { freezeId: row.id, version: row.version, body },
-      {
-        setError: (name, error) => form.setError(name === 'note' ? 'note' : 'root.server', error),
-      },
-    )
-    if (outcome.status === 'success') {
+  const busy = command.isPending
+  async function confirm() {
+    const outcome = await command.submit({ freezeId: row.id, version: row.version })
+    if (outcome.status === 'success')
       notify.success(approve ? 'Dondurma onaylandı.' : 'Dondurma reddedildi.')
-      onClose()
-    } else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onClose()
-  })
+    if (outcome.status !== 'busy') onClose()
+  }
   return (
     <Modal
       open
       onOpenChange={(open) => (open ? undefined : onClose())}
-      title={title}
+      title={approve ? 'Dondurmayı onayla' : 'Dondurmayı reddet'}
       description={`${row.name} · ${shortDate(row.startDate)} – ${shortDate(row.returnDate)}`}
       footer={
         <>
@@ -462,37 +415,23 @@ function DecisionModal({
             Vazgeç
           </Button>
           <Button
-            type="submit"
-            form={DECISION_FORM}
             variant={approve ? 'default' : 'destructive'}
             disabled={busy}
             aria-busy={busy || undefined}
+            onClick={() => void confirm()}
           >
             {approve ? 'Onayla' : 'Reddet'}
           </Button>
         </>
       }
     >
-      <form
-        id={DECISION_FORM}
-        noValidate
-        onSubmit={(event) => void submit(event)}
-        className="grid gap-3"
-      >
-        <FormField
-          id="dondurma-karar-notu"
-          label="Karar gerekçesi"
-          error={form.formState.errors.note}
-        >
-          {(control) => (
-            <Textarea
-              {...control}
-              {...form.register('note')}
-              maxLength={FREEZE_NOTE_MAX}
-              rows={3}
-            />
-          )}
-        </FormField>
+      <div className="grid gap-3">
+        <p className="text-sm">
+          {approve
+            ? 'Kur ortası ve süre koşulları onay anındaki bilgiyle yeniden denetlenir.'
+            : 'Talep kapanır, kursiyerin kaydı değişmez.'}{' '}
+          Karar için gerekçe yazılmaz; sağlık ayrıntısı kaydedilmez.
+        </p>
         {approve && row.groups.length > 1 ? (
           <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
             Kursiyerin birden çok programda kaydı var. Onay bütün gruplarını dondurur:{' '}
@@ -500,12 +439,7 @@ function DecisionModal({
           </p>
         ) : null}
         {approve ? <InstallmentNotice row={row} /> : null}
-        {form.formState.errors.root?.server?.message ? (
-          <p role="alert" className="text-sm text-danger">
-            {form.formState.errors.root.server.message}
-          </p>
-        ) : null}
-      </form>
+      </div>
     </Modal>
   )
 }

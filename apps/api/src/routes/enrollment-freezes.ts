@@ -9,7 +9,6 @@ import { z } from 'zod'
 
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
 import {
-  decideFreezeSchema,
   FREEZE_PHASES,
   FREEZE_REASONS,
   FREEZE_STATUSES,
@@ -52,16 +51,15 @@ const freezeSchema = z.object({
     .describe(
       'Görünen aşama: onaylı kayıt başlangıcı gelmediyse `scheduled`, etkideyse `frozen`, planlanan dönüş geçtiyse `overdue`',
     ),
-  reason: z.enum(FREEZE_REASONS),
-  reasonNote: z.string(),
+  reason: z
+    .enum(FREEZE_REASONS)
+    .describe('Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)'),
   startDate: z.string(),
   returnDate: z.string().describe('Planlanan dönüş; kursiyer kendiliğinden dönmez'),
   endedDate: z.string().nullable(),
   midCourse: z.boolean().describe('Başlangıç kur ortasına denk geliyor; belge bilgisi zorunludur'),
   documentReceived: z.boolean().describe('Belge alındı beyanı; dosya içeriği alınmaz'),
-  documentNote: z.string().nullable(),
   decidedAt: z.string().nullable(),
-  decisionNote: z.string().nullable(),
   startedAt: z.string().nullable().describe('Etkinin doğduğu an'),
   needsPlacement: z.boolean().describe('Dönüşte eski grup uygun değildi; yeniden yerleştirilir'),
   placementRenewalRequired: z
@@ -172,7 +170,7 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
         tags: ['enrollment-freezes'],
         summary: 'Kayıt dondurma talebi aç',
         description:
-          'Kursiyer (18 yaş altında veli) ya da personel gerekçeyle açar (DOM-DIL-052). Küçük kursiyerin kendi talebi 403 `freeze_guardian_required`, 18 yaşını dolduranın velisi 403 `freeze_learner_required`; kapsam dışı öğrenci 404. Açık kayıt varsa 409 `enrollment_freeze_open`; ayrılmış ya da mezun kursiyer 409 `freeze_student_inactive`. Geçmiş başlangıç 422 `freeze_start_past`, başlangıçtan önceki dönüş 422 `freeze_return_before_start`, toplamda 6 ayı aşan süre 422 `freeze_limit_exceeded`. Kur ortasına denk gelen başlangıç belge alındı beyanı ister: yoksa 422 `freeze_document_required`; dosya içeriği alınmaz. Rol: `yonetici`, `onburo`, `ogrenci`, `veli`. Başarı 201 ve `Location`.',
+          'Kursiyer (18 yaş altında veli) ya da personel neden kategorisini seçerek açar (DOM-DIL-052). Serbest metin neden ve sağlık ayrıntısı alınmaz; bilinmeyen alan 400 (DOM-KAY-024, K-20). Küçük kursiyerin kendi talebi 403 `freeze_guardian_required`, 18 yaşını dolduranın velisi 403 `freeze_learner_required`; kapsam dışı öğrenci 404. Açık kayıt varsa 409 `enrollment_freeze_open`; ayrılmış ya da mezun kursiyer 409 `freeze_student_inactive`. Geçmiş başlangıç 422 `freeze_start_past`, başlangıçtan önceki dönüş 422 `freeze_return_before_start`, toplamda 6 ayı aşan süre 422 `freeze_limit_exceeded`. Kur ortasına denk gelen başlangıç belge alındı beyanı ister: yoksa 422 `freeze_document_required`; dosya içeriği alınmaz. Rol: `yonetici`, `onburo`, `ogrenci`, `veli`. Başarı 201 ve `Location`.',
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: requestFreezeSchema,
         response: { 201: freezeResponseSchema, ...commandErrors },
@@ -194,16 +192,15 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
   typed.post(
     `${BASE}/:freezeId/approve`,
     {
-      preValidation: [...guard('enrollment.freezeDecide'), requireIfMatch(), captureInput()],
+      preValidation: [...guard('enrollment.freezeDecide'), requireIfMatch()],
       schema: {
         operationId: 'approveEnrollmentFreeze',
         tags: ['enrollment-freezes'],
         summary: 'Kayıt dondurmayı onayla',
         description:
-          'Yönetici gerekçeyle onaylar; koşullar onay anındaki veriyle yeniden denetlenir (DOM-DIL-052). Başlangıç günü geldiyse kayıt durumu `Dondurulmuş` olur, kapanmamış gruptaki üyelik dondurulur ve kapasitede yer tutmaz; ileri tarihli onay başlangıç günü işlenir. Taksit planı değişmez: erteleme ek protokolle yapılır ve kursiyere/veliye onaylatılır. MEBBİS kaydına yazmaz (H-24, doğrulanmalı). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.',
+          'Yönetici onaylar; gövde almaz, serbest metin tutulmaz (K-20). Koşullar onay anındaki veriyle yeniden denetlenir (DOM-DIL-052). Başlangıç günü geldiyse kayıt durumu `Dondurulmuş` olur, kapanmamış gruptaki üyelik dondurulur ve kapasitede yer tutmaz; ileri tarihli onay başlangıç günü işlenir. Taksit planı değişmez: erteleme ek protokolle yapılır ve kursiyere/veliye onaylatılır. MEBBİS kaydına yazmaz (H-24, doğrulanmalı). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.',
         headers: versionedHeaders,
         params: freezeParams,
-        body: decideFreezeSchema,
         response: { 200: freezeResponseSchema, ...commandErrors },
       },
     },
@@ -211,7 +208,6 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
       const result = await approveFreezeCommand(
         contextOf(request),
         request.params.freezeId,
-        request.commandInput,
         versionOf(request),
         options(request, 'optional').idempotency,
       )
@@ -222,16 +218,15 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
   typed.post(
     `${BASE}/:freezeId/reject`,
     {
-      preValidation: [...guard('enrollment.freezeDecide'), requireIfMatch(), captureInput()],
+      preValidation: [...guard('enrollment.freezeDecide'), requireIfMatch()],
       schema: {
         operationId: 'rejectEnrollmentFreeze',
         tags: ['enrollment-freezes'],
         summary: 'Kayıt dondurmayı reddet',
         description:
-          'Yönetici gerekçeyle reddeder; kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.',
+          'Yönetici reddeder; gövde almaz, serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.',
         headers: versionedHeaders,
         params: freezeParams,
-        body: decideFreezeSchema,
         response: { 200: freezeResponseSchema, ...commandErrors },
       },
     },
@@ -239,7 +234,6 @@ export function registerEnrollmentFreezeRoutes(app: FastifyInstance) {
       const result = await rejectFreezeCommand(
         contextOf(request),
         request.params.freezeId,
-        request.commandInput,
         versionOf(request),
         options(request, 'optional').idempotency,
       )

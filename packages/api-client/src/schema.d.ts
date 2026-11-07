@@ -2887,7 +2887,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt dondurma talebi aç
-         * @description Kursiyer (18 yaş altında veli) ya da personel gerekçeyle açar (DOM-DIL-052). Küçük kursiyerin kendi talebi 403 `freeze_guardian_required`, 18 yaşını dolduranın velisi 403 `freeze_learner_required`; kapsam dışı öğrenci 404. Açık kayıt varsa 409 `enrollment_freeze_open`; ayrılmış ya da mezun kursiyer 409 `freeze_student_inactive`. Geçmiş başlangıç 422 `freeze_start_past`, başlangıçtan önceki dönüş 422 `freeze_return_before_start`, toplamda 6 ayı aşan süre 422 `freeze_limit_exceeded`. Kur ortasına denk gelen başlangıç belge alındı beyanı ister: yoksa 422 `freeze_document_required`; dosya içeriği alınmaz. Rol: `yonetici`, `onburo`, `ogrenci`, `veli`. Başarı 201 ve `Location`.
+         * @description Kursiyer (18 yaş altında veli) ya da personel neden kategorisini seçerek açar (DOM-DIL-052). Serbest metin neden ve sağlık ayrıntısı alınmaz; bilinmeyen alan 400 (DOM-KAY-024, K-20). Küçük kursiyerin kendi talebi 403 `freeze_guardian_required`, 18 yaşını dolduranın velisi 403 `freeze_learner_required`; kapsam dışı öğrenci 404. Açık kayıt varsa 409 `enrollment_freeze_open`; ayrılmış ya da mezun kursiyer 409 `freeze_student_inactive`. Geçmiş başlangıç 422 `freeze_start_past`, başlangıçtan önceki dönüş 422 `freeze_return_before_start`, toplamda 6 ayı aşan süre 422 `freeze_limit_exceeded`. Kur ortasına denk gelen başlangıç belge alındı beyanı ister: yoksa 422 `freeze_document_required`; dosya içeriği alınmaz. Rol: `yonetici`, `onburo`, `ogrenci`, `veli`. Başarı 201 ve `Location`.
          */
         post: operations["requestEnrollmentFreeze"];
         delete?: never;
@@ -2927,7 +2927,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt dondurmayı onayla
-         * @description Yönetici gerekçeyle onaylar; koşullar onay anındaki veriyle yeniden denetlenir (DOM-DIL-052). Başlangıç günü geldiyse kayıt durumu `Dondurulmuş` olur, kapanmamış gruptaki üyelik dondurulur ve kapasitede yer tutmaz; ileri tarihli onay başlangıç günü işlenir. Taksit planı değişmez: erteleme ek protokolle yapılır ve kursiyere/veliye onaylatılır. MEBBİS kaydına yazmaz (H-24, doğrulanmalı). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.
+         * @description Yönetici onaylar; gövde almaz, serbest metin tutulmaz (K-20). Koşullar onay anındaki veriyle yeniden denetlenir (DOM-DIL-052). Başlangıç günü geldiyse kayıt durumu `Dondurulmuş` olur, kapanmamış gruptaki üyelik dondurulur ve kapasitede yer tutmaz; ileri tarihli onay başlangıç günü işlenir. Taksit planı değişmez: erteleme ek protokolle yapılır ve kursiyere/veliye onaylatılır. MEBBİS kaydına yazmaz (H-24, doğrulanmalı). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.
          */
         post: operations["approveEnrollmentFreeze"];
         delete?: never;
@@ -2947,7 +2947,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt dondurmayı reddet
-         * @description Yönetici gerekçeyle reddeder; kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.
+         * @description Yönetici reddeder; gövde almaz, serbest metin tutulmaz (K-20). Kursiyerin kaydı değişmez (DOM-DIL-052). Karara bağlanmış talep 409 `enrollment_freeze_decided`. `If-Match` zorunlu. Rol: `yonetici`.
          */
         post: operations["rejectEnrollmentFreeze"];
         delete?: never;
@@ -32276,9 +32276,11 @@ export interface operations {
                              * @enum {string}
                              */
                             phase: "requested" | "scheduled" | "frozen" | "overdue" | "rejected" | "ended" | "cancelled";
-                            /** @enum {string} */
-                            reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                            reasonNote: string;
+                            /**
+                             * @description Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)
+                             * @enum {string}
+                             */
+                            reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                             startDate: string;
                             /** @description Planlanan dönüş; kursiyer kendiliğinden dönmez */
                             returnDate: string;
@@ -32287,9 +32289,7 @@ export interface operations {
                             midCourse: boolean;
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
-                            documentNote: string | null;
                             decidedAt: string | null;
-                            decisionNote: string | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32401,14 +32401,11 @@ export interface operations {
                 "application/json": {
                     studentId: string;
                     /** @enum {string} */
-                    reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                    reasonNote: string;
+                    reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                     startDate: string;
                     returnDate: string;
                     /** @default false */
                     documentReceived?: boolean;
-                    /** @default null */
-                    documentNote?: string | null;
                 };
             };
         };
@@ -32431,9 +32428,11 @@ export interface operations {
                              * @enum {string}
                              */
                             phase: "requested" | "scheduled" | "frozen" | "overdue" | "rejected" | "ended" | "cancelled";
-                            /** @enum {string} */
-                            reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                            reasonNote: string;
+                            /**
+                             * @description Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)
+                             * @enum {string}
+                             */
+                            reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                             startDate: string;
                             /** @description Planlanan dönüş; kursiyer kendiliğinden dönmez */
                             returnDate: string;
@@ -32442,9 +32441,7 @@ export interface operations {
                             midCourse: boolean;
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
-                            documentNote: string | null;
                             decidedAt: string | null;
-                            decisionNote: string | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32569,9 +32566,11 @@ export interface operations {
                              * @enum {string}
                              */
                             phase: "requested" | "scheduled" | "frozen" | "overdue" | "rejected" | "ended" | "cancelled";
-                            /** @enum {string} */
-                            reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                            reasonNote: string;
+                            /**
+                             * @description Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)
+                             * @enum {string}
+                             */
+                            reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                             startDate: string;
                             /** @description Planlanan dönüş; kursiyer kendiliğinden dönmez */
                             returnDate: string;
@@ -32580,9 +32579,7 @@ export interface operations {
                             midCourse: boolean;
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
-                            documentNote: string | null;
                             decidedAt: string | null;
-                            decisionNote: string | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32692,13 +32689,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": {
-                    note: string;
-                };
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Default Response */
             200: {
@@ -32718,9 +32709,11 @@ export interface operations {
                              * @enum {string}
                              */
                             phase: "requested" | "scheduled" | "frozen" | "overdue" | "rejected" | "ended" | "cancelled";
-                            /** @enum {string} */
-                            reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                            reasonNote: string;
+                            /**
+                             * @description Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)
+                             * @enum {string}
+                             */
+                            reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                             startDate: string;
                             /** @description Planlanan dönüş; kursiyer kendiliğinden dönmez */
                             returnDate: string;
@@ -32729,9 +32722,7 @@ export interface operations {
                             midCourse: boolean;
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
-                            documentNote: string | null;
                             decidedAt: string | null;
-                            decisionNote: string | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -32841,13 +32832,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": {
-                    note: string;
-                };
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Default Response */
             200: {
@@ -32867,9 +32852,11 @@ export interface operations {
                              * @enum {string}
                              */
                             phase: "requested" | "scheduled" | "frozen" | "overdue" | "rejected" | "ended" | "cancelled";
-                            /** @enum {string} */
-                            reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                            reasonNote: string;
+                            /**
+                             * @description Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)
+                             * @enum {string}
+                             */
+                            reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                             startDate: string;
                             /** @description Planlanan dönüş; kursiyer kendiliğinden dönmez */
                             returnDate: string;
@@ -32878,9 +32865,7 @@ export interface operations {
                             midCourse: boolean;
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
-                            documentNote: string | null;
                             decidedAt: string | null;
-                            decisionNote: string | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */
@@ -33010,9 +32995,11 @@ export interface operations {
                              * @enum {string}
                              */
                             phase: "requested" | "scheduled" | "frozen" | "overdue" | "rejected" | "ended" | "cancelled";
-                            /** @enum {string} */
-                            reason: "health" | "military" | "relocation" | "work_school_schedule" | "other";
-                            reasonNote: string;
+                            /**
+                             * @description Neden kategorisi; serbest metin ve sağlık ayrıntısı tutulmaz (K-20)
+                             * @enum {string}
+                             */
+                            reason: "documented" | "military" | "relocation" | "work_school_schedule" | "other";
                             startDate: string;
                             /** @description Planlanan dönüş; kursiyer kendiliğinden dönmez */
                             returnDate: string;
@@ -33021,9 +33008,7 @@ export interface operations {
                             midCourse: boolean;
                             /** @description Belge alındı beyanı; dosya içeriği alınmaz */
                             documentReceived: boolean;
-                            documentNote: string | null;
                             decidedAt: string | null;
-                            decisionNote: string | null;
                             /** @description Etkinin doğduğu an */
                             startedAt: string | null;
                             /** @description Dönüşte eski grup uygun değildi; yeniden yerleştirilir */

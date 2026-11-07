@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
-import { daySchema, requiredText } from './domain.ts'
+import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
 import {
@@ -18,12 +18,14 @@ import {
 /**
  * Kayıt dondurma (docs/domain/dil-okulu.md DOM-DIL-052; kayit-ve-crm.md DOM-KAY-024, -026; IST-084).
  * Yalnız `language_school` kurumunda bulunur. Kursiyer (18 yaş altında veli) ya da personel talep
- * açar, yönetici gerekçeyle onaylar veya reddeder. Dondurma ayrılış değildir: öğrenci aktif kalır,
- * kayıt durumu `frozen` olur (`enrollment-status.ts`), grup üyeliği `frozen`'a geçer ve kapasitede yer
- * tutmaz (`groupOccupancy`).
+ * açar, yönetici onaylar veya reddeder. Dondurma ayrılış değildir: öğrenci aktif kalır, kayıt durumu
+ * `frozen` olur (`enrollment-status.ts`), grup üyeliği `frozen`'a geçer ve kapasitede yer tutmaz
+ * (`groupOccupancy`).
  *
- * - Başlangıç kur sınırındadır; kur ortası (`isMidCourse`) yalnız belge bilgisiyle olur. Belgenin
- *   kendisi saklanmaz: alındı beyanı ve kısa tanımı tutulur.
+ * - Serbest metin yoktur (K-20, KVKK m.6): neden yalnız kategoridir, sağlık nedeni "belgeli neden"
+ *   altında kalır; talepte, kararda ve belgede yazılacak metin alanı bulunmaz.
+ * - Başlangıç kur sınırındadır; kur ortası (`isMidCourse`) yalnız belge beyanıyla olur. Belgenin
+ *   kendisi ve tanımı saklanmaz: yalnız alındı beyanı tutulur.
  * - Etki başlangıç gününde doğar (`applyFreezeStart`): ileri tarihli onay günlük işle başlar.
  * - Dönüş tarihi plandır; kursiyer kendiliğinden dönmez, çünkü aynı grup garanti edilmez. Süre dolunca
  *   personel dönüşü işler ya da ayrılış açar (aşama `overdue`).
@@ -36,8 +38,9 @@ import {
 
 z.config(z.locales.tr())
 
+/** Sağlık ayrı kategori değildir: kategori bile özel nitelikli veri olur (K-20). */
 export const FREEZE_REASONS = [
-  'health',
+  'documented',
   'military',
   'relocation',
   'work_school_schedule',
@@ -45,7 +48,7 @@ export const FREEZE_REASONS = [
 ] as const
 export type FreezeReason = (typeof FREEZE_REASONS)[number]
 export const FREEZE_REASON_LABELS: Readonly<Record<FreezeReason, string>> = {
-  health: 'Sağlık',
+  documented: 'Belgeli neden',
   military: 'Askerlik',
   relocation: 'Taşınma',
   work_school_schedule: 'İş veya okul takvimi',
@@ -84,41 +87,23 @@ export const FREEZE_PHASE_LABELS: Readonly<Record<FreezePhase, string>> = {
 export const FREEZE_TOTAL_MAX_DAYS = 183
 /** Bu süreyi aşan dondurmada dönüşte seviye tespiti yenilenir (DOM-DIL-012, -052). */
 export const FREEZE_PLACEMENT_RENEWAL_DAYS = 90
-export const FREEZE_NOTE_MAX = 500
-export const FREEZE_DOCUMENT_NOTE_MAX = 200
-
-const note = requiredText.max(FREEZE_NOTE_MAX)
-const documentNote = z.string().trim().max(FREEZE_DOCUMENT_NOTE_MAX)
-
 export const requestFreezeSchema = z.strictObject({
   studentId: z.string().trim().min(1, 'Kursiyeri seçin.').max(200),
   reason: z.enum(FREEZE_REASONS, 'Dondurma nedenini seçin.'),
-  // kvkk: Ç
-  reasonNote: note,
   startDate: daySchema,
   returnDate: daySchema,
   /** Kur ortası dondurmada belge alındı beyanı; dosya içeriği alınmaz (DOM-DIL-052). */
   documentReceived: z.boolean().default(false),
-  // kvkk: Ç
-  documentNote: documentNote.nullable().default(null),
 })
 export type RequestFreezeInput = z.input<typeof requestFreezeSchema>
 
-export const decideFreezeSchema = z.strictObject({
-  // kvkk: Ç
-  note,
-})
-export type DecideFreezeInput = z.input<typeof decideFreezeSchema>
-
-/** Talep formu (web): belge tanımı boş metin olabilir. */
+/** Talep formu (web). */
 export const freezeFormSchema = z.object({
   studentId: z.string().trim().min(1, 'Kursiyeri seçin.'),
   reason: z.enum(FREEZE_REASONS, 'Dondurma nedenini seçin.'),
-  reasonNote: note,
   startDate: daySchema,
   returnDate: daySchema,
   documentReceived: z.boolean(),
-  documentNote,
 })
 export type FreezeFormValues = z.output<typeof freezeFormSchema>
 
@@ -266,7 +251,7 @@ export function planFreezeRequest(context: {
       kind: 'conflict',
     })
   const { midCourse } = assertTerms(data, context)
-  return { ...data, documentNote: data.documentNote || null, midCourse }
+  return { ...data, midCourse }
 }
 
 function assertRequested(freeze: Pick<FreezeFacts, 'status'>) {
@@ -282,13 +267,11 @@ function assertRequested(freeze: Pick<FreezeFacts, 'status'>) {
  */
 export function planFreezeApproval(context: {
   freeze: FreezeFacts & { documentReceived: boolean }
-  input: unknown
   student: { isActive?: boolean } | undefined
   freezes: readonly FreezeFacts[]
   groups: readonly CourseDates[]
   today: string
-}): { note: string; midCourse: boolean; startsNow: boolean } {
-  const { note: decisionNote } = decideFreezeSchema.parse(context.input)
+}): { midCourse: boolean; startsNow: boolean } {
   assertRequested(context.freeze)
   assertLearnerActive(context.student)
   const { midCourse } = assertTerms(context.freeze, {
@@ -297,16 +280,11 @@ export function planFreezeApproval(context: {
     today: context.today,
     excludeId: context.freeze.id,
   })
-  return { note: decisionNote, midCourse, startsNow: context.freeze.startDate <= context.today }
+  return { midCourse, startsNow: context.freeze.startDate <= context.today }
 }
 
-export function planFreezeRejection(context: {
-  freeze: Pick<FreezeFacts, 'status'>
-  input: unknown
-}): { note: string } {
-  const { note: decisionNote } = decideFreezeSchema.parse(context.input)
+export function planFreezeRejection(context: { freeze: Pick<FreezeFacts, 'status'> }): void {
   assertRequested(context.freeze)
-  return { note: decisionNote }
 }
 
 /** Etki doğarken dondurulacak gruplar: kapanmamış grubun aktif üyelikleri. */

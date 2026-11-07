@@ -1,6 +1,5 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 import type {
-  DecideFreezeInput,
   FreezeStatus,
   RequestFreezeInput,
 } from '@kampus/school-core/lib/enrollment-freezes.ts'
@@ -46,17 +45,12 @@ export function useRequestEnrollmentFreeze() {
 
 export function useApproveEnrollmentFreeze() {
   return useApiCommand({
-    request: (
-      client,
-      input: { freezeId: string; version: number; body: DecideFreezeInput },
-      headers,
-    ) =>
+    request: (client, input: { freezeId: string; version: number }, headers) =>
       client.POST('/api/v1/finance/enrollment-freezes/{freezeId}/approve', {
         params: {
           path: { freezeId: input.freezeId },
           header: { ...headers, 'if-match': requireIfMatch(headers) },
         },
-        body: input.body,
       }),
     invalidates: AFFECTED,
     version: (input) => input.version,
@@ -67,17 +61,12 @@ export function useApproveEnrollmentFreeze() {
 
 export function useRejectEnrollmentFreeze() {
   return useApiCommand({
-    request: (
-      client,
-      input: { freezeId: string; version: number; body: DecideFreezeInput },
-      headers,
-    ) =>
+    request: (client, input: { freezeId: string; version: number }, headers) =>
       client.POST('/api/v1/finance/enrollment-freezes/{freezeId}/reject', {
         params: {
           path: { freezeId: input.freezeId },
           header: { ...headers, 'if-match': requireIfMatch(headers) },
         },
-        body: input.body,
       }),
     invalidates: [FREEZES_KEY],
     version: (input) => input.version,

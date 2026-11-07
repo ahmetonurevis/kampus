@@ -1394,7 +1394,6 @@ test.describe('kayıt dondurma', () => {
     const form = page.getByRole('dialog', { name: 'Dondurma talebi aç' })
     await form.getByLabel('Kursiyer').selectOption('s1')
     await form.getByLabel('Dondurma nedeni').selectOption('relocation')
-    await form.getByLabel('Gerekçe').fill('Başka ile taşınıyorum')
     await form.getByLabel('Planlanan dönüş').fill(dayAfter(60))
     await form.getByRole('button', { name: 'Talebi aç' }).click()
     await expect(toast(page, 'Dondurma talebi açıldı.')).toBeVisible()
@@ -1403,10 +1402,7 @@ test.describe('kayıt dondurma', () => {
 
     await area.getByRole('button', { name: /dondurmasını onayla$/ }).click()
     const decision = page.getByRole('dialog', { name: 'Dondurmayı onayla' })
-    // Gerekçesiz karar verilmez.
-    await decision.getByRole('button', { name: 'Onayla' }).click()
-    await expect(decision.getByRole('alert')).toBeVisible()
-    await decision.getByLabel('Karar gerekçesi').fill('Belgeler uygun')
+    await expect(decision.getByRole('textbox')).toHaveCount(0)
     await decision.getByRole('button', { name: 'Onayla' }).click()
     await expect(toast(page, 'Dondurma onaylandı.')).toBeVisible()
     await expect(area.getByText('Dondurulmuş')).toBeVisible()
@@ -1439,7 +1435,6 @@ test.describe('kayıt dondurma', () => {
     await area.getByRole('button', { name: 'Dondurma talebi aç' }).click()
     const form = page.getByRole('dialog', { name: 'Dondurma talebi aç' })
     await form.getByLabel('Kursiyer').selectOption('s1')
-    await form.getByLabel('Gerekçe').fill('Askerlik sevki')
     await form.getByLabel('Başlangıç').fill(dayAfter(30))
     await form.getByLabel('Planlanan dönüş').fill(dayAfter(10))
     await form.getByRole('button', { name: 'Talebi aç' }).click()
@@ -1449,6 +1444,37 @@ test.describe('kayıt dondurma', () => {
     await expect(toast(page, 'Dondurma talebi açıldı.')).toBeVisible()
     await expect(area.getByText('Onay bekliyor')).toBeVisible()
     await expect(area.getByRole('button', { name: /dondurmasını onayla$/ })).toHaveCount(0)
+  })
+
+  test('DOM-KAY-024, K-20: talep formu yalnız kategori alır, serbest metin alanı yoktur', async ({
+    page,
+    tenant,
+    loginAs,
+  }) => {
+    const school = await tenant({ type: 'language_school', roles: ['onburo'], students: ['s1'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(FREEZE_URL)
+    const area = section(page)
+    await area.getByRole('button', { name: 'Dondurma talebi aç' }).click()
+    const form = page.getByRole('dialog', { name: 'Dondurma talebi aç' })
+    const reason = form.getByLabel('Dondurma nedeni')
+    await expect(reason.getByRole('option', { name: 'Belgeli neden' })).toHaveCount(1)
+    await expect(reason.getByRole('option', { name: 'Sağlık' })).toHaveCount(0)
+    // Tarih alanları dışında metin yazılacak denetim yoktur.
+    await expect(form.locator('textarea, input:not([type]), input[type="text"]')).toHaveCount(0)
+    await expect(form.getByText('tanı ya da sağlık ayrıntısı istenmez')).toBeVisible()
+
+    await form.getByLabel('Kursiyer').selectOption('s1')
+    await reason.selectOption('documented')
+    await form.getByLabel('Planlanan dönüş').fill(dayAfter(60))
+    await form.getByRole('button', { name: 'Talebi aç' }).click()
+    await expect(toast(page, 'Dondurma talebi açıldı.')).toBeVisible()
+    await expect(area.getByRole('cell', { name: 'Belgeli neden' })).toBeVisible()
+
+    await area.getByRole('button', { name: /dondurma ayrıntısı$/ }).click()
+    const detail = page.getByRole('dialog', { name: 'Dondurma ayrıntısı' })
+    await expect(detail.getByText('Belgeli neden')).toBeVisible()
+    await expect(detail.getByText('Gerekçe')).toHaveCount(0)
   })
 
   test('DOM-DIL-052: okulda kayıt dondurma bölümü yoktur', async ({ page, tenant, loginAs }) => {

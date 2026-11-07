@@ -5,7 +5,6 @@
 import { z } from 'zod'
 import type {
   AddProspectNoteBody,
-  ChangeProspectStageBody,
   CreateProspectBody,
   RevertProspectStageBody,
   UpdateProspectDetailsBody,
@@ -20,7 +19,6 @@ import {
   OPEN_PROSPECT_STAGES,
   PROSPECT_LOST_INSTITUTION_MAX,
   PROSPECT_LOST_REASONS,
-  PROSPECT_STAGES,
   prospectAgeGroupRequired,
   revertProspectStageSchema,
   PROSPECT_SOURCES,
@@ -166,38 +164,8 @@ export const stageDefaults = (): StageFormValues => ({
   siblingOfId: '',
 })
 
-/**
- * Aşama gövdesi; vazgeçmede neden zorunludur (DOM-KAY-005). Neden yoksa `{ field, message }`
- * döner ve istek atılmaz.
- */
-export function stageBody(
-  values: StageFormValues,
-  options: { reopening: boolean },
-):
-  | { ok: true; body: ChangeProspectStageBody }
-  | { ok: false; field: 'stage' | 'lostReason'; message: string } {
-  const stage = PROSPECT_STAGES.find((item) => item === values.stage)
-  if (!stage) return { ok: false, field: 'stage', message: 'Aşamayı seçin.' }
-  if (stage === 'Vazgeçti') {
-    const reason = PROSPECT_LOST_REASONS.find((item) => item === values.lostReason)
-    const institution = optional(values.lostToInstitution)
-    return reason
-      ? {
-          ok: true,
-          body: {
-            stage,
-            lostReason: reason,
-            ...(institution ? { lostToInstitution: institution } : {}),
-          },
-        }
-      : { ok: false, field: 'lostReason', message: 'Vazgeçme nedenini seçin.' }
-  }
-  const sibling = optional(values.siblingOfId)
-  return {
-    ok: true,
-    body: { stage, ...(options.reopening && sibling ? { siblingOfId: sibling } : {}) },
-  }
-}
+/** Aşama gövdesi (DOM-KAY-005) web ile mobilde ortaktır. */
+export { stageBody } from '@kampus/react-shared/prospect-model.ts'
 
 // --- Aday bilgisi düzeltme ---------------------------------------------------------------
 

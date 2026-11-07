@@ -17,9 +17,9 @@ import {
   createMember,
   createTestDatabase,
   FIXED_NOW,
-  signInAs,
   TEST_ORIGIN,
 } from './support/app.ts'
+import { lazySession } from './support/finance-sessions.ts'
 
 /**
  * Dil okulu yenileme teklifinin kur sonu kararı dayanağı (DOM-DIL-070, DOM-DIL-007; ON-295, #30).
@@ -97,9 +97,9 @@ describe('dil okulu yenileme teklifi kur sonu kararından başlar', () => {
     const teacher = await createMember(app, institution.id, 'ogretmen')
     const coordinator = await createMember(app, institution.id, 'ogretmen')
     const cookies = {
-      admin: await signInAs(app, institution.admin),
-      teacher: await signInAs(app, teacher),
-      coordinator: await signInAs(app, coordinator),
+      admin: lazySession(app, institution.admin),
+      teacher: lazySession(app, teacher),
+      coordinator: lazySession(app, coordinator),
     }
     await db
       .insert(records)
@@ -121,8 +121,11 @@ describe('dil okulu yenileme teklifi kur sonu kararından başlar', () => {
       scopeId: 'B1',
       assignedByUserId: institution.admin.id,
     })
-    const nextCourseId = await course(cookies.admin, { name: 'Genel İngilizce B1.2', level: 'B1' })
-    const courseId = await course(cookies.admin, {
+    const nextCourseId = await course(await cookies.admin(), {
+      name: 'Genel İngilizce B1.2',
+      level: 'B1',
+    })
+    const courseId = await course(await cookies.admin(), {
       name: 'Genel İngilizce B1.1',
       level: 'B1',
       nextCourseId,
@@ -131,7 +134,7 @@ describe('dil okulu yenileme teklifi kur sonu kararından başlar', () => {
       await call(
         'POST',
         '/groups',
-        cookies.admin,
+        await cookies.admin(),
         {
           courseId,
           name: 'B1 Akşam',
@@ -185,7 +188,7 @@ describe('dil okulu yenileme teklifi kur sonu kararından başlar', () => {
         await call(
           'POST',
           '/course-assessments',
-          t.cookies.teacher,
+          await t.cookies.teacher(),
           { enrollmentId: t.enrollmentId, point, score: 80, skills },
           key(),
         ),
@@ -197,7 +200,7 @@ describe('dil okulu yenileme teklifi kur sonu kararından başlar', () => {
       await call(
         'POST',
         '/progression-decisions',
-        t.cookies.teacher,
+        await t.cookies.teacher(),
         { enrollmentId: t.enrollmentId, outcome, rationale: 'Kur sonu değerlendirmesi.' },
         key(),
       ),
@@ -209,7 +212,7 @@ describe('dil okulu yenileme teklifi kur sonu kararından başlar', () => {
       await call(
         'POST',
         `/progression-decisions/${decision.id as string}/approve`,
-        t.cookies.coordinator,
+        await t.cookies.coordinator(),
         {},
         { ...key(), 'if-match': `"${String(decision.rowVersion)}"` },
       ),

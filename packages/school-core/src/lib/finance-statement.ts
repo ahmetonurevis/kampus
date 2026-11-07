@@ -1,4 +1,5 @@
 import { studentBalance, type StudentBalance } from './finance-export.ts'
+import { receiptNumberLabel } from './finance-receipt.ts'
 import { dayKey } from './format.ts'
 import { isOpeningImport } from './payments.ts'
 
@@ -190,10 +191,10 @@ export function studentStatement(
   }
 }
 
-const receiptOf = (line: StatementLine) =>
-  line.receiptYear === null
+const receiptOf = ({ receiptYear, receiptNumber }: StatementLine) =>
+  receiptYear === null || receiptNumber === null
     ? ''
-    : ` · Dekont ${String(line.receiptYear)}-${String(line.receiptNumber)}`
+    : ` · Dekont ${receiptNumberLabel({ receiptYear, receiptNumber })}`
 
 /** Ekran ve PDF aynı açıklamayı yazar; ekstre ile dekont numarası bu metinden eşleşir. */
 export function statementLineLabel(line: StatementLine): string {

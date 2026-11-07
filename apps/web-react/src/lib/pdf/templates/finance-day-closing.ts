@@ -1,6 +1,7 @@
 // Gün sonu raporu (IST-113, DOM-FIN-036): rakamlar API raporundan gelir, burada yeniden hesaplanmaz.
 // Kapalı günde kapanış anının özeti yazılır; belge kurum içi özettir.
 import type { FinanceDayReport } from '@kampus/react-shared/use-finance-day-closings.ts'
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { PAYMENT_METHOD_LABELS } from '@kampus/school-core/lib/payments.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
@@ -93,7 +94,7 @@ export function financeDayClosingDocument(
     doc.table(
       LINE_COLUMNS,
       report.collected.map((line) => [
-        `${String(line.receiptYear)}-${String(line.receiptNumber)}`,
+        receiptNumberLabel(line),
         line.studentName ?? '—',
         PAYMENT_METHOD_LABELS[line.method],
         line.reference ?? '—',
@@ -108,7 +109,7 @@ export function financeDayClosingDocument(
     doc.table(
       REVERSAL_COLUMNS,
       report.reversed.map((line) => [
-        `${String(line.receiptYear)}-${String(line.receiptNumber)}`,
+        receiptNumberLabel(line),
         line.studentName ?? '—',
         dateLabel(line.paidAt, { year: 'numeric' }),
         line.reversalReason ?? '—',

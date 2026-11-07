@@ -1,4 +1,5 @@
 // Tahsilat dekontu: veri API tahsilat kaydından gelir, hesap burada yeniden yazılmaz (DOM-FIN-050).
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { COLORS, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
 import type { TemplateOptions } from './shared.ts'
@@ -20,10 +21,8 @@ export type ReceiptPayment = {
 
 const AT = { year: 'numeric', hour: '2-digit', minute: '2-digit' } as const
 
-/** Dekont no kurum ve yıl içinde ardışıktır; iptal edilen dekontun numarası değişmez (DOM-FIN-050). */
-export function receiptNumberLabel(payment: Pick<ReceiptPayment, 'receiptYear' | 'receiptNumber'>) {
-  return `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`
-}
+// Dekont no biçimi core'dadır (DOM-FIN-050); belge dosya adı (`use-document-pdf.ts`) buradan alır.
+export { receiptNumberLabel }
 
 /** Tahsilat dekontu; iptal edilen tahsilatta "İptal edildi" ibaresiyle erişilebilir (DOM-FIN-033). */
 export function paymentReceiptDocument(

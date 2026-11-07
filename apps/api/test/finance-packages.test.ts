@@ -73,11 +73,13 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
   let now = FIXED_NOW
   let tenantCount = 0
   let clientIp = '10.0.0.1'
+  // Uygulama logu (debug düzeyi): serbest metin gerekçe hiçbir satıra girmez (guvenlik-kvkk).
+  const logs: string[] = []
   checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => now })
+    app = await buildTestApp(db, { clock: () => now, logs })
   })
   after(async () => {
     await app.close()
@@ -936,13 +938,16 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
           and(eq(auditLog.institutionId, institutionId), eq(auditLog.action, 'package.used_hours')),
         )
 
-    test('yönetici ve ön büro girer; bakiye düşer, sürüm artar, denetime gerekçeyle yazılır', async () => {
+    test('yönetici ve ön büro girer; bakiye düşer, sürüm artar, denetime gerekçeyle yazılır; gerekçe loglanmaz', async () => {
       const a = await ready()
       const sale = await sold(a)
       const desk = await member(a.id, 'onburo')
       assert.equal((await get(`${SALES}/${sale.id}`, a.admin)).json().data.usedHoursRecorded, false)
+      const from = logs.length
       const entered = await post(usedUrl(sale.id), desk, USED, version(1))
       assert.equal(entered.statusCode, 200, entered.body)
+      assert.ok(logs.length > from, 'istek logu yok')
+      assert.equal(logs.slice(from).join('\n').includes(USED.reason), false)
       const { data } = entered.json()
       assert.equal(data.consumedHours, 12)
       assert.equal(data.remainingHours, 28)

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 
 import {
   packageNameKey,
@@ -7,6 +7,7 @@ import {
   type PackageKind,
   type PackageSaleDraft,
 } from '@kampus/school-core/lib/finance-packages.ts'
+import type { PackageReportSale } from '@kampus/school-core/lib/finance-package-report.ts'
 import type { WithdrawalPackageSale } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
@@ -424,4 +425,79 @@ export async function archiveManualHourEntries(
         isNull(lessonPackageHourEntries.archivedAt),
       ),
     )
+}
+
+/**
+ * Bakiye ve rapor girdisi (IST-114, DOM-FIN-058): satışlar ve saat hareketleri. Arşivli satırlardan
+ * yalnız `manual` gelir: elle girilen toplamın değişiklikleri kendi gününe fark olarak düşsün (K-21).
+ * `studentId` verilirse yalnız o öğrencinin satışları. Rapor kurum geneli okur, sayfalanmaz; sayfa
+ * core hesabından sonra kesilir, çünkü toplamlar bütün satırlardan gelir.
+ */
+export async function loadPackageReportSales(
+  db: Database,
+  institutionId: string,
+  filter: { studentId?: string } = {},
+): Promise<PackageReportSale[]> {
+  const sales = await db
+    .select({
+      id: lessonPackageSales.id,
+      studentId: lessonPackageSales.studentId,
+      packageName: lessonPackageSales.packageName,
+      kind: lessonPackageSales.kind,
+      purchasedHours: lessonPackageSales.purchasedHours,
+      netCents: lessonPackageSales.netCents,
+      soldAt: lessonPackageSales.soldAt,
+      expiresDate: lessonPackageSales.expiresDate,
+    })
+    .from(lessonPackageSales)
+    .where(
+      and(
+        activeSale(institutionId),
+        filter.studentId === undefined
+          ? undefined
+          : eq(lessonPackageSales.studentId, filter.studentId),
+      ),
+    )
+  if (sales.length === 0) return []
+  const rows = await db
+    .select({
+      saleId: lessonPackageHourEntries.saleId,
+      kind: lessonPackageHourEntries.kind,
+      hours: lessonPackageHourEntries.hours,
+      occurredDate: lessonPackageHourEntries.occurredDate,
+      sourceType: lessonPackageHourEntries.sourceType,
+      archivedAt: lessonPackageHourEntries.archivedAt,
+      createdAt: lessonPackageHourEntries.createdAt,
+    })
+    .from(lessonPackageHourEntries)
+    .where(
+      and(
+        eq(lessonPackageHourEntries.institutionId, institutionId),
+        or(
+          isNull(lessonPackageHourEntries.archivedAt),
+          eq(lessonPackageHourEntries.sourceType, 'manual'),
+        ),
+        filter.studentId === undefined
+          ? undefined
+          : inArray(
+              lessonPackageHourEntries.saleId,
+              sales.map((sale) => sale.id),
+            ),
+      ),
+    )
+  const grouped = new Map<string, PackageReportSale['entries'][number][]>()
+  for (const { saleId, archivedAt, createdAt, ...entry } of rows) {
+    const list = grouped.get(saleId) ?? []
+    list.push({
+      ...entry,
+      archivedAt: archivedAt === null ? null : archivedAt.toISOString(),
+      createdAt: createdAt.toISOString(),
+    })
+    grouped.set(saleId, list)
+  }
+  return sales.map((sale) => ({
+    ...sale,
+    soldAt: sale.soldAt.toISOString(),
+    entries: grouped.get(sale.id) ?? [],
+  }))
 }

@@ -1021,6 +1021,16 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'K-32, DOM-KAY-027: başka kurumun öğrencisi aile ucunda 404, B denetimi yazılmaz',
     "get(familyUrl('cert-other'), parent.cookie)",
   ),
+  // Onur: paket saat bakiyesi ve raporu (ON-074, IST-114).
+  'GET /api/v1/finance/students/:studentId/package-balance': kayit(
+    'finance-package-report.test.ts',
+    'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
+    'get(balanceUrl(randomUUID()), a.admin)',
+  ),
+  'GET /api/v1/finance/package-report': liste(
+    'finance-package-report.test.ts',
+    'IST-002: başka kurumun satışı bakiyeye ve rapora girmez',
+  ),
 }
 
 /**

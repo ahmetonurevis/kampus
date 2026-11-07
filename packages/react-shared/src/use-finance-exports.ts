@@ -3,6 +3,7 @@ import type { FinanceExportProfile } from '@kampus/school-core/lib/finance-expor
 import { requireIfMatch } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Muhasebe aktarımı kancaları (`/finance/summary`, `/finance/exports`; IST-111, ADR 0006 karar 11).
 
@@ -112,7 +113,7 @@ export function useFinanceReconciliation(query: {
   page: number
   pageSize: number
 }) {
-  return useApiQuery({
+  return useFinanceListQuery({
     key: ['payments', 'finance-reconciliation', query],
     request: (client, signal) =>
       client.GET('/api/v1/finance/reconciliation', { params: { query }, signal }),

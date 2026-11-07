@@ -3,7 +3,7 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
-import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Ayrılış ve iade kancaları (`/students/:id/withdraw*`, `/withdrawals`; ADR 0006 karar 10,
 // DOM-FIN-040, -041, DOM-KAY-024). Onay ve iade ödemesi taze oturum ister.
@@ -35,7 +35,7 @@ export function useWithdrawals(query: {
   /** Öğrenci adında arama (en az 2 karakter; ON-118). */
   q?: string
 }) {
-  return useApiQuery({
+  return useFinanceListQuery({
     key: [...WITHDRAWALS_KEY, query],
     request: (client, signal) => client.GET('/api/v1/withdrawals', { params: { query }, signal }),
   })

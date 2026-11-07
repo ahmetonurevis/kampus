@@ -4,7 +4,7 @@ import type { InstitutionType } from '@kampus/school-core/modules/collection-mod
 
 import { requireIfMatch } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
-import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery, type FinanceListQueryOptions } from './use-finance-list-query.ts'
 
 // Ücret tarifesi kancaları (`/fee-tariffs`; ADR 0006 karar 8, DOM-FIN-002, -004, -006). Komutlar
 // `exclusive`: alan hatası formda görünür, yolsuz hata tek toast olur.
@@ -29,13 +29,15 @@ const MESSAGES = { version_conflict: FEE_TARIFF_CHANGED_MESSAGE }
 
 export function useFeeTariffs(
   query: { page: number; pageSize: number; academicYear?: number },
-  options: { enabled?: boolean } = {},
+  options: FinanceListQueryOptions = {},
 ) {
-  return useApiQuery({
-    key: [...FEE_TARIFFS_KEY, query],
-    enabled: options.enabled ?? true,
-    request: (client, signal) => client.GET('/api/v1/fee-tariffs', { params: { query }, signal }),
-  })
+  return useFinanceListQuery(
+    {
+      key: [...FEE_TARIFFS_KEY, query],
+      request: (client, signal) => client.GET('/api/v1/fee-tariffs', { params: { query }, signal }),
+    },
+    options,
+  )
 }
 
 const isPublished = (tariff: { status: string }) => tariff.status === 'published'
@@ -51,12 +53,13 @@ export function useEffectiveFeeTariff(query: {
   pageSize: number
 }) {
   const { academicYear, institutionType, pageSize } = query
-  const current = useFeeTariffs({ page: 1, pageSize, academicYear })
+  // Tarife hesap kaynağıdır: yıl değişince önceki yılın tarifesi yer tutucu olarak hesaba girmez.
+  const current = useFeeTariffs({ page: 1, pageSize, academicYear }, { keepPreviousPage: false })
   const published = current.data?.data.find(isPublished) ?? null
   const needsPrevious = current.isSuccess && published === null
   const previous = useFeeTariffs(
     { page: 1, pageSize, academicYear: academicYear - 1 },
-    { enabled: needsPrevious },
+    { enabled: needsPrevious, keepPreviousPage: false },
   )
   const effective = resolveEffectiveTariff({
     academicYear,

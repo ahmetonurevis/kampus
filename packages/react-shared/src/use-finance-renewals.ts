@@ -1,3 +1,4 @@
+import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
@@ -5,6 +6,7 @@ import { CollectionTooLargeError, collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery } from './use-finance-list-query.ts'
 import { REFERRAL_REWARDS_KEY } from './use-finance-referrals.ts'
 import { useKampusClient } from './kampus-context.ts'
 
@@ -45,13 +47,18 @@ const RENEWAL_WRITES = [
   REFERRAL_REWARDS_KEY,
 ]
 
-export function useRenewals(query: RenewalListQuery, options: { enabled?: boolean } = {}) {
-  return useApiQuery({
+/** Yenileme listesinin anahtarı ve isteği; kanca ile birim testi aynı tanımı kullanır. */
+export function renewalListQuery(query: RenewalListQuery) {
+  return {
     key: [...RENEWALS_KEY, 'list', query],
-    enabled: options.enabled ?? true,
-    request: (client, signal) =>
+    request: (client: KampusClient, signal: AbortSignal) =>
       client.GET('/api/v1/finance/renewals', { params: { query }, signal }),
-  })
+  }
+}
+
+/** Sayfalı yenileme listesi; yeni sayfa gelene kadar önceki sayfa ekranda kalır (ON-319). */
+export function useRenewals(query: RenewalListQuery, options: { enabled?: boolean } = {}) {
+  return useFinanceListQuery(renewalListQuery(query), options)
 }
 
 /** CSV için bütün sayfalar, aynı süzgeç ve sıralamayla; 5000 kaydı aşan liste reddedilir. */
@@ -120,12 +127,14 @@ export function useRenewalCandidates(
   query: RenewalCandidateQuery,
   options: { enabled?: boolean } = {},
 ) {
-  return useApiQuery({
-    key: [...RENEWALS_KEY, 'candidates', query],
-    enabled: options.enabled ?? true,
-    request: (client, signal) =>
-      client.GET('/api/v1/finance/renewals/candidates', { params: { query }, signal }),
-  })
+  return useFinanceListQuery(
+    {
+      key: [...RENEWALS_KEY, 'candidates', query],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/renewals/candidates', { params: { query }, signal }),
+    },
+    options,
+  )
 }
 
 /** Toplu önizleme; yazma değildir, sorgu tazelenmez. */
@@ -168,12 +177,14 @@ export function usePriceIndexes(
   query: { page: number; pageSize: number },
   options: { enabled?: boolean } = {},
 ) {
-  return useApiQuery({
-    key: [...PRICE_INDEXES_KEY, query],
-    enabled: options.enabled ?? true,
-    request: (client, signal) =>
-      client.GET('/api/v1/finance/renewals/price-indexes', { params: { query }, signal }),
-  })
+  return useFinanceListQuery(
+    {
+      key: [...PRICE_INDEXES_KEY, query],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/renewals/price-indexes', { params: { query }, signal }),
+    },
+    options,
+  )
 }
 
 export function useCreatePriceIndex() {

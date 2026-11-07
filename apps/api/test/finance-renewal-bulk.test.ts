@@ -11,6 +11,7 @@ import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { loadFinanceRecords } from '../src/db/finance-mirror-store.ts'
+import { loadStudentFamilies } from '../src/db/finance-renewal-candidates.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
@@ -833,6 +834,72 @@ describe('IST-105: yeni yılın toplu yenileme uçları', () => {
     const elder = await post(PLAN, a.admin, a.planBody(ROWS('s3')), key())
     assert.deepEqual(elder.json().data.summary, { planned: 1, skipped: 0, failed: 0 })
     assert.equal(await lossOf(), null)
+  })
+
+  test('DOM-FIN-022, K-22: velisi yazılmamış öğrencilerin kardeşi yoktur; aile yüklemesi boş veliyi eşleştirmez (ON-311)', async () => {
+    const a = await ready()
+    // Boş metin, JSON null ve hiç yazılmamış veli: üçü de velisizdir, birbirinin kardeşi değildir.
+    const parentless = [
+      ['test-velisiz-bos-1', ''],
+      ['test-velisiz-bos-2', ''],
+      ['test-velisiz-null', null],
+      ['test-velisiz-yok', undefined],
+    ] as const
+    await insertMissingRecords(
+      db,
+      a.id,
+      parentless.flatMap(([id, parentId]) => {
+        const student: Record<string, unknown> = {
+          ...seedStudent,
+          id,
+          name: `Test ${id}`,
+          parentId,
+        }
+        if (parentId === undefined) delete student.parentId
+        return [
+          { collection: 'students' as const, id, data: student },
+          {
+            collection: 'contracts' as const,
+            id: `test-contract-${id}`,
+            data: {
+              id: `test-contract-${id}`,
+              studentId: id,
+              date: FIXED_NOW.toISOString(),
+              amount: ANNOUNCED_CENTS * 2,
+              title: 'Özel okul eğitim sözleşmesi',
+              academicYear: YEAR,
+            },
+          },
+        ]
+      }),
+      FIXED_NOW,
+    )
+    await addSibling(a.id, YEAR, ANNOUNCED_CENTS * 2)
+
+    for (const [id] of parentless)
+      assert.deepEqual(await loadStudentFamilies(db, a.id, [id]), [id], id)
+    assert.deepEqual(
+      (
+        await loadStudentFamilies(
+          db,
+          a.id,
+          parentless.map(([id]) => id),
+        )
+      ).sort(),
+      parentless.map(([id]) => id).sort(),
+    )
+    // Velisi yazılmış öğrencinin kardeşi yüklenmeye devam eder; velisizler aileye girmez.
+    assert.deepEqual((await loadStudentFamilies(db, a.id, ['s3'])).sort(), ['s3', 'test-kardes'])
+
+    // Kayıtlı "kardeş" sayılacak bir velisiz öğrenci olsa da indirim koşulu doğmaz.
+    const quote = await post(`${BASE}/quote`, a.admin, {
+      studentId: 'test-velisiz-bos-1',
+      targetClassId: 'c1',
+      academicYear: YEAR,
+      installmentCount: 3,
+      discounts: ['sibling'],
+    })
+    assertError(quote, 422, 'sibling_discount_ineligible')
   })
 
   test('DOM-FIN-013: ilanda olmayan taksit sayısı satırda reddedilir; ödeme koşulu sözleşmeye yazılır', async () => {

@@ -86,7 +86,11 @@ export async function loadRenewalCandidatePage(
   return { rows, total: counted?.total ?? 0 }
 }
 
-/** Velilerin etkin öğrencileri: kardeş kuralı ve tavan için kardeşin sözleşmesi de okunur. */
+/**
+ * Velilerin etkin öğrencileri: kardeş kuralı ve tavan için kardeşin sözleşmesi de okunur. Velisi
+ * yazılmamış (boş metin, null ya da alan yok) öğrencinin kardeşi yoktur (`siblingIdsOf`, ON-311);
+ * boş veli eşleştirilirse velisiz bütün öğrenciler aile diye yüklenirdi.
+ */
 export async function loadStudentFamilies(
   db: Database,
   institutionId: string,
@@ -103,7 +107,8 @@ export async function loadStudentFamilies(
         eq(self.institutionId, institutionId),
         eq(self.collection, 'students'),
         inArray(self.id, [...studentIds]),
-        sql`${self.data} ->> 'parentId' = ${records.data} ->> 'parentId'`,
+        // `nullif` boş veliyi NULL yapar; NULL hiçbir şeye eşit olmadığından velisiz öğrenci eşleşmez.
+        sql`nullif(${self.data} ->> 'parentId', '') = ${records.data} ->> 'parentId'`,
       ),
     )
     .where(

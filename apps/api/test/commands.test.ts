@@ -55,6 +55,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/contracts/{contractId}/approve',
   'POST /api/v1/finance/contracts/{contractId}/amendments',
   'POST /api/v1/finance/contracts/{contractId}/cancel-amendment',
+  // e-Özel işareti ücret satırında tahsilatın MEBBİS işaretini yazar (routes/finance-e-ozel.ts; IST-085).
+  'POST /api/v1/finance/e-ozel/items/{kind}/{sourceId}/record',
 ]
 // Onur: kayıt ve finans sonu
 

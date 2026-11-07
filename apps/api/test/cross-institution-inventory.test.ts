@@ -981,6 +981,23 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-referrals.test.ts',
     'DOM-FIN-024: başka kurumun hakkı listede yok',
   ),
+  'GET /api/v1/finance/e-ozel/items': liste(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: B kaydı',
+  ),
+  'GET /api/v1/finance/e-ozel/export': liste(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: B kaydı',
+  ),
+  'POST /api/v1/finance/e-ozel/items/:kind/:sourceId/record': kayit(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: B kaydı',
+    '/record',
+  ),
+  'GET /api/v1/finance/e-ozel/learners/:studentId/identity': kayit(
+    'finance-e-ozel.test.ts',
+    'IST-085 başka kurum: tam kimlik',
+  ),
 }
 
 /**

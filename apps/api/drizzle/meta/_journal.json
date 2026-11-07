@@ -477,6 +477,13 @@
       "when": 1794008483348,
       "tag": "0067_create_referral_rewards",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794009338752,
+      "tag": "0068_create_e_ozel_records",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { EOzelSection } from './EOzelSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
@@ -37,15 +38,23 @@ const VIEWS = {
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
+  eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
   value: value as FinanceView,
   label: view.label,
 }))
-/** Paket satışı yalnız dil okulundadır (IST-078): okulda sekme yok, adresi taksitlere düşer. */
-const viewOptionsFor = (languageSchool: boolean) =>
-  languageSchool ? VIEW_OPTIONS : VIEW_OPTIONS.filter(({ value }) => value !== 'packages')
+/**
+ * Paket satışı yalnız dil okulundadır (IST-078), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
+ * kapalı sekme gizlenir, adresi taksitlere düşer.
+ */
+const viewOptionsFor = (institutionType: string | undefined) =>
+  VIEW_OPTIONS.filter(({ value }) => {
+    if (value === 'packages') return institutionType === 'language_school'
+    if (value === 'eOzel') return institutionType !== 'school'
+    return true
+  })
 const viewOf = (param: string | null, options: typeof VIEW_OPTIONS): FinanceView =>
   options.find(({ value }) => param !== null && VIEWS[value].param === param)?.value ?? 'invoices'
 
@@ -60,7 +69,7 @@ export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
   const [params, setParams] = useSearchParams()
-  const viewOptions = viewOptionsFor(session?.institution?.type === 'language_school')
+  const viewOptions = viewOptionsFor(session?.institution?.type)
   const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const isManager = session?.role === 'yonetici'
   const totalsQuery = useFinanceTotals()
@@ -134,6 +143,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         <FinanceReconciliationSection
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
+      ) : null}
+      {tab === 'eOzel' ? (
+        <EOzelSection academicEnabled={session?.modules.academic === true} />
       ) : null}
       {tab === 'invoices' ? (
         <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />

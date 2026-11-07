@@ -10,6 +10,7 @@ import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // e-Özel işlem listesi kancaları (`/finance/e-ozel`; IST-085, DOM-KAY-015). Platform e-Özel'e
 // bağlanmaz: liste elle işlem içindir, işaret kim/ne zaman bilgisiyle tutulur.
@@ -24,7 +25,7 @@ const E_OZEL_KEY = ['payments', 'e-ozel'] as const
 export const E_OZEL_CHANGED_MESSAGE = 'Kayıt başka biri tarafından değiştirildi. Liste güncellendi.'
 
 export function useEOzelItems(query: EOzelListQuery) {
-  return useApiQuery({
+  return useFinanceListQuery({
     key: [...E_OZEL_KEY, 'list', query],
     request: (client, signal) =>
       client.GET('/api/v1/finance/e-ozel/items', { params: { query }, signal }),

@@ -95,17 +95,35 @@ const saleSchema = z.object({
 })
 export const saleResponse = dataResponse(saleSchema)
 
-/** Okuma uçlarında tutar alanı role özgüdür: veli ve öğrenci yanıtında anahtar yoktur (K-40). */
-const STAFF_ONLY = 'Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40).'
-const staffOnly = <T extends z.ZodType>(schema: T, description: string) =>
-  schema.optional().describe(`${description}. ${STAFF_ONLY}`)
+/**
+ * Okuma uçlarında tutar (K-40) ve iç kimlik (K-41) alanları role özgüdür: veli ve öğrenci yanıtında
+ * anahtar yoktur. Aileye satış kimliği, paket adı ve türü, saatler, son kullanma ve durum gider.
+ */
+const staffOnly = <T extends z.ZodType>(
+  schema: T,
+  description: string,
+  decision: 'K-40' | 'K-41',
+) =>
+  schema
+    .optional()
+    .describe(
+      `${description}. Yalnız \`yonetici\` ve \`onburo\` yanıtında; veli ve öğrencide alan yoktur (${decision}).`,
+    )
 const listedSaleSchema = saleSchema.extend({
+  version: staffOnly(z.number().int(), '`If-Match` için kayıt sürümü', 'K-41'),
+  packageId: staffOnly(z.string(), 'Satılan paket', 'K-41'),
+  courseId: staffOnly(z.string().nullable(), 'Paketin kuru; boşsa kura bağlı değil', 'K-41'),
+  studentId: staffOnly(z.string(), 'Paketi alan öğrenci', 'K-41'),
+  contractId: staffOnly(z.string(), 'Satışın açtığı sözleşme', 'K-41'),
+  tariffId: staffOnly(z.string(), 'Satışta uygulanan tarife', 'K-41'),
+  tariffVersion: staffOnly(z.number().int(), 'Satışta uygulanan tarife sürümü', 'K-41'),
   hourlyCents: staffOnly(
     z.number().int(),
     'Uygulanan saat ücreti, kuruş; iade bu ücretle hesaplanır',
+    'K-40',
   ),
-  grossCents: staffOnly(z.number().int(), 'Saat × uygulanan saat ücreti, kuruş'),
-  netCents: staffOnly(z.number().int(), 'İndirimden sonra öğrenim ücreti, kuruş'),
+  grossCents: staffOnly(z.number().int(), 'Saat × uygulanan saat ücreti, kuruş', 'K-40'),
+  netCents: staffOnly(z.number().int(), 'İndirimden sonra öğrenim ücreti, kuruş', 'K-40'),
   studentName: z.string().nullable(),
 })
 export const saleListResponse = z.object({ data: z.array(listedSaleSchema), meta: pageMetaSchema })
@@ -123,6 +141,7 @@ export const saleDetailResponse = dataResponse(
         }),
       ),
       'Sözleşmenin yalnız bu satışa ait taksitleri',
+      'K-40',
     ),
   }),
 )

@@ -308,6 +308,49 @@ test('DOM-FIN-023: kardeş indirimi koşulu kalkınca baz kayıt yılındaki ind
   assert.deepEqual(state.contracts, before)
 })
 
+test('DOM-FIN-023, DOM-FIN-022, K-22: kardeş koşulu yenileme yılındaki kayda bakar; tavan istisnası ve indirim aynı cevabı verir', () => {
+  const state = seeded({
+    grossCents: 5_000_000,
+    discounts: [{ kind: 'sibling', amountCents: 1_500_000 }],
+  })
+  const child = state.students.find((s) => s.id === 's3')
+  assert.ok(child)
+  const sibling = { ...child, id: 'test-kardes', name: 'Test Kardeş' }
+  state.students.push(sibling)
+  const siblingContract = (id: string, academicYear: number) => ({
+    id,
+    studentId: sibling.id,
+    date: NOW,
+    amount: 9_000_000,
+    title: 'Özel okul eğitim sözleşmesi',
+    academicYear,
+    grossCents: 9_000_000,
+  })
+  state.contracts.push(siblingContract('test-kardes-bu-yil', 2026))
+  const lossOf = () => {
+    const ceiling = quoteRenewal(state, ADMIN, QUOTE, CONTEXT).ceiling
+    assert.ok(ceiling.status === 'applied')
+    return ceiling.discountLoss
+  }
+  const withSibling = () =>
+    quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['sibling'] }, CONTEXT)
+  // Kardeş etkin ama yenileme yılında (2027) kaydı yok: koşul kalkmıştır, indirim de verilmez.
+  assert.match(lossOf()?.reason ?? '', /Kardeş indirimi koşulu kalktı/)
+  assert.throws(withSibling, isDomainError('sibling_discount_ineligible'))
+  // Kardeşin 2027 kaydı (yenileme planının sözleşmesi) koşulu sürdürür.
+  state.contracts.push(siblingContract('test-kardes-gelecek-yil', YEAR))
+  assert.equal(lossOf(), null)
+  assert.equal(withSibling().discounts[0]?.kind, 'sibling')
+  // Dondurulan kardeş aktif kayıt sayılmaz (DOM-KAY-024).
+  Object.assign(sibling, { frozenAt: NOW })
+  assert.notEqual(lossOf(), null)
+  assert.throws(withSibling, isDomainError('sibling_discount_ineligible'))
+  // Velisi yazılmamış iki öğrenci kardeş sayılmaz.
+  Object.assign(sibling, { frozenAt: null, parentId: '' })
+  child.parentId = ''
+  assert.notEqual(lossOf(), null)
+})
+
 test('DOM-FIN-020, -021, -022: indirim tarifedeki türden ve ilandan hesaplanır; tavan, kardeş ve ilansız tür reddedilir', () => {
   const state = seeded({ grossCents: 9_000_000 })
   const quote = quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['early_payment'] }, CONTEXT)

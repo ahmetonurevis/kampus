@@ -6,19 +6,26 @@ import { sql } from 'drizzle-orm'
 
 import type { App } from '../../src/app.ts'
 import type { Database } from '../../src/db/client.ts'
+import { loadContracts } from '../../src/db/contract-store.ts'
+import { mirrorFinanceIds } from '../../src/db/finance-mirror-store.ts'
+import { loadInvoices } from '../../src/db/invoice-store.ts'
 import { POSITION_STEP } from '../../src/db/positions.ts'
-import { loadRecords, type LoadOptions } from '../../src/db/records.ts'
+import { loadRecords, type LoadOptions, type StoredRecord } from '../../src/db/records.ts'
 import type { CollectionName } from '../../src/db/collections.ts'
+import { invoices } from '../../src/db/schema/invoices.ts'
 import { records } from '../../src/db/schema/records.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from '../support/app.ts'
+import { insertTestTariff } from '../support/finance-terms.ts'
 import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
 
 /**
- * ADR 0010 ölçüt 4 ölçümü (ON-046a): `invoice.pay`, `payment.reverse` ve `student.withdraw`
- * `loadScope` vermez; kurum kilidi altında kurumun bütün `invoices` ve `contracts` kayıtlarını
- * yükler. Bu test o yüklemeyi PostgreSQL 16'da iki kurum büyüklüğünde ölçer (p50/p95, yüklenen
- * JSON boyutu, `EXPLAIN (ANALYZE, BUFFERS)`) ve öğrenciyle daraltılmış yüklemeyle karşılaştırır.
- * Sonuçlar test tanılaması olarak yazılır; eşik denetlenmez (ölçüm karar değiştirmez, ADR 0010).
+ * ADR 0010 ölçüt 4 ölçümü. ON-046a: `invoice.pay`, `payment.reverse` ve `student.withdraw` kurum
+ * kilidi altında kurumun bütün `invoices` ve `contracts` kayıtlarını `records`'tan yüklüyordu. ON-046f:
+ * bu işlemler tablolardan (`loadInvoices`, `loadContracts`) ve öğrenciyle daraltılmış olarak yükler.
+ * Test iki kurum büyüklüğünde PostgreSQL 16'da öncesini (records tam yükleme, tablo tam yükleme)
+ * ve sonrasını (tablodan öğrenciyle daraltılmış yükleme) ölçer: p50/p95, yüklenen JSON boyutu,
+ * `EXPLAIN (ANALYZE, BUFFERS)`. Sonuçlar test tanılaması olarak yazılır; eşik denetlenmez (ölçüm
+ * karar değiştirmez, ADR 0010).
  */
 
 const RUNS = 20
@@ -136,16 +143,12 @@ describe(
       await close()
     })
 
-    async function measure(
-      institutionId: string,
-      collections: readonly CollectionName[],
-      options: LoadOptions = {},
-    ) {
+    async function timed(load: () => Promise<StoredRecord[]>) {
       const timings: number[] = []
-      let rows = await loadRecords(db, institutionId, collections, options)
+      let rows = await load()
       for (let run = 0; run < WARMUP + RUNS; run += 1) {
         const started = performance.now()
-        rows = await loadRecords(db, institutionId, collections, options)
+        rows = await load()
         if (run >= WARMUP) timings.push(performance.now() - started)
       }
       timings.sort((left, right) => left - right)
@@ -156,6 +159,34 @@ describe(
         p95Ms: round(percentile(timings, 95)),
         megabytes: round(bytes / 1_000_000),
       }
+    }
+
+    const measure = (
+      institutionId: string,
+      collections: readonly CollectionName[],
+      options: LoadOptions = {},
+    ) => timed(() => loadRecords(db, institutionId, collections, options))
+
+    /** Tablo yüklemesi (`FINANCE_TABLE_STORE`): öğrenci verilirse iki koleksiyon da daraltılır. */
+    const measureTables = (institutionId: string, studentId: string | null) => {
+      const match =
+        studentId === null
+          ? {}
+          : { match: [{ kind: 'equals' as const, field: 'studentId', values: [studentId] }] }
+      return timed(async () => [
+        ...(await loadContracts(db, institutionId, match)),
+        ...(await loadInvoices(db, institutionId, match)),
+      ])
+    }
+
+    /** Daraltılmış taksit tablosu yüklemesinin planı (`invoices_student_due_idx`). */
+    async function explainTable(institutionId: string, studentId: string) {
+      const result = await db.execute(
+        sql`explain (analyze, buffers, format text) select * from ${invoices} where institution_id = ${institutionId} and archived_at is null and student_id in (${studentId}) order by position, id`,
+      )
+      return (result as unknown as { rows: { 'QUERY PLAN': string }[] }).rows
+        .map((row) => row['QUERY PLAN'])
+        .join('\n')
     }
 
     /** Yüklemenin planı; sorgu deponun ürettiği SQL'in aynısıdır (parametreler literal). */
@@ -183,6 +214,13 @@ describe(
           for (let from = 0; from < batch.length; from += 1000)
             await db.insert(records).values(batch.slice(from, from + 1000))
         await db.execute(sql`analyze records`)
+        // ON-046f: taksit ve sözleşmenin kaynağı tablolardır; kopya tohumdaki aynayla açılır.
+        for (const institution of [id, other.id]) {
+          await insertTestTariff(db, institution)
+          assert.equal(await mirrorFinanceIds(db, institution, 'all'), 0)
+        }
+        await db.execute(sql`analyze invoices`)
+        await db.execute(sql`analyze contracts`)
 
         const full = await measure(id, ['invoices', 'contracts'])
         assert.equal(full.rows, size.students * (size.installments + 1))
@@ -199,6 +237,19 @@ describe(
         )
         t.diagnostic(`EXPLAIN tam:\n${await explain(id, null)}`)
         t.diagnostic(`EXPLAIN daraltılmış:\n${await explain(id, `s-${String(size.students - 1)}`)}`)
+
+        const student = `s-${String(size.students - 1)}`
+        const tableFull = await measureTables(id, null)
+        assert.equal(tableFull.rows, full.rows)
+        const tableNarrowed = await measureTables(id, student)
+        assert.equal(tableNarrowed.rows, size.installments + 1)
+        t.diagnostic(
+          `öncesi, tablo tam yükleme (contracts + invoices): ${JSON.stringify(tableFull)}`,
+        )
+        t.diagnostic(
+          `sonrası, tablodan öğrenciyle daraltılmış (contracts + invoices, equals studentId): ${JSON.stringify(tableNarrowed)}`,
+        )
+        t.diagnostic(`EXPLAIN tablo daraltılmış (invoices):\n${await explainTable(id, student)}`)
       })
   },
 )

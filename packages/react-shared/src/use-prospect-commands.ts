@@ -5,11 +5,12 @@ import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { REFERRAL_REWARDS_KEY } from './use-finance-referrals.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
-// `POST /prospects/:id/{notes,meetings,trial-lessons,enroll}`; core `prospect.create`
-// `prospect.stage` `prospect.stageRevert` `prospect.consent` `prospect.update` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
-// docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035, DOM-DIL-030). Okuma genel
+// `POST /prospects/:id/{notes,meetings,trial-lessons,trial-result,enroll}`; core `prospect.create`
+// `prospect.stage` `prospect.stageRevert` `prospect.consent` `prospect.update` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.trialResult` `prospect.enroll`,
+// docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035, DOM-DIL-030, DOM-DIL-031). Okuma genel
 // koleksiyon kancalarındadır (`prospects`).
 // Hepsi `exclusive`: yollu `issues` (mükerrer aday `phone`, kardeş `siblingOfId`, görüşme çakışması
 // `date`, veli onayı `guardianConsent`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata
@@ -32,6 +33,7 @@ export type UpdateProspectDetailsBody = JsonBody<'updateProspectDetails'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
+export type RecordTrialResultBody = JsonBody<'recordTrialResult'>
 export type EnrollProspectBody = JsonBody<'enrollProspect'>
 
 /** Var olan adayı değiştiren komut: okunan sürüm `If-Match` olarak zorunludur. */
@@ -47,6 +49,7 @@ export type UpdateProspectDetailsInput = ProspectCommandInput<UpdateProspectDeta
 export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
 export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
 export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
+export type RecordTrialResultInput = ProspectCommandInput<RecordTrialResultBody>
 export type EnrollProspectInput = ProspectCommandInput<EnrollProspectBody>
 
 /** Aday bu arada başka biri tarafından güncellendi (`If-Match` tutmadı): güncel kart yüklenir. */
@@ -163,6 +166,17 @@ export function scheduleTrialLessonRequest(
   })
 }
 
+export function recordTrialResultRequest(
+  client: KampusClient,
+  { prospectId, body }: RecordTrialResultInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/trial-result', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
 export function enrollProspectRequest(
   client: KampusClient,
   { prospectId, body }: EnrollProspectInput,
@@ -195,6 +209,8 @@ export const ENROLL_PROSPECT_INVALIDATES: readonly (readonly unknown[])[] = [
   collectionKeyPrefix('parents'),
   collectionKeyPrefix('invoices'),
   collectionKeyPrefix('contracts'),
+  // Kesin kayıt referans hakkı açar ya da kullanır (DOM-FIN-024).
+  REFERRAL_REWARDS_KEY,
 ]
 const versionOf = <TBody>(input: ProspectCommandInput<TBody>) => input.version
 const success = (options: CommandOptions) =>
@@ -288,6 +304,22 @@ export function useScheduleTrialLesson(options: CommandOptions = {}) {
   return useApiCommand({
     request: scheduleTrialLessonRequest,
     version: versionOf<ScheduleTrialLessonBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/**
+ * Öğretmen kendi grubunun deneme dersinden sonra seviye uygunluğunu ve kısa notu yazar; sonuç
+ * yeniden yazılabilir, aşamayı değiştirmez (DOM-DIL-031, DOM-YTK-080). Yapılmamış ya da iptal
+ * edilmiş ders ve kapalı aday 409 ile sunucunun Türkçe iletisini toast olarak verir.
+ */
+export function useRecordTrialResult(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: recordTrialResultRequest,
+    version: versionOf<RecordTrialResultBody>,
     invalidates: PROSPECT_INVALIDATES,
     messages: PROSPECT_MESSAGES,
     exclusive: true,

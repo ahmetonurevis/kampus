@@ -18,8 +18,10 @@ import {
   createProspectSchema,
   MEETING_DURATION,
   OPEN_PROSPECT_STAGES,
+  PROSPECT_LOST_INSTITUTION_MAX,
   PROSPECT_LOST_REASONS,
   PROSPECT_STAGES,
+  prospectAgeGroupRequired,
   revertProspectStageSchema,
   PROSPECT_SOURCES,
   scheduleMeetingSchema,
@@ -45,8 +47,8 @@ const phoneField = z
   .pipe(createProspectSchema.shape.phone)
 
 /**
- * Aday formu: çekirdek alan şemalarına ek olarak kurum türüne göre kurallar (dil okulunda yaş
- * seçimi, 18 yaş altında veli adı, veli referansında referans öğrenci) form düzeyinde sorulur.
+ * Aday formu: çekirdek alan şemalarına ek olarak kurum türüne göre kurallar (dil okulu ve kursta
+ * yaş seçimi, 18 yaş altında veli adı, veli referansında referans öğrenci) form düzeyinde sorulur.
  */
 export function createFormSchema(type: InstitutionType) {
   return z
@@ -71,7 +73,7 @@ export function createFormSchema(type: InstitutionType) {
     .superRefine((value, context) => {
       const fail = (path: string, message: string) =>
         context.addIssue({ code: 'custom', path: [path], message })
-      if (type === 'language_school' && !value.minor)
+      if (prospectAgeGroupRequired(type) && !value.minor)
         fail('minor', '18 yaş altı olup olmadığını seçin.')
       if (isMinor(value.minor, type)) {
         const guardian = text(value.guardianName)
@@ -85,9 +87,9 @@ export function createFormSchema(type: InstitutionType) {
 }
 export type CreateFormValues = z.input<ReturnType<typeof createFormSchema>>
 
-/** Okul adayı her zaman 18 yaş altıdır; dil okulunda seçim belirler (DOM-KAY-009). */
+/** Okul adayı her zaman 18 yaş altıdır; dil okulu ve kursta seçim belirler (DOM-KAY-009). */
 export const isMinor = (minor: string | undefined, type: InstitutionType) =>
-  type === 'school' || minor === 'yes'
+  !prospectAgeGroupRequired(type) || minor === 'yes'
 
 export function createDefaults(branchId = ''): CreateFormValues {
   return {
@@ -127,7 +129,7 @@ export function createBody(
     interest: values.interest,
     source: values.source,
     ...(values.source === REFERRAL_SOURCE && referrerStudentId ? { referrerStudentId } : {}),
-    ...(type === 'language_school' ? { minor } : {}),
+    ...(prospectAgeGroupRequired(type) ? { minor } : {}),
     ...(minor && guardianName ? { guardianName } : {}),
     ...(siblingOfId ? { siblingOfId } : {}),
     privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
@@ -145,6 +147,14 @@ export const isDuplicateCode = (code: string) =>
 export const stageFormSchema = z.object({
   stage: z.string().min(1, 'Aşamayı seçin.'),
   lostReason: z.enum([...PROSPECT_LOST_REASONS, '']).optional(),
+  lostToInstitution: z
+    .string()
+    .trim()
+    .max(
+      PROSPECT_LOST_INSTITUTION_MAX,
+      `En fazla ${PROSPECT_LOST_INSTITUTION_MAX} karakter girebilirsiniz.`,
+    )
+    .optional(),
   siblingOfId: z.string().optional(),
 })
 export type StageFormValues = z.input<typeof stageFormSchema>
@@ -152,6 +162,7 @@ export type StageFormValues = z.input<typeof stageFormSchema>
 export const stageDefaults = (): StageFormValues => ({
   stage: '',
   lostReason: '',
+  lostToInstitution: '',
   siblingOfId: '',
 })
 
@@ -169,8 +180,16 @@ export function stageBody(
   if (!stage) return { ok: false, field: 'stage', message: 'Aşamayı seçin.' }
   if (stage === 'Vazgeçti') {
     const reason = PROSPECT_LOST_REASONS.find((item) => item === values.lostReason)
+    const institution = optional(values.lostToInstitution)
     return reason
-      ? { ok: true, body: { stage, lostReason: reason } }
+      ? {
+          ok: true,
+          body: {
+            stage,
+            lostReason: reason,
+            ...(institution ? { lostToInstitution: institution } : {}),
+          },
+        }
       : { ok: false, field: 'lostReason', message: 'Vazgeçme nedenini seçin.' }
   }
   const sibling = optional(values.siblingOfId)

@@ -24,9 +24,13 @@ import {
   type StudentBalance,
 } from '@kampus/school-core/lib/finance-export.ts'
 import {
+  defaultFinanceExportProfile,
   profiledInvoicesCsv,
+  profiledInvoicesSheet,
   profiledPaymentsCsv,
+  profiledPaymentsSheet,
   profiledRefundsCsv,
+  profiledRefundsSheet,
   setFinanceExportProfileSchema,
 } from '@kampus/school-core/lib/finance-export-profile.ts'
 import {
@@ -41,7 +45,7 @@ import {
   paymentsOfStudent,
   paymentsTouchingPeriod,
 } from '../db/payments.ts'
-import { loadRecords } from '../db/records.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import {
   loadFinanceExportProfile,
   saveFinanceExportProfile,
@@ -56,7 +60,9 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
+import { financeWorkbook } from './finance-workbook.ts'
 import { assertReadable, readScope } from './read-scope.ts'
 
 /**
@@ -73,6 +79,7 @@ function linesOf(ctx: ServiceContext, period: FinancePeriod) {
   return runReadOnly(ctx, {
     action: 'finance.export',
     collections: ['students', 'invoices'],
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const [payments, refunds, allocated] = [
         await paymentsTouchingPeriod(
@@ -105,6 +112,7 @@ export function financeTotalsFor(ctx: ServiceContext): Promise<FinanceTotals> {
   return runReadOnly(ctx, {
     action: 'finance.totals',
     collections: ['invoices'],
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const allocated = await allocatedTotals(tx, ctx.institutionId)
       return { run: (state) => financeTotals(state.invoices, allocated, dayKey(ctx.now)) }
@@ -128,6 +136,7 @@ export function financeOverviewFor(
   return runReadOnly(ctx, {
     action: 'finance.overview',
     collections: ['invoices'],
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const [payments, allocated] = [
         await paymentsTouchingPeriod(
@@ -160,6 +169,7 @@ const balanceInvoice = z.object({
   amount: z.number().int(),
   paidAt: z.string().nullable().optional(),
   dueDate: z.string(),
+  method: z.string().nullable().optional(),
 })
 
 /**
@@ -175,7 +185,7 @@ export async function studentBalanceFor(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+  const rows = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
   const invoices = rows.map((row) => {
@@ -190,10 +200,7 @@ export async function studentBalanceFor(
   return studentBalance(studentId, invoices, allocated, dayKey(ctx.now))
 }
 
-const statementInvoice = balanceInvoice.extend({
-  installment: z.number().int(),
-  method: z.string().nullable().optional(),
-})
+const statementInvoice = balanceInvoice.extend({ installment: z.number().int() })
 
 /**
  * Cari ekstre (`GET /finance/students/:id/statement`, IST-107). Kapsam bakiyeyle aynıdır; hesap
@@ -206,7 +213,7 @@ export async function studentStatementFor(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+  const rows = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
   const invoices = rows.map((row) => {
@@ -248,17 +255,44 @@ export async function financeExportFor(
         : profile
           ? profiledInvoicesCsv(lines.invoices, profile)
           : invoicesCsv(lines.invoices)
+  await recordExport(ctx, `${query.kind}:${query.from}:${query.to}`)
+  return csv
+}
+
+/**
+ * Aynı aktarımın `.xlsx` karşılığı (ON-094): satırlar ve kurumun profili CSV ile aynıdır, profil
+ * yoksa standart sütunlar kullanılır. Denetimde biçim kimliğin sonunda ayrılır.
+ */
+export async function financeExportWorkbookFor(
+  ctx: ServiceContext,
+  query: FinancePeriod & { kind: FinanceExportKind },
+): Promise<Buffer> {
+  const lines = await linesOf(ctx, query)
+  const stored = await loadFinanceExportProfile(ctx.db, ctx.institutionId)
+  const profile = stored.profile ?? defaultFinanceExportProfile()
+  const sheet =
+    query.kind === 'payments'
+      ? profiledPaymentsSheet(lines.payments, profile)
+      : query.kind === 'refunds'
+        ? profiledRefundsSheet(lines.refunds, profile)
+        : profiledInvoicesSheet(lines.invoices, profile)
+  const file = await financeWorkbook(sheet)
+  await recordExport(ctx, `${query.kind}:${query.from}:${query.to}:xlsx`)
+  return file
+}
+
+/** Dosya üretildikten sonra yazılır; üretilemeyen dosya denetimde aktarılmış görünmez. */
+async function recordExport(ctx: ServiceContext, entityId: string): Promise<void> {
   await ctx.db.insert(auditLog).values({
     institutionId: ctx.institutionId,
     actorUserId: ctx.actor.userId,
     actorRole: ctx.actor.role,
     action: 'finance.export',
     entityType: 'finance_export',
-    entityId: `${query.kind}:${query.from}:${query.to}`,
+    entityId,
     changes: { fields: [] },
     createdAt: ctx.now,
   })
-  return csv
 }
 
 export function financeExportProfileFor(ctx: ServiceContext): Promise<StoredFinanceExportProfile> {

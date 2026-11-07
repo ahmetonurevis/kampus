@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import { OPEN_PROSPECT_STAGES as OPEN_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { CollectionQuery } from '@kampus/react-shared/collections.ts'
 import {
   ALL_STAGES,
@@ -12,7 +13,9 @@ import {
   meetingView,
   meetingWeek,
   meetingWeekStart,
+  meetingWeekQueries,
   meetingWeekTitle,
+  mergeProspectPages,
   prospectRow,
   slotLabel,
   stageFilter,
@@ -294,4 +297,38 @@ test('ON-035, DOM-KAY-033: haftalık takvim yedi gündür; olaylar kendi günün
     false,
   )
   assert.match(week[0]?.label ?? '', /Pazartesi/)
+})
+
+test('ON-111: haftalık takvim haftanın günlerini sunucuda süzer; deneme dersi yalnız dil okulunda', () => {
+  const school = meetingWeekQueries('2026-11-02', 'school')
+  assert.deepEqual(
+    school.map((item) => item.field),
+    ['trialAt'],
+  )
+  assert.deepEqual(school[0]?.query.filters, {
+    stage: [...OPEN_STAGES],
+    dateField: 'trialAt',
+    dateFrom: '2026-11-02',
+    dateTo: '2026-11-08',
+  })
+  const language = meetingWeekQueries('2026-12-28', 'language_school')
+  assert.deepEqual(
+    language.map((item) => [item.field, item.query.filters.dateTo]),
+    [
+      ['trialAt', '2027-01-03'],
+      ['trialLesson.date', '2027-01-03'],
+    ],
+  )
+})
+
+test('ON-111: iki sorgunun adayları birleşir; iki sorguda gelen aday bir kez sayılır', () => {
+  const merged = mergeProspectPages([
+    [{ id: 'p1' }, { id: 'p2' }],
+    undefined,
+    [{ id: 'p2' }, { id: 'p3' }],
+  ])
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ['p1', 'p2', 'p3'],
+  )
 })

@@ -7,6 +7,7 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -17,6 +18,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /** Ücret tarifesi uçları (ADR 0006 karar 8; DOM-FIN-002, -004, -006; IST-104). */
 
@@ -29,13 +31,30 @@ const TUITION = {
   vatEffectiveDate: '2026-01-01',
   announcedAmountCents: 30_000_000,
 }
-const DRAFT = { academicYear: 2026, items: [TUITION] }
+const UPFRONT_TERM = {
+  kind: 'upfront',
+  minInstallments: 1,
+  maxInstallments: 1,
+  discountPercentBasisPoints: null,
+  discountAmountCents: null,
+}
+const INSTALLMENT_TERM = {
+  kind: 'installment',
+  minInstallments: 2,
+  maxInstallments: 8,
+  discountPercentBasisPoints: 300,
+  discountAmountCents: null,
+}
+const PAYMENT_TERMS = [UPFRONT_TERM, INSTALLMENT_TERM]
+const DRAFT = { academicYear: 2026, items: [TUITION], paymentTerms: PAYMENT_TERMS }
 const PUBLISH = { announcedDate: '2026-05-01', mebbisRecordedDate: '2026-05-02' }
 
 describe('ücret tarifesi uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
@@ -228,6 +247,97 @@ describe('ücret tarifesi uçları', () => {
     assert.equal(second.statusCode, 201, second.body)
     assert.deepEqual(second.json(), first.json())
     assert.equal(second.headers['idempotent-replayed'], 'true')
+  })
+
+  test('DOM-FIN-013: koşullar taslakta saklanır, yanıtta döner; çakışan aralık 422, kayıt yazılmaz', async () => {
+    const a = await institution()
+    const created = await create(a.cookie)
+    assert.equal(created.statusCode, 201, created.body)
+    const { id, version } = created.json().data
+    assert.deepEqual(created.json().data.paymentTerms, PAYMENT_TERMS)
+    const read = await send('GET', `/api/v1/fee-tariffs/${String(id)}`, a.cookie)
+    assert.deepEqual(read.json().data.paymentTerms, PAYMENT_TERMS)
+    assertError(
+      await update(a.cookie, id, version, {
+        paymentTerms: [INSTALLMENT_TERM, { ...INSTALLMENT_TERM, minInstallments: 8 }],
+      }),
+      422,
+      'tariff_payment_term_overlap',
+    )
+    const unchanged = await send('GET', `/api/v1/fee-tariffs/${String(id)}`, a.cookie)
+    assert.deepEqual(unchanged.json().data.paymentTerms, PAYMENT_TERMS)
+    const onlyItems = await update(a.cookie, id, version, { items: [TUITION] })
+    assert.equal(onlyItems.statusCode, 200, onlyItems.body)
+    assert.deepEqual(onlyItems.json().data.paymentTerms, PAYMENT_TERMS)
+    // Vade farkı alanı yoktur; ilan üstü fiyat farkı gövdede reddedilir.
+    assertError(
+      await create(a.cookie, {
+        academicYear: 2027,
+        items: [TUITION],
+        paymentTerms: [{ ...INSTALLMENT_TERM, surchargeCents: 100 }],
+      }),
+      400,
+    )
+  })
+
+  test('DOM-FIN-002, DOM-FIN-013: koşulsuz ve peşin koşulsuz peşin indirimli tarife yayımlanmaz; yayımlanan koşul değişmez', async () => {
+    const a = await institution()
+    const bare = await create(a.cookie, { academicYear: 2026, items: [TUITION] })
+    assert.deepEqual(bare.json().data.paymentTerms, [])
+    assertError(
+      await publish(a.cookie, bare.json().data.id, bare.json().data.version),
+      422,
+      'tariff_payment_terms_required',
+    )
+    const early = await update(a.cookie, bare.json().data.id, bare.json().data.version, {
+      discounts: [{ kind: 'early_payment', percentBasisPoints: 500, amountCents: null }],
+      paymentTerms: [INSTALLMENT_TERM],
+    })
+    assert.equal(early.statusCode, 200, early.body)
+    assertError(
+      await publish(a.cookie, early.json().data.id, early.json().data.version),
+      422,
+      'tariff_early_payment_without_upfront',
+    )
+    const fixed = await update(a.cookie, early.json().data.id, early.json().data.version, {
+      paymentTerms: PAYMENT_TERMS,
+    })
+    const published = await publish(a.cookie, fixed.json().data.id, fixed.json().data.version)
+    assert.equal(published.statusCode, 200, published.body)
+    assertError(
+      await update(a.cookie, published.json().data.id, published.json().data.version, {
+        paymentTerms: [UPFRONT_TERM],
+      }),
+      409,
+      'tariff_not_draft',
+    )
+    const after = await send(
+      'GET',
+      `/api/v1/fee-tariffs/${String(published.json().data.id)}`,
+      a.cookie,
+    )
+    assert.deepEqual(after.json().data.paymentTerms, PAYMENT_TERMS)
+  })
+
+  test('DOM-FIN-013: koşulsuz eski yayımlı tarife okunur, boş dizi döner', async () => {
+    const a = await institution()
+    const id = crypto.randomUUID()
+    await db.insert(feeTariffs).values({
+      institutionId: a.id,
+      id,
+      academicYear: 2025,
+      versionNumber: 1,
+      status: 'published',
+      items: [TUITION] as never,
+      announcedDate: '2025-05-01',
+      publishedByUserId: 'test',
+      publishedAt: FIXED_NOW,
+    })
+    const read = await send('GET', `/api/v1/fee-tariffs/${id}`, a.cookie)
+    assert.equal(read.statusCode, 200, read.body)
+    assert.deepEqual(read.json().data.paymentTerms, [])
+    const list = await send('GET', '/api/v1/fee-tariffs', a.cookie)
+    assert.equal(list.statusCode, 200, list.body)
   })
 
   test('IST-104: yalnız kalem gönderen PATCH indirimleri silmez', async () => {

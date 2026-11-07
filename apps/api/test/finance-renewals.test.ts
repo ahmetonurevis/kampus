@@ -5,11 +5,16 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import {
+  INSTITUTION_TYPES,
+  moduleAvailableFor,
+} from '@kampus/school-core/modules/collection-modules.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
+import { insertScholarshipAward } from '../src/db/finance-scholarships.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { feeTariffs, priceIndexRates } from '../src/db/schema/fee-tariffs.ts'
@@ -25,6 +30,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Tarifeye bağlı kayıt yenileme uçları (IST-100; DOM-FIN-002, -005, -023, -025; DOM-KAY-020, -021).
@@ -63,7 +69,6 @@ const SAMPLE: Partial<Record<CollectionName, readonly Record<string, unknown>[]>
       amount: BASE_CENTS,
       title: 'Özel okul eğitim sözleşmesi',
       academicYear: 2026,
-      grossCents: BASE_CENTS,
     },
   ],
 }
@@ -72,6 +77,8 @@ describe('IST-100: kayıt yenileme uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
@@ -229,6 +236,35 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assertError(await get(BASE, language.admin), 404)
   })
 
+  test('DOM-YTK-012, ADR 0008: yenileme türde yoksa (dil okulu, kurs) uçlar 404, menüde modül kapalı', async () => {
+    const withoutRenewal = INSTITUTION_TYPES.filter((type) => !moduleAvailableFor('renewal', type))
+    assert.ok(withoutRenewal.includes('language_school'))
+    assert.equal(withoutRenewal.includes('school'), false)
+    for (const type of withoutRenewal) {
+      const closed = await institution({ type })
+      await publish(closed.id)
+      assertError(await get(BASE, closed.admin), 404)
+      assertError(await get(INDEXES, closed.admin), 404)
+      assertError(await post(`${BASE}/quote`, closed.admin, QUOTE), 404)
+      assertError(await post(BASE, closed.admin, {}, key()), 404)
+      assertError(await post(INDEXES, closed.admin, INDEX), 404)
+      const workflow = await post(
+        '/api/v1/workflows/renewal',
+        closed.admin,
+        { studentId: 's3', targetClassId: 'c1', mode: 'renew', total: 1_000_000 },
+        key(),
+      )
+      assert.equal(workflow.statusCode, 404, workflow.body)
+      assert.equal(await count(closed.id, 'renewals'), 0)
+      const me = await get('/api/v1/me', closed.admin)
+      assert.equal(me.statusCode, 200, me.body)
+      const modules = me.json<{
+        data: { activeInstitution: { enabledModules: Record<string, boolean> } }
+      }>().data.activeInstitution.enabledModules
+      assert.equal(modules.renewal ?? false, false, type)
+    }
+  })
+
   test('DOM-FIN-005: ÜFE/TÜFE oranı bir kez girilir, If-Match ile düzeltilir; biçim hatası 400 ve satır değişmez', async () => {
     const a = await institution()
     const made = await post(INDEXES, a.admin, INDEX)
@@ -297,11 +333,150 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assert.equal(await count(a.id, 'renewals'), before)
   })
 
-  test('DOM-FIN-002: hedef yılın tarifesi yoksa 422 tariff_not_published', async () => {
+  test('DOM-KAY-025, ON-057: önceki yıldan borçlu öğrencide önizleme borcu gösterir; plan yönetici onayı ister', async () => {
+    const a = await ready()
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'invoices',
+          id: 'test-debt-s3',
+          data: {
+            id: 'test-debt-s3',
+            studentId: 's3',
+            installment: 1,
+            amount: 150_000,
+            dueDate: '2026-06-15T09:00:00.000Z',
+            feeKind: 'tuition',
+            academicYear: 2026,
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+            createdAt: FIXED_NOW.toISOString(),
+            updatedAt: FIXED_NOW.toISOString(),
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const quote = await post(`${BASE}/quote`, a.admin, QUOTE)
+    assert.equal(quote.statusCode, 200, quote.body)
+    assert.equal(quote.json().data.outstandingTuitionCents, 150_000)
+
+    const body = await planBody(a.admin)
+    const before = await count(a.id, 'renewals')
+    assertError(await post(BASE, a.admin, body, key()), 422, 'renewal_debt_unapproved')
+    const desk = await member(a.id, 'onburo')
+    assertError(
+      await post(BASE, desk, { ...body, debtApproved: true }, key()),
+      403,
+      'renewal_debt_approval_forbidden',
+    )
+    assert.equal(await count(a.id, 'renewals'), before)
+    const planned = await post(BASE, a.admin, { ...body, debtApproved: true }, key())
+    assert.equal(planned.statusCode, 201, planned.body)
+  })
+
+  test('DOM-FIN-002, K-11: ilan dönemi sürüyorsa önceki yılın tarifesi taşınmaz, 422 tariff_not_published', async () => {
+    // Hedef 2027–2028'in ilan dönemi 2027 mayıs sonunda biter; FIXED_NOW 2026 ekimidir.
     const a = await institution()
     await publish(a.id, 2026)
     await post(INDEXES, a.admin, INDEX)
     assertError(await post(`${BASE}/quote`, a.admin, QUOTE), 422, 'tariff_not_published')
+  })
+
+  /**
+   * Hedef yıl 2026: ilan dönemi FIXED_NOW'dan (2026 ekimi) önce biter. Kurumun yılı 2025, yenileme
+   * yılı 2026; önceki yılın (2025) tarifesi yayımlı, 2026'nın tarifesi yoktur.
+   */
+  const CARRY_QUOTE = { ...QUOTE, academicYear: 2026 }
+  async function carriedOver() {
+    const a = await institution({ academicYear: 2025 })
+    await publish(a.id, 2025)
+    const made = await post(INDEXES, a.admin, { ...INDEX, academicYear: 2026 })
+    assert.equal(made.statusCode, 201, made.body)
+    return a
+  }
+  const quotedTariffId = async (cookie: string) =>
+    (await post(`${BASE}/quote`, cookie, CARRY_QUOTE)).json().data.tariffId as string
+
+  test('DOM-FIN-002, K-11: süresinde ilan yoksa önceki yılın tarifesi uygulanır; önizleme, yanıt ve kayıt bunu söyler, sözleşme o tarifeyi taşır', async () => {
+    const a = await carriedOver()
+    const quote = await post(`${BASE}/quote`, a.admin, CARRY_QUOTE)
+    assert.equal(quote.statusCode, 200, quote.body)
+    const { tariffId, tariffVersion, tariffCarriedOverFromYear, ceiling, announcedCents } =
+      quote.json().data
+    assert.equal(tariffCarriedOverFromYear, 2025)
+    assert.equal(tariffVersion, 1)
+    // Fikstür tarifesi koşulsuz eski kayıttır (DOM-FIN-013): koşul yazılmaz, taksit serbest.
+    assert.equal(quote.json().data.paymentTerm, null)
+    assert.equal(announcedCents, ANNOUNCED_CENTS)
+    // Tavanın bazı önceki yılın ilan ücretidir; taşınma onu değiştirmez (DOM-FIN-005).
+    assert.equal(ceiling.status, 'applied')
+    assert.equal(ceiling.baseSource, 'previous_tariff')
+    assert.equal(ceiling.baseCents, ANNOUNCED_CENTS)
+
+    const planned = await post(
+      BASE,
+      a.admin,
+      { ...CARRY_QUOTE, mode: 'renew', tariffId, firstDueDate: '2026-11-15' },
+      key(),
+    )
+    assert.equal(planned.statusCode, 201, planned.body)
+    const { contractId, entity, tariffCarriedOverFromYear: planYear } = planned.json().data
+    assert.equal(planYear, 2025)
+    const contract = await findRecord(db, a.id, 'contracts', contractId as string)
+    assert.equal(contract?.data.tariffId, tariffId)
+    assert.equal(contract?.data.tariffVersion, 1)
+    assert.equal(contract?.data.academicYear, 2026)
+    const detail = await get(`${BASE}/${String(entity.id)}`, a.admin)
+    assert.equal(detail.statusCode, 200, detail.body)
+    assert.equal(detail.json().data.academicYear, 2026)
+    assert.equal(detail.json().data.pricing.tariffId, tariffId)
+    assert.equal(detail.json().data.pricing.tariffCarriedOverFromYear, 2025)
+  })
+
+  test('DOM-FIN-002, K-11: hedef yılın tarifesi sonradan yayımlanınca taşınan tarifeyle plan 409 ve kayıt değişmez; yeniden önizlemede taşınma yok', async () => {
+    const a = await carriedOver()
+    const tariffId = await quotedTariffId(a.admin)
+    await publish(a.id, 2026)
+    const before = await loadRecords(db, a.id, ['renewals', 'contracts', 'invoices'])
+    assertError(
+      await post(
+        BASE,
+        a.admin,
+        { ...CARRY_QUOTE, mode: 'renew', tariffId, firstDueDate: '2026-11-15' },
+        key(),
+      ),
+      409,
+      'tariff_changed',
+    )
+    assert.deepEqual(await loadRecords(db, a.id, ['renewals', 'contracts', 'invoices']), before)
+    const fresh = await post(`${BASE}/quote`, a.admin, CARRY_QUOTE)
+    assert.equal(fresh.statusCode, 200, fresh.body)
+    assert.notEqual(fresh.json().data.tariffId, tariffId)
+    assert.equal(fresh.json().data.tariffCarriedOverFromYear, null)
+    const planned = await post(
+      BASE,
+      a.admin,
+      {
+        ...CARRY_QUOTE,
+        mode: 'renew',
+        tariffId: fresh.json().data.tariffId,
+        firstDueDate: '2026-11-15',
+      },
+      key(),
+    )
+    assert.equal(planned.statusCode, 201, planned.body)
+    assert.equal('tariffCarriedOverFromYear' in planned.json().data, false)
+  })
+
+  test('DOM-FIN-002, K-11: önceki yılın da tarifesi yoksa 422; iki yıl önceki tarife taşınmaz', async () => {
+    const a = await institution({ academicYear: 2025 })
+    await publish(a.id, 2024)
+    await post(INDEXES, a.admin, { ...INDEX, academicYear: 2026 })
+    assertError(await post(`${BASE}/quote`, a.admin, CARRY_QUOTE), 422, 'tariff_not_published')
   })
 
   test('DOM-FIN-005: tavanı aşan plan 422 ve kayıt değişmez; Idempotency-Key zorunlu, gövde 400', async () => {
@@ -411,6 +586,89 @@ describe('IST-100: kayıt yenileme uçları', () => {
       .where(eq(scholarshipAwards.institutionId, a.id))
     // %25 ilan ücretinden (30.000 ₺): 7.500 ₺.
     assert.deepEqual(awards, [{ amountCents: 750_000, year: YEAR }])
+  })
+
+  /** Bildirilmiş burs programı açar; kimliğini döndürür. */
+  async function notifiedProgram(cookie: string, academicYear: number, capacity: number) {
+    const program = await post('/api/v1/finance/scholarship-programs', cookie, {
+      academicYear,
+      name: `Başarı Bursu ${String(academicYear)}`,
+      conditions: 'Sınav puanı 90 ve üstü.',
+      terminationConditions: 'Disiplin cezası alan öğrencinin bursu kesilir.',
+      durationNote: 'Bir eğitim yılı',
+      percentBasisPoints: 2_500,
+      capacity,
+    })
+    assert.equal(program.statusCode, 201, program.body)
+    const programId = program.json().data.id as string
+    const notified = await post(
+      `/api/v1/finance/scholarship-programs/${programId}/notify`,
+      cookie,
+      { notifiedDate: '2026-09-01' },
+      { 'if-match': '"1"' },
+    )
+    assert.equal(notified.statusCode, 200, notified.body)
+    return programId
+  }
+  /** Öğrencinin daha önce yazılmış ataması (ör. iptal edilen yenilemeden kalan). */
+  const existingAward = (institutionId: string, programId: string, academicYear: number) =>
+    insertScholarshipAward(db, institutionId, {
+      id: randomUUID(),
+      programId,
+      studentId: 's3',
+      academicYear,
+      amountCents: 100_000,
+      awardedByUserId: 'test',
+      now: FIXED_NOW,
+    })
+  const awardRows = (institutionId: string) =>
+    db
+      .select({ id: scholarshipAwards.id, year: scholarshipAwards.academicYear })
+      .from(scholarshipAwards)
+      .where(eq(scholarshipAwards.institutionId, institutionId))
+      .orderBy(scholarshipAwards.academicYear)
+
+  test('DOM-FIN-025: öğrenciye aynı yılda ikinci burs 409 scholarship_already_awarded; kayıt değişmez', async () => {
+    const a = await ready()
+    const programId = await notifiedProgram(a.admin, YEAR, 2)
+    await existingAward(a.id, programId, YEAR)
+    const before = {
+      renewals: await count(a.id, 'renewals'),
+      contracts: await count(a.id, 'contracts'),
+      invoices: await count(a.id, 'invoices'),
+      awards: await awardRows(a.id),
+    }
+    const body = { ...(await planBody(a.admin)), scholarshipProgramId: programId }
+    assertError(await post(BASE, a.admin, body, key()), 409, 'scholarship_already_awarded')
+    // Önizleme de aynı kuralı uygular; plan yazılmadan önce görülür.
+    assertError(
+      await post(`${BASE}/quote`, a.admin, { ...QUOTE, scholarshipProgramId: programId }),
+      409,
+      'scholarship_already_awarded',
+    )
+    assert.deepEqual(
+      {
+        renewals: await count(a.id, 'renewals'),
+        contracts: await count(a.id, 'contracts'),
+        invoices: await count(a.id, 'invoices'),
+        awards: await awardRows(a.id),
+      },
+      before,
+    )
+  })
+
+  test('DOM-FIN-025: önceki yılın bursu yenileme yılındaki atamayı engellemez', async () => {
+    const a = await ready()
+    const previousId = await notifiedProgram(a.admin, YEAR - 1, 1)
+    const programId = await notifiedProgram(a.admin, YEAR, 1)
+    await existingAward(a.id, previousId, YEAR - 1)
+    const body = { ...(await planBody(a.admin)), scholarshipProgramId: programId }
+    const made = await post(BASE, a.admin, body, key())
+    assert.equal(made.statusCode, 201, made.body)
+    assert.deepEqual(
+      (await awardRows(a.id)).map((row) => row.year),
+      [YEAR - 1, YEAR],
+    )
   })
 
   test('DOM-KAY-020: sınıf geçişi ayrı uçla uygulanır; ikinci kez 409', async () => {

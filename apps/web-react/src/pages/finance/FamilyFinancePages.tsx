@@ -24,6 +24,8 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { ContractApprovalPanel } from './ContractApprovalPanel.tsx'
 import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
+import { FamilyReferralRewards } from './ReferralRewardsSection.tsx'
+import { FamilyPackagesSection } from './FamilyPackagesSection.tsx'
 import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
 
@@ -74,8 +76,10 @@ function ChildSummary({ childId }: { childId: string }) {
  */
 export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts: boolean }) {
   useDocumentTitle(page.title)
+  const { session } = useAuth()
   const childId = use(ViewScopeContext)
   if (!childId) return <NoChild page={page} />
+  const languageSchool = session?.institution?.type === 'language_school'
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
@@ -87,6 +91,8 @@ export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts:
         title={receipts ? 'Ödeme dekontları' : 'Taksit listesi'}
       />
       {receipts ? null : <ChildStatement childId={childId} />}
+      {receipts ? null : <FamilyReferralRewards />}
+      {languageSchool && !receipts ? <FamilyPackagesSection studentId={childId} /> : null}
     </>
   )
 }
@@ -162,17 +168,18 @@ function NextInstallment({ childId }: { childId: string }) {
         indirebilirsiniz. Ödeme için okulla iletişime geçin.
       </p>
       {summary}
+      {/* Bağlantılar metin satırı kadar (17 px) kalmasın: dokunma hedefi en az 24 px (WCAG 2.5.8). */}
       <div className="flex flex-wrap gap-3 text-sm font-medium">
         <Link
           to={CONTACT_PATH}
-          className="inline-flex items-center gap-1.5 text-primary hover:underline"
+          className="inline-flex min-h-(--target-min) items-center gap-1.5 text-primary hover:underline"
         >
           <Icon name="MessagesSquare" size={16} aria-hidden="true" />
           Okulla iletişime geçin
         </Link>
         <Link
           to="/veli/finans"
-          className="inline-flex items-center gap-1.5 text-primary hover:underline"
+          className="inline-flex min-h-(--target-min) items-center gap-1.5 text-primary hover:underline"
         >
           <Icon name="ReceiptText" size={16} aria-hidden="true" />
           Ödeme planını görüntüleyin
@@ -314,10 +321,20 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
         <>
           <FamilyInvoicesView audience="student" studentId="" title="Ödemelerim" />
           <OwnStatement />
+          <FamilyReferralRewards />
+          <OwnPackages />
         </>
       )}
     </>
   )
+}
+
+/** Dil okulu kursiyerinin kendi paketleri; öğrenci kimliği oturum bağından gelir (IST-078). */
+function OwnPackages() {
+  const { session } = useAuth()
+  const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
+  if (!studentId || session?.institution?.type !== 'language_school') return null
+  return <FamilyPackagesSection studentId={studentId} />
 }
 
 /** Öğrencinin kendi ekstresi; öğrenci kimliği oturum bağından gelir. */

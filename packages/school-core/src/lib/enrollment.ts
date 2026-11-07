@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
+import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type ContractTerms, type MakeId } from './domain.ts'
 import { installmentAmounts } from './payments.ts'
 import { DomainError } from './errors.ts'
@@ -11,13 +12,32 @@ import {
   scholarshipAmount,
   type ScholarshipProgram,
 } from './finance-scholarships.ts'
+import {
+  referralRewardDraft,
+  referralRewardIdSchema,
+  referralRewardRequiredError,
+  referralUseOf,
+  requireUsableReferralReward,
+  type ReferralRewardFacts,
+} from './finance-referrals.ts'
 import { dayKey } from './format.ts'
+import { isCustodial, type GuardianLink } from './guardianship.ts'
+import {
+  assertEarlyPaymentOnUpfront,
+  PAYMENT_TERM_DISCOUNT_KIND,
+  paymentTermDiscountCents,
+  resolvePaymentTerm,
+  type ContractPaymentTerm,
+  type FeePaymentTerm,
+} from './payment-terms.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { assertWithinCeiling, renewalCeiling, type PriceIndexEntry } from './renewal-ceiling.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
 import {
+  discountRuleAmount,
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KINDS,
+  type DiscountLineKind,
   type FeeDiscount,
   type FeeDiscountKind,
   type FeeItem,
@@ -116,6 +136,8 @@ export const enrollProspectSchema = z.strictObject({
   allowOtherCampus: z.boolean().optional(),
   /** Atanacak burs programı (DOM-FIN-025); yalnız yönetici. */
   scholarshipProgramId: z.uuid('Burs programı geçersiz.').optional(),
+  /** Mevcut velinin kullanacağı referans hakkı (DOM-FIN-024); `referral` kalemiyle birlikte. */
+  referralRewardId: referralRewardIdSchema.optional(),
 })
 export type EnrollProspectInput = z.input<typeof enrollProspectSchema>
 
@@ -124,13 +146,26 @@ export interface EnrollmentTariff {
   versionNumber: number
   items: readonly FeeItem[]
   discounts: readonly FeeDiscount[]
+  /** İlanlı ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boştur. */
+  paymentTerms?: readonly FeePaymentTerm[]
 }
 
 /**
- * Kurs türü mü (DOM-KAY-012): okul (`school`, ortaokul ve lise) dışındaki her tür kurstur. Bugün
- * `language_school`; ileride üniversiteye hazırlık, KPSS akademisi gibi kurslar aynı kuralı alır.
+ * Kurs türü mü (DOM-KAY-012): okul (`school`, ortaokul ve lise) dışındaki her tür kurstur: dil
+ * okulu (`language_school`) ve sınav hazırlık kursu (`course_center`, ADR 0008). Core
+ * `adultEnrollsWithoutGuardian` aynı kuralı adlandırır.
  */
 export const isCourse = (institutionType: InstitutionType) => institutionType !== 'school'
+
+/**
+ * Kesin kayıtta açılan sözleşmenin başlığı (ADR 0008 karar 1). Okul ve dil okulu bugünkü başlığını
+ * korur; okul dışındaki diğer türler (kurs) mevzuattaki adıyla "özel öğretim kursu" sözleşmesidir.
+ */
+export function enrollmentContractTitle(institutionType: InstitutionType): string {
+  if (institutionType === 'school') return 'Özel okul eğitim sözleşmesi'
+  if (institutionType === 'language_school') return 'Dil kursu eğitim sözleşmesi'
+  return 'Özel öğretim kursu eğitim sözleşmesi'
+}
 
 /**
  * Kesin kayıtta veli zorunlu mu (DOM-KAY-012): okulda her yaşta (18 yaşını doldurmuş öğrencide de);
@@ -146,7 +181,7 @@ export function guardianRequired(
 }
 
 export interface DiscountLine {
-  kind: FeeDiscountKind
+  kind: DiscountLineKind
   amountCents: number
 }
 export interface ExtraLine {
@@ -172,31 +207,144 @@ export function itemFor(
 }
 
 /**
+ * Kardeş kuralının okuduğu kayıtlar. `frozenAt` dondurma işlemiyle (DOM-KAY-024, ON-067) gelir;
+ * öğrenci dondurulunca `isActive` true kalır.
+ */
+type SiblingState = Pick<State, 'contracts'> & {
+  students: readonly (Pick<State['students'][number], 'id' | 'isActive'> & {
+    frozenAt?: string | null
+  })[]
+}
+
+/** Öğrencinin yürürlükteki sözleşmeleri, eğitim yılı ve tarihe göre eskiden yeniye. */
+function contractsInForce(state: SiblingState, studentId: string) {
+  return state.contracts
+    .filter((item) => item.studentId === studentId && isContractInForce(item, state.contracts))
+    .sort(
+      (a, b) =>
+        (a.academicYear ?? 0) - (b.academicYear ?? 0) ||
+        Date.parse(a.date) - Date.parse(b.date) ||
+        a.id.localeCompare(b.id),
+    )
+}
+
+/**
+ * Kardeş indirimi, aynı eğitim yılında aktif kaydı olan kardeşi bulunan ikinci ve sonraki çocuğa
+ * uygulanır (DOM-FIN-022, K-22).
+ *
+ * Aktif kayıt: öğrenci ayrılmamış, mezun olmamış ve dondurulmamıştır; o yıla ait yürürlükte
+ * sözleşmesi vardır. Yenilemede kardeşin planı o yılın sözleşmesini yazdığı için plan da kayıt
+ * sayılır. Yılı yazılmamış eski sözleşme cari yıla aittir (`renewalCeiling` ile aynı). Sözleşmesi hiç
+ * olmayan etkin kardeş (dosyadan aktarılan öğrenci) yalnız cari yılda kayıtlı sayılır.
+ *
+ * Tarife sıra tanımlamadığı için varsayılan geçerlidir, ikinci çocuk ücreti düşük olandır: kayıtlı
+ * çocuklardan o yılın öğrenim ücreti (son yürürlükteki sözleşmenin ilan ücreti; eski sözleşmede
+ * tutar) en yüksek olan ilk çocuktur ve indirim almaz. Eşit ücrette önce kaydolan öndedir; kesin
+ * kayıttaki aday her zaman sonradır. Sözleşmesiz kardeşin ücreti bilinmediği için aday lehine öne
+ * sayılır.
+ */
+export function requireSiblingDiscountEligible(
+  state: SiblingState,
+  child: {
+    /** Kesin kayıtta henüz öğrenci yoktur: `null`. */
+    studentId: string | null
+    /** Aynı veliye bağlı öteki çocuklar; aktif kayıt burada süzülür. */
+    siblingIds: readonly string[]
+    /** Bu çocuğun bu işlemdeki öğrenim ücreti (kuruş); kardeşin sözleşme ücretiyle karşılaştırılır. */
+    tuitionCents: number
+    /** İndirimin ait olduğu eğitim yılı. */
+    academicYear: number
+    /** Kurumun cari eğitim yılı. */
+    currentAcademicYear: number
+  },
+): void {
+  const { academicYear, currentAcademicYear } = child
+  const enrolled = state.students.flatMap((student) => {
+    if (student.id === child.studentId || !child.siblingIds.includes(student.id)) return []
+    if (!student.isActive || student.frozenAt) return []
+    const contracts = contractsInForce(state, student.id)
+    const ofYear = contracts.filter(
+      (item) => (item.academicYear ?? currentAcademicYear) === academicYear,
+    )
+    if (ofYear.length === 0 && (contracts.length > 0 || academicYear !== currentAcademicYear))
+      return []
+    return [{ id: student.id, first: contracts[0], latest: ofYear.at(-1) }]
+  })
+  if (enrolled.length === 0)
+    throw new DomainError(
+      'sibling_discount_ineligible',
+      'Kardeş indirimi için aynı veliye bağlı ve aynı eğitim yılında aktif kaydı olan bir kardeş gerekir.',
+      { path: ['discounts'] },
+    )
+  const ownFirst = child.studentId === null ? null : contractsInForce(state, child.studentId)[0]
+  const ahead = enrolled.some(({ id, first, latest }) => {
+    if (latest === undefined) return true
+    const tuitionCents = latest.grossCents ?? latest.amount
+    if (tuitionCents !== child.tuitionCents) return tuitionCents > child.tuitionCents
+    if (ownFirst === null || ownFirst === undefined || first === undefined) return true
+    return (
+      Date.parse(first.date) < Date.parse(ownFirst.date) ||
+      (first.date === ownFirst.date && id < (child.studentId ?? ''))
+    )
+  })
+  if (!ahead)
+    throw new DomainError(
+      'sibling_discount_ineligible',
+      'Kardeş indirimi ailenin ilk çocuğuna uygulanmaz: öğrenim ücreti en yüksek olan (eşitse önce kaydolan) çocuk ilk sayılır, indirim ücreti düşük kardeşe verilir.',
+      { path: ['discounts'] },
+    )
+}
+
+/**
+ * Referans hakkının tavanı aşan kısmı düşer ve devretmez, hak tek kullanımlıktır (DOM-FIN-024). Hak
+ * kalemi tamamen düşüyorsa kısaltılmaz: tavan reddi hakkı boşa harcatmaz.
+ */
+function trimReferralLine(lines: DiscountLine[], grossCents: number): void {
+  const line = lines.find((item) => item.kind === 'referral')
+  if (!line) return
+  const others = lines.reduce((sum, item) => sum + item.amountCents, 0) - line.amountCents
+  const room = Math.floor((grossCents * DISCOUNT_CAP_BASIS_POINTS) / BASIS) - others
+  if (room > 0) line.amountCents = Math.min(line.amountCents, room)
+}
+
+/**
  * İndirim kalemleri ilan ücreti üzerinden hesaplanır, zincirlenmez (DOM-FIN-020). Personel çocuğu
- * tavanın tek istisnasıdır ve yönetici onayı ister (DOM-FIN-021). Kesin kayıt ve ek protokol ortak
- * kullanır.
+ * tavanın tek istisnasıdır ve yönetici onayı ister (DOM-FIN-021). Referans kalemi tarifeden değil
+ * `referral` tutarından gelir (K-14): hak kullanımında tavanı aşan kısmı düşer, ek protokolde
+ * sözleşmedeki kalem olduğu gibi kalır. Kesin kayıt ve ek protokol ortak kullanır.
  */
 export function discountLines(
   rules: readonly FeeDiscount[],
   grossCents: number,
   kinds: readonly FeeDiscountKind[],
-  options: { canApproveCapException: boolean },
+  options: {
+    canApproveCapException: boolean
+    paymentTerm?: ContractPaymentTerm | null
+    referral?: { amountCents: number; trimToCap: boolean } | undefined
+  },
 ): DiscountLine[] {
   if (new Set(kinds).size !== kinds.length)
     throw new DomainError('discount_duplicate', 'Aynı indirim iki kez seçilemez.', {
       path: ['discounts'],
     })
-  const lines = kinds.map((kind): DiscountLine => {
+  const announced = kinds.map((kind): DiscountLine => {
     const rule = rules.find((item) => item.kind === kind)
     if (!rule)
       throw new DomainError('discount_not_in_tariff', 'Bu indirim tarifede ilan edilmemiş.', {
         path: ['discounts'],
       })
-    const amountCents =
-      rule.amountCents ?? Math.floor((grossCents * (rule.percentBasisPoints ?? 0)) / BASIS)
-    return { kind, amountCents }
+    if (kind !== 'referral') return { kind, amountCents: discountRuleAmount(rule, grossCents) }
+    if (options.referral === undefined) throw referralRewardRequiredError()
+    return { kind, amountCents: options.referral.amountCents }
   })
+  // Koşulun fiyat farkı da indirimdir: ilan ücretinden düşer, tavana girer (DOM-FIN-013, -021).
+  const termCents = paymentTermDiscountCents(options.paymentTerm ?? null, grossCents)
+  const lines: DiscountLine[] =
+    termCents === 0
+      ? announced
+      : [...announced, { kind: PAYMENT_TERM_DISCOUNT_KIND, amountCents: termCents }]
   const exempt = kinds.includes('staff_child')
+  if (!exempt && options.referral?.trimToCap === true) trimReferralLine(lines, grossCents)
   if (exempt && !options.canApproveCapException)
     throw new DomainError(
       'discount_approval_required',
@@ -229,6 +377,9 @@ export function priceEnrollment(
     discounts: readonly FeeDiscountKind[]
     extras: readonly FeeItemKind[]
     canApproveCapException: boolean
+    /** Kullanılan referans hakkının sabit tutarı; tavanı aşan kısım düşer (DOM-FIN-024). */
+    referralRewardCents?: number | undefined
+    paymentTerm?: ContractPaymentTerm | null
   },
 ): EnrollmentPrice {
   const tuition = itemFor(tariff.items, 'tuition', request.level)
@@ -248,21 +399,52 @@ export function priceEnrollment(
   }
   const discounts = discountLines(tariff.discounts, grossCents, request.discounts, {
     canApproveCapException: request.canApproveCapException,
+    paymentTerm: request.paymentTerm ?? null,
+    referral:
+      request.referralRewardCents === undefined
+        ? undefined
+        : { amountCents: request.referralRewardCents, trimToCap: true },
   })
   const total = discounts.reduce((sum, line) => sum + line.amountCents, 0)
-  if (new Set(request.extras).size !== request.extras.length)
+  const extras = extraLines(tariff.items, request.level, request.extras)
+  return { grossCents, discounts, netCents: grossCents - total, extras }
+}
+
+/** Seçilen ek hizmetlerin tarifedeki kalemi (DOM-FIN-003); kesin kayıt ve paket satışı ortak. */
+export function extraLines(
+  items: readonly FeeItem[],
+  level: string,
+  kinds: readonly FeeItemKind[],
+): ExtraLine[] {
+  if (new Set(kinds).size !== kinds.length)
     throw new DomainError('extra_duplicate', 'Aynı ek hizmet iki kez seçilemez.', {
       path: ['extras'],
     })
-  const extras = request.extras.map((kind): ExtraLine => {
-    const item = kind === 'tuition' ? undefined : itemFor(tariff.items, kind, request.level)
+  return kinds.map((kind): ExtraLine => {
+    const item = kind === 'tuition' ? undefined : itemFor(items, kind, level)
     if (!item)
       throw new DomainError('extra_not_in_tariff', 'Bu ek hizmet tarifede ilan edilmemiş.', {
         path: ['extras'],
       })
     return { kind, amountCents: item.amountCents }
   })
-  return { grossCents, discounts, netCents: grossCents - total, extras }
+}
+
+/**
+ * Fiyat + ödeme koşulu (DOM-FIN-013): taksit sayısı ilanlı koşula bağlanır, peşin indirimi yalnız
+ * peşin koşulunda geçer, koşulun fiyat farkı indirim kalemi olur. Kesin kayıt, yenileme ve önizleme
+ * ortak kullanır. Koşulsuz eski tarifede `paymentTerm` `null`dur ve fiyat değişmez.
+ */
+export function priceEnrollmentOnTerm(
+  tariff: EnrollmentTariff,
+  request: Omit<Parameters<typeof priceEnrollment>[1], 'paymentTerm'> & {
+    installmentCount?: number | undefined
+  },
+): EnrollmentPrice & { paymentTerm: ContractPaymentTerm | null } {
+  const { installmentCount, ...priced } = request
+  const paymentTerm = resolvePaymentTerm(tariff.paymentTerms, installmentCount)
+  assertEarlyPaymentOnUpfront(paymentTerm, request.discounts)
+  return { ...priceEnrollment(tariff, { ...priced, paymentTerm }), paymentTerm }
 }
 
 type ParentLike = {
@@ -273,7 +455,26 @@ type ParentLike = {
   email?: string
   relationship?: string
 }
-type ProspectLike = { studentId?: string | null; phone?: string; minor?: boolean }
+type ProspectLike = {
+  id?: string
+  studentId?: string | null
+  phone?: string
+  minor?: boolean
+  siblingOfId?: string
+}
+
+/** Veli kaydının kurumdaki etkin veli–öğrenci bağı (`student_guardians`); servis yükler. */
+export type ParentBond = Pick<GuardianLink, 'parentId' | 'custody' | 'contactRestricted'>
+
+/**
+ * Veli kaydının bir öğrencisinde velayeti yok ya da iletişim kısıtı var mı (DOM-ILT-070, -074,
+ * -075). Kesin kayıt bağı velayet sahibi ve ödeyici olarak kurar (`guardianBond`); kısıtlı veli
+ * velayetli ya da ödeyici kaydedilemez, velayetsiz velinin velayeti belge olmadan kesin kayıtla
+ * verilmez (DOM-ILT-071). Böyle veli kardeşe önerilmez ve seçilirse `parent_not_guardian`.
+ */
+export function hasNonCustodialBond(parentId: string, bonds: readonly ParentBond[]): boolean {
+  return bonds.some((bond) => bond.parentId === parentId && !isCustodial(bond))
+}
 
 /** Yetişkin kursiyerin kendi kaydı için açılan veli satırının yakınlığı (DOM-KAY-012). */
 export const SELF_RELATIONSHIP = 'self'
@@ -295,11 +496,50 @@ export function isNotGuardian(
   return linked.length > 0 && linked.every((prospect) => prospect.minor === false)
 }
 
+/** Önerinin kaynağı: telefon eşleşmesi ya da kardeş adayın kesin kaydı (DOM-KAY-013). */
+export const PARENT_MATCH_KINDS = ['sibling', 'phone'] as const
+export type ParentMatchKind = (typeof PARENT_MATCH_KINDS)[number]
+
 /**
- * Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). Eşleşme
+ * Adayın kardeşlik ağındaki (`siblingOfId` iki yönde, zincir boyunca; DOM-KAY-031) öteki adayların
+ * kesin kayıtla açılmış öğrencileri. Aday listesinde olmayan aday boş küme verir.
+ */
+function siblingStudentIds(prospects: readonly ProspectLike[], prospectId: string): Set<string> {
+  const byId = new Map(prospects.flatMap((item) => (item.id ? [[item.id, item] as const] : [])))
+  const linked = new Map<string, string[]>()
+  const connect = (from: string, to: string) => linked.set(from, [...(linked.get(from) ?? []), to])
+  for (const item of prospects)
+    if (item.id && item.siblingOfId && byId.has(item.siblingOfId)) {
+      connect(item.id, item.siblingOfId)
+      connect(item.siblingOfId, item.id)
+    }
+  const seen = new Set([prospectId])
+  const queue = [prospectId]
+  for (let id = queue.shift(); id !== undefined; id = queue.shift())
+    for (const next of linked.get(id) ?? [])
+      if (!seen.has(next)) {
+        seen.add(next)
+        queue.push(next)
+      }
+  seen.delete(prospectId)
+  return new Set(
+    [...seen].flatMap((id) => {
+      const studentId = byId.get(id)?.studentId
+      return studentId ? [studentId] : []
+    }),
+  )
+}
+
+/**
+ * Adayla eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). Eşleşme
  * velinin, öğrencisinin ya da öğrencisine dönüşmüş adayın telefonudur: 18 yaş altı öğrencinin
- * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır.
- * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`).
+ * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır. Aday
+ * kimliği (`prospectId`) verilirse kardeş adayın (`siblingOfId`, DOM-KAY-031) kesin kayıtta
+ * bağlandığı veli telefon farklı olsa da önerilir (`match: 'sibling'`) ve listenin başına gelir.
+ * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`); `bonds`
+ * verilirse bir öğrencisinde velayetsiz ya da iletişim kısıtlı veli de önerilmez
+ * (`hasNonCustodialBond`). Yanıt ad ve öğrenci sayısı taşır; telefon ve e-posta dönmez
+ * (DOM-ILT-073).
  */
 export function findParentMatches(
   state: {
@@ -308,34 +548,52 @@ export function findParentMatches(
     prospects?: readonly ProspectLike[]
   },
   phone: string,
-): { parentId: string; name: string; studentCount: number }[] {
-  if (phone === '') return []
+  options: { prospectId?: string; bonds?: readonly ParentBond[] } = {},
+): { parentId: string; name: string; studentCount: number; match: ParentMatchKind }[] {
   const prospects = state.prospects ?? []
+  const siblings =
+    options.prospectId === undefined
+      ? new Set<string>()
+      : siblingStudentIds(prospects, options.prospectId)
   const enrolled = new Set(
-    prospects.flatMap((prospect) =>
-      prospect.phone === phone && prospect.studentId ? [prospect.studentId] : [],
-    ),
+    phone === ''
+      ? []
+      : prospects.flatMap((prospect) =>
+          prospect.phone === phone && prospect.studentId ? [prospect.studentId] : [],
+        ),
   )
+  const phoneOf = new Map(state.students.map((student) => [student.id, student.phone]))
+  const kindOf = (parent: ParentLike): ParentMatchKind | null => {
+    if (parent.studentIds.some((id) => siblings.has(id))) return 'sibling'
+    if (phone === '') return null
+    return parent.phone === phone ||
+      parent.studentIds.some((id) => enrolled.has(id) || phoneOf.get(id) === phone)
+      ? 'phone'
+      : null
+  }
   return state.parents
-    .filter(
-      (parent) =>
-        !isNotGuardian(parent, prospects) &&
-        (parent.phone === phone ||
-          parent.studentIds.some(
-            (id) =>
-              enrolled.has(id) ||
-              state.students.find((student) => student.id === id)?.phone === phone,
-          )),
-    )
-    .map((parent) => ({
-      parentId: parent.id,
-      name: parent.name,
-      studentCount: parent.studentIds.length,
-    }))
+    .flatMap((parent) => {
+      const match =
+        isNotGuardian(parent, prospects) || hasNonCustodialBond(parent.id, options.bonds ?? [])
+          ? null
+          : kindOf(parent)
+      return match === null
+        ? []
+        : [
+            {
+              parentId: parent.id,
+              name: parent.name,
+              studentCount: parent.studentIds.length,
+              match,
+            },
+          ]
+    })
+    .sort((a, b) => PARENT_MATCH_KINDS.indexOf(a.match) - PARENT_MATCH_KINDS.indexOf(b.match))
 }
 
 export interface EnrollmentContext {
   institutionType: InstitutionType
+  /** Sözleşmeye esas tarife; servis `resolveEffectiveTariff` ile çözer (DOM-FIN-002, K-11). */
   tariff: EnrollmentTariff | null
   academicYear: number
   /** Bu kimliğin arşivlenmemiş satırının öğrencisi; yoksa `null`. */
@@ -346,6 +604,13 @@ export interface EnrollmentContext {
   /** Gövdedeki burs programı ve atanmış burslu sayısı; servis yükler (DOM-FIN-025). */
   scholarshipProgram?: ScholarshipProgram | null
   scholarshipAwardedCount?: number
+  /** Gövdede seçilen referans hakkı; servis kurum kilidi altında yükler (DOM-FIN-024). */
+  referralReward?: ReferralRewardFacts | null
+  /**
+   * Gövdede seçilen mevcut velinin (`existingParentId`) etkin bağları; servis `student_guardians`'tan
+   * yükler (DOM-ILT-070, -074). Velayetsiz ya da kısıtlı bağ varsa 422 `parent_not_guardian`.
+   */
+  guardianBonds?: readonly ParentBond[]
 }
 
 /**
@@ -430,19 +695,24 @@ export function enrollProspectWithTariff(
       'Seçilen kayıt bir veli değil (yetişkin kursiyerin kendi kaydı); veliyi yeni veli olarak girin.',
       { path: ['guardian'] },
     )
-  if (data.discounts.includes('sibling')) {
-    const hasSibling = existing?.studentIds.some(
-      (id) => state.students.find((student) => student.id === id)?.isActive === true,
+  // Kesin kayıt bağı velayet sahibi ve ödeyici olarak kurar; kısıtlı ya da velayetsiz veli olamaz
+  // (DOM-ILT-070, -071, -074). Kısıtın hangi öğrencide olduğu iletide söylenmez.
+  if (existing && hasNonCustodialBond(existing.id, context.guardianBonds ?? []))
+    throw new DomainError(
+      'parent_not_guardian',
+      'Seçilen veli kesin kayıtta velayet sahibi ve ödeyici olarak bağlanamaz (velayeti yok ya da iletişim kısıtı var). Velayet sahibi veliyi seçin ya da yeni veli girin.',
+      { path: ['guardian'] },
     )
-    if (!hasSibling)
-      throw new DomainError(
-        'sibling_discount_ineligible',
-        'Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.',
-        { path: ['discounts'] },
-      )
-  }
   const cls = state.classes.find((item) => item.id === data.classId && item.isActive)
-  const price = priceEnrollment(context.tariff, {
+  const referralReward = requireUsableReferralReward({
+    kinds: data.discounts,
+    rules: context.tariff.discounts,
+    rewardId: data.referralRewardId,
+    reward: context.referralReward ?? null,
+    ownerParentId: existing?.id ?? null,
+  })
+  const price = priceEnrollmentOnTerm(context.tariff, {
+    installmentCount: data.installmentCount,
     // Okulda düzey sınıf derecesi, dil okulunda sınıfın CEFR düzeyidir (`level`).
     level: !cls
       ? ''
@@ -454,7 +724,17 @@ export function enrollProspectWithTariff(
     discounts: data.discounts,
     extras: data.extras,
     canApproveCapException: context.canApproveCapException,
+    referralRewardCents: referralReward?.amountCents,
   })
+  // Kardeş indirimi ücreti düşük kardeşe verilir; sıra ilan ücretiyle kurulur (DOM-FIN-022).
+  if (data.discounts.includes('sibling'))
+    requireSiblingDiscountEligible(state, {
+      studentId: null,
+      siblingIds: existing?.studentIds ?? [],
+      tuitionCents: price.grossCents,
+      academicYear: context.academicYear,
+      currentAcademicYear: context.academicYear,
+    })
   // Burs indirim değildir, tavana girmez; indirimlerden sonra kalan neti aşamaz (DOM-FIN-021, -025).
   const program =
     data.scholarshipProgramId === undefined
@@ -463,6 +743,8 @@ export function enrollProspectWithTariff(
           academicYear: context.academicYear,
           awardedCount: context.scholarshipAwardedCount ?? 0,
           canApprove: context.canApproveCapException,
+          // Kesin kayıt her zaman yeni öğrenci kimliği açar; bu kimliğin önceki ataması olamaz.
+          studentAwarded: false,
         })
   const scholarshipCents =
     program === null ? 0 : scholarshipAmount(program, price.grossCents, price.netCents)
@@ -481,10 +763,7 @@ export function enrollProspectWithTariff(
       totalCents: netCents,
       count: data.installmentCount,
       startDate: data.firstDueDate,
-      contractTitle:
-        context.institutionType === 'language_school'
-          ? 'Dil kursu eğitim sözleşmesi'
-          : 'Özel okul eğitim sözleşmesi',
+      contractTitle: enrollmentContractTitle(context.institutionType),
       academicYear: context.academicYear,
       extras: price.extras,
       guardian:
@@ -512,6 +791,7 @@ export function enrollProspectWithTariff(
         ...(program === null
           ? {}
           : { scholarship: { programId: program.id, amountCents: scholarshipCents } }),
+        ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
       },
       guardianContact: !adult,
       ...(data.studentContact === undefined ? {} : { studentContact: data.studentContact }),
@@ -529,6 +809,16 @@ export function enrollProspectWithTariff(
     /** Yazılacak burs ataması; servis aynı işlemde yazar (DOM-FIN-025). */
     scholarshipAward:
       program === null ? null : { programId: program.id, amountCents: scholarshipCents },
+    /** Bu kayıtta kullanılan referans hakkı; servis aynı işlemde işaretler (DOM-FIN-024). */
+    referralUse: referralUseOf(referralReward?.id ?? null, price.discounts),
+    /** Bu kaydın referans verene açtığı hak; servis aynı işlemde yazar (DOM-FIN-024). */
+    referralDraft: referralRewardDraft(state, {
+      prospectId,
+      studentId: result.student.id,
+      academicYear: context.academicYear,
+      tariff: context.tariff,
+      grossCents: price.grossCents,
+    }),
     /**
      * Yazılacak veli–öğrenci bağı (DOM-ILT-070, DOM-ILT-074): veli varsa sözleşmenin ödeyicisidir
      * (`payer: 'guardian'`), velayet sahibi sayılır; yetişkin kursiyerin kendisi veli değildir,
@@ -621,6 +911,7 @@ export function enrollmentFormSchema(
       studentEmail: z.string().trim(),
       lessonHours: z.string().trim(),
       discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
+      referralRewardId: z.string().optional(),
       extras: z.array(z.enum(FEE_ITEM_KINDS)),
       installmentCount: z.string().regex(/^([1-9]|1[0-2])$/, 'Taksit sayısını seçin.'),
       firstDueDate: daySchema,
@@ -686,7 +977,7 @@ export const ENROLLMENT_STEP_FIELDS: readonly (readonly (keyof EnrollmentFormVal
     'studentPhone',
     'studentEmail',
   ],
-  ['lessonHours', 'discounts', 'extras', 'installmentCount', 'firstDueDate'],
+  ['lessonHours', 'discounts', 'referralRewardId', 'extras', 'installmentCount', 'firstDueDate'],
 ]
 
 export function enrollmentFormToBody(
@@ -713,6 +1004,10 @@ export function enrollmentFormToBody(
     extras: values.extras,
     ...(values.confirmOtherCampus ? { allowOtherCampus: true } : {}),
     ...(values.scholarshipProgramId ? { scholarshipProgramId: values.scholarshipProgramId } : {}),
+    // Kalem kaldırılınca seçili hak gitmez (sunucu 422 `referral_discount_required`).
+    ...(values.referralRewardId && values.discounts.includes('referral')
+      ? { referralRewardId: values.referralRewardId }
+      : {}),
     identity: {
       kind: values.identityKind,
       number: values.identityNumber,
@@ -732,17 +1027,29 @@ export function enrollmentFormToBody(
   }
 }
 
-/** Form önizlemesi: sunucuyla aynı fiyat kuralı. Reddi hata fırlatmaz, mesaj döner. */
+/**
+ * Form önizlemesi: sunucuyla aynı fiyat kuralı. Reddi hata fırlatmaz, mesaj döner. Referans kalemi
+ * seçili hakkın sabit tutarıyla gösterilir; hak seçilmemişse sunucudaki gibi reddedilir (DOM-FIN-024).
+ */
 export function previewEnrollment(
   tariff: EnrollmentTariff,
-  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'>,
-  options: { institutionType: InstitutionType; level: string },
-): { ok: true; price: EnrollmentPrice } | { ok: false; message: string } {
+  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'> &
+    Partial<Pick<EnrollmentFormValues, 'installmentCount'>>,
+  options: {
+    institutionType: InstitutionType
+    level: string
+    referralRewardCents?: number | undefined
+  },
+):
+  | { ok: true; price: EnrollmentPrice & { paymentTerm: ContractPaymentTerm | null } }
+  | { ok: false; message: string } {
   try {
     const hours = Number(values.lessonHours)
     return {
       ok: true,
-      price: priceEnrollment(tariff, {
+      price: priceEnrollmentOnTerm(tariff, {
+        installmentCount:
+          values.installmentCount === undefined ? undefined : Number(values.installmentCount),
         level: options.level,
         institutionType: options.institutionType,
         lessonHours:
@@ -751,6 +1058,7 @@ export function previewEnrollment(
         extras: values.extras ?? [],
         // Yönetici onayı sunucuda denetlenir; önizleme ön büroya aynı kuralla konuşur.
         canApproveCapException: false,
+        referralRewardCents: options.referralRewardCents,
       }),
     }
   } catch (error) {
@@ -769,7 +1077,11 @@ export function previewEnrollment(
 export function assertRenewalWithinTariff(
   state: Pick<State, 'classes' | 'contracts' | 'students' | 'renewals' | 'academicYear'>,
   input: unknown,
-  tariff: (Pick<EnrollmentTariff, 'items'> & { priceIndexes?: readonly PriceIndexEntry[] }) | null,
+  tariff:
+    | (Pick<EnrollmentTariff, 'items' | 'paymentTerms'> & {
+        priceIndexes?: readonly PriceIndexEntry[]
+      })
+    | null,
   institutionType: InstitutionType,
 ): void {
   const data = workflowSchemas.renewal.safeParse(input)
@@ -799,7 +1111,10 @@ export function assertRenewalWithinTariff(
       'İndirim serbest tutar olarak girilmez; tarifedeki türlerden seçilir.',
       { path: ['discount'] },
     )
-  if (gross > tuition.amountCents)
+  // Köprü taksit sayısını da ilanlı koşula bağlar; koşulun fiyat farkı üst sınırı düşürür
+  // (DOM-FIN-013). Serbest tutar taşıdığı için indirim kalemi yazmaz.
+  const term = resolvePaymentTerm(tariff.paymentTerms, data.data.count)
+  if (gross > tuition.amountCents - paymentTermDiscountCents(term, tuition.amountCents))
     throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {
       path: ['total'],
     })
@@ -857,7 +1172,7 @@ type Enrollment = {
   /** Başka kampüsün sınıfı bilinçli seçildi; yoksa 422 `class_campus_mismatch`. */
   allowOtherCampus?: boolean
 }
-const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
+const SCHOOL_CONTRACT_TITLE = enrollmentContractTitle('school')
 
 /**
  * Çevrimdışı demo girişi: `registrationSchema` (tam TL).
@@ -926,7 +1241,15 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
       'Seçilen sınıf adayın kampüsünde değil; başka kampüsün sınıfı için seçimi onaylayın.',
       { path: ['classId'] },
     )
-  if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
+  // Kontenjan aktif öğrenciler ve aynı sınıfa planlanmış (uygulanmamış) yenilemelerle dolar
+  // (DOM-KAY-010, ON-116); yenileme denetimiyle aynı sayım, aynı öğrenci bir kez sayılır.
+  const occupants = new Set(
+    state.students.filter((s) => s.classId === cls.id && s.isActive).map((s) => s.id),
+  )
+  for (const renewal of state.renewals)
+    if (renewal.targetClassId === cls.id && renewal.status === 'Planlandı')
+      occupants.add(renewal.studentId)
+  if (occupants.size >= cls.capacity)
     throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
   const guardian = data.guardian
   const existingParent =

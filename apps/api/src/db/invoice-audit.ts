@@ -9,7 +9,7 @@ import { contractRecordSchema } from './contract-store.ts'
 import { invoiceRecordSchema } from './invoice-store.ts'
 import { loadRecords, type StoredRecord } from './records.ts'
 import { institutions } from './schema/auth.ts'
-import { PAYMENT_METHOD_KEYS, paymentAllocations } from './schema/payments.ts'
+import { INVOICE_METHOD_KEYS, paymentAllocations } from './schema/payments.ts'
 import { studentWithdrawals } from './schema/withdrawals.ts'
 
 /**
@@ -36,7 +36,7 @@ const TERMS_FIELDS = [
   'approvedByUserId',
   'payer',
 ] as const
-const KNOWN_METHODS: ReadonlySet<string> = new Set(Object.keys(PAYMENT_METHOD_KEYS))
+const KNOWN_METHODS: ReadonlySet<string> = new Set(Object.keys(INVOICE_METHOD_KEYS))
 
 export interface CollectionCount {
   total: number
@@ -66,7 +66,7 @@ export interface FinanceRecordAudit {
   nonUuidTariffIds: number
   /** `amount ≤ 0` ya da tam sayı olmayan tutar. */
   nonPositiveAmounts: number
-  /** `PAYMENT_METHOD_KEYS` dışında `method` (eski demo değerleri dahil). */
+  /** `INVOICE_METHOD_KEYS` dışında `method` (eski demo değerleri dahil). */
   unknownMethods: number
   /** Ödenmiş görünüp yöntemi boş olan ya da tersi (`paidAt` ↔ `method`). */
   paidMethodMismatch: number

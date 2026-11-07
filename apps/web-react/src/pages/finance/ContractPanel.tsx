@@ -55,6 +55,7 @@ import {
   ContractStatusBadge,
   contractVersionLabel,
 } from './ContractParts.tsx'
+import { StudentIdentitySection } from './StudentIdentitySection.tsx'
 import { useContractApproval, type ContractApproval } from './use-contract-approval.ts'
 
 type InvoiceRecord = State['invoices'][number]
@@ -178,6 +179,7 @@ function ContractDetail({
         status={status}
         studentName={item.data.joined?.studentName}
       />
+      <StudentIdentitySection studentId={studentId} />
       <StatusNote status={status} canSign={actions.sign} contract={contract} />
       {invoices.error ? (
         <QueryError error={invoices.error} onRetry={() => void invoices.refetch()} />

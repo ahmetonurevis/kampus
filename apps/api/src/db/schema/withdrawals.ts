@@ -20,7 +20,9 @@ import { oneOf, requiredColumns } from './columns.ts'
 /**
  * Ayrılış ve iade kaydı (ADR 0006 karar 10; DOM-FIN-041, DOM-KAY-024). Hesap dökümü `breakdown`'da
  * karar anının kopyasıdır, sonradan değişmez; depo yalnız iade ödemesini günceller. `student_id` ve
- * `contract_id` `records` kimlikleridir, yabancı anahtar değildir.
+ * `contract_id` `records` kimlikleridir, yabancı anahtar değildir. Hesaba birden çok sözleşme girerse
+ * (K-06) `contract_id` en yenisidir, bütün kimlikler `breakdown.contracts`'tadır; ADR 0010 046h
+ * yabancı anahtarı `contract_id`'ye eklenir, migration gerekmez.
  */
 export const studentWithdrawals = pgTable(
   'student_withdrawals',
@@ -62,7 +64,7 @@ export const studentWithdrawals = pgTable(
       oneOf(table.reason, [
         'transfer',
         'relocation',
-        'health',
+        'documented',
         'financial',
         'dissatisfaction',
         'other',

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { scholarshipAwards, scholarshipPrograms } from './schema/finance-scholarships.ts'
@@ -157,6 +157,51 @@ export async function countScholarshipAwards(
     .from(scholarshipAwards)
     .where(and(activeAward(institutionId), eq(scholarshipAwards.programId, programId)))
   return row?.total ?? 0
+}
+
+/**
+ * Öğrencinin bu eğitim yılında arşivlenmemiş ataması var mı (DOM-FIN-025). Servis kurum kilidi
+ * altında sorar; `scholarship_awards_student_year_key` yalnız kilitsiz yarışta tetiklenir.
+ */
+export async function hasStudentScholarshipAward(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+  academicYear: number,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: scholarshipAwards.id })
+    .from(scholarshipAwards)
+    .where(
+      and(
+        activeAward(institutionId),
+        eq(scholarshipAwards.studentId, studentId),
+        eq(scholarshipAwards.academicYear, academicYear),
+      ),
+    )
+    .limit(1)
+  return row !== undefined
+}
+
+/** Yılda arşivlenmemiş bursu olan öğrenciler; toplu yenileme önizlemesinde tek sorgu. */
+export async function studentsWithScholarshipAward(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+  academicYear: number,
+): Promise<Set<string>> {
+  if (studentIds.length === 0) return new Set()
+  const rows = await db
+    .select({ studentId: scholarshipAwards.studentId })
+    .from(scholarshipAwards)
+    .where(
+      and(
+        activeAward(institutionId),
+        inArray(scholarshipAwards.studentId, [...studentIds]),
+        eq(scholarshipAwards.academicYear, academicYear),
+      ),
+    )
+  return new Set(rows.map((row) => row.studentId))
 }
 
 export async function insertScholarshipAward(

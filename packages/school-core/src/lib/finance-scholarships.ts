@@ -110,12 +110,20 @@ export function scholarshipAmount(
 }
 
 /**
- * Kesin kayıtta burs atama kuralları (DOM-FIN-025, DOM-FIN-052): burs onayı yöneticidedir, program
- * bu eğitim yılının olmalı, bildirilmiş olmalı ve burslu sayısı dolmamış olmalıdır.
+ * Kesin kayıtta ve yenilemede burs atama kuralları (DOM-FIN-025, DOM-FIN-052): burs onayı
+ * yöneticidedir, program bu eğitim yılının olmalı, bildirilmiş olmalı, öğrencinin o yıl başka bursu
+ * olmamalı ve burslu sayısı dolmamış olmalıdır. `studentAwarded` öğrencinin bu eğitim yılında
+ * arşivlenmemiş ataması olup olmadığıdır; servis kurum kilidi altında yükler, veritabanındaki
+ * `scholarship_awards_student_year_key` yalnız yarışta tetiklenir.
  */
 export function requireAwardableProgram(
   program: ScholarshipProgram | null,
-  context: { academicYear: number; awardedCount: number; canApprove: boolean },
+  context: {
+    academicYear: number
+    awardedCount: number
+    canApprove: boolean
+    studentAwarded: boolean
+  },
 ): ScholarshipProgram {
   const path = ['scholarshipProgramId']
   if (!context.canApprove)
@@ -130,6 +138,12 @@ export function requireAwardableProgram(
       'scholarship_program_not_notified',
       'İl millî eğitim müdürlüğüne bildirilmemiş burs programı kullanılamaz.',
       { path },
+    )
+  if (context.studentAwarded)
+    throw new DomainError(
+      'scholarship_already_awarded',
+      'Öğrenciye bu eğitim yılında zaten burs atanmış.',
+      { kind: 'conflict', path },
     )
   if (context.awardedCount >= program.capacity)
     throw new DomainError('scholarship_capacity_full', 'Burs programının kontenjanı dolu.', {

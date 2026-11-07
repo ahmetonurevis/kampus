@@ -8,11 +8,17 @@ import {
 } from '@kampus/school-core/lib/enrollment.ts'
 import { navigation } from '@kampus/school-core/modules/full-navigation.ts'
 import {
+  BIRTH_DATE_ADULT_FOR_MINOR_MESSAGE,
+  BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
+  birthDateAgeGroupMismatch,
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
   paymentPlanHref,
   prospectChangeValues,
+  interestGrade,
+  seatsTaken,
+  suggestedClassOrder,
 } from '../src/pages/crm/enrollment-form.ts'
 
 const NOW = '2026-10-06T09:00:00.000Z'
@@ -42,13 +48,18 @@ const FORM: EnrollmentFormValues = {
 }
 
 test('class_campus_mismatch, DOM-KAY-013: aday değişince sınıf, kampüs onayı ve veli seçimi sıfırlanır', () => {
-  const reset = prospectChangeValues(FORM, 'school', NOW)
+  const reset = prospectChangeValues('school', NOW)
   assert.deepEqual(reset, {
     classId: '',
     confirmOtherCampus: false,
+    identityKind: 'tc',
+    identityNumber: '',
+    birthDate: '',
     existingParentId: '',
+    referralRewardId: '',
     guardianName: '',
     guardianPhone: '',
+    relationship: 'mother',
     guardianMode: 'new',
     studentPhone: '',
     studentEmail: '',
@@ -56,12 +67,44 @@ test('class_campus_mismatch, DOM-KAY-013: aday değişince sınıf, kampüs onay
   // A adayının başka kampüs onayı B adayının gövdesine `allowOtherCampus` olarak gitmez.
   const next = { ...FORM, ...reset, prospectId: 'pr-b', classId: 'c1' }
   assert.equal('allowOtherCampus' in enrollmentFormToBody(next, 'tarife'), false)
-  // Girilmiş doğum tarihi yetişkin kursiyeri gösteriyorsa varsayılan "kendisi"dir (DOM-KAY-012).
-  assert.equal(
-    prospectChangeValues({ birthDate: ADULT }, 'language_school', NOW).guardianMode,
-    'self',
-  )
-  assert.equal(prospectChangeValues({ birthDate: ADULT }, 'school', NOW).guardianMode, 'new')
+})
+
+test('ON-125, DOM-KAY-012: aday değişince önceki adayın kimlik no, doğum tarihi ve kişisel alanları formda kalmaz', () => {
+  // A adayı yetişkin kursiyer olarak dolduruldu: yabancı kimlik, doğum tarihi, kendi iletişimi.
+  const adultA: EnrollmentFormValues = {
+    ...FORM,
+    identityKind: 'foreign',
+    identityNumber: 'YK123456',
+    birthDate: ADULT,
+    guardianMode: 'self',
+    relationship: 'father',
+  }
+  for (const type of ['school', 'language_school'] as const) {
+    const next = { ...adultA, ...prospectChangeValues(type, NOW), prospectId: 'pr-b' }
+    // KVKK: A'nın kimliği, doğum tarihi, veli ve iletişim bilgisi B'nin formunda yoktur.
+    assert.equal(next.identityNumber, '', type)
+    assert.equal(next.identityKind, 'tc', type)
+    assert.equal(next.birthDate, '', type)
+    assert.equal(next.guardianName, '', type)
+    assert.equal(next.guardianPhone, '', type)
+    assert.equal(next.relationship, 'mother', type)
+    assert.equal(next.existingParentId, '', type)
+    assert.equal(next.studentPhone, '', type)
+    assert.equal(next.studentEmail, '', type)
+    // Doğum tarihi boşalınca A'nın "kendisi" seçimi kalmaz; veli zorunlu varsayılana döner.
+    assert.equal(next.guardianMode, 'new', type)
+    for (const value of Object.values(next))
+      assert.ok(
+        !['YK123456', ADULT, 'A Velisi', '05551112233', '05551112244', 'p-a'].includes(
+          String(value),
+        ),
+        `${type}: A adayının değeri formda kaldı (${String(value)})`,
+      )
+  }
+  // Adaydan bağımsız alanlar (ücret ve taksit seçimi) sıfırlama listesinde değildir.
+  const reset = prospectChangeValues('school', NOW)
+  for (const name of ['lessonHours', 'installmentCount', 'firstDueDate', 'allCampuses'])
+    assert.equal(name in reset, false, name)
 })
 
 test('DOM-KAY-012: doğum tarihi değişince veli seçimi yaşa ve kurum türüne uyar', () => {
@@ -161,4 +204,72 @@ test('DOM-KAY-010, class_campus_mismatch: sınıf hataları sınıf alanına ve 
   )
   // Başka kodlar alana bağlanmaz; toast'ta kalır.
   assert.equal(enrollmentFieldForCode('tariff_changed'), undefined)
+})
+
+test('ON-126, DOM-KAY-012: kurs adayının yaş grubu doğum tarihiyle uyuşmazsa alanda Türkçe uyarı çıkar', () => {
+  // 18 yaş altı seçilmiş kurs adayına yetişkin doğum tarihi ve tersi (sunucuda 422
+  // `birth_date_minor_mismatch`).
+  assert.equal(
+    birthDateAgeGroupMismatch('language_school', true, ADULT, NOW),
+    BIRTH_DATE_ADULT_FOR_MINOR_MESSAGE,
+  )
+  assert.equal(
+    birthDateAgeGroupMismatch('language_school', false, MINOR, NOW),
+    BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
+  )
+  // Uyumlu yaş grubunda uyarı yoktur.
+  assert.equal(birthDateAgeGroupMismatch('language_school', true, MINOR, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', false, ADULT, NOW), null)
+  // 18. doğum günü İstanbul gününe göre: bugün 18 olan yetişkin, yarın 18 olacak 18 yaş altıdır.
+  assert.equal(birthDateAgeGroupMismatch('language_school', false, '2008-10-06', NOW), null)
+  assert.equal(
+    birthDateAgeGroupMismatch('language_school', false, '2008-10-07', NOW),
+    BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
+  )
+  // Okulda yaş grubu sorulmaz ve denetlenmez; yaş grubu seçilmemiş ya da doğum tarihi geçersizse
+  // uyarı yoktur.
+  assert.equal(birthDateAgeGroupMismatch('school', true, ADULT, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('school', false, MINOR, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', undefined, ADULT, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', true, '', NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', true, '2001-02-30', NOW), null)
+})
+
+test('ON-120, DOM-KAY-014: ilgi metninden hedef düzey okunur; düzeysiz metin null', () => {
+  assert.equal(interestGrade('7. Sınıf · Ortaokul'), 7)
+  assert.equal(interestGrade('9. sınıf Anadolu Lisesi'), 9)
+  assert.equal(interestGrade('12 Sınıf'), 12)
+  assert.equal(interestGrade('B1 İngilizce'), null)
+  assert.equal(interestGrade('15. sınıf'), null)
+  assert.equal(interestGrade(undefined), null)
+})
+
+test('ON-120: hedef düzeydeki sınıflar önce gelir, kalanlar özgün sırasıyla; düzey yoksa liste aynı', () => {
+  const rows = [
+    { id: 'a', record: { grade: 6 } },
+    { id: 'b', record: { grade: 7 } },
+    { id: 'c', record: { grade: 8 } },
+    { id: 'd', record: { grade: 7 } },
+  ]
+  assert.deepEqual(
+    suggestedClassOrder(rows, 7).map((row) => row.id),
+    ['b', 'd', 'a', 'c'],
+  )
+  assert.deepEqual(
+    suggestedClassOrder(rows, null).map((row) => row.id),
+    ['a', 'b', 'c', 'd'],
+  )
+})
+
+test('ON-116, ON-120: dolu yer aktif öğrenciler ve sınıfa planlanmış yenilemelerdir', () => {
+  const renewals = [
+    { targetClassId: 'c8', fromClassId: 'c7' },
+    { targetClassId: 'c8', fromClassId: 'c7b' },
+    { targetClassId: 'c9', fromClassId: 'c8' },
+    // Sınıf tekrarı: öğrenci zaten aktif sayımda.
+    { targetClassId: 'c8', fromClassId: 'c8' },
+  ]
+  assert.equal(seatsTaken('c8', 20, renewals), 22)
+  assert.equal(seatsTaken('c9', 0, renewals), 1)
+  assert.equal(seatsTaken('c1', 5, []), 5)
 })

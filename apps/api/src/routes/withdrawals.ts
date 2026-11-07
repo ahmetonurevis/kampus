@@ -9,6 +9,7 @@ import {
   withdrawalQuoteSchema,
   withdrawStudentSchema,
 } from '@kampus/school-core/lib/withdrawals.ts'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
@@ -31,8 +32,10 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 
 const STAFF = ['yonetici', 'onburo'] as const
 
+const payerSchema = z.enum(['guardian', 'student'])
+
 const breakdownSchema = z.object({
-  institutionType: z.enum(['school', 'language_school']),
+  institutionType: z.enum(INSTITUTION_TYPES),
   withdrawalDate: z.string(),
   termStartDate: z.string(),
   started: z.boolean().describe('Ayrılış dönem başladıktan sonra mı'),
@@ -61,6 +64,57 @@ const breakdownSchema = z.object({
   ),
   refundCents: z.number().int(),
   debtCents: z.number().int(),
+  contracts: z
+    .array(
+      z.object({
+        contractId: z.string(),
+        title: z.string(),
+        payer: payerSchema.describe(
+          'Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında',
+        ),
+        packageSaleId: z.string().optional().describe('Paket satışı; öğrenim sözleşmesinde yok'),
+        attendedUnits: z
+          .number()
+          .int()
+          .describe('Öğrenimde girilen görülen birim, pakette kullanılan saat'),
+        totalUnits: z.number().int().describe('Öğrenimde toplam birim, pakette satın alınan saat'),
+        returnedHours: z.number().int().optional().describe('Pakette iade edilen kalan saat'),
+        usedHoursMissing: z
+          .boolean()
+          .optional()
+          .describe('Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)'),
+        scholarshipExempt: z.boolean(),
+        baseCents: z.number().int(),
+        deductionCents: z.number().int(),
+        usageCents: z.number().int(),
+        entitledCents: z.number().int(),
+        paidCents: z.number().int(),
+        extraBalanceCents: z.number().int(),
+        balanceCents: z
+          .number()
+          .int()
+          .describe('Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç'),
+      }),
+    )
+    .optional()
+    .describe('Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok'),
+  payerDecision: z
+    .object({
+      payer: payerSchema,
+      reason: z
+        .string()
+        .optional()
+        .describe(
+          'Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)',
+        ),
+    })
+    .optional()
+    .describe('Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)'),
+  refundApprovedCents: z
+    .number()
+    .int()
+    .optional()
+    .describe('Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok'),
 })
 
 const withdrawalSchema = z.object({
@@ -89,6 +143,7 @@ const withdrawalParams = z.object({ withdrawalId: z.uuid('Ayrılış kimliği ge
 const listQuerySchema = z.strictObject({
   ...pageQuerySchema.shape,
   refundStatus: z.enum(['none', 'pending', 'paid']).optional().describe('İade durumu'),
+  q: z.string().trim().min(2).max(100).optional().describe('Öğrenci adında arama'),
 })
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
@@ -119,11 +174,30 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade hesabını önizle',
         description:
-          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.',
+          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.',
         params: studentParams,
         body: withdrawalQuoteSchema,
         response: {
-          200: dataResponse(z.object({ contractId: z.string(), breakdown: breakdownSchema })),
+          200: dataResponse(
+            z.object({
+              contractId: z.string(),
+              breakdown: breakdownSchema,
+              payersDiffer: z
+                .boolean()
+                .describe(
+                  'Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12)',
+                ),
+              payers: z
+                .array(
+                  z.object({
+                    contractId: z.string(),
+                    payer: payerSchema,
+                    payerName: z.string().describe('Ödeyicinin adı; iletişim bilgisi dönmez'),
+                  }),
+                )
+                .describe('Sözleşme başına ödeyici'),
+            }),
+          ),
           ...commandErrors,
         },
       },
@@ -146,7 +220,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Öğrencinin ayrılışını onayla',
         description:
-          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
+          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: studentParams,
         body: withdrawStudentSchema,
@@ -175,7 +249,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iadeleri listele',
         description:
-          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.',
+          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.',
         querystring: listQuerySchema,
         response: {
           200: z.object({ data: z.array(withdrawalSchema), meta: pageMetaSchema }),
@@ -199,7 +273,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade ayrıntısı',
         description:
-          'Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.',
+          'Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.',
         params: withdrawalParams,
         response: { 200: withdrawalResponseSchema, ...commandErrors },
       },
@@ -218,7 +292,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'İadeyi ödenmiş işaretle',
         description:
-          'Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur. Rol: `yonetici`.',
+          'Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur; anahtar kaydı yanıtı 24 saat saklar ama maskeli IBAN ve hesap sahibini saklamaz, tekrar yanıtı bunları iade kaydından ekler. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: withdrawalParams,
         body: payRefundSchema,

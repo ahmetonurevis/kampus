@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import {
   allowedGuardianModes,
   assertRenewalWithinTariff,
+  enrollmentContractTitle,
   enrollmentFormSchema,
   enrollmentFormToBody,
   enrollProspect,
@@ -16,15 +17,21 @@ import {
   GUARDIAN_RELATIONSHIPS,
   GUARDIAN_REQUIRED_FORM_MESSAGE,
   guardianRequired,
+  hasNonCustodialBond,
   isCourse,
   isNotGuardian,
   isValidTurkishId,
   previewEnrollment,
   priceEnrollment,
+  requireSiblingDiscountEligible,
   type EnrollmentContext,
   type EnrollmentTariff,
 } from '../packages/school-core/src/lib/enrollment.ts'
 import type { FeeItem } from '../packages/school-core/src/lib/fee-tariffs.ts'
+import {
+  INSTITUTION_TYPES,
+  type InstitutionType,
+} from '../packages/school-core/src/modules/collection-modules.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const NOW = '2026-10-06T09:00:00.000Z'
@@ -52,6 +59,14 @@ const TARIFF: EnrollmentTariff = {
     { kind: 'referral', percentBasisPoints: 3_000, amountCents: null },
     { kind: 'corporate', percentBasisPoints: null, amountCents: 100_000 },
     { kind: 'staff_child', percentBasisPoints: 8_000, amountCents: null },
+  ],
+}
+/** Kardeş %30 + peşin %30: toplam tavanı aşar (DOM-FIN-021). */
+const OVER_CAP_TARIFF: EnrollmentTariff = {
+  ...TARIFF,
+  discounts: [
+    { kind: 'early_payment', percentBasisPoints: 3_000, amountCents: null },
+    { kind: 'sibling', percentBasisPoints: 3_000, amountCents: null },
   ],
 }
 const request = {
@@ -162,7 +177,7 @@ test('DOM-FIN-021: toplam indirim %50yi aşamaz; personel çocuğu yalnız yöne
     12_000_000,
   )
   assert.throws(
-    () => priceEnrollment(TARIFF, { ...request, discounts: ['sibling', 'referral'] }),
+    () => priceEnrollment(OVER_CAP_TARIFF, { ...request, discounts: ['sibling', 'early_payment'] }),
     isDomainError('discount_cap_exceeded'),
   )
   assert.throws(
@@ -213,6 +228,18 @@ test('DOM-FIN-003: tarifede olmayan ek hizmet ve öğrenim ücreti ek hizmet ola
 
 test('DOM-FIN-002: yayımlanmış tarife yoksa kayıt oluşmaz', () => {
   rejectsUnchanged({}, { tariff: null }, 'tariff_not_published')
+})
+
+test('DOM-FIN-002, K-11: önceki yılın tarifesiyle kayıtta sözleşme o tarifeyi taşır, eğitim yılı hedef yıl kalır', () => {
+  const carried: EnrollmentTariff = { ...TARIFF, id: 'test-tariff-2025', versionNumber: 4 }
+  const { contract } = enroll(
+    { tariffId: carried.id },
+    { tariff: carried, academicYear: 2026 },
+  ).result
+  assert.equal(contract.tariffId, 'test-tariff-2025')
+  assert.equal(contract.tariffVersion, 4)
+  assert.equal(contract.academicYear, 2026)
+  rejectsUnchanged({ tariffId: TARIFF.id }, { tariff: carried }, 'tariff_changed', 'conflict')
 })
 
 test('DOM-KAY-011: aynı kimlikle ikinci kayıt reddedilir, geçersiz doğum tarihi reddedilir', () => {
@@ -333,6 +360,53 @@ test('DOM-KAY-012: veli okulda her yaşta, kursta yalnız 18 yaş altında zorun
   // Kurs: 18 yaş günü (Europe/Istanbul) dolunca veli gerekmez.
   assert.equal(guardianRequired('language_school', '2008-10-07', now), true)
   assert.equal(guardianRequired('language_school', '2008-10-06', now), false)
+})
+
+/** Okul dışındaki türler (dil okulu, kurs): yetişkin velisiz kaydolur (ADR 0008 karar 5). */
+const COURSE_TYPES = INSTITUTION_TYPES.filter((type) => type !== 'school')
+/** Paket ders saati yalnız dil okulunda girilir (DOM-FIN-006); kurs okul gibi düz ücrettir. */
+const hoursFor = (type: InstitutionType) => (type === 'language_school' ? { lessonHours: 10 } : {})
+
+test('DOM-KAY-012, ADR 0008: okul dışındaki her türde 18 yaş ve üstü kursiyer kendisi kaydolur; veli, yaş grubu ve sözleşme başlığı', () => {
+  assert.ok(COURSE_TYPES.includes('language_school'))
+  const adultIdentity = { ...INPUT.identity, birthDate: '2000-01-01' }
+  for (const type of COURSE_TYPES) {
+    const context: Partial<EnrollmentContext> = { institutionType: type }
+    assert.equal(isCourse(type), true, type)
+    assert.deepEqual(allowedGuardianModes(type, '2000-01-01', NOW), ['self'], type)
+    assert.deepEqual(allowedGuardianModes(type, '2013-03-01', NOW), ['new', 'existing'], type)
+    const { result } = enroll(
+      { ...hoursFor(type), identity: adultIdentity, guardian: null },
+      context,
+    )
+    assert.equal(result.contract.payer, 'student', type)
+    assert.equal(result.contract.title, enrollmentContractTitle(type), type)
+    assert.notEqual(result.contract.title, enrollmentContractTitle('school'), type)
+    assert.match(result.contract.title, /kurs/, type)
+    rejectsUnchanged(
+      { ...hoursFor(type), identity: adultIdentity },
+      context,
+      'guardian_not_applicable',
+    )
+    rejectsUnchanged({ ...hoursFor(type), guardian: null }, context, 'guardian_required')
+    // Ön büronun seçtiği yaş grubu doğum tarihiyle uyuşmalıdır (DOM-KAY-003).
+    for (const [overrides, minor] of [
+      [{ identity: adultIdentity, guardian: null }, true],
+      [{}, false],
+    ] as const) {
+      const state = createSeed(new Date(NOW))
+      state.prospects.find((p) => p.id === 'pr1')!.minor = minor
+      const before = JSON.stringify(state)
+      assert.throws(
+        () => enroll({ ...hoursFor(type), ...overrides }, context, state),
+        isDomainError('birth_date_minor_mismatch'),
+        type,
+      )
+      assert.equal(JSON.stringify(state), before)
+    }
+  }
+  assert.equal(enrollmentContractTitle('school'), 'Özel okul eğitim sözleşmesi')
+  assert.deepEqual(allowedGuardianModes('school', '2000-01-01', NOW), ['new', 'existing'])
 })
 
 test('DOM-KAY-012, DOM-KAY-003: okulda 18 yaşını doldurmuş öğrencide veli zorunlu; iletişim velide kalır, guardian_not_applicable dönmez', () => {
@@ -479,6 +553,44 @@ test('class_campus_mismatch: kampüs denetimi kontenjandan önce çalışır', (
     () => enroll({ classId: other.id, allowOtherCampus: true }, {}, state),
     isDomainError('class_capacity_full'),
   )
+})
+
+test('DOM-KAY-010, ON-116: kontenjan aynı sınıfa planlanmış yenilemeleri de sayar; uygulanmış yenileme sayılmaz', () => {
+  const fresh = () => {
+    const state = createSeed(new Date(NOW))
+    const cls = state.classes.find((item) => item.id === INPUT.classId)!
+    const active = state.students.filter((s) => s.classId === cls.id && s.isActive)
+    cls.capacity = active.length + 1
+    const outsider = state.students.find((s) => s.classId !== cls.id && s.isActive)!
+    const renewal = (status: string, studentId = outsider.id) =>
+      state.renewals.push({
+        id: `renewal-test-${state.renewals.length}`,
+        studentId,
+        fromClassId: outsider.classId,
+        targetClassId: cls.id,
+        year: 2027,
+        mode: 'renew',
+        amount: 0,
+        status,
+        createdAt: NOW,
+        updatedAt: NOW,
+      } as State['renewals'][number])
+    return { state, renewal, active }
+  }
+  // Son boş yeri planlanmış yenileme tutar.
+  const planned = fresh()
+  planned.renewal('Planlandı')
+  const before = JSON.stringify(planned.state)
+  assert.throws(() => enroll({}, {}, planned.state), isDomainError('class_capacity_full'))
+  assert.equal(JSON.stringify(planned.state), before)
+  // Uygulanmış ya da iptal edilmiş yenileme yer tutmaz.
+  const applied = fresh()
+  applied.renewal('Uygulandı')
+  assert.equal(enroll({}, {}, applied.state).result.student.classId, INPUT.classId)
+  // Sınıfta zaten aktif olan öğrencinin planı ikinci kez sayılmaz.
+  const same = fresh()
+  same.renewal('Planlandı', same.active[0]!.id)
+  assert.equal(enroll({}, {}, same.state).result.student.classId, INPUT.classId)
 })
 
 test('class_campus_mismatch: çevrimdışı demo her kampüsün sınıfını eski davranışla kabul eder', () => {
@@ -661,6 +773,107 @@ test('DOM-KAY-013, DOM-FIN-022: mevcut veliye bağlanır, yeni veli açılmaz; k
   assert.equal(JSON.stringify(lonely), snapshot)
 })
 
+test('DOM-FIN-022: kardeş indirimi ikinci çocuğa, yani ücreti düşük olana uygulanır; ilk çocuk indirim almaz', () => {
+  const seed = createSeed(new Date(NOW))
+  const parent = seed.parents[0]!
+  const family = (cents: number) => {
+    for (const contract of seed.contracts)
+      if (parent.studentIds.includes(contract.studentId)) contract.grossCents = cents
+  }
+  const body = { guardian: { existingParentId: parent.id }, discounts: ['sibling'] }
+  // Aday 7. sınıf, ilan ücreti 20.000.000; kardeşler daha düşük ücretliyse aday ilk çocuktur.
+  family(15_000_000)
+  const before = JSON.stringify(seed)
+  assert.throws(() => enroll(body, {}, seed), isDomainError('sibling_discount_ineligible'))
+  assert.equal(JSON.stringify(seed), before)
+  // Eşit ücrette önce kaydolan kardeş öndedir; aday ikinci çocuktur.
+  family(20_000_000)
+  const { result } = enroll(body, {}, seed)
+  assert.deepEqual(
+    result.contract.discounts?.map((line) => line.kind),
+    ['sibling'],
+  )
+})
+
+test('DOM-FIN-022: sıra son yürürlükteki sözleşmenin ilan ücreti, eşitlikte ilk kayıt tarihiyle kurulur', () => {
+  const state = createSeed(new Date(NOW))
+  const [elder, younger] = state.students
+  assert.ok(elder && younger)
+  const contract = (studentId: string, date: string, grossCents?: number, amount = 9_000_000) => ({
+    id: `test-c-${studentId}-${date}`,
+    studentId,
+    date,
+    amount,
+    title: 'Sözleşme',
+    ...(grossCents === undefined ? {} : { grossCents }),
+  })
+  const check = (studentId: string, tuitionCents: number) => () =>
+    requireSiblingDiscountEligible(state, {
+      studentId,
+      siblingIds: [elder.id, younger.id],
+      tuitionCents,
+      academicYear: state.academicYear,
+      currentAcademicYear: state.academicYear,
+    })
+  state.contracts = [
+    contract(elder.id, '2025-09-01T09:00:00.000Z', 10_000_000),
+    contract(younger.id, '2025-09-02T09:00:00.000Z', 8_000_000),
+  ]
+  assert.doesNotThrow(check(younger.id, 8_000_000))
+  assert.throws(check(elder.id, 10_000_000), isDomainError('sibling_discount_ineligible'))
+  // Eşit ücret: önce kaydolan ilk çocuktur.
+  state.contracts[1]!.grossCents = 10_000_000
+  assert.doesNotThrow(check(younger.id, 10_000_000))
+  assert.throws(check(elder.id, 10_000_000), isDomainError('sibling_discount_ineligible'))
+  // Brütü olmayan eski sözleşmede tutar kullanılır; sözleşmesiz kardeş aday lehine öne sayılır.
+  state.contracts = [contract(elder.id, '2025-09-01T09:00:00.000Z', undefined, 12_000_000)]
+  assert.doesNotThrow(check(younger.id, 11_000_000))
+  assert.throws(check(younger.id, 13_000_000), isDomainError('sibling_discount_ineligible'))
+  assert.doesNotThrow(check(elder.id, 12_000_000))
+  // Pasif kardeş sayılmaz.
+  younger.isActive = false
+  assert.throws(check(elder.id, 1), isDomainError('sibling_discount_ineligible'))
+})
+
+test('DOM-FIN-022, K-22: kardeş indirimin yılında kayıtlı olmalıdır; eski sözleşme cari yıla, sözleşmesiz öğrenci yalnız cari yıla sayılır', () => {
+  const state = createSeed(new Date(NOW))
+  const [child, sibling] = state.students
+  assert.ok(child && sibling)
+  const current = state.academicYear
+  const check = (academicYear: number) => () =>
+    requireSiblingDiscountEligible(state, {
+      studentId: child.id,
+      siblingIds: [sibling.id],
+      tuitionCents: 1,
+      academicYear,
+      currentAcademicYear: current,
+    })
+  const contract = (academicYear?: number) => ({
+    id: 'test-c-kardes',
+    studentId: sibling.id,
+    date: NOW,
+    amount: 9_000_000,
+    title: 'Sözleşme',
+    ...(academicYear === undefined ? {} : { academicYear }),
+  })
+  // Sözleşmesiz etkin kardeş (dosyadan aktarılan): cari yılda kayıtlı, sonraki yılda değil.
+  state.contracts = []
+  assert.doesNotThrow(check(current))
+  assert.throws(check(current + 1), isDomainError('sibling_discount_ineligible'))
+  // Yılı yazılmamış eski sözleşme cari yıla aittir.
+  state.contracts = [contract()]
+  assert.doesNotThrow(check(current))
+  assert.throws(check(current + 1), isDomainError('sibling_discount_ineligible'))
+  // Kardeşin yalnız önceki yıl sözleşmesi var: cari yılda da kaydı yoktur.
+  state.contracts = [contract(current - 1)]
+  assert.throws(check(current), isDomainError('sibling_discount_ineligible'))
+  state.contracts = [contract(current)]
+  assert.doesNotThrow(check(current))
+  // Dondurulan kardeş aktif kayıt sayılmaz; öğrenci `isActive` kalır (DOM-KAY-024).
+  Object.assign(sibling, { frozenAt: NOW })
+  assert.throws(check(current), isDomainError('sibling_discount_ineligible'))
+})
+
 test('DOM-KAY-013: telefon eşleşmesi öneri döndürür, boş telefon eşleşmez', () => {
   const state = createSeed(new Date(NOW))
   const parent = state.parents[0]!
@@ -687,6 +900,61 @@ test('DOM-KAY-013, DOM-KAY-003: 18 yaş altı kardeşin telefonu öğrenciye yaz
     findParentMatches({ parents: state.parents, students: state.students }, family),
     [],
   )
+})
+
+test('DOM-KAY-013, DOM-KAY-031: kardeş adayın kesin kayıtta bağlandığı veli telefon farklı olsa da önerilir; seçilince yeni veli açılmaz', () => {
+  const { state, result } = enroll()
+  const parentId = result.student.parentId
+  const younger = state.prospects.find((item) => item.id === 'pr2')!
+  const youngest = state.prospects.find((item) => item.id === 'pr3')!
+  younger.siblingOfId = 'pr1'
+  // Kardeşler aynı kampüse kaydolur (sınıf `c1` pr1'in kampüsündedir).
+  younger.branchId = state.prospects.find((item) => item.id === 'pr1')!.branchId
+  // Zincir: pr3 pr2'nin kardeşidir; pr1'in velisi ikisine de önerilir.
+  youngest.siblingOfId = 'pr2'
+  assert.notEqual(younger.phone, state.prospects.find((item) => item.id === 'pr1')!.phone)
+  const expected = [{ parentId, name: 'Test Veli', studentCount: 1, match: 'sibling' }]
+  assert.deepEqual(findParentMatches(state, younger.phone, { prospectId: 'pr2' }), expected)
+  assert.deepEqual(findParentMatches(state, youngest.phone, { prospectId: 'pr3' }), expected)
+  // Aday kimliği verilmezse yalnız telefon aranır.
+  assert.deepEqual(findParentMatches(state, younger.phone), [])
+  // Kardeş ağında olmayan aday kardeş eşleşmesi almaz.
+  assert.deepEqual(
+    findParentMatches(state, state.prospects.find((item) => item.id === 'pr4')!.phone, {
+      prospectId: 'pr4',
+    }),
+    [],
+  )
+
+  // Telefonla da eşleşen veli varsa kardeş eşleşmesi listenin başındadır.
+  const other = state.parents[0]!
+  const otherPhone = state.students.find((student) => student.id === other.studentIds[0])!.phone
+  const both = findParentMatches(state, otherPhone, { prospectId: 'pr2' })
+  assert.equal(both[0]?.parentId, parentId)
+  assert.equal(both[0]?.match, 'sibling')
+  assert.ok(both.some((match) => match.parentId === other.id && match.match === 'phone'))
+
+  const parentCount = state.parents.length
+  let n = 0
+  const second = enrollProspectWithTariff(
+    state,
+    'pr2',
+    {
+      ...INPUT,
+      identity: { kind: 'tc', number: '11111111110', birthDate: '2014-03-01' },
+      guardian: { existingParentId: parentId },
+    },
+    (prefix) => `${prefix}-test2-${n++}`,
+    NOW,
+    CONTEXT,
+  )
+  assert.equal(state.parents.length, parentCount)
+  assert.equal(second.student.parentId, parentId)
+  assert.equal(second.guardianBond?.parentId, parentId)
+  assert.deepEqual(state.parents.find((parent) => parent.id === parentId)?.studentIds, [
+    result.student.id,
+    second.student.id,
+  ])
 })
 
 test('DOM-KAY-013, parent_not_guardian: yetişkin kursiyerin kendi satırı 18 yaş altı kardeşe veli olarak verilmez ve önerilmez', () => {
@@ -716,6 +984,9 @@ test('DOM-KAY-013, parent_not_guardian: yetişkin kursiyerin kendi satırı 18 y
   assert.equal(isNotGuardian(self, state.prospects), true)
   // Yetişkinin telefonu öğrenci kaydındadır; yine de veli olarak önerilmez.
   assert.deepEqual(findParentMatches(state, adult.phone), [])
+  // Kardeş bağı da yetişkinin kendi satırını öneriye sokmaz.
+  young.siblingOfId = 'pr4'
+  assert.deepEqual(findParentMatches(state, young.phone, { prospectId: 'pr1' }), [])
 
   const before = JSON.stringify(state)
   assert.throws(
@@ -763,6 +1034,52 @@ test('DOM-KAY-013, parent_not_guardian: eski yer tutucu (iletişimsiz, adayları
     isDomainError('parent_not_guardian'),
   )
   assert.equal(JSON.stringify(state), before)
+})
+
+test('DOM-ILT-070, DOM-ILT-074, parent_not_guardian: bir öğrencisinde iletişim kısıtlı ya da velayetsiz veli önerilmez ve kesin kayıtta bağlanamaz', () => {
+  const restricted = { parentId: 'p1', custody: 'none', contactRestricted: true } as const
+  const noCustody = { parentId: 'p1', custody: 'none', contactRestricted: false } as const
+  const joint = { parentId: 'p1', custody: 'joint', contactRestricted: false } as const
+  assert.equal(hasNonCustodialBond('p1', [restricted]), true)
+  assert.equal(hasNonCustodialBond('p1', [joint, noCustody]), true)
+  assert.equal(hasNonCustodialBond('p1', [joint]), false)
+  // Başka velinin bağı bu veliyi etkilemez.
+  assert.equal(hasNonCustodialBond('p2', [restricted]), false)
+  assert.equal(hasNonCustodialBond('p1', []), false)
+
+  const state = createSeed(new Date(NOW))
+  const parent = state.parents[0]!
+  const phone = state.students.find((student) => student.id === parent.studentIds[0])!.phone
+  const own = (bond: { custody: 'full' | 'joint' | 'none'; contactRestricted: boolean }) => [
+    { ...bond, parentId: parent.id },
+  ]
+  const suggested = (bonds: ReturnType<typeof own>) =>
+    findParentMatches(state, phone, { bonds }).some((match) => match.parentId === parent.id)
+  assert.equal(suggested(own({ custody: 'full', contactRestricted: false })), true)
+  assert.equal(suggested(own({ custody: 'none', contactRestricted: true })), false)
+  assert.equal(suggested(own({ custody: 'none', contactRestricted: false })), false)
+
+  const before = JSON.stringify(state)
+  for (const bond of [restricted, noCustody])
+    assert.throws(
+      () =>
+        enroll({ guardian: { existingParentId: parent.id } }, { guardianBonds: own(bond) }, state),
+      (error: unknown) =>
+        isDomainError('parent_not_guardian')(error) &&
+        JSON.stringify((error as { path?: unknown }).path) === JSON.stringify(['guardian']),
+    )
+  assert.equal(JSON.stringify(state), before)
+  const { result } = enroll(
+    { guardian: { existingParentId: parent.id } },
+    {
+      guardianBonds: [
+        ...own({ custody: 'joint', contactRestricted: false }),
+        { ...restricted, parentId: 'p-baska' },
+      ],
+    },
+    state,
+  )
+  assert.equal(result.guardianBond?.parentId, parent.id)
 })
 
 test('DOM-KAY-011: kimliğin sahibi pasifse veya kayıt yoksa yeni kayıt açılır, eski kimlik bildirilir', () => {
@@ -962,8 +1279,8 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   )
   assert.equal(ok.ok && ok.price.netCents, 18_000_000)
   const capped = previewEnrollment(
-    TARIFF,
-    { lessonHours: '', discounts: ['sibling', 'referral'], extras: [] },
+    OVER_CAP_TARIFF,
+    { lessonHours: '', discounts: ['sibling', 'early_payment'], extras: [] },
     school,
   )
   assert.equal(capped.ok, false)
@@ -971,6 +1288,23 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   assert.throws(() =>
     previewEnrollment(null as never, { lessonHours: '', discounts: [], extras: [] }, school),
   )
+})
+
+test('DOM-FIN-024, K-14: önizleme seçili hakkın sabit tutarını gösterir; hak seçilmeden kalem reddedilir', () => {
+  const school = { institutionType: 'school', level: '7' } as const
+  const values = { lessonHours: '', discounts: ['referral' as const], extras: [] }
+  // Tarife %30 der (6.000.000 kuruş); hak kayıt yılının 1.250.000 kuruşunu taşır.
+  const fixed = previewEnrollment(TARIFF, values, { ...school, referralRewardCents: 1_250_000 })
+  assert.equal(fixed.ok, true)
+  assert.deepEqual(fixed.ok && fixed.price.discounts, [
+    { kind: 'referral', amountCents: 1_250_000 },
+  ])
+  assert.equal(fixed.ok && fixed.price.netCents, 18_750_000)
+  const trimmed = previewEnrollment(TARIFF, values, { ...school, referralRewardCents: 30_000_000 })
+  assert.equal(trimmed.ok && trimmed.price.netCents, 10_000_000)
+  const missing = previewEnrollment(TARIFF, values, school)
+  assert.equal(missing.ok, false)
+  assert.equal(!missing.ok && missing.message.includes('referans hakkı seçin'), true)
 })
 
 test('DOM-FIN-010: form açıkken tarife değiştiyse kayıt yazılmaz (409)', () => {

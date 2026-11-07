@@ -8,8 +8,10 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { loadInvoices } from '../src/db/invoice-store.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { studentWithdrawals } from '../src/db/schema/withdrawals.ts'
 import {
   buildTestApp,
@@ -21,6 +23,13 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import {
+  contractTerms,
+  insertTestScholarshipProgram,
+  insertTestTariff,
+  TEST_SCHOLARSHIP_PROGRAM_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Ayrılış ve iade uçları (ADR 0006 karar 10; DOM-FIN-040, -041; DOM-KAY-024; IST-110). Her test
@@ -57,12 +66,15 @@ describe('ayrılış ve iade uçları', () => {
   let close: () => Promise<void>
   let app: App
   let serial = 0
+  const logs: string[] = []
   const key = () => ({ 'idempotency-key': `test-wd-${String(++serial).padStart(5, '0')}` })
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(STUDENT)
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    app = await buildTestApp(db, { clock: () => FIXED_NOW, logs })
   })
   after(async () => {
     await app.close()
@@ -75,6 +87,8 @@ describe('ayrılış ve iade uçları', () => {
   ) {
     const created = await createInstitution(app, overrides)
     assert.ok(STUDENT)
+    await insertTestTariff(db, created.id)
+    await insertTestScholarshipProgram(db, created.id)
     const rows = [
       {
         collection: 'classes' as const,
@@ -95,10 +109,9 @@ describe('ayrılış ve iade uçları', () => {
           studentId: STUDENT.id,
           date: '2026-01-01T09:00:00.000Z',
           amount: NET,
-          netCents: NET,
           title: 'Sözleşme',
           invoiceIds: ['test-inv-1', 'test-inv-2'],
-          payer: 'guardian',
+          ...contractTerms({ grossCents: NET, netCents: NET }),
           ...contractExtra,
         },
       },
@@ -169,6 +182,204 @@ describe('ayrılış ve iade uçları', () => {
     assert.equal(rows.length, 0)
   }
 
+  /** İkinci sözleşmenin ödeyicisi öğrencidir; birincisinin taksiti ödenince iade oluşur (K-12). */
+  async function twoPayers() {
+    const a = await institution()
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'contracts',
+          id: 'test-contract-2',
+          data: {
+            id: 'test-contract-2',
+            studentId: STUDENT?.id,
+            date: '2026-02-01T09:00:00.000Z',
+            amount: 1_000_000,
+            title: 'İkinci sözleşme',
+            invoiceIds: [],
+            ...contractTerms({ grossCents: 1_000_000, netCents: 1_000_000, payer: 'student' }),
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    assert.equal((await pay(a.cookie, NET / 2, `TR-P${String(++serial)}`)).statusCode, 201)
+    return a
+  }
+  const DECISION = { payer: 'student', reason: 'Gizli-gerekce-K12 tahsilat kursiyerden' }
+
+  test('K-12, DOM-FIN-040: önizleme ödeyici farkını ve sözleşme başına ödeyiciyi döner; iletişim bilgisi yok', async () => {
+    const a = await twoPayers()
+    const response = await quote(a.cookie)
+    assert.equal(response.statusCode, 200, response.body)
+    const { payersDiffer, payers } = response.json().data
+    assert.equal(payersDiffer, true)
+    assert.deepEqual(payers, [
+      { contractId: 'test-contract', payer: 'guardian', payerName: PARENT_NAME },
+      { contractId: 'test-contract-2', payer: 'student', payerName: STUDENT?.name },
+    ])
+    const single = await institution()
+    const plain = (await quote(single.cookie)).json().data
+    assert.equal(plain.payersDiffer, false)
+    assert.deepEqual(plain.payers, [
+      { contractId: 'test-contract', payer: 'guardian', payerName: PARENT_NAME },
+    ])
+  })
+
+  test('K-12: ödeyiciler farklı ve iade varsa kararsız ayrılış 422; başkası 422; kayıt yazılmaz', async () => {
+    const a = await twoPayers()
+    const missing = await withdraw(a.cookie)
+    assertError(missing, 422, 'withdrawal_payer_decision_required')
+    assert.deepEqual(missing.json().issues?.[0]?.path, ['payerDecision'])
+    assertError(
+      await withdraw(a.cookie, {
+        ...WITHDRAW,
+        payerDecision: { payer: 'komsu', reason: 'Gerekçe yazıldı' },
+      }),
+      422,
+      'withdrawal_payer_invalid',
+    )
+    assertError(
+      await withdraw(a.cookie, { ...WITHDRAW, payerDecision: { payer: 'student', reason: '' } }),
+      400,
+      'validation_failed',
+    )
+    assertError(
+      await withdraw(a.cookie, {
+        ...WITHDRAW,
+        payerDecision: { payer: 'student', reason: 'x'.repeat(501) },
+      }),
+      400,
+      'validation_failed',
+    )
+    assert.equal((await findRecord(db, a.id, 'students', STUDENT?.id ?? ''))?.data.isActive, true)
+    const rows = await db
+      .select()
+      .from(studentWithdrawals)
+      .where(eq(studentWithdrawals.institutionId, a.id))
+    assert.equal(rows.length, 0)
+  })
+
+  test('K-12, guvenlik-kvkk: karar kayda girer; gerekçe log, denetim ve idempotency kaydında yok; iade yalnız seçilene', async () => {
+    const a = await twoPayers()
+    const from = logs.length
+    const headers = key()
+    const preview = (await quote(a.cookie)).json().data.breakdown
+    const response = await withdraw(a.cookie, { ...WITHDRAW, payerDecision: DECISION }, headers)
+    assert.equal(response.statusCode, 201, response.body)
+    const { id, version, refundCents, breakdown } = response.json().data
+    assert.equal(refundCents, preview.refundCents)
+    assert.deepEqual(breakdown.contracts, preview.contracts)
+    assert.equal(breakdown.payerDecision.payer, 'student')
+    assert.equal(response.body.includes('Gizli-gerekce-K12'), false)
+
+    const [row] = await db
+      .select()
+      .from(studentWithdrawals)
+      .where(eq(studentWithdrawals.institutionId, a.id))
+    assert.deepEqual(row?.breakdown.payerDecision, DECISION)
+    const detail = await send('GET', `/api/v1/withdrawals/${String(id)}`, a.cookie)
+    assert.equal(detail.json().data.breakdown.payerDecision.reason, DECISION.reason)
+
+    assert.equal(logs.slice(from).join('\n').includes('Gizli-gerekce-K12'), false)
+    const audits = await db
+      .select({ changes: auditLog.changes, reason: auditLog.reason })
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student.withdraw')))
+    assert.deepEqual(audits[0]?.changes, {
+      fields: ['withdrawalDate', 'reason', 'targetSchool', 'breakdown', 'payerDecision'],
+    })
+    assert.equal(JSON.stringify(audits).includes('Gizli-gerekce-K12'), false)
+    const stored = await db
+      .select({ body: idempotencyKeys.responseBody })
+      .from(idempotencyKeys)
+      .where(
+        and(
+          eq(idempotencyKeys.institutionId, a.id),
+          eq(idempotencyKeys.key, headers['idempotency-key']),
+        ),
+      )
+    assert.equal(stored.length, 1)
+    assert.equal(JSON.stringify(stored[0]?.body).includes('Gizli-gerekce-K12'), false)
+    const replay = await withdraw(a.cookie, { ...WITHDRAW, payerDecision: DECISION }, headers)
+    assert.deepEqual(replay.json(), response.json())
+
+    assertError(
+      await payRefund(a.cookie, id, version, { ...REFUND, accountHolder: PARENT_NAME }),
+      422,
+      'refund_holder_mismatch',
+    )
+    const paid = await payRefund(a.cookie, id, version, {
+      ...REFUND,
+      accountHolder: STUDENT?.name,
+    })
+    assert.equal(paid.statusCode, 200, paid.body)
+    assert.equal(paid.body.includes('Gizli-gerekce-K12'), false)
+    assert.equal(paid.json().data.refundAccountHolder, STUDENT?.name)
+  })
+
+  test('K-13, DOM-FIN-040: karar gerekçesi liste ve ayrıntıda yalnız yöneticiye döner; ön büro ödeyici türünü görür', async () => {
+    const a = await twoPayers()
+    const created = await withdraw(a.cookie, { ...WITHDRAW, payerDecision: DECISION })
+    assert.equal(created.statusCode, 201, created.body)
+    const { id } = created.json().data
+    const detailUrl = `/api/v1/withdrawals/${String(id)}`
+
+    const adminDetail = await send('GET', detailUrl, a.cookie)
+    assert.equal(adminDetail.statusCode, 200, adminDetail.body)
+    assert.deepEqual(adminDetail.json().data.breakdown.payerDecision, DECISION)
+    const adminList = await send('GET', '/api/v1/withdrawals', a.cookie)
+    assert.equal(adminList.statusCode, 200, adminList.body)
+    assert.deepEqual(adminList.json().data[0].breakdown.payerDecision, DECISION)
+
+    const desk = await member(a.id, 'onburo')
+    const deskDetail = await send('GET', detailUrl, desk)
+    assert.equal(deskDetail.statusCode, 200, deskDetail.body)
+    assert.deepEqual(deskDetail.json().data.breakdown.payerDecision, { payer: DECISION.payer })
+    assert.equal(deskDetail.body.includes('Gizli-gerekce-K12'), false)
+    const deskList = await send('GET', '/api/v1/withdrawals', desk)
+    assert.equal(deskList.statusCode, 200, deskList.body)
+    assert.deepEqual(deskList.json().data[0].breakdown.payerDecision, { payer: DECISION.payer })
+    assert.equal(deskList.body.includes('Gizli-gerekce-K12'), false)
+  })
+
+  test('K-12: iadesi sıfır olan ve ödeyicisi aynı olan ayrılış karar istemez', async () => {
+    const debtor = await institution()
+    await insertMissingRecords(
+      db,
+      debtor.id,
+      [
+        {
+          collection: 'contracts',
+          id: 'test-contract-2',
+          data: {
+            id: 'test-contract-2',
+            studentId: STUDENT?.id,
+            date: '2026-02-01T09:00:00.000Z',
+            amount: 1_000_000,
+            title: 'İkinci sözleşme',
+            invoiceIds: [],
+            ...contractTerms({ grossCents: 1_000_000, netCents: 1_000_000, payer: 'student' }),
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const owing = await withdraw(debtor.cookie)
+    assert.equal(owing.statusCode, 201, owing.body)
+    assert.equal(owing.json().data.refundCents, 0)
+    assert.equal(owing.json().data.breakdown.payerDecision, undefined)
+
+    const same = await institution()
+    assert.equal((await pay(same.cookie, NET / 2, 'TR-S1')).statusCode, 201)
+    const refunded = await withdraw(same.cookie)
+    assert.equal(refunded.statusCode, 201, refunded.body)
+    assert.ok(refunded.json().data.refundCents > 0)
+    assert.equal(refunded.json().data.breakdown.payerDecision, undefined)
+  })
+
   test('DOM-FIN-052: oturumsuz 401; önizleme yönetici ve ön büro, onay yalnız yönetici; modül kapalı 403', async () => {
     assertError(await quote(null), 401)
     assertError(await withdraw(null), 401)
@@ -233,7 +444,7 @@ describe('ayrılış ve iade uçları', () => {
 
     const a = await institution(
       {},
-      { scholarship: { programId: 'test-program', amountCents: 100_000 } },
+      { scholarship: { programId: TEST_SCHOLARSHIP_PROGRAM_ID, amountCents: 100_000 } },
     )
     const read = await quote(a.cookie)
     assert.equal(read.statusCode, 200, read.body)
@@ -263,6 +474,51 @@ describe('ayrılış ve iade uçları', () => {
       'attended_exceeds_total',
     )
     assertError(await quote(a.cookie, { ...QUOTE, x: 1 }), 400, 'validation_failed')
+  })
+
+  test('K-30: sağlık nedeni reddedilir, kayıt yazılmaz', async () => {
+    const a = await institution()
+    assertError(
+      await withdraw(a.cookie, { ...WITHDRAW, reason: 'health' }),
+      400,
+      'validation_failed',
+    )
+    const rows = await db
+      .select()
+      .from(studentWithdrawals)
+      .where(eq(studentWithdrawals.institutionId, a.id))
+    assert.equal(rows.length, 0)
+  })
+
+  test('ON-046f, ADR 0010 ölçüt 4: ayrılış yalnız öğrencinin taksit ve sözleşmelerini yükler; başka öğrencininki değişmez', async () => {
+    const a = await institution()
+    const other = SEED.students.find((item) => item.classId === 'c1' && item.id !== STUDENT?.id)
+    assert.ok(other)
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        { collection: 'students', id: other.id, data: { ...other } },
+        {
+          collection: 'invoices',
+          id: 'test-inv-other',
+          data: { ...invoice('test-inv-other', 1), studentId: other.id },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const from = logs.length
+    const response = await withdraw(a.cookie)
+    assert.equal(response.statusCode, 201, response.body)
+    const [loaded] = logs
+      .slice(from)
+      .map((line) => JSON.parse(line) as { event?: string; loaded?: Record<string, number> })
+      .filter((entry) => entry.event === 'operation.applied')
+      .map((entry) => entry.loaded)
+    assert.equal(loaded?.invoices, 2)
+    assert.equal(loaded?.contracts, 1)
+    const [untouched] = await loadInvoices(db, a.id, { ids: ['test-inv-other'] })
+    assert.equal(untouched?.version, 1)
   })
 
   test('DOM-FIN-041, DOM-KAY-024: ayrılış tek işlemde yazılır; 201, Location, döküm, denetim kaydı', async () => {
@@ -375,6 +631,14 @@ describe('ayrılış ve iade uçları', () => {
       assert.equal(other.json().meta.total, 0)
     }
     assertError(await send('GET', '/api/v1/withdrawals?x=1', desk), 400)
+    // ON-118: q öğrenci adında Türkçe harf duyarsız arar; tek harf 400.
+    const name = STUDENT?.name ?? ''
+    const search = async (q: string) =>
+      (await send('GET', `/api/v1/withdrawals?q=${encodeURIComponent(q)}`, desk)).json().meta
+        .total as number
+    assert.equal(await search(name.toLocaleUpperCase('tr').slice(0, 4)), 1)
+    assert.equal(await search('olmayan-ogrenci'), 0)
+    assertError(await send('GET', '/api/v1/withdrawals?q=a', desk), 400)
   })
 
   test('DOM-YTK-001: başka kurumun öğrencisi ve ayrılışı 404; öteki kurum değişmez', async () => {
@@ -417,5 +681,71 @@ describe('ayrılış ve iade uçları', () => {
       a.cookie,
     )
     assert.equal(row.json().data.refundCents, withdrawn.json().data.refundCents)
+  })
+
+  test('DOM-FIN-041, guvenlik-kvkk: iade idempotency kaydında IBAN ve hesap sahibi yok; tekrar aynı yanıtı verir', async () => {
+    const a = await institution()
+    assert.equal((await pay(a.cookie, NET / 2, 'TR-K1')).statusCode, 201)
+    const { id, version } = (await withdraw(a.cookie)).json().data
+    const headers = { 'if-match': `"${String(version)}"`, ...key() }
+    const url = `/api/v1/withdrawals/${String(id)}/pay-refund`
+    const first = await send('POST', url, a.cookie, REFUND, headers)
+    assert.equal(first.statusCode, 200, first.body)
+    assert.equal(first.json().data.maskedIban, 'TR** **** 1326')
+    assert.equal(first.json().data.refundAccountHolder, PARENT_NAME)
+
+    const stored = await db
+      .select({ body: idempotencyKeys.responseBody })
+      .from(idempotencyKeys)
+      .where(
+        and(
+          eq(idempotencyKeys.institutionId, a.id),
+          eq(idempotencyKeys.key, headers['idempotency-key']),
+        ),
+      )
+    assert.equal(stored.length, 1)
+    const text = JSON.stringify(stored[0]?.body)
+    for (const secret of [IBAN, '1326', PARENT_NAME, 'maskedIban', 'refundAccountHolder'])
+      assert.equal(text.includes(secret), false, secret)
+    assert.equal(text.includes(String(id)), true)
+
+    const replay = await send('POST', url, a.cookie, REFUND, headers)
+    assert.equal(replay.statusCode, 200, replay.body)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(replay.json(), first.json())
+  })
+
+  test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat iptal edilir, ayrılış öncesi edilemez', async () => {
+    const a = await institution()
+    const early = await pay(a.cookie, 1_000_000, 'TR-D1')
+    assert.equal(early.statusCode, 201, early.body)
+    const withdrawn = await withdraw(a.cookie)
+    assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+    assert.equal(withdrawn.json().data.debtCents, 1_000_000)
+    const reverse = (payment: { id: string; version: number }) =>
+      send(
+        'POST',
+        `/api/v1/payments/${payment.id}/reverse`,
+        a.cookie,
+        { reason: 'Yanlış tutar girildi' },
+        { 'if-match': `"${String(payment.version)}"`, ...key() },
+      )
+    assertError(await reverse(early.json().data), 409, 'payment_student_withdrawn')
+
+    const late = await pay(a.cookie, 1_000_000, 'TR-D2')
+    assert.equal(late.statusCode, 201, late.body)
+    const [debt] = await loadRecords(db, a.id, ['invoices'])
+    assert.equal(debt?.data.amount, 1_000_000)
+    assert.notEqual(debt?.data.paidAt, null)
+    const reversed = await reverse(late.json().data)
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const reopened = await findRecord(db, a.id, 'invoices', debt?.id ?? '')
+    assert.equal(reopened?.data.paidAt, null)
+    const row = await send(
+      'GET',
+      `/api/v1/withdrawals/${String(withdrawn.json().data.id)}`,
+      a.cookie,
+    )
+    assert.equal(row.json().data.debtCents, 1_000_000)
   })
 })

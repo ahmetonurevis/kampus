@@ -221,13 +221,56 @@ test('DOM-FIN-041: ayrılmış öğrencinin tahsilatı iptal edilemez; kayıt de
     () =>
       reversePayment(
         state,
-        { reversedAt: null, allocations: plan.allocations, studentWithdrawn: true },
+        { reversedAt: null, allocations: plan.allocations, withdrawals: [{ debtInvoiceId: null }] },
         { reason: 'Yanlış öğrenciye girildi' },
       ),
     'payment_student_withdrawn',
     'conflict',
   )
   assert.equal(JSON.stringify(state), before)
+})
+
+test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat iptal edilir; ayrılış öncesi tahsilat edilemez', () => {
+  const { state } = fixture()
+  const withdrawals = [{ debtInvoiceId: 'test-inv-3' }]
+  const debtPayment = [{ invoiceId: 'test-inv-3', amountCents: 10_000 }]
+  state.invoices.find((invoice) => invoice.id === 'test-inv-3')!.paidAt = NOW
+  const result = reversePayment(
+    state,
+    { reversedAt: null, allocations: debtPayment, withdrawals },
+    { reason: 'Yanlış tutar girildi' },
+  )
+  assert.equal(result.reason, 'Yanlış tutar girildi')
+  assert.equal(state.invoices.find((invoice) => invoice.id === 'test-inv-3')?.paidAt, null)
+
+  // Ayrılış öncesi taksite ya da karışık dağılmış tahsilat ayrılış hesabına girmiştir.
+  for (const allocations of [
+    [{ invoiceId: 'test-inv-1', amountCents: 10_000 }],
+    [...debtPayment, { invoiceId: 'test-inv-1', amountCents: 5_000 }],
+    [],
+  ]) {
+    state.invoices[1]!.paidAt = NOW
+    const before = JSON.stringify(state)
+    rejects(
+      () =>
+        reversePayment(
+          state,
+          { reversedAt: null, allocations, withdrawals },
+          { reason: 'Yanlış tutar girildi' },
+        ),
+      'payment_student_withdrawn',
+      'conflict',
+    )
+    assert.equal(JSON.stringify(state), before)
+  }
+  // Ayrılışı olmayan öğrencide denetim yoktur.
+  assert.doesNotThrow(() =>
+    reversePayment(
+      state,
+      { reversedAt: null, allocations: [{ invoiceId: 'test-inv-1', amountCents: 10_000 }] },
+      { reason: 'Yanlış tutar girildi' },
+    ),
+  )
 })
 
 test('DOM-FIN-001: tutar metinden kuruşa kayıpsız çevrilir', () => {

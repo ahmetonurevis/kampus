@@ -14,6 +14,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 import { SEED, sampleRows } from './support/collections-sample.ts'
 
 /**
@@ -36,9 +37,10 @@ const OPEN_INVOICES = ['s1', 's2'].map((studentId) => ({
   studentId,
   installment: 9,
   amount: 10_000,
-  dueDate: '2026-11-15T00:00:00.000Z',
+  dueDate: '2026-11-15T09:00:00.000Z',
   paidAt: null,
   method: null,
+  reminderAt: null,
 }))
 
 describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
@@ -46,6 +48,8 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
   let close: () => Promise<void>
   let app: App
   let serial = 0
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())

@@ -762,6 +762,63 @@ async function appendPositions(
 }
 
 /**
+ * Kısmi yükleme kapsamı: verilen kimlikler ya da süzgece uyan kayıtlar (hepsi sağlanmalı).
+ * `operation-runner.ts` `LoadScope` bu tiptir.
+ */
+export type StoreScope = { ids: readonly string[] } | { match: readonly RecordFilter[] }
+
+/**
+ * Koleksiyon deposu (ADR 0010 karar 7–8; ON-046b): işlem çalıştırıcı koleksiyonun kayıtlarını bu
+ * arayüzle yükler ve yazar. Varsayılan `records`'tır (`RECORDS_STORE`); tablo destekli koleksiyon
+ * çalıştırıcının depo kaydına kendi deposunu yazar. Bütün depolar aynı anlamı taşır:
+ *
+ * - Yükleme kurum kapsamlıdır, arşivlenmemiş kayıtları koleksiyon içinde core dizi sırasıyla
+ *   (`position`, kimlik) döner. Depo süzgeci kendi koşuluna çevirir; çeviremediği süzgeç
+ *   programlama hatasıdır, sessizce bütün kayıtlar yüklenmez.
+ * - Yazma `writeRecords` anlamındadır: güncelleme, taşıma ve arşiv `version = beklenen` ile
+ *   (tutmazsa 409), ekleme arşivlenmiş kaydı yeniden açar (`restore`), canlı kayıtla çakışırsa 409.
+ *   Kurum kilidini çağıran alır; depo çağıranın transaction'ında yazar.
+ */
+export interface CollectionStore {
+  /** Log ve hata iletisi için ad. */
+  readonly name: string
+  /** Koleksiyonların bütün kayıtları (tek çağrıda). */
+  loadAll(
+    db: Database,
+    institutionId: string,
+    collections: readonly CollectionName[],
+  ): Promise<StoredRecord[]>
+  /** Tek koleksiyonun kısmi yüklemesi. */
+  loadScoped(
+    db: Database,
+    institutionId: string,
+    collection: CollectionName,
+    scope: StoreScope,
+  ): Promise<StoredRecord[]>
+  write(
+    db: Database,
+    institutionId: string,
+    writes: readonly RecordWrite[],
+    now: Date,
+  ): Promise<WrittenRecord[]>
+}
+
+/**
+ * `records` deposu: depo kaydında adı geçmeyen her koleksiyonun deposu. Davranışı ON-046b öncesi
+ * çalıştırıcının doğrudan çağrılarıyla aynıdır: tam yükleme koleksiyonları tek sorguda, kimlikle
+ * yükleme birincil anahtardan, süzgeçli yükleme `loadRecords` ile; yazma `writeRecords`.
+ */
+export const RECORDS_STORE: CollectionStore = {
+  name: 'records',
+  loadAll: (db, institutionId, collections) => loadRecords(db, institutionId, collections),
+  loadScoped: (db, institutionId, collection, scope) =>
+    'ids' in scope
+      ? loadRecordsByIds(db, institutionId, collection, scope.ids)
+      : loadRecords(db, institutionId, [collection], { match: scope.match }),
+  write: writeRecords,
+}
+
+/**
  * Tohum için: yoksa ekler, varsa verisine dokunmaz (idempotent; değiştirilmiş kayıt ezilmez).
  * Sıra verilen dizinin koleksiyon içindeki sırasıdır: eksik kayıt komşularının arasına girer,
  * sırası bozulmuş mevcut kayıt (ör. migration dolgusundan) yalnız sıra değeriyle düzeltilir;
@@ -834,7 +891,20 @@ export async function insertMissingRecords(
         .returning({ id: records.id })
       inserted += rows.length
     }
+    // Çift yazma süresince (ADR 0010 adım 3; ON-046e, daralt 046h'de kalkar) taksit ve sözleşme
+    // tablolarda da tutulur: tohumun eklediği ya da sırasını düzelttiği kayıtlar aynı
+    // transaction'da kaynaktan eşitlenir (`finance-mirror-store.ts` `mirrorFinanceIds`: depo
+    // şemasına uyan kayıtlar, idempotent). Kurumun bütün taksit ve sözleşmeleri eşitlenir: ayrı
+    // tohum çağrısıyla sonradan gelen sözleşme, önce gelen taksitinin bağını da açar. Depo bu
+    // dosyayı içe aktardığı için içe aktarma dinamiktir (döngüsel yükleme yok).
+    if (collections.some((collection) => FINANCE_MIRRORED.has(collection))) {
+      const { mirrorFinanceIds } = await import('./finance-mirror-store.ts')
+      await mirrorFinanceIds(tx, institutionId, 'all')
+    }
     return inserted
   })
   return withDatabaseErrors(work)
 }
+
+/** Tablolara da kopyalanan koleksiyonlar (`db/finance-mirror-store.ts`). */
+const FINANCE_MIRRORED: ReadonlySet<CollectionName> = new Set(['invoices', 'contracts'])

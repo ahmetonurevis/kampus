@@ -3,10 +3,20 @@ import { z } from 'zod'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { dayKey } from './format.ts'
+import {
+  assertPaymentTermsDistinct,
+  assertPaymentTermsPublishable,
+  FEE_PAYMENT_TERM_KINDS,
+  feePaymentTermSchema,
+  PAYMENT_TERM_DISCOUNT_KIND,
+  PAYMENT_TERM_DISCOUNT_LABEL,
+  type FeePaymentTerm,
+} from './payment-terms.ts'
 import { amountInputValue, parseAmountInput } from './payments.ts'
 
 /**
- * Ücret tarifesi (docs/domain/finans.md DOM-FIN-002, -003, -004, -006; IST-104; ADR 0006). Tarife
+ * Ücret tarifesi (docs/domain/finans.md DOM-FIN-002, -003, -004, -006, -013; IST-104; ADR 0006). Tarife
  * eğitim yılı başına sürümlüdür: taslak düzenlenir, yayımlanan sürüm değişmez. Kurallar saftır;
  * API satırları yükler, karar sonucunu yazar.
  */
@@ -83,6 +93,13 @@ export const FEE_DISCOUNT_KIND_LABELS: Readonly<Record<FeeDiscountKind, string>>
   staff_child: 'Personel çocuğu',
 }
 
+/** Sözleşmedeki indirim kalemi türü: tarifedeki türler ve süreli koşulun fiyat farkı (DOM-FIN-013). */
+export type DiscountLineKind = FeeDiscountKind | typeof PAYMENT_TERM_DISCOUNT_KIND
+export const DISCOUNT_LINE_LABELS: Readonly<Record<DiscountLineKind, string>> = {
+  ...FEE_DISCOUNT_KIND_LABELS,
+  [PAYMENT_TERM_DISCOUNT_KIND]: PAYMENT_TERM_DISCOUNT_LABEL,
+}
+
 export const feeDiscountSchema = z
   .strictObject({
     kind: z.enum(FEE_DISCOUNT_KINDS, 'İndirim türünü seçin.'),
@@ -93,14 +110,22 @@ export const feeDiscountSchema = z
     message: 'İndirim için oran veya tutardan yalnız birini girin.',
   })
 export type FeeDiscount = z.output<typeof feeDiscountSchema>
+
+/** Kalemin tarifedeki değeri: ilan ücretinin oranı (aşağı yuvarlanır) ya da sabit tutar (DOM-FIN-020). */
+export function discountRuleAmount(rule: FeeDiscount, grossCents: number): number {
+  return rule.amountCents ?? Math.floor((grossCents * (rule.percentBasisPoints ?? 0)) / BASIS)
+}
 const feeDiscountsSchema = z.array(feeDiscountSchema).max(20).default([])
 
 const feeItemsSchema = z.array(feeItemSchema).min(1, 'En az bir ücret kalemi girin.').max(100)
+const MAX_PAYMENT_TERMS = 12
 
 export const createFeeTariffSchema = z.strictObject({
   academicYear: z.number().int().min(2000).max(2100),
   items: feeItemsSchema,
   discounts: feeDiscountsSchema,
+  /** Peşin ve süreli ödeme koşulları (DOM-FIN-013); taslakta boş olabilir, yayım ister. */
+  paymentTerms: z.array(feePaymentTermSchema).max(MAX_PAYMENT_TERMS).default([]),
 })
 export type CreateFeeTariffInput = z.input<typeof createFeeTariffSchema>
 
@@ -108,22 +133,75 @@ export type CreateFeeTariffInput = z.input<typeof createFeeTariffSchema>
 export const updateFeeTariffSchema = z.strictObject({
   items: feeItemsSchema.optional(),
   discounts: z.array(feeDiscountSchema).max(20).optional(),
+  paymentTerms: z.array(feePaymentTermSchema).max(MAX_PAYMENT_TERMS).optional(),
 })
 export type UpdateFeeTariffInput = z.input<typeof updateFeeTariffSchema>
 
 /**
- * Okulda ücret ocak başı–mayıs sonu arasında ilan edilir (DOM-FIN-002, 5580 md. 13/1). Dönem dışı
- * yayım engellenmez: ek sınıf veya yeni kurum gibi meşru durumlar vardır, ekran uyarır. Dil okulu
- * bu kurala bağlı değildir.
+ * İlan dönemi profil parametresidir (DOM-FIN-002): okulda ücret ocak başı–mayıs sonu arasında ilan
+ * edilir (5580 md. 13/1). Kaydı olmayan kurum türü (dil okulu, kurs) bu kurala bağlı değildir.
+ */
+const ANNOUNCEMENT_PERIODS: Partial<
+  Readonly<Record<InstitutionType, { firstMonth: number; lastMonth: number }>>
+> = {
+  school: { firstMonth: 1, lastMonth: 5 },
+}
+
+/**
+ * Dönem dışı yayım engellenmez: ek sınıf veya yeni kurum gibi meşru durumlar vardır, ekran uyarır.
  */
 export function isOutsideAnnouncementPeriod(
   announcedDate: string,
   institutionType: InstitutionType,
 ): boolean {
-  if (institutionType !== 'school') return false
+  const period = ANNOUNCEMENT_PERIODS[institutionType]
+  if (period === undefined) return false
   const month = Number(announcedDate.slice(5, 7))
-  return month < 1 || month > 5
+  return month < period.firstMonth || month > period.lastMonth
 }
+
+/**
+ * Eğitim yılının ilan dönemi bitti mi: 2026–2027 ücreti 2026 ocak–mayısında ilan edilir, dönemin son
+ * günü de süre içindedir. Gün Europe/Istanbul'a göredir. İlan dönemi olmayan kurum türünde süre de
+ * dolmaz.
+ */
+export function isAnnouncementPeriodOver(
+  academicYear: number,
+  institutionType: InstitutionType,
+  now: string | Date,
+): boolean {
+  const period = ANNOUNCEMENT_PERIODS[institutionType]
+  if (period === undefined) return false
+  const lastMonth = `${String(academicYear)}-${String(period.lastMonth).padStart(2, '0')}`
+  return dayKey(now).slice(0, 7) > lastMonth
+}
+
+/**
+ * Sözleşmeye esas tarife (DOM-FIN-002, K-11): hedef yılın yayımlı tarifesi varsa odur; yoksa ve ilan
+ * dönemi bittiyse önceki yılın yayımlı tarifesi geçerli kalır. Dönem sürüyorsa, kurum türünün ilan
+ * dönemi yoksa ya da önceki yılın da tarifesi yoksa `null`: çağıran `tariff_not_published` verir.
+ * Zincirleme taşıma yoktur, yalnız bir önceki yıla bakılır. `carriedOverFromYear` tarifenin taşındığı
+ * yıldır; hedef yılın kendi tarifesinde `null`.
+ */
+export function resolveEffectiveTariff<TTariff>(input: {
+  academicYear: number
+  institutionType: InstitutionType
+  published: TTariff | null
+  previousPublished: TTariff | null
+  now: string | Date
+}): { tariff: TTariff; carriedOverFromYear: number | null } | null {
+  if (input.published !== null) return { tariff: input.published, carriedOverFromYear: null }
+  if (
+    input.previousPublished === null ||
+    !isAnnouncementPeriodOver(input.academicYear, input.institutionType, input.now)
+  )
+    return null
+  return { tariff: input.previousPublished, carriedOverFromYear: input.academicYear - 1 }
+}
+
+/** Önceki yılın tarifesi uygulandığında kullanıcıya gösterilen açıklama (DOM-FIN-002, K-11). */
+export const carriedOverTariffNote = (fromYear: number) =>
+  `Bu eğitim yılının ücreti süresinde ilan edilmediği için önceki yılın (${String(fromYear)}–${String(fromYear + 1)}) tarifesi uygulanır.`
 
 export const publishFeeTariffSchema = z.strictObject({
   announcedDate: daySchema,
@@ -140,6 +218,8 @@ export interface FeeTariffRow {
   status: FeeTariffStatus
   items: readonly FeeItem[]
   discounts: readonly FeeDiscount[]
+  /** Bu alan eklenmeden önce yayımlanmış tarifede boştur (DOM-FIN-013). */
+  paymentTerms?: readonly FeePaymentTerm[]
 }
 
 /** Aynı tür ve düzey iki kez fiyatlanmaz. */
@@ -159,9 +239,16 @@ function assertUniqueItems(items: readonly FeeItem[]): void {
 export function planTariffCreate(
   input: unknown,
   existing: readonly Pick<FeeTariffRow, 'versionNumber' | 'status'>[],
-): { academicYear: number; versionNumber: number; items: FeeItem[]; discounts: FeeDiscount[] } {
+): {
+  academicYear: number
+  versionNumber: number
+  items: FeeItem[]
+  discounts: FeeDiscount[]
+  paymentTerms: FeePaymentTerm[]
+} {
   const data = createFeeTariffSchema.parse(input)
   assertUniqueItems(data.items)
+  assertPaymentTermsDistinct(data.paymentTerms)
   if (existing.some((row) => row.status === 'draft'))
     throw new DomainError('open_tariff_draft', 'Bu yıl için açık bir tarife taslağı var.', {
       kind: 'conflict',
@@ -172,6 +259,7 @@ export function planTariffCreate(
     versionNumber: last + 1,
     items: data.items,
     discounts: data.discounts,
+    paymentTerms: data.paymentTerms,
   }
 }
 
@@ -185,22 +273,25 @@ function assertDraft(row: Pick<FeeTariffRow, 'status'>): void {
 }
 
 export function planTariffUpdate(
-  row: Pick<FeeTariffRow, 'status' | 'items' | 'discounts'>,
+  row: Pick<FeeTariffRow, 'status' | 'items' | 'discounts' | 'paymentTerms'>,
   input: unknown,
-): { items: FeeItem[]; discounts: FeeDiscount[] } {
+): { items: FeeItem[]; discounts: FeeDiscount[]; paymentTerms: FeePaymentTerm[] } {
   assertDraft(row)
   const data = updateFeeTariffSchema.parse(input)
   const items = data.items ?? [...row.items]
   assertUniqueItems(items)
-  return { items, discounts: data.discounts ?? [...row.discounts] }
+  const paymentTerms = data.paymentTerms ?? [...(row.paymentTerms ?? [])]
+  assertPaymentTermsDistinct(paymentTerms)
+  return { items, discounts: data.discounts ?? [...row.discounts], paymentTerms }
 }
 
 /**
- * Yayım denetimi (DOM-FIN-002, -006): öğrenim ücreti bulunur, birimi kurum türüne uyar, okulda
- * onaylı tutar girilmiştir ve ilan edilen tutar onaylı tutarı aşmaz.
+ * Yayım denetimi (DOM-FIN-002, -006, -013): öğrenim ücreti bulunur, birimi kurum türüne uyar, okulda
+ * onaylı tutar girilmiştir, ilan edilen tutar onaylı tutarı aşmaz ve ödeme koşulları ilan edilmiştir.
  */
 export function planTariffPublish(
-  row: Pick<FeeTariffRow, 'status' | 'items'>,
+  row: Pick<FeeTariffRow, 'status' | 'items' | 'paymentTerms'> &
+    Partial<Pick<FeeTariffRow, 'discounts'>>,
   input: unknown,
   options: { institutionType: InstitutionType; today: string },
 ): { announcedDate: string; mebbisRecordedDate: string | null } {
@@ -238,6 +329,7 @@ export function planTariffPublish(
         'tariff_amount_exceeds_announced',
         'Ücret, MEBBİS onaylı tutarı aşamaz.',
       )
+  assertPaymentTermsPublishable(row.paymentTerms ?? [], row.discounts ?? [])
   return { announcedDate: data.announcedDate, mebbisRecordedDate: data.mebbisRecordedDate }
 }
 
@@ -248,6 +340,62 @@ const percentCents = (value: string) => {
   return parsed !== null && parsed <= BASIS ? parsed : null
 }
 const BASIS = 10_000
+
+/** Ödeme koşulu satırının API biçimi; peşinde taksit ve fiyat farkı alanları yok sayılır. */
+function paymentTermRowToBody(row: {
+  kind: (typeof FEE_PAYMENT_TERM_KINDS)[number]
+  minInstallments: string
+  maxInstallments: string
+  mode: 'none' | 'percent' | 'amount'
+  value: string
+}): FeePaymentTerm {
+  if (row.kind === 'upfront')
+    return {
+      kind: 'upfront',
+      minInstallments: 1,
+      maxInstallments: 1,
+      discountPercentBasisPoints: null,
+      discountAmountCents: null,
+    }
+  return {
+    kind: row.kind,
+    minInstallments: Number(row.minInstallments),
+    maxInstallments: Number(row.maxInstallments),
+    discountPercentBasisPoints: row.mode === 'percent' ? percentCents(row.value) : null,
+    discountAmountCents: row.mode === 'amount' ? parseAmountInput(row.value) : null,
+  }
+}
+
+const paymentTermRowSchema = z
+  .object({
+    kind: z.enum(FEE_PAYMENT_TERM_KINDS, 'Ödeme koşulunu seçin.'),
+    minInstallments: z.string(),
+    maxInstallments: z.string(),
+    mode: z.enum(['none', 'percent', 'amount']),
+    value: z.string(),
+  })
+  .superRefine((row, context) => {
+    if (row.kind === 'installment' && row.mode !== 'none') {
+      const valid =
+        row.mode === 'percent'
+          ? percentCents(row.value) !== null
+          : parseAmountInput(row.value) !== null
+      if (!valid)
+        context.addIssue({
+          code: 'custom',
+          path: ['value'],
+          message: row.mode === 'percent' ? 'Oranı 0 ile 100 arasında girin.' : AMOUNT_MESSAGE,
+        })
+    }
+    // Aralık kuralları API şemasıyla tektir; form aynı şemayı çalıştırır.
+    const parsed = feePaymentTermSchema.safeParse(paymentTermRowToBody(row))
+    if (!parsed.success)
+      for (const issue of parsed.error.issues) {
+        const [field] = issue.path
+        if (field === 'minInstallments' || field === 'maxInstallments')
+          context.addIssue({ code: 'custom', path: [field], message: issue.message })
+      }
+  })
 
 /** Tarife formu (web): tutar ve oran metindir, gönderimde kuruşa ve on binde birliğe çevrilir. */
 export const feeTariffFormSchema = z.object({
@@ -294,6 +442,7 @@ export const feeTariffFormSchema = z.object({
           })
       }),
   ),
+  paymentTerms: z.array(paymentTermRowSchema),
 })
 export type FeeTariffFormValues = z.output<typeof feeTariffFormSchema>
 
@@ -326,6 +475,25 @@ export function emptyTariffForm(academicYear: number, today: string): FeeTariffF
       },
     ],
     discounts: [],
+    // Başlangıç bugünkü serbest aralıktır; yönetici ilan etmeden önce düzeltir (DOM-FIN-013).
+    paymentTerms: [
+      { kind: 'upfront', minInstallments: '1', maxInstallments: '1', mode: 'none', value: '' },
+      { kind: 'installment', minInstallments: '2', maxInstallments: '12', mode: 'none', value: '' },
+    ],
+  }
+}
+
+/** Kayıtlı ödeme koşulunun form satırı. */
+function paymentTermToRow(term: FeePaymentTerm): FeeTariffFormValues['paymentTerms'][number] {
+  return {
+    kind: term.kind,
+    minInstallments: String(term.minInstallments),
+    maxInstallments: String(term.maxInstallments),
+    ...(term.discountAmountCents !== null
+      ? { mode: 'amount' as const, value: amountInputValue(term.discountAmountCents) }
+      : term.discountPercentBasisPoints !== null
+        ? { mode: 'percent' as const, value: amountInputValue(term.discountPercentBasisPoints) }
+        : { mode: 'none' as const, value: '' }),
   }
 }
 
@@ -334,6 +502,7 @@ export function tariffToForm(tariff: {
   academicYear: number
   items: readonly FeeItem[]
   discounts: readonly FeeDiscount[]
+  paymentTerms?: readonly FeePaymentTerm[]
 }): FeeTariffFormValues {
   return {
     academicYear: String(tariff.academicYear),
@@ -360,6 +529,26 @@ export function tariffToForm(tariff: {
             value: amountInputValue(discount.amountCents),
           },
     ),
+    paymentTerms: (tariff.paymentTerms ?? []).map(paymentTermToRow),
+  }
+}
+
+/**
+ * Yayımlanmış tarifeden bir sonraki eğitim yılının taslak formu (ON-055, DOM-FIN-002): kalemler,
+ * birimler, KDV, indirimler ve ödeme koşulları başlangıç olarak taşınır; MEBBİS'te onaylanan ilan
+ * tutarı yıla özgü olduğu için boşaltılır ve yeni yılın ilanıyla girilir. Kayıtlı tarife değişmez.
+ */
+export function nextYearTariffForm(tariff: {
+  academicYear: number
+  items: readonly FeeItem[]
+  discounts: readonly FeeDiscount[]
+  paymentTerms?: readonly FeePaymentTerm[]
+}): FeeTariffFormValues {
+  const form = tariffToForm(tariff)
+  return {
+    ...form,
+    academicYear: String(tariff.academicYear + 1),
+    items: form.items.map((item) => ({ ...item, announcedAmount: '' })),
   }
 }
 
@@ -368,6 +557,7 @@ export function tariffFormToBody(values: FeeTariffFormValues): {
   academicYear: number
   items: FeeItem[]
   discounts: FeeDiscount[]
+  paymentTerms: FeePaymentTerm[]
 } {
   return {
     academicYear: Number(values.academicYear),
@@ -394,6 +584,7 @@ export function tariffFormToBody(values: FeeTariffFormValues): {
             amountCents: parseAmountInput(discount.value),
           },
     ),
+    paymentTerms: values.paymentTerms.map(paymentTermRowToBody),
   }
 }
 

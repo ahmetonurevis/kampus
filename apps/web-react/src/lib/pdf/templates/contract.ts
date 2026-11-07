@@ -11,12 +11,11 @@ import {
 } from '@kampus/school-core/lib/contract-status.ts'
 import { money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
-import {
-  FEE_DISCOUNT_KIND_LABELS,
-  FEE_ITEM_KIND_LABELS,
-} from '@kampus/school-core/lib/fee-tariffs.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import { DISCOUNT_LINE_LABELS, FEE_ITEM_KIND_LABELS } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
-import { INSTALLMENT_COLUMNS, studentFields } from './finance-shared.ts'
+import { INSTALLMENT_COLUMNS, learnerTerm, studentFields } from './finance-shared.ts'
 import {
   renewalAppendix,
   renewalPlanNote,
@@ -28,10 +27,15 @@ import type { TemplateOptions } from './shared.ts'
 export type ContractTemplateOptions = TemplateOptions & {
   /** Yenileme ayrıntısından açıldıysa dönem geçişi ve plan anındaki ücret kararı (IST-100). */
   renewal?: RenewalContractContext
+  /**
+   * Etkin kurumun türü: metindeki kayıtlı kişi okulda "öğrenci", dil okulu ve kursta "kursiyer"dir
+   * (ADR 0008 karar 1). Verilmezse okul metni kullanılır.
+   */
+  institutionType?: InstitutionType
 }
 
 const LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
-const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND_LABELS }
+const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...DISCOUNT_LINE_LABELS }
 const extraLabel = (kind: string) => LABELS[kind] ?? kind
 const discountLabel = (kind: string) => DISCOUNT_LABELS[kind] ?? kind
 
@@ -88,6 +92,10 @@ export function contractDocument(
   const { contract } = data
   const { renewal } = options
   const pricing = renewal?.pricing ?? null
+  const learner = learnerTerm(options.institutionType)
+  const learnerLower = learner.toLocaleLowerCase('tr')
+  // Tamlayan eki ünlü uyumuyla değişir: öğrencinin / kursiyerin.
+  const learnerGenitive = learner === 'Öğrenci' ? 'öğrencinin' : 'kursiyerin'
   if (!contract) throw new Error('Sözleşme kaydı bulunamadı.')
   // Belge yalnız kendi sürümünü bilir; yerini ek protokole bıraktığını sürüm listesi gösterir.
   const status = contractStatus(contract, [contract])
@@ -110,8 +118,8 @@ export function contractDocument(
     contract.title,
     `Sözleşme tarihi: ${date(contract.date)} · Sürüm ${String(revision)} · ${CONTRACT_STATUS_LABELS[status]}`,
   )
-  doc.section('01 / Taraflar ve öğrenci bilgileri')
-  doc.fields(studentFields(data))
+  doc.section(`01 / Taraflar ve ${learnerLower} bilgileri`)
+  doc.fields(studentFields(data, learner))
   doc.paragraph(
     `Eğitim kurumu: ${options.institution} · ${data.branch?.address || data.branch?.name || 'Okul yönetimi'}`,
     9,
@@ -132,7 +140,7 @@ export function contractDocument(
   }
   doc.section('02 / Eğitim hizmetinin kapsamı')
   doc.paragraph(
-    'Bu örnek sözleşme; öğrencinin kayıtlı olduğu sınıftaki eğitim programını, ders materyallerini, ölçme ve değerlendirme çalışmalarını ve öğrenci / veli portalı erişimini kapsar.',
+    `Bu örnek sözleşme; ${learnerGenitive} kayıtlı olduğu sınıftaki eğitim programını, ders materyallerini, ölçme ve değerlendirme çalışmalarını ve ${learnerLower} / veli portalı erişimini kapsar.`,
   )
   doc.paragraph(
     'Ders programı ve akademik takvim okul yönetimi tarafından paylaşılır. Veli, duyuru ve gelişim raporlarını portal üzerinden takip eder. Yemek, servis ve ek etkinlikler bu eğitim bedeline dahil edilmemiştir.',
@@ -161,7 +169,11 @@ export function contractDocument(
         money(line.amountCents),
       ]),
       ['Tarife sürümü', String(contract.tariffVersion ?? '—')],
-      ['Ödeyici', contract.payer === 'student' ? 'Öğrenci' : 'Veli'],
+      ...(contract.paymentTerm
+        ? [['Ödeme koşulu', contractPaymentTermLabel(contract.paymentTerm)] as [string, string]]
+        : []),
+      // Öğrenci ödeyici yalnız kursta olur (DOM-KAY-012); imza satırıyla aynı terim kullanılır.
+      ['Ödeyici', contract.payer === 'student' ? 'Kursiyer' : 'Veli'],
     ])
   const rows = planRows(contract, data)
   doc.paragraph(
@@ -174,7 +186,7 @@ export function contractDocument(
   // Bursluya burs belgeleri dışında maddi yükümlülük doğuran belge düzenlenmez (DOM-FIN-025).
   if (contract.scholarship)
     doc.paragraph(
-      'Burslu öğrenci için bu sözleşmeye bağlı senet veya taahhüt düzenlenmez.',
+      `Burslu ${learnerLower} için bu sözleşmeye bağlı senet veya taahhüt düzenlenmez.`,
       9,
       COLORS.muted,
     )

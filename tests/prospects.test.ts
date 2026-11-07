@@ -30,6 +30,7 @@ import {
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
 import { visibleRecords } from '../packages/school-core/src/lib/scope.ts'
+import { INSTITUTION_TYPES } from '../packages/school-core/src/modules/collection-modules.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
 
 // 2026-10-06 salıdır. Seed: pr1 Alara Güven (b1, Yeni aday), pr2 (b2, İletişime geçildi),
@@ -343,6 +344,41 @@ test('DOM-KAY-009, DOM-KAY-012: dil okulunda yaş seçimi zorunlu; yetişkinde v
   const child = languageProspect(state, { phone: '05559990004', name: 'Çocuk Aday' })
   assert.equal(child.minor, true)
   assert.equal(child.guardianName, 'Test Veli')
+})
+
+test('DOM-KAY-009, ADR 0008: okul dışındaki her türde (dil okulu, kurs) yaş grubu sorulur; yetişkinde veli adı saklanmaz', () => {
+  assert.equal(prospects.prospectAgeGroupRequired('school'), false)
+  const courseTypes = INSTITUTION_TYPES.filter((type) => type !== 'school')
+  assert.ok(courseTypes.includes('language_school'))
+  for (const institutionType of courseTypes) {
+    const state = seed()
+    assert.equal(prospects.prospectAgeGroupRequired(institutionType), true, institutionType)
+    unchangedOnFailure(
+      state,
+      () => createProspect(state, front, input(), id, now, { institutionType }),
+      fails('prospect_age_required', 'rule', ['minor']),
+    )
+    const adult = createProspect(
+      state,
+      front,
+      input({ minor: false, guardianName: 'Gönderilen Veli', phone: '05559990021' }),
+      id,
+      now,
+      { institutionType },
+    )
+    assert.equal(adult.minor, false)
+    assert.equal('guardianName' in adult, false, institutionType)
+    const child = createProspect(
+      state,
+      front,
+      input({ minor: true, phone: '05559990022', name: 'Çocuk Kursiyer' }),
+      id,
+      now,
+      { institutionType },
+    )
+    assert.equal(child.minor, true)
+    assert.equal(child.guardianName, 'Test Veli')
+  }
 })
 
 test('DOM-KAY-009: kampüs aktif olmalıdır', () => {
@@ -692,6 +728,80 @@ test('DOM-KAY-005: Vazgeçti nedenle girilir; neden yalnız Vazgeçti aşamasın
   )
   assert.deepEqual([lost.stage, lost.lostReason, lost.lostAt], ['Vazgeçti', 'other_school', now])
   assert.equal(PROSPECT_LOST_REASON_LABELS[PROSPECT_LOST_REASONS[0]], 'Fiyat')
+})
+
+test('DOM-KAY-005, IST-117: tercih edilen kurum isteğe bağlıdır, yalnız Vazgeçti aşamasında yazılır, yeniden açılışta silinir', () => {
+  const state = seed()
+  const body = { stage: 'Vazgeçti', lostReason: 'other_school' }
+  for (const wrong of [
+    { stage: 'Teklif verildi', lostToInstitution: 'Rakip Koleji' },
+    { ...body, lostToInstitution: 'x'.repeat(prospects.PROSPECT_LOST_INSTITUTION_MAX + 1) },
+    { ...body, lostToInstitution: 42 },
+  ])
+    unchangedOnFailure(state, () => changeProspectStage(state, front, 'pr1', wrong, now), zodError)
+
+  const blank = changeProspectStage(state, front, 'pr1', { ...body, lostToInstitution: '  ' }, now)
+  assert.equal('lostToInstitution' in blank, false)
+
+  const named = changeProspectStage(
+    state,
+    front,
+    'pr2',
+    { ...body, lostToInstitution: '  Rakip Koleji ' },
+    now,
+  )
+  assert.equal(named.lostToInstitution, 'Rakip Koleji')
+  const reopened = changeProspectStage(state, front, 'pr2', { stage: 'İletişime geçildi' }, now)
+  assert.equal('lostToInstitution' in reopened, false)
+  assert.equal('lostReason' in reopened, false)
+})
+
+test('IST-117: kayıp kırılımı neden ve kurumu sayar, yazım farkını birleştirir, kimlik taşımaz', () => {
+  const lost: Record<string, unknown>[] = [
+    { id: 'p1', name: 'Gizli Ad', lostReason: 'price', lostToInstitution: 'Rakip  Koleji' },
+    { lostReason: 'price', lostToInstitution: 'rakip koleji' },
+    { lostReason: 'other_school', lostToInstitution: 'Ilgaz Okulu' },
+    { lostReason: 'transport', lostToInstitution: '   ' },
+    { lostReason: 'Başka okul' },
+    {},
+  ]
+  const result = prospects.prospectLossBreakdown(lost)
+  assert.deepEqual(result, {
+    total: 6,
+    reasons: [
+      { reason: 'price', count: 2 },
+      { reason: null, count: 2 },
+      { reason: 'other_school', count: 1 },
+      { reason: 'transport', count: 1 },
+    ],
+    institutions: [
+      { name: 'Rakip Koleji', count: 2 },
+      { name: 'Ilgaz Okulu', count: 1 },
+    ],
+    otherInstitutions: 0,
+    unnamed: 3,
+  })
+  assert.equal(JSON.stringify(result).includes('Gizli Ad'), false)
+  assert.deepEqual(prospects.prospectLossBreakdown([]), {
+    total: 0,
+    reasons: [],
+    institutions: [],
+    otherInstitutions: 0,
+    unnamed: 0,
+  })
+})
+
+test('IST-117: kırılım en çok 50 kurumu adıyla verir, kalanını toplu sayar', () => {
+  const lost = Array.from(
+    { length: prospects.PROSPECT_LOSS_INSTITUTION_LIMIT + 3 },
+    (_, index) => ({
+      lostReason: 'price',
+      lostToInstitution: `Kurum ${index}`,
+    }),
+  )
+  const result = prospects.prospectLossBreakdown(lost)
+  assert.equal(result.institutions.length, prospects.PROSPECT_LOSS_INSTITUTION_LIMIT)
+  assert.equal(result.otherInstitutions, 3)
 })
 
 test('DOM-KAY-030: Vazgeçti ileri tarihli görüşmeyi ve deneme dersini iptal eder, geçmişi korur', () => {

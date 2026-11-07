@@ -1,12 +1,15 @@
 import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
+import type { ReconciliationWithdrawal } from '@kampus/school-core/lib/finance-reconciliation.ts'
+import type { ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
 import { records } from './schema/records.ts'
 import { studentIdentities } from './schema/student-identities.ts'
 import { studentWithdrawals } from './schema/withdrawals.ts'
+import { foldSearch, foldSql } from './text-search.ts'
 
 /** Ayrılış ve iade deposu (ADR 0006 karar 10). IBAN ve döküm loglanmaz. */
 
@@ -75,14 +78,17 @@ export async function findWithdrawal(
   return row ? stored(row) : null
 }
 
-/** Öğrencinin ayrılış kaydı var mı. */
-export async function hasWithdrawal(
+/**
+ * Öğrencinin ayrılış kayıtlarından tahsilat iptalinin denetimi (DOM-FIN-041, core `reversePayment`):
+ * borç taksiti dökümde saklanır; eski kayıtta yoktur ve `null` döner.
+ */
+export async function withdrawalsForReversal(
   db: Database,
   institutionId: string,
   studentId: string,
-): Promise<boolean> {
-  const [row] = await db
-    .select({ id: studentWithdrawals.id })
+): Promise<ReversalWithdrawal[]> {
+  const rows = await db
+    .select({ breakdown: studentWithdrawals.breakdown })
     .from(studentWithdrawals)
     .where(
       and(
@@ -90,8 +96,7 @@ export async function hasWithdrawal(
         eq(studentWithdrawals.studentId, studentId),
       ),
     )
-    .limit(1)
-  return row !== undefined
+  return rows.map((row) => ({ debtInvoiceId: row.breakdown.debtInvoiceId ?? null }))
 }
 
 function statusFilter(status: RefundStatus | undefined): SQL | undefined {
@@ -113,13 +118,26 @@ function statusFilter(status: RefundStatus | undefined): SQL | undefined {
 export async function listWithdrawals(
   db: Database,
   institutionId: string,
-  query: { refundStatus?: RefundStatus | undefined; page: number; pageSize: number },
+  query: {
+    refundStatus?: RefundStatus | undefined
+    /** Öğrenci adında arama (Türkçe harf ve aksan duyarsız). */
+    q?: string | undefined
+    page: number
+    pageSize: number
+  },
 ): Promise<{ items: StoredWithdrawal[]; total: number }> {
   const where = and(
     eq(studentWithdrawals.institutionId, institutionId),
     statusFilter(query.refundStatus),
+    query.q === undefined
+      ? undefined
+      : sql`strpos(${foldSql(sql`${records.data} ->> 'name'`)}, ${foldSearch(query.q)}) > 0`,
   )
-  const [totalRow] = await db.select({ total: count() }).from(studentWithdrawals).where(where)
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(studentWithdrawals)
+    .leftJoin(records, STUDENT_JOIN)
+    .where(where)
   const items = await db
     .select(COLUMNS)
     .from(studentWithdrawals)
@@ -210,6 +228,25 @@ export async function refundsPaidInPeriod(
     ...row,
     maskedIban: refundIban === null ? null : `TR** **** ${refundIban.slice(-4)}`,
   }))
+}
+
+/** Mutabakat için kurumun ayrılışları (ON-085); IBAN ve hesap sahibi seçilmez. */
+export function withdrawalsForReconciliation(
+  db: Database,
+  institutionId: string,
+): Promise<ReconciliationWithdrawal[]> {
+  return db
+    .select({
+      studentId: studentWithdrawals.studentId,
+      contractId: studentWithdrawals.contractId,
+      withdrawalDate: studentWithdrawals.withdrawalDate,
+      refundCents: studentWithdrawals.refundCents,
+      debtCents: studentWithdrawals.debtCents,
+      refundPaidDate: studentWithdrawals.refundPaidDate,
+      breakdown: studentWithdrawals.breakdown,
+    })
+    .from(studentWithdrawals)
+    .where(eq(studentWithdrawals.institutionId, institutionId))
 }
 
 /** Yalnız ödenmemiş iade ve beklenen sürüm güncellenir; tutmazsa `false`. */

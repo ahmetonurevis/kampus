@@ -7,6 +7,7 @@ import {
   setContractSignatory,
 } from '@kampus/school-core/lib/contract-approval.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import { contractDocument } from '../src/lib/pdf/templates/contract.ts'
 import { allTexts, measurer } from './support/pdf-measurer.ts'
 
@@ -134,4 +135,34 @@ test('DOM-FIN-025, DOM-KAY-012: burs ayrı kalemdir, tam bursta taksit yok; kurs
   assert.ok(all.some((text) => text.includes('senet veya taahhüt düzenlenmez')))
   const student = state.students.find((item) => item.id === contract.studentId)!
   assert.ok(all.some((text) => text.includes(`Kursiyer · ${student.name}`)))
+})
+
+test('ADR 0008, DOM-KAY-012: okul dışındaki türde sözleşme metni "kursiyer" der; okulda "öğrenci" kalır', () => {
+  const { state, contract } = fixture()
+  Object.assign(contract, { payer: 'student' })
+  const student = state.students.find((item) => item.id === contract.studentId)!
+  const school = render(state, contract.id)
+  assert.ok(school.includes('01 / Taraflar ve öğrenci bilgileri'))
+  assert.ok(school.includes('Öğrenci'))
+  assert.ok(school.includes('Okul numarası / Sınıf'))
+  for (const institutionType of INSTITUTION_TYPES.filter((type) => type !== 'school')) {
+    const all = allTexts(
+      contractDocument(measurer, documentData(state, 'contract', contract.id), {
+        ...OPTIONS,
+        institutionType,
+      }),
+    )
+    assert.ok(all.includes('01 / Taraflar ve kursiyer bilgileri'), institutionType)
+    assert.ok(all.includes('Kursiyer numarası / Sınıf'), institutionType)
+    assert.equal(all.includes('Okul numarası / Sınıf'), false, institutionType)
+    assert.ok(
+      all.some((text) => text.includes('kursiyerin kayıtlı olduğu sınıftaki')),
+      institutionType,
+    )
+    assert.ok(all.includes('Kursiyer'), institutionType)
+    assert.ok(
+      all.some((text) => text.includes(`Kursiyer · ${student.name}`)),
+      institutionType,
+    )
+  }
 })

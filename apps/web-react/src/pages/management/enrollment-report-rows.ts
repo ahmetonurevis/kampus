@@ -81,3 +81,44 @@ export function sourceRows(
     }))
     .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source, 'tr'))
 }
+
+/** Dönem hunisi (ON-052; `GET /prospects/funnel`, DOM-KAY-040): sunucu satırının ekran hâli. */
+type FunnelRow = {
+  prospects: number
+  steps: readonly { step: FunnelStepKey; count: number; rate: number | null }[]
+  conversionRate: number | null
+}
+type FunnelStepKey = 'prospect' | 'meeting' | 'trial' | 'enrolled'
+
+/** Oran metni: sunucu bir ondalıklı yüzde verir; oran yoksa (önceki adım 0) tire. */
+export const rateLabel = (rate: number | null) =>
+  rate === null ? '—' : `%${rate.toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`
+
+export type CounselorRow = {
+  id: string
+  counselor: string
+  prospects: number
+  enrolled: number
+  conversion: string
+}
+
+/** Kesin kayıt adımına ulaşan aday sayısı (son adım `enrolled`). */
+const enrolledOf = (row: FunnelRow) =>
+  row.steps.find((step) => step.step === 'enrolled')?.count ?? 0
+
+/**
+ * Danışman bazlı dönüşüm (DOM-KAY-040): danışman adayı açan personeldir; adı bilinmeyen ya da
+ * kurumdan ayrılmış danışman "Belirtilmemiş" satırındadır. Sıra sunucununkidir (aday sayısına
+ * göre çoktan aza, bilinmeyen en sonda).
+ */
+export function counselorRows(
+  rows: readonly (FunnelRow & { counselorId: string | null; counselorName: string | null })[],
+): CounselorRow[] {
+  return rows.map((row, index) => ({
+    id: row.counselorId ?? `bilinmeyen-${String(index)}`,
+    counselor: row.counselorName ?? UNKNOWN_SOURCE,
+    prospects: row.prospects,
+    enrolled: enrolledOf(row),
+    conversion: rateLabel(row.conversionRate),
+  }))
+}

@@ -38,6 +38,19 @@ export const PAYMENT_METHOD_LABELS = {
   'Kredi kartı': 'Kredi kartı',
   Senet: 'Senet',
 } as const satisfies Record<PaymentMethod, string>
+/**
+ * Dosyadan aktarılan geçmiş ödemenin taksit işareti (DOM-FIN-014): taksit ödenmiştir ama Kampüs'te
+ * tahsilat kaydı yoktur, kasayı ve dönem tahsilatını değiştirmez. `PAYMENT_METHODS`'a girmez: hiçbir
+ * tahsilat bu yöntemle alınamaz, `payments` tablosuna yazılamaz. Yalnız taksitin `method` alanında
+ * bulunur; `paidAt` ile `method` birlikte dolu kuralı (ADR 0010) böylece sahte yöntem gerektirmez.
+ */
+export const OPENING_IMPORT_METHOD = 'Açılış aktarımı'
+/** Taksitin `method` alanının alabileceği değerler. */
+export const INVOICE_METHODS = [...PAYMENT_METHODS, OPENING_IMPORT_METHOD] as const
+export type InvoiceMethod = (typeof INVOICE_METHODS)[number]
+/** Taksit dosyadan aktarılmış geçmiş ödeme mi; ödendi görünür, tahsilat sayılmaz. */
+export const isOpeningImport = (invoice: { method?: string | null }): boolean =>
+  invoice.method === OPENING_IMPORT_METHOD
 /** Tahsilat girdisi; API gövde şeması ve web/mobil form şemasıdır. */
 export const paymentInputSchema = z.object({
   method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
@@ -142,15 +155,24 @@ const MAX_AMOUNT_CENTS = 100_000_000
 
 /**
  * Kullanıcı tutarını kuruşa çevirir: `1.234,56`, `1234,56`, `1234.5`. En fazla iki ondalık kabul
- * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`.
+ * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`; kasa
+ * sayımı (DOM-FIN-036) sıfırı ve kendi üst sınırını `options` ile verir.
  */
-export function parseAmountInput(text: string): number | null {
+export function parseAmountInput(
+  text: string,
+  options: { allowZero?: boolean; maxCents?: number } = {},
+): number | null {
   const value = text.trim()
   const grouped = /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
   if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(value)) return null
   const [whole = '', fraction = ''] = (grouped ? value.replaceAll('.', '') : value).split(/[.,]/)
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
-  return Number.isSafeInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS ? cents : null
+  const aboveFloor = options.allowZero ? cents >= 0 : cents > 0
+  return Number.isSafeInteger(cents) &&
+    aboveFloor &&
+    cents <= (options.maxCents ?? MAX_AMOUNT_CENTS)
+    ? cents
+    : null
 }
 
 /** Kuruşu form alanına yazılacak metne çevirir (`1234,56`). */
@@ -320,17 +342,39 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
   }
 }
 
+/** Öğrencinin ayrılış kaydından tahsilat iptalinin ihtiyaç duyduğu kısım (DOM-FIN-041). */
+export interface ReversalWithdrawal {
+  /** Ayrılışta kalan borç için açılan taksit; borç yoksa ya da eski kayıtta `null`. */
+  debtInvoiceId: string | null
+}
+
+/**
+ * Tahsilat ayrılış hesabının dışında mı (DOM-FIN-041): yalnız ayrılışta açılan borç taksitlerine
+ * dağıtılmış tahsilat ayrılıştan sonra alınmıştır, çünkü o taksitler ayrılıştan önce yoktu. Ayrılış
+ * öncesi tahsilat dökümdeki ödenen tutara girer; iptali iadeyi ya da borcu geçersiz kılar.
+ */
+function isAfterWithdrawal(
+  allocations: readonly PaymentAllocation[],
+  withdrawals: readonly ReversalWithdrawal[],
+): boolean {
+  const debtIds = new Set(withdrawals.flatMap((item) => item.debtInvoiceId ?? []))
+  return (
+    allocations.length > 0 && allocations.every((allocation) => debtIds.has(allocation.invoiceId))
+  )
+}
+
 /**
  * Tahsilat iptali: dağıtıldığı taksitleri yeniden açar (DOM-FIN-033). Dağılım taksit tutarını
- * aşmadığı için iptalden sonra taksit tam ödenmiş kalamaz.
+ * aşmadığı için iptalden sonra taksit tam ödenmiş kalamaz. Ayrılmış öğrencide yalnız ayrılıştan
+ * sonra kalan borca alınan tahsilat iptal edilir; borç taksiti yeniden açılır (DOM-FIN-041).
  */
 export function reversePayment(
   state: State,
   payment: {
     reversedAt: string | null
     allocations: readonly PaymentAllocation[]
-    /** Ayrılış kaydı var: iade hesabı bu tahsilata dayanır (DOM-FIN-041). */
-    studentWithdrawn?: boolean
+    /** Öğrencinin ayrılış kayıtları; iade ya da borç hesabı ayrılış öncesi tahsilata dayanır. */
+    withdrawals?: readonly ReversalWithdrawal[]
   },
   input: unknown,
 ): { reason: string } {
@@ -339,10 +383,11 @@ export function reversePayment(
     throw new DomainError('payment_already_reversed', 'Bu tahsilat zaten iptal edilmiş.', {
       kind: 'conflict',
     })
-  if (payment.studentWithdrawn === true)
+  const withdrawals = payment.withdrawals ?? []
+  if (withdrawals.length > 0 && !isAfterWithdrawal(payment.allocations, withdrawals))
     throw new DomainError(
       'payment_student_withdrawn',
-      'Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez.',
+      'Ayrılış hesabına giren tahsilat iptal edilemez; yalnız ayrılıştan sonra kalan borca alınan tahsilat iptal edilebilir.',
       { kind: 'conflict' },
     )
   const ids = new Set(payment.allocations.map((allocation) => allocation.invoiceId))

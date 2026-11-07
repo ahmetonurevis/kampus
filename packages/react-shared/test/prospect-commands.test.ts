@@ -27,10 +27,12 @@ import {
   PROSPECT_CHANGED_MESSAGE,
   PROSPECT_INVALIDATES,
   PROSPECT_MESSAGES,
+  recordTrialResultRequest,
   scheduleProspectMeetingRequest,
   scheduleTrialLessonRequest,
   type AddProspectNoteInput,
   type EnrollProspectInput,
+  type RecordTrialResultInput,
 } from '../src/use-prospect-commands.ts'
 
 interface Sent {
@@ -251,6 +253,64 @@ describe('aday komutları', () => {
     assert.equal(refreshed, 1)
     assert.equal(PROSPECT_MESSAGES.version_conflict, PROSPECT_CHANGED_MESSAGE)
     assert.notEqual(PROSPECT_CHANGED_MESSAGE, IF_MATCH_MISSING_MESSAGE)
+  })
+})
+
+describe('deneme dersi sonucu komutu', () => {
+  const result: RecordTrialResultInput = {
+    prospectId: 'pr 9',
+    version: 5,
+    body: { fit: 'lower_level', note: 'Konuşmada alt kur daha rahat eder.' },
+  }
+
+  test('DOM-DIL-031, DOM-YTK-080: sonuç alt yola okunan sürümü If-Match olarak taşır, gövde olduğu gibi gider', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      recordTrialResultRequest(client, result, commandHeaders('key-trial-1', 5)),
+    )
+    assert.equal(sent.length, 1)
+    assert.equal(
+      `${sent[0]?.method} ${sent[0]?.path}`,
+      'POST /api/v1/prospects/pr%209/trial-result',
+    )
+    assert.equal(sent[0]?.headers.get('if-match'), '"5"')
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-trial-1')
+    assert.deepEqual(sent[0]?.body, result.body)
+  })
+
+  test('DOM-DIL-031: okunan sürüm yoksa sonuç isteği atılmaz', async () => {
+    const { client, sent } = fakeClient()
+    await assert.rejects(
+      runRequest(() => recordTrialResultRequest(client, result, commandHeaders('key-trial-2'))),
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code === IF_MATCH_MISSING_CODE,
+    )
+    assert.equal(sent.length, 0)
+  })
+
+  test('DOM-DIL-031: yapılmamış ders 409 sunucunun Türkçe iletisiyle tek toast olur ve liste tazelenir', async () => {
+    const message = 'Deneme dersi henüz yapılmadı.'
+    const { client } = fakeClient(409, { code: 'trial_not_held', message, requestId: 'req-1' })
+    const notified: string[] = []
+    let refreshed = 0
+    const outcome = await runCommand(
+      createCommandSession(() => 'key-trial-3'),
+      {
+        execute: (input: RecordTrialResultInput, headers) =>
+          runRequest(() => recordTrialResultRequest(client, input, headers)),
+        version: (input) => input.version,
+        refresh: async () => {
+          refreshed += 1
+        },
+        messages: PROSPECT_MESSAGES,
+        exclusive: true,
+      },
+      result,
+      { notifyError: (text) => notified.push(text) },
+    )
+    assert.equal(outcome.status, 'failed')
+    assert.deepEqual(notified, [message])
+    assert.equal(refreshed, 1)
   })
 })
 

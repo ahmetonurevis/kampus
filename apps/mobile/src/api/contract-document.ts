@@ -23,10 +23,8 @@ import {
 } from '@kampus/school-core/lib/contract-status.ts'
 import { documentData, type DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
-import {
-  FEE_DISCOUNT_KIND_LABELS,
-  FEE_ITEM_KIND_LABELS,
-} from '@kampus/school-core/lib/fee-tariffs.ts'
+import { DISCOUNT_LINE_LABELS, FEE_ITEM_KIND_LABELS } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import { dateLabel, money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { COLLECTION_NAMES } from '@kampus/school-core/modules/collection-modules.ts'
 
@@ -126,7 +124,7 @@ const cssString = (value: string) =>
 
 const day = (value: string) => dateLabel(value, { year: 'numeric' })
 const FEE_LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
-const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND_LABELS }
+const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...DISCOUNT_LINE_LABELS }
 const extraLabel = (kind: string) => FEE_LABELS[kind] ?? kind
 const discountLabel = (kind: string) => DISCOUNT_LABELS[kind] ?? kind
 
@@ -292,6 +290,9 @@ export function contractDocumentHtml(
           (line) => [extraLabel(line.kind), money(line.amountCents)] as const,
         ),
         ['Tarife sürümü', String(contract.tariffVersion ?? '—')],
+        ...(contract.paymentTerm
+          ? [['Ödeme koşulu', contractPaymentTermLabel(contract.paymentTerm)] as const]
+          : []),
         ['Ödeyici', contract.payer === 'student' ? 'Öğrenci' : 'Veli'],
       ]),
     )

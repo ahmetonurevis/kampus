@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import {
   createBody,
   createDefaults,
@@ -52,6 +53,36 @@ test('DOM-KAY-009: yetişkin dil okulu adayı veli adı olmadan geçer, gövdeye
   assert.equal(body.minor, false)
   assert.equal('guardianName' in body, false)
   assert.equal(body.privacyNoticeVersion, PRIVACY_NOTICE_VERSION)
+})
+
+test('DOM-KAY-009, ADR 0008: okul dışındaki her türde yaş grubu zorunlu; yetişkinin gövdesinde veli adı yok', () => {
+  const courseTypes = INSTITUTION_TYPES.filter((type) => type !== 'school')
+  assert.ok(courseTypes.length > 0)
+  for (const type of courseTypes) {
+    const missing = createFormSchema(type).safeParse(valid)
+    assert.ok(
+      missing.error?.issues.some((issue) => issue.path[0] === 'minor'),
+      type,
+    )
+    const parsed = createFormSchema(type).safeParse({
+      ...valid,
+      minor: 'no',
+      guardianName: 'Ayşe Güven',
+    })
+    assert.equal(parsed.success, true, type)
+    if (!parsed.success) continue
+    const body = createBody(parsed.data, type)
+    assert.equal(body.minor, false, type)
+    assert.equal('guardianName' in body, false, type)
+    const child = createFormSchema(type).safeParse({ ...valid, minor: 'yes' })
+    assert.ok(
+      child.error?.issues.some((issue) => issue.path[0] === 'guardianName'),
+      type,
+    )
+  }
+  const school = createFormSchema('school').safeParse({ ...valid, guardianName: 'Ayşe Güven' })
+  assert.equal(school.success, true)
+  if (school.success) assert.equal('minor' in createBody(school.data, 'school'), false)
 })
 
 test('DOM-KAY-003: aydınlatma onayı, e-posta onayı ve referans öğrencisi sorulur', () => {
@@ -283,4 +314,20 @@ test('DOM-KAY-003: 18 yaş altında dolu veli adı boş bırakılamaz, yetişkin
   const adult = { name: 'Can Demir', phone: '05321112255', interest: 'C1', minor: false }
   const renamed = editFormSchema.parse({ ...editDefaults(adult), name: 'Can D. Demir' })
   assert.deepEqual(editBody(renamed, adult), { ok: true, body: { name: 'Can D. Demir' } })
+})
+
+test('DOM-KAY-005: tercih edilen kurum yazılırsa gövdeye girer, boşsa gitmez; aşama değişince gitmez', () => {
+  const lost = { stage: 'Vazgeçti', lostReason: 'other_school' as const }
+  assert.deepEqual(
+    stageBody({ ...lost, lostToInstitution: ' Rakip Koleji ' }, { reopening: false }),
+    { ok: true, body: { ...lost, lostToInstitution: 'Rakip Koleji' } },
+  )
+  assert.deepEqual(stageBody({ ...lost, lostToInstitution: '  ' }, { reopening: false }), {
+    ok: true,
+    body: lost,
+  })
+  assert.deepEqual(
+    stageBody({ stage: 'Teklif verildi', lostToInstitution: 'Rakip' }, { reopening: false }),
+    { ok: true, body: { stage: 'Teklif verildi' } },
+  )
 })

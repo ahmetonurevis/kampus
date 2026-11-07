@@ -4,9 +4,10 @@
 // kopyadır; tarife veya oran sonradan değişse de belge değişmez (DOM-FIN-051).
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import {
-  FEE_DISCOUNT_KIND_LABELS,
+  DISCOUNT_LINE_LABELS,
   tuitionIncreaseCeiling,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
 import type { RenewalCeiling, RenewalPricing } from '@kampus/school-core/lib/renewal-ceiling.ts'
 import { COLORS, date, type DocumentLayout } from '../layout.ts'
@@ -36,7 +37,7 @@ export type RenewalContractContext = {
 
 type AppliedCeiling = Extract<RenewalCeiling, { status: 'applied' }>
 
-const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND_LABELS }
+const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...DISCOUNT_LINE_LABELS }
 
 export const periodLabel = (year: number) => `${String(year)}–${String(year + 1)}`
 
@@ -210,8 +211,17 @@ export function renewalAppendix(
   doc.fields([
     ['İlan edilen ücret', money(pricing.announcedCents)],
     ['Tarife sürümü', String(pricing.tariffVersion)],
+    // Süresinde ilan yapılmadıysa uygulanan önceki yılın tarifesi (DOM-FIN-002, K-11).
+    ...(pricing.tariffCarriedOverFromYear
+      ? ([
+          ['Uygulanan tarife', `${periodLabel(pricing.tariffCarriedOverFromYear)} (önceki yıl)`],
+        ] as [string, string][])
+      : []),
     ['Uygulanan öğrenim ücreti', money(data.contract?.grossCents ?? maxCents)],
     ['Net öğrenim ücreti', money(data.contract?.netCents ?? data.contract?.amount ?? 0)],
+    ...(pricing.paymentTerm
+      ? [['Ödeme koşulu', contractPaymentTermLabel(pricing.paymentTerm)] as [string, string]]
+      : []),
   ])
   ceilingPart(doc, ceiling, renewal)
   if (pricing.scholarship) {

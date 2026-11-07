@@ -628,7 +628,7 @@ describe('IST-100: kayıt yenileme uçları', () => {
       .where(eq(scholarshipAwards.institutionId, institutionId))
       .orderBy(scholarshipAwards.academicYear)
 
-  test('DOM-FIN-025: öğrenciye aynı yılda ikinci burs 409 scholarship_already_awarded; kayıt değişmez', async () => {
+  test('DOM-FIN-025, ON-308: öğrenciye aynı yılda ikinci burs 409 scholarship_already_awarded; kayıt değişmez', async () => {
     const a = await ready()
     const programId = await notifiedProgram(a.admin, YEAR, 2)
     await existingAward(a.id, programId, YEAR)
@@ -639,7 +639,10 @@ describe('IST-100: kayıt yenileme uçları', () => {
       awards: await awardRows(a.id),
     }
     const body = { ...(await planBody(a.admin)), scholarshipProgramId: programId }
-    assertError(await post(BASE, a.admin, body, key()), 409, 'scholarship_already_awarded')
+    const second = await post(BASE, a.admin, body, key())
+    assertError(second, 409, 'scholarship_already_awarded')
+    // ON-308: `scholarship_awards_student_year_key` yarışta aynı kod ve iletiyle döner.
+    assert.equal(second.json().message, 'Öğrenciye bu eğitim yılında zaten burs atanmış.')
     // Önizleme de aynı kuralı uygular; plan yazılmadan önce görülür.
     assertError(
       await post(`${BASE}/quote`, a.admin, { ...QUOTE, scholarshipProgramId: programId }),

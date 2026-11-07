@@ -5,6 +5,7 @@ import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { PAYMENT_METHOD_LABELS } from '@kampus/school-core/lib/payments.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
+import { learnerTerm, type LearnerTerm, type LearnerTermOptions } from './finance-shared.ts'
 import type { TemplateOptions } from './shared.ts'
 
 export const DAY_CLOSING_TITLE = 'Gün sonu raporu'
@@ -16,20 +17,23 @@ const METHOD_COLUMNS = [
   { header: 'İptal', width: 34 },
   { header: 'Net', width: 34 },
 ] as const
-const LINE_COLUMNS = [
-  { header: 'Dekont', width: 24 },
-  { header: 'Öğrenci', width: 46 },
-  { header: 'Yöntem', width: 30 },
-  { header: 'Referans', width: 44 },
-  { header: 'Tutar', width: 30 },
-] as const
-const REVERSAL_COLUMNS = [
-  { header: 'Dekont', width: 24 },
-  { header: 'Öğrenci', width: 36 },
-  { header: 'Ödeme günü', width: 26 },
-  { header: 'Gerekçe', width: 58 },
-  { header: 'Tutar', width: 30 },
-] as const
+// Kayıtlı kişi sütunu kurum türüne göre adlandırılır: okulda öğrenci, dil okulu ve kursta kursiyer.
+const lineColumns = (learner: LearnerTerm) =>
+  [
+    { header: 'Dekont', width: 24 },
+    { header: learner, width: 46 },
+    { header: 'Yöntem', width: 30 },
+    { header: 'Referans', width: 44 },
+    { header: 'Tutar', width: 30 },
+  ] as const
+const reversalColumns = (learner: LearnerTerm) =>
+  [
+    { header: 'Dekont', width: 24 },
+    { header: learner, width: 36 },
+    { header: 'Ödeme günü', width: 26 },
+    { header: 'Gerekçe', width: 58 },
+    { header: 'Tutar', width: 30 },
+  ] as const
 
 const dayLabelOf = (day: string) => dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' })
 const stampOf = (at: string) => `${dateLabel(at, { year: 'numeric' })} ${timeLabel(at)}`
@@ -44,12 +48,14 @@ export function dayClosingFilename(closingDate: string): string {
   return `gun-sonu-${closingDate}.pdf`
 }
 
+/** Gün sonu raporu; tahsilat ve iptal tablolarının kişi sütunu kurum türünü izler (DOM-KAY-012). */
 export function financeDayClosingDocument(
   measurer: TextMeasurer,
   report: FinanceDayReport,
-  options: TemplateOptions,
+  options: TemplateOptions & LearnerTermOptions,
 ): PdfDocument {
   const { summary, closing } = report
+  const learner = learnerTerm(options.institutionType)
   const doc = new DocumentLayout(measurer, {
     label: 'GÜN SONU RAPORU',
     badge: closing ? 'KAPATILDI' : 'AÇIK GÜN',
@@ -92,7 +98,7 @@ export function financeDayClosingDocument(
   if (report.collected.length === 0) doc.paragraph('Bu gün tahsilat yok.')
   else
     doc.table(
-      LINE_COLUMNS,
+      lineColumns(learner),
       report.collected.map((line) => [
         receiptNumberLabel(line),
         line.studentName ?? '—',
@@ -107,7 +113,7 @@ export function financeDayClosingDocument(
   if (report.reversed.length === 0) doc.paragraph('Bu gün iptal yok.')
   else
     doc.table(
-      REVERSAL_COLUMNS,
+      reversalColumns(learner),
       report.reversed.map((line) => [
         receiptNumberLabel(line),
         line.studentName ?? '—',

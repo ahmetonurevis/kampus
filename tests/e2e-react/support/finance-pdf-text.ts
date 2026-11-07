@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 
 import type { Download } from '@playwright/test'
 
-// Kayıt ve finans belgelerinin (sözleşme, öğrenci belgesi) indirilen PDF metni.
+// Kayıt ve finans belgelerinin (sözleşme, öğrenci belgesi, gün sonu) indirilen PDF metni.
 
 /** pdfjs kök pakette kurulu olmadığı için türü yalnız okunan yüzey kadar yazılır. */
 type PdfJs = {

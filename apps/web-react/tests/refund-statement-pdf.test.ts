@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import {
   refundStatementDocument,
   type RefundWithdrawal,
@@ -137,4 +138,20 @@ test('DOM-FIN-040: tek öğrenim sözleşmesinde belge toplam satırlarıyla kal
   assert.ok(texts.includes('Kullanım (1 / 10)'))
   assert.equal(texts.includes('Öğrenim sözleşmesi'), false)
   assert.equal(texts.includes('Bu sözleşmeden iade'), false)
+})
+
+test('ADR 0008, DOM-KAY-012: dil okulunda iade dökümü ayrılanı "Kursiyer" diye yazar; okulda "Öğrenci"', () => {
+  for (const options of [OPTIONS, { ...OPTIONS, institutionType: 'school' as const }]) {
+    const school = allTexts(refundStatementDocument(measurer, WITHDRAWAL, options))
+    assert.ok(school.includes('Öğrenci'))
+    assert.equal(school.includes('Kursiyer'), false)
+  }
+  for (const institutionType of INSTITUTION_TYPES.filter((type) => type !== 'school')) {
+    const all = allTexts(
+      refundStatementDocument(measurer, WITHDRAWAL, { ...OPTIONS, institutionType }),
+    )
+    assert.ok(all.includes('Kursiyer'), institutionType)
+    assert.ok(all.includes('Deniz Yılmaz'), institutionType)
+    assert.equal(all.includes('Öğrenci'), false, institutionType)
+  }
 })

@@ -10,6 +10,7 @@ import {
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
+import { learnerTerm, type LearnerTermOptions } from './finance-shared.ts'
 import type { TemplateOptions } from './shared.ts'
 
 export type RefundWithdrawal = {
@@ -44,11 +45,14 @@ export type RefundWithdrawal = {
 
 const DAY = { year: 'numeric' } as const
 
-/** İade hesap kırılımı: karar anındaki döküm aynen yazılır (DOM-FIN-041, IST-110). */
+/**
+ * İade hesap kırılımı: karar anındaki döküm aynen yazılır (DOM-FIN-041, IST-110). Ayrılan kayıt
+ * okulda "Öğrenci", dil okulu ve kursta "Kursiyer" diye yazılır (DOM-KAY-012).
+ */
 export function refundStatementDocument(
   measurer: TextMeasurer,
   withdrawal: RefundWithdrawal,
-  options: TemplateOptions,
+  options: TemplateOptions & LearnerTermOptions,
 ): PdfDocument {
   const { breakdown } = withdrawal
   const doc = new DocumentLayout(measurer, {
@@ -67,7 +71,7 @@ export function refundStatementDocument(
     'TRY / Türk lirası',
   )
   doc.fields([
-    ['Öğrenci', withdrawal.studentName ?? '—'],
+    [learnerTerm(options.institutionType), withdrawal.studentName ?? '—'],
     ['Ayrılış tarihi', dateLabel(withdrawal.withdrawalDate, DAY)],
     ['Ayrılış nedeni', WITHDRAWAL_REASON_LABELS[withdrawal.reason]],
     ['Gittiği okul', withdrawal.targetSchool ?? '—'],

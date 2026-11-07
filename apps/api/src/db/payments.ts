@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, max, or, sql } from 'drizzle-orm'
 
 import type { ExportPayment } from '@kampus/school-core/lib/finance-export.ts'
+import type { ReconciliationPayment } from '@kampus/school-core/lib/finance-reconciliation.ts'
 import {
   bankAccountLabel,
   type PaymentAllocation,
@@ -40,7 +41,7 @@ export interface StoredPayment {
   allocations: PaymentAllocation[]
 }
 
-const METHOD_LABELS = Object.fromEntries(
+export const METHOD_LABELS = Object.fromEntries(
   Object.entries(PAYMENT_METHOD_KEYS).map(([label, key]) => [key, label]),
 ) as Record<string, PaymentMethod>
 
@@ -274,6 +275,35 @@ export async function paymentsTouchingPeriod(
   }))
 }
 
+/**
+ * Gün sonu raporunun tahsilatları (IST-113): ödeme veya iptal anı aralığa düşenler, ad ve hesapla.
+ * Kesin gün süzmesi core'dadır. `payments_paid_at_idx` ödeme anına iner; iptal anı için indeks yok,
+ * satırlar kurum içinde taranır (kurum kilidi altında ve günde bir kez).
+ */
+export async function paymentsTouchingDay(
+  db: Database,
+  institutionId: string,
+  fromInstant: Date,
+  toInstant: Date,
+): Promise<StoredPayment[]> {
+  const rows = await db
+    .select(COLUMNS)
+    .from(payments)
+    .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
+    .where(
+      and(
+        eq(payments.institutionId, institutionId),
+        or(
+          and(gte(payments.paidAt, fromInstant), lt(payments.paidAt, toInstant)),
+          and(gte(payments.reversedAt, fromInstant), lt(payments.reversedAt, toInstant)),
+        ),
+      ),
+    )
+    .orderBy(asc(payments.paidAt), asc(payments.receiptNumber))
+  return withAllocations(db, institutionId, rows)
+}
+
 export async function isReferenceInUse(
   db: Database,
   institutionId: string,
@@ -412,6 +442,55 @@ export async function listPayments(
 }
 
 /** Sürüm koşulu tutmazsa `null` döner. */
+/**
+ * Mutabakat için verilen andan önceki bütün tahsilatlar ve dağılımları (ON-085): dönem başı açık borç
+ * geçmişin tamamından hesaplanır. İptal edilenler de gelir; iptal günü core'da değerlendirilir.
+ */
+export async function paymentsForReconciliation(
+  db: Database,
+  institutionId: string,
+  toInstant: Date,
+): Promise<ReconciliationPayment[]> {
+  const where = and(eq(payments.institutionId, institutionId), lt(payments.paidAt, toInstant))
+  const rows = await db
+    .select({
+      id: payments.id,
+      studentId: payments.studentId,
+      amountCents: payments.amountCents,
+      paidAt: payments.paidAt,
+      reversedAt: payments.reversedAt,
+    })
+    .from(payments)
+    .where(where)
+  const allocations = await db
+    .select({
+      paymentId: paymentAllocations.paymentId,
+      invoiceId: paymentAllocations.invoiceId,
+      amountCents: paymentAllocations.amountCents,
+    })
+    .from(paymentAllocations)
+    .innerJoin(
+      payments,
+      and(
+        eq(payments.institutionId, paymentAllocations.institutionId),
+        eq(payments.id, paymentAllocations.paymentId),
+      ),
+    )
+    .where(where)
+  const byPayment = new Map<string, { invoiceId: string; amountCents: number }[]>()
+  for (const { paymentId, ...allocation } of allocations) {
+    const list = byPayment.get(paymentId)
+    if (list) list.push(allocation)
+    else byPayment.set(paymentId, [allocation])
+  }
+  return rows.map(({ id, ...row }) => ({
+    ...row,
+    paidAt: row.paidAt.toISOString(),
+    reversedAt: row.reversedAt?.toISOString() ?? null,
+    allocations: byPayment.get(id) ?? [],
+  }))
+}
+
 /** Öğrencinin bütün tahsilatları, iptal edilenler dahil; ekstre sayfalanmaz (IST-107). */
 export async function paymentsOfStudent(
   db: Database,
@@ -520,17 +599,27 @@ export async function savePaymentSettings(
   return created ?? null
 }
 
-/** MEBBİS işaretini yazar veya kaldırır; sürüm koşulu tutmazsa `null` döner (DOM-FIN-032). */
+/**
+ * MEBBİS işaretini yazar veya kaldırır; sürüm koşulu tutmazsa `null` döner (DOM-FIN-032). Parmak izini
+ * yalnız e-Özel işareti verir (IST-085); verilmezse önceki özet de silinir.
+ */
 export async function setPaymentMebbis(
   tx: Database,
   institutionId: string,
-  input: { id: string; expectedVersion: number; recordedByUserId: string | null; now: Date },
+  input: {
+    id: string
+    expectedVersion: number
+    recordedByUserId: string | null
+    fingerprint?: string | null
+    now: Date
+  },
 ): Promise<{ version: number } | null> {
   const [row] = await tx
     .update(payments)
     .set({
       mebbisRecordedAt: input.recordedByUserId === null ? null : input.now,
       mebbisRecordedByUserId: input.recordedByUserId,
+      mebbisFingerprint: input.fingerprint ?? null,
       version: sql`${payments.version} + 1`,
       updatedAt: input.now,
     })

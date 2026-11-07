@@ -24,6 +24,10 @@ import {
   type FeeItemKind,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import {
+  announcedPaymentTermLabel,
+  contractPaymentTermLabel,
+} from '@kampus/school-core/lib/payment-terms.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -35,9 +39,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
@@ -73,7 +75,10 @@ import {
   type RenewalFormValues,
   type RenewalQuoteView,
 } from './renewal-forms.ts'
+import { ChoiceFieldset } from './RenewalChoices.tsx'
 import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
+import { ReferralRewardField } from './ReferralRewardField.tsx'
+import { RenewalYearSection } from './RenewalYearSection.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -274,6 +279,13 @@ export function RenewalsPage({ page }: { page: NavPage }) {
         />
       </section>
       {staff ? (
+        <RenewalYearSection
+          academicYear={academicYear}
+          institutionType={session?.institution?.type ?? 'school'}
+          canApprove={role === 'yonetici'}
+        />
+      ) : null}
+      {staff ? (
         <PriceIndexSection canManage={role === 'yonetici'} academicYear={academicYear} />
       ) : null}
       <RenewalDetail renewalId={panel.selectedId} canAct={staff} onClose={panel.close} />
@@ -340,6 +352,9 @@ function RenewalDetail({
                   ? [`İlan edilen ücret: ${money(data.pricing.announcedCents)}`]
                   : []),
                 ...(data.pricing ? ceilingLines(data.pricing.ceiling) : []),
+                ...(data.pricing?.paymentTerm
+                  ? [`Ödeme koşulu: ${contractPaymentTermLabel(data.pricing.paymentTerm)}`]
+                  : []),
                 ...(data.tuitionCents === null
                   ? []
                   : [`Öğrenim ücreti: ${money(data.tuitionCents)}`]),
@@ -496,7 +511,10 @@ function PlanModal({
     resolver: zodResolver(renewalFormSchema),
     defaultValues: renewalDefaults(),
   })
-  const [studentId, mode] = useWatch({ control: form.control, name: ['studentId', 'mode'] })
+  const [studentId, mode, discounts] = useWatch({
+    control: form.control,
+    name: ['studentId', 'mode', 'discounts'],
+  })
   // Önceki yıldan öğrenim ücreti borcu (DOM-KAY-025, ON-057): plan yöneticinin açık onayını ister.
   const [debtApproved, setDebtApproved] = useState(false)
   const debtCents = preview !== null && preview !== 'graduate' ? preview.outstandingTuitionCents : 0
@@ -682,7 +700,18 @@ function PlanModal({
                   />
                 )}
               </FormField>
-              <FormField id="yenileme-taksit" label="Taksit sayısı" error={errors.installmentCount}>
+              <FormField
+                id="yenileme-taksit"
+                label="Taksit sayısı"
+                error={errors.installmentCount}
+                {...(tariff?.paymentTerms.length
+                  ? {
+                      description: `İlan edilen koşullar: ${tariff.paymentTerms
+                        .map(announcedPaymentTermLabel)
+                        .join('; ')}`,
+                    }
+                  : {})}
+              >
                 {(control) => (
                   <Input
                     {...control}
@@ -726,6 +755,15 @@ function PlanModal({
               control={form.control}
               disabled={locked}
             />
+            {discounts.includes('referral') ? (
+              <ReferralRewardField
+                id="yenileme-referans-hakki"
+                query={studentId ? { familyOfStudentId: studentId } : null}
+                error={errors.referralRewardId}
+                disabled={locked}
+                register={form.register('referralRewardId')}
+              />
+            ) : null}
             <ChoiceGroup
               legend="Ek hizmetler"
               hint="Velinin talep ettiği hizmetler ayrı taksit olarak açılır."
@@ -844,45 +882,22 @@ function ChoiceGroup({
   >['control']
   disabled: boolean
 }) {
-  if (options.length === 0) return null
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">{legend}</legend>
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => {
-          const selected = field.value as readonly string[]
-          return (
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {options.map((option) => {
-                const id = `yenileme-${name}-${option.value}`
-                return (
-                  <div key={option.value} className="flex items-center gap-2.5">
-                    <Checkbox
-                      id={id}
-                      checked={selected.includes(option.value)}
-                      disabled={disabled}
-                      onCheckedChange={(checked) =>
-                        field.onChange(
-                          checked === true
-                            ? [...selected, option.value]
-                            : selected.filter((value) => value !== option.value),
-                        )
-                      }
-                    />
-                    <Label htmlFor={id} className="font-normal">
-                      {option.label}
-                    </Label>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        }}
-      />
-    </fieldset>
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <ChoiceFieldset
+          legend={legend}
+          hint={hint}
+          idPrefix={`yenileme-${name}`}
+          options={options}
+          selected={field.value as readonly string[]}
+          onChange={field.onChange}
+          disabled={disabled}
+        />
+      )}
+    />
   )
 }
 

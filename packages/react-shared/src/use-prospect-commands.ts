@@ -5,6 +5,7 @@ import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { REFERRAL_REWARDS_KEY } from './use-finance-referrals.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
 // `POST /prospects/:id/{notes,meetings,trial-lessons,trial-result,enroll}`; core `prospect.create`
@@ -208,6 +209,8 @@ export const ENROLL_PROSPECT_INVALIDATES: readonly (readonly unknown[])[] = [
   collectionKeyPrefix('parents'),
   collectionKeyPrefix('invoices'),
   collectionKeyPrefix('contracts'),
+  // Kesin kayıt referans hakkı açar ya da kullanır (DOM-FIN-024).
+  REFERRAL_REWARDS_KEY,
 ]
 const versionOf = <TBody>(input: ProspectCommandInput<TBody>) => input.version
 const success = (options: CommandOptions) =>

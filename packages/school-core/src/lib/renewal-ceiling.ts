@@ -8,6 +8,7 @@ import {
   type PriceIndexRates,
 } from './fee-tariffs.ts'
 import { money } from './format.ts'
+import { contractPaymentTermSchema } from './payment-terms.ts'
 
 /**
  * Yenilemenin artış tavanı (docs/domain/finans.md DOM-FIN-005, DOM-FIN-023; ÖÖKY md. 53/1). Baz ve
@@ -69,6 +70,10 @@ export const renewalPricingSchema = z.object({
   discounts: z.array(lineSchema),
   extras: z.array(lineSchema),
   scholarship: z.object({ programId: z.string(), amountCents: z.number().int() }).nullable(),
+  /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); eski kayıtta ve eski tarifede yoktur. */
+  paymentTerm: contractPaymentTermSchema
+    .optional()
+    .describe('Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013)'),
 })
 export type RenewalPricing = z.output<typeof renewalPricingSchema>
 
@@ -103,6 +108,18 @@ function contractBaseCents(state: CeilingState, contract: Contract): number {
     state.renewals.find((item) => item.contractId === contract.id)?.gross ??
     contract.amount
   )
+}
+
+/** Hedef yıldan önceki son sözleşmenin yılı ve indirimsiz ücreti; yeni yıl listesinde gösterilir. */
+export function latestContractTuition(
+  state: CeilingState,
+  studentId: string,
+  year: number,
+): { academicYear: number; tuitionCents: number } | null {
+  const latest = priorContracts(state, studentId, year).at(-1)
+  return latest
+    ? { academicYear: latest.year, tuitionCents: contractBaseCents(state, latest.contract) }
+    : null
 }
 
 function hasActiveSibling(state: CeilingState, studentId: string): boolean {

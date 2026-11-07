@@ -6,10 +6,12 @@ import type { PaymentFormValues } from '@kampus/school-core/lib/payments.ts'
 
 import type { CollectionRow } from '../src/collections.ts'
 import {
+  canRemindInvoice,
   invoiceRow,
   isInvoiceStatusKey,
   PARTIAL_STATUS,
   recordPaymentBody,
+  remindedOn,
 } from '../src/finance-model.ts'
 
 const seed = createSeed(new Date('2026-09-01T09:00:00Z'))
@@ -89,4 +91,24 @@ test('DOM-FIN-032 senette banka hesabı gitmez; seçilmemiş hesap da gönderilm
 test('DOM-FIN-030 geçersiz tutarda gövde kurulmaz', () => {
   assert.equal(recordPaymentBody(target, { ...values, amount: 'on lira' }, '2026-09-10'), null)
   assert.equal(recordPaymentBody(target, { ...values, amount: '0' }, '2026-09-10'), null)
+})
+
+test('DOM-FIN-035, ON-113: Hatırlat yalnız gecikmiş taksitte; bugün hatırlatılan satır kilitlenir', () => {
+  const late = { ...invoice, dueDate: '2026-08-01T09:00:00.000Z' }
+  const lateRow = invoiceRow(row(late), '2026-09-10')
+  assert.equal(lateRow.reminderAt, null)
+  assert.equal(canRemindInvoice(lateRow), true)
+  const upcoming = { ...invoice, dueDate: '2026-12-01T09:00:00.000Z' }
+  assert.equal(canRemindInvoice(invoiceRow(row(upcoming), '2026-09-10')), false)
+  const paid = { ...late, paidAt: '2026-08-02T09:00:00.000Z' }
+  assert.equal(canRemindInvoice(invoiceRow(row(paid), '2026-09-10')), false)
+
+  assert.equal(remindedOn(lateRow, '2026-09-10'), false)
+  // 2026-09-09 21:30 UTC, Europe/Istanbul'da 10 Eylül'dür.
+  const reminded = invoiceRow(
+    row({ ...late, reminderAt: '2026-09-09T21:30:00.000Z' }),
+    '2026-09-10',
+  )
+  assert.equal(remindedOn(reminded, '2026-09-10'), true)
+  assert.equal(remindedOn(reminded, '2026-09-11'), false)
 })

@@ -12,6 +12,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships } from '../src/db/schema/auth.ts'
+import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { records } from '../src/db/schema/records.ts'
@@ -112,6 +113,24 @@ const bondOf = (link: {
   isPayer: link.isPayer,
   canPickUp: link.canPickUp,
 })
+
+/** Tarifeye esas ilanlı koşullar (DOM-FIN-013): bugünkü 1–12 taksit aralığı. */
+const PAYMENT_TERMS = [
+  {
+    kind: 'upfront',
+    minInstallments: 1,
+    maxInstallments: 1,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+  {
+    kind: 'installment',
+    minInstallments: 2,
+    maxInstallments: 12,
+    discountPercentBasisPoints: null,
+    discountAmountCents: null,
+  },
+]
 
 describe('aday uçları', () => {
   let db: Database
@@ -575,6 +594,144 @@ describe('aday uçları', () => {
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'prospect.stage')))
     assert.equal(audit.length, 2)
+  })
+
+  const LOSS_URL = '/api/v1/prospects/loss-breakdown'
+  const lossOf = (cookie: string | null) =>
+    app.inject({
+      method: 'GET',
+      url: LOSS_URL,
+      headers: { origin: TEST_ORIGIN, 'x-forwarded-for': nextIp(), ...(cookie ? { cookie } : {}) },
+    })
+
+  test('DOM-KAY-005, ON-140: tercih edilen kurum saklanır, öğretmene gitmez, denetime değeri yazılmaz, loglanmaz', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs, clock: () => FIXED_NOW })
+    try {
+      const a = await institution({ type: 'language_school' })
+      const cookie = await frontDesk(a.id)
+      const body = {
+        stage: 'Vazgeçti',
+        lostReason: 'other_school',
+        lostToInstitution: 'Kvkk İzleme Koleji',
+      }
+      const lost = await send(
+        'PATCH',
+        '/api/v1/prospects/pr1',
+        cookie,
+        body,
+        ifMatch(await versionOf(a.id, 'pr1')),
+        logged,
+      )
+      assert.equal(lost.statusCode, 200, lost.body)
+      const record = await findRecord(db, a.id, 'prospects', 'pr1')
+      assert.equal(record?.data.lostToInstitution, 'Kvkk İzleme Koleji')
+      assert.equal(logs.join('\n').includes('Kvkk İzleme Koleji'), false)
+      const audit = await db
+        .select({ changes: auditLog.changes, reason: auditLog.reason })
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'prospect.stage')))
+      assert.equal(JSON.stringify(audit).includes('Kvkk İzleme Koleji'), false)
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('DOM-KAY-005, ON-140: tercih edilen kurum sınırı aşarsa ya da başka aşamada verilirse 400; aday değişmez', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    await unchanged(a.id, 'pr1', async () => {
+      assertError(
+        await stage(
+          cookie,
+          'pr1',
+          { stage: 'Vazgeçti', lostReason: 'price', lostToInstitution: 'x'.repeat(121) },
+          version,
+        ),
+        400,
+        'validation_failed',
+      )
+      assertError(
+        await stage(
+          cookie,
+          'pr1',
+          { stage: 'Teklif verildi', lostToInstitution: 'Rakip' },
+          version,
+        ),
+        400,
+        'validation_failed',
+      )
+    })
+  })
+
+  test('IST-117, ON-140: kayıp kırılımı neden ve kurumu sayar; yönetici ve ön büro okur, aday kimliği dönmez', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    for (const [id, institutionName] of [
+      ['pr1', 'Rakip Koleji'],
+      ['pr2', ' rakip  koleji'],
+      ['pr3', undefined],
+    ] as const) {
+      const response = await stage(
+        cookie,
+        id,
+        {
+          stage: 'Vazgeçti',
+          lostReason: 'price',
+          ...(institutionName ? { lostToInstitution: institutionName } : {}),
+        },
+        await versionOf(a.id, id),
+      )
+      assert.equal(response.statusCode, 200, response.body)
+    }
+    for (const reader of [cookie, a.adminCookie]) {
+      const response = await lossOf(reader)
+      assert.equal(response.statusCode, 200, response.body)
+      // pr5 örnek veride nedensiz vazgeçmiştir.
+      assert.deepEqual(response.json().data, {
+        total: 4,
+        reasons: [
+          { reason: 'price', count: 3 },
+          { reason: null, count: 1 },
+        ],
+        institutions: [{ name: 'Rakip Koleji', count: 2 }],
+        otherInstitutions: 0,
+        unnamed: 2,
+      })
+      assert.equal(response.body.includes('pr1'), false)
+    }
+  })
+
+  test('IST-117, ON-140: başka kurumun vazgeçen adayı kırılımda görünmez; oturumsuz 401, yetkisiz rol 403, modül kapalı 403', async () => {
+    const a = await institution()
+    const b = await institution()
+    const bCookie = await frontDesk(b.id)
+    const lost = await stage(
+      bCookie,
+      'pr1',
+      { stage: 'Vazgeçti', lostReason: 'price', lostToInstitution: 'B Kurumunun Rakibi' },
+      await versionOf(b.id, 'pr1'),
+    )
+    assert.equal(lost.statusCode, 200, lost.body)
+    const own = await lossOf(a.adminCookie)
+    assert.equal(own.statusCode, 200, own.body)
+    assert.equal(own.body.includes('B Kurumunun Rakibi'), false)
+    assert.equal(own.json().data.total, 1)
+
+    assert.equal((await lossOf(null)).statusCode, 401)
+    for (const role of ['ogretmen', 'ogrenci', 'veli'] as const) {
+      const user = await member(a.id, role)
+      assertError(await lossOf(user.cookie), 403)
+    }
+    const closed = await institution({ enabledModules: { crm: false } })
+    assertError(await lossOf(closed.adminCookie), 403, 'module_disabled')
+    const unknown = await app.inject({
+      method: 'GET',
+      url: `${LOSS_URL}?institutionId=${b.id}`,
+      headers: { origin: TEST_ORIGIN, 'x-forwarded-for': nextIp(), cookie: a.adminCookie },
+    })
+    assertError(unknown, 400)
   })
 
   test('DOM-KAY-030, DOM-KAY-031: vazgeçen aday yeniden açılırken iletişimi paylaşan açık aday varsa kardeş ister', async () => {
@@ -1054,13 +1211,14 @@ describe('aday uçları', () => {
   /** Eğitim yılının tarifesini yönetici yayımlar; kurum tarifesiz başlar (DOM-FIN-002). */
   async function publishTariff(
     cookie: string,
-    tariff: { items?: unknown[]; discounts?: unknown[] } = {},
+    tariff: { items?: unknown[]; discounts?: unknown[]; paymentTerms?: unknown[] } = {},
     unit = 'year',
   ) {
     const created = await send('POST', '/api/v1/fee-tariffs', cookie, {
       academicYear: FIXED_NOW.getUTCFullYear(),
       items: tariff.items ?? [{ ...TUITION, unit }],
       discounts: tariff.discounts ?? [],
+      paymentTerms: tariff.paymentTerms ?? PAYMENT_TERMS,
     })
     assert.equal(created.statusCode, 201, created.body)
     const { id, version } = created.json().data
@@ -1078,6 +1236,7 @@ describe('aday uçları', () => {
     const draft = await send('POST', '/api/v1/fee-tariffs', cookie, {
       academicYear,
       items: [{ ...TUITION, unit }],
+      paymentTerms: PAYMENT_TERMS,
     })
     assert.equal(draft.statusCode, 201, draft.body)
     tariffId = draft.json().data.id
@@ -1092,7 +1251,7 @@ describe('aday uçları', () => {
   }
   async function pricedInstitution(
     overrides: Partial<InstitutionOverrides> = {},
-    tariff: { items?: unknown[]; discounts?: unknown[] } = {},
+    tariff: { items?: unknown[]; discounts?: unknown[]; paymentTerms?: unknown[] } = {},
     unit = 'year',
   ) {
     const created = await institution(overrides)
@@ -1401,17 +1560,28 @@ describe('aday uçları', () => {
         await enroll(
           cookie,
           'pr1',
-          { ...ENROLLMENT, discounts: ['early_payment', 'corporate'] },
+          { ...ENROLLMENT, installmentCount: 1, discounts: ['early_payment', 'corporate'] },
           version,
         ),
         422,
         'discount_cap_exceeded',
       )
+      // Peşin indirimi yalnız peşin koşulunda geçer (DOM-FIN-013).
+      assertError(
+        await enroll(
+          cookie,
+          'pr1',
+          { ...ENROLLMENT, installmentCount: 3, discounts: ['early_payment'] },
+          version,
+        ),
+        422,
+        'early_payment_requires_upfront',
+      )
     })
     const done = await enroll(
       cookie,
       'pr1',
-      { ...ENROLLMENT, discounts: ['early_payment'] },
+      { ...ENROLLMENT, installmentCount: 1, discounts: ['early_payment'] },
       version,
     )
     assert.equal(done.statusCode, 201, done.body)
@@ -1420,6 +1590,63 @@ describe('aday uçları', () => {
     assert.equal(contract?.data.grossCents, 20_000_000)
     assert.equal(contract?.data.netCents, 18_000_000)
     assert.deepEqual(contract?.data.discounts, [{ kind: 'early_payment', amountCents: 2_000_000 }])
+    assert.equal((contract?.data.paymentTerm as { kind: string }).kind, 'upfront')
+  })
+
+  test('DOM-FIN-013: kesin kayıt ilanlı koşuldan çıkar; ilanda olmayan sayı kayıt yazmaz, sözleşme koşulu taşır', async () => {
+    const installment = {
+      kind: 'installment',
+      minInstallments: 2,
+      maxInstallments: 4,
+      discountPercentBasisPoints: 300,
+      discountAmountCents: null,
+    }
+    const a = await pricedInstitution(
+      {},
+      {
+        items: [{ ...TUITION, amountCents: 20_000_000, announcedAmountCents: 20_000_000 }],
+        paymentTerms: [installment],
+      },
+    )
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(cookie, 'pr1', { ...ENROLLMENT, installmentCount: 5 }, version),
+        422,
+        'payment_term_not_in_tariff',
+      )
+    })
+    const done = await enroll(cookie, 'pr1', { ...ENROLLMENT, installmentCount: 3 }, version)
+    assert.equal(done.statusCode, 201, done.body)
+    const { contracts } = await enrollmentRows(a.id)
+    const contract = contracts.at(-1)
+    assert.deepEqual(contract?.data.paymentTerm, { ...installment, installmentCount: 3 })
+    assert.equal(contract?.data.netCents, 19_400_000)
+    assert.deepEqual(contract?.data.discounts, [{ kind: 'payment_term', amountCents: 600_000 }])
+  })
+
+  test('DOM-FIN-013: koşulsuz eski tarifeyle kesin kayıt yapılır, sözleşmede koşul yoktur', async () => {
+    const a = await institution()
+    const year = FIXED_NOW.getUTCFullYear()
+    tariffId = crypto.randomUUID()
+    await db.insert(feeTariffs).values({
+      institutionId: a.id,
+      id: tariffId,
+      academicYear: year,
+      versionNumber: 1,
+      status: 'published',
+      items: [{ ...TUITION, unit: 'year' }] as never,
+      announcedDate: `${String(year)}-05-01`,
+      publishedByUserId: 'test',
+      publishedAt: FIXED_NOW,
+    })
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const done = await enroll(cookie, 'pr1', { ...ENROLLMENT, installmentCount: 12 }, version)
+    assert.equal(done.statusCode, 201, done.body)
+    const { contracts } = await enrollmentRows(a.id)
+    assert.equal(contracts.at(-1)?.data.paymentTerm, undefined)
   })
 
   test('DOM-FIN-003: ek hizmet ayrı borç kalemidir', async () => {

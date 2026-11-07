@@ -10,6 +10,7 @@ import {
   publishFeeTariffSchema,
   updateFeeTariffSchema,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { feePaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import {
@@ -25,7 +26,7 @@ import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
 /**
- * Ücret tarifesi uçları (ADR 0006 karar 8; docs/domain/finans.md DOM-FIN-002, -004, -006; IST-104).
+ * Ücret tarifesi uçları (ADR 0006 karar 8; docs/domain/finans.md DOM-FIN-002, -004, -006, -013; IST-104).
  * Modül `finance`. Okuma yönetici ve ön büro, yazma yalnız yönetici (DOM-FIN-052).
  */
 
@@ -36,6 +37,11 @@ const tariffSchema = z.object({
   status: z.enum(['draft', 'published', 'superseded']),
   items: z.array(feeItemSchema),
   discounts: z.array(feeDiscountSchema),
+  paymentTerms: z
+    .array(feePaymentTermSchema)
+    .describe(
+      'Peşin ve süreli ödeme koşulları (DOM-FIN-013); bu alandan önce yayımlanmış tarifede boş',
+    ),
   announcedDate: z.string().nullable().describe('İlan günü (YYYY-MM-DD)'),
   mebbisRecordedDate: z.string().nullable().describe("MEBBİS'e işlendiği gün (YYYY-MM-DD)"),
   publishedAt: z.string().nullable().describe('Yayım anı (ISO 8601 UTC)'),
@@ -123,7 +129,7 @@ export function registerFeeTariffRoutes(app: FastifyInstance) {
         tags: ['fee-tariffs'],
         summary: 'Tarife taslağı aç',
         description:
-          'Eğitim yılı için yeni taslak sürüm açar. Kalem türü sabit listedendir; serbest adlı borç yoktur (DOM-FIN-004). Aynı tür ve düzey 422 `tariff_item_duplicate`; açık taslak varken 409 `open_tariff_draft`. KDV oranı kalem başına ve tarihlidir, yayımlanan sürüm değişmediği için geçmiş kayıtlar eski oranla kalır (IST-104). Başarı 201 ve `Location`. Rol: `yonetici`.',
+          'Eğitim yılı için yeni taslak sürüm açar. Kalem türü sabit listedendir; serbest adlı borç yoktur (DOM-FIN-004). Aynı tür ve düzey 422 `tariff_item_duplicate`; taksit aralığı çakışan ödeme koşulları 422 `tariff_payment_term_overlap`; açık taslak varken 409 `open_tariff_draft`. KDV oranı kalem başına ve tarihlidir, yayımlanan sürüm değişmediği için geçmiş kayıtlar eski oranla kalır (IST-104). Başarı 201 ve `Location`. Rol: `yonetici`.',
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: createFeeTariffSchema,
         response: { 201: tariffResponseSchema, ...commandErrors },
@@ -150,7 +156,7 @@ export function registerFeeTariffRoutes(app: FastifyInstance) {
         tags: ['fee-tariffs'],
         summary: 'Tarife taslağını düzenle',
         description:
-          'Verilen `items` veya `discounts` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.',
+          'Verilen `items`, `discounts` veya `paymentTerms` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.',
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: paramsSchema,
         body: updateFeeTariffSchema,
@@ -179,7 +185,7 @@ export function registerFeeTariffRoutes(app: FastifyInstance) {
         tags: ['fee-tariffs'],
         summary: 'Tarifeyi yayımla',
         description:
-          'Taslağı yayımlar; aynı yılın önceki yayındaki sürümü aynı işlemde kalkar (DOM-FIN-002). Öğrenim ücreti yoksa 422 `tariff_tuition_required`; birim kurum türüne uymuyorsa 422 `tariff_unit_mismatch` (okulda `year`, dil okulunda `lesson_hour`, DOM-FIN-006); okulda onaylı tutar yoksa 422 `tariff_announced_required`; ücret onaylı tutarı aşarsa 422 `tariff_amount_exceeds_announced`. İleri tarih 422. İlan tarihi, MEBBİS tarihi ve yayımlayan kişi saklanır. `If-Match` zorunludur. Rol: `yonetici`.',
+          'Taslağı yayımlar; aynı yılın önceki yayındaki sürümü aynı işlemde kalkar (DOM-FIN-002). Öğrenim ücreti yoksa 422 `tariff_tuition_required`; birim kurum türüne uymuyorsa 422 `tariff_unit_mismatch` (okulda `year`, dil okulunda `lesson_hour`, DOM-FIN-006); okulda onaylı tutar yoksa 422 `tariff_announced_required`; ücret onaylı tutarı aşarsa 422 `tariff_amount_exceeds_announced`; ödeme koşulu yoksa 422 `tariff_payment_terms_required`, peşin indirimi peşin koşulsuz ilan edildiyse 422 `tariff_early_payment_without_upfront` (DOM-FIN-013). Yayımlanan koşullar sürümle donar. İleri tarih 422. İlan tarihi, MEBBİS tarihi ve yayımlayan kişi saklanır. `If-Match` zorunludur. Rol: `yonetici`.',
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: paramsSchema,
         body: publishFeeTariffSchema,

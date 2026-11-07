@@ -63,6 +63,9 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
             row.paidAt ? dateLabel(row.paidAt, { year: 'numeric' }) : 'Henüz tahsil edilmedi',
           ],
           ['Ödeme yöntemi', row.paidAt ? (row.method ?? '—') : '—'],
+          ...(row.reminderAt
+            ? [['Son hatırlatma', dateLabel(row.reminderAt, { year: 'numeric' })]]
+            : []),
           ['Okul numarası', row.studentNumber],
           ['Kayıt numarası', row.id.toUpperCase()],
         ].map(([label, value]) => (

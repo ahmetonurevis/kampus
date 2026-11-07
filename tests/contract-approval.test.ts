@@ -603,6 +603,35 @@ test('DOM-FIN-020, DOM-FIN-021: ek protokolde indirim tarifeden yeniden hesaplan
   assert.equal(contract.netCents, 10_000_000, 'önceki sürüm değişmedi')
 })
 
+test('DOM-FIN-024: referans kalemi ek protokolle yeni eklenmez; sözleşmede zaten olan kalır', () => {
+  const { state, contract } = approved()
+  const tariff = {
+    ...TARIFF,
+    discounts: [{ kind: 'referral', percentBasisPoints: 1_000, amountCents: null }],
+  } as unknown as AmendContractContext['tariff']
+  const before = structuredClone(state)
+  assert.throws(
+    () =>
+      amendContract(
+        state,
+        'contract-1',
+        { ...AMEND, discounts: ['referral'] },
+        amender({ tariff, userId: 'u-admin' }),
+      ),
+    isDomainError('referral_reward_required', 'rule'),
+  )
+  assert.deepEqual(state, before)
+  // K-14: kalem hakkın uygulanmış tutarıyla kalır, tarife oranından yeniden hesaplanmaz.
+  contract.discounts = [{ kind: 'referral', amountCents: 777_000 }]
+  const amendment = amendContract(
+    state,
+    'contract-1',
+    { ...AMEND, discounts: ['referral'] },
+    amender({ tariff, userId: 'u-admin' }),
+  )
+  assert.deepEqual(amendment.discounts, [{ kind: 'referral', amountCents: 777_000 }])
+})
+
 test('DOM-FIN-022: kardeş indirimi aynı veliye bağlı aktif öğrenci ister', () => {
   const { state, student } = approved()
   const others = state.students.filter((item) => item.id !== student.id)

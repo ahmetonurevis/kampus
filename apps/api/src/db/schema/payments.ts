@@ -75,6 +75,8 @@ export const payments = pgTable(
     mebbisRecordedAt: timestamp('mebbis_recorded_at', { withTimezone: true }),
     // kvkk: K
     mebbisRecordedByUserId: text('mebbis_recorded_by_user_id'),
+    // e-Özel işaretindeki kaynağın kişisel veri içermeyen özeti (IST-085); MEBBİS ucunda boş kalır.
+    mebbisFingerprint: text('mebbis_fingerprint'),
     ...requiredColumns(),
   },
   (table) => [

@@ -17,6 +17,10 @@ import { isOpeningImport, OPENING_IMPORT_METHOD } from './payments.ts'
 export const FINANCE_EXPORT_KINDS = ['payments', 'refunds', 'invoices'] as const
 export type FinanceExportKind = (typeof FINANCE_EXPORT_KINDS)[number]
 
+/** Aynı satırların iki biçimi (ON-094): CSV varsayılan kalır, mevcut istemci değişmez. */
+export const FINANCE_EXPORT_FORMATS = ['csv', 'xlsx'] as const
+export type FinanceExportFormat = (typeof FINANCE_EXPORT_FORMATS)[number]
+
 /** Tek dosyanın en geniş dönemi; dönem bazlı aktarımın bir yılı aşması gerekmez. */
 export const FINANCE_EXPORT_MAX_DAYS = 366
 
@@ -27,6 +31,7 @@ export const financeExportQuerySchema = z.strictObject({
   from: daySchema,
   to: daySchema,
   kind: z.enum(FINANCE_EXPORT_KINDS, 'Aktarım türünü seçin.'),
+  format: z.enum(FINANCE_EXPORT_FORMATS, 'Dosya biçimini seçin.').default('csv'),
 })
 
 /** Finans özeti sorgusu: dönem verilmezse son altı takvim ayıdır; yalnız bir uç verilemez. */

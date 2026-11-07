@@ -14,6 +14,11 @@ import { DomainError } from './errors.ts'
 import { FEE_DISCOUNT_KINDS, type FeeDiscountKind } from './fee-tariffs.ts'
 import { dayKey } from './format.ts'
 import { payerOf, type GuardianLink } from './guardianship.ts'
+import {
+  assertEarlyPaymentOnUpfront,
+  resolvePaymentTerm,
+  type ContractPaymentTerm,
+} from './payment-terms.ts'
 import { installmentAmounts } from './payments.ts'
 import { invoicesOf, payerNameOf } from './withdrawals.ts'
 
@@ -212,7 +217,7 @@ export function approveContract(
 }
 
 export interface AmendContractContext {
-  /** Sözleşmenin tarifesi; yalnız indirim değiştiğinde yüklenir. */
+  /** Sözleşmenin tarifesi; tarifesiz eski sözleşmede `null`. */
   tariff: EnrollmentTariff | null
   canApproveCapException: boolean
   allocated: ReadonlyMap<string, number>
@@ -254,6 +259,7 @@ function repricedTerms(
   state: State,
   source: Contract,
   discounts: readonly FeeDiscountKind[],
+  paymentTerm: ContractPaymentTerm | null,
   context: AmendContractContext,
 ) {
   if (source.grossCents === undefined || context.tariff === null)
@@ -272,9 +278,23 @@ function repricedTerms(
         .map((item) => item.id),
       tuitionCents: source.grossCents,
     })
+  assertEarlyPaymentOnUpfront(paymentTerm, discounts)
+  // Sözleşmedeki referans kalemi hakkın uygulanmış tutarıyla kalır, tarifeden yeniden hesaplanmaz
+  // (K-14); başka kalem tavanı aşırırsa reddedilir, kısaltılmaz.
+  const referralLine = source.discounts?.find((line) => line.kind === 'referral')
   const lines = discountLines(context.tariff.discounts, source.grossCents, discounts, {
     canApproveCapException: context.canApproveCapException,
+    paymentTerm,
+    referral: { amountCents: referralLine?.amountCents ?? 0, trimToCap: false },
   })
+  // Referans kalemi yalnız kullanılan bir hakla gelir (DOM-FIN-024); ek protokolde hak işaretlenmez,
+  // bu yüzden yeni eklenemez.
+  if (discounts.includes('referral') && referralLine === undefined)
+    throw new DomainError(
+      'referral_reward_required',
+      'Referans indirimi ek protokolle eklenmez; kesin kayıtta ya da yenilemede referans hakkıyla kullanılır.',
+      { path: ['discounts'] },
+    )
   const total = lines.reduce((sum, line) => sum + line.amountCents, 0)
   const netCents = source.grossCents - total - (source.scholarship?.amountCents ?? 0)
   if (netCents < 0)
@@ -284,6 +304,24 @@ function repricedTerms(
       { path: ['discounts'] },
     )
   return { discounts: lines, netCents, approvedByUserId: context.userId }
+}
+
+/** Fiyatı belirleyen alanlar aynı mı; yalnız taksit sayısı değiştiyse indirim yeniden hesaplanmaz. */
+function sameTerm(a: ContractPaymentTerm, b: ContractPaymentTerm | null): boolean {
+  return (
+    b !== null &&
+    a.kind === b.kind &&
+    a.discountPercentBasisPoints === b.discountPercentBasisPoints &&
+    a.discountAmountCents === b.discountAmountCents
+  )
+}
+
+/** Sözleşmedeki kalemlerden tarifede seçilen türler; koşulun fiyat farkı koşuldan yeniden çıkar. */
+function announcedDiscountKinds(lines: Contract['discounts']): FeeDiscountKind[] {
+  const known: readonly string[] = FEE_DISCOUNT_KINDS
+  return (lines ?? [])
+    .map((line) => line.kind)
+    .filter((kind): kind is FeeDiscountKind => known.includes(kind))
 }
 
 /**
@@ -312,8 +350,20 @@ export function amendContract(
   const open = tuition.filter((invoice) => !collected(invoice))
   const kept = invoices.filter((invoice) => !isTuition(invoice) || collected(invoice))
 
+  // Ek protokol de ilandaki koşulun dışına çıkamaz (DOM-FIN-013): koşul, korunan öğrenim taksitleri
+  // ile yeni planın toplam sayısından çıkar. Koşul değişirse indirimler yeniden hesaplanır, çünkü
+  // fiyat farkı ve peşin indirimi koşula bağlıdır.
+  const paymentTerm = resolvePaymentTerm(
+    context.tariff?.paymentTerms,
+    kept.filter(isTuition).length + data.installmentCount,
+  )
+  const termChanged = source.paymentTerm !== undefined && !sameTerm(source.paymentTerm, paymentTerm)
+  const discountKinds =
+    data.discounts ?? (termChanged ? announcedDiscountKinds(source.discounts) : undefined)
   const terms =
-    data.discounts === undefined ? null : repricedTerms(state, source, data.discounts, context)
+    discountKinds === undefined
+      ? null
+      : repricedTerms(state, source, discountKinds, paymentTerm, context)
   const netCents = terms?.netCents ?? tuition.reduce((sum, invoice) => sum + invoice.amount, 0)
   const collectedCents = tuition.filter(collected).reduce((sum, invoice) => sum + invoice.amount, 0)
   const remaining = netCents - collectedCents
@@ -353,6 +403,7 @@ export function amendContract(
     amount: [...keptLines, ...added].reduce((sum, line) => sum + line.amount, 0),
     invoiceIds: [],
     ...(terms ?? {}),
+    ...(paymentTerm === null ? {} : { paymentTerm }),
     revision,
     amendsContractId: source.id,
     amendmentReason: data.reason,

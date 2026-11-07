@@ -88,6 +88,30 @@ test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulandıysa Ek 2 kaynak yıl
   assert.notEqual(pageOf(carried, '2026–2027 (önceki yıl)'), -1)
 })
 
+test('DOM-FIN-013: sözleşme ve Ek 2 ödeme koşulunu yazar, sayfa sayısı değişmez; koşulsuz eski sözleşmede satır yok', () => {
+  const setup = fixture()
+  const before = render(setup, setup.renewal)
+  assert.equal(allTexts(before).includes('Ödeme koşulu'), false)
+  const paymentTerm = {
+    kind: 'installment',
+    minInstallments: 2,
+    maxInstallments: 4,
+    discountPercentBasisPoints: 300,
+    discountAmountCents: null,
+    installmentCount: 3,
+  } as const
+  Object.assign(setup.contract, { paymentTerm })
+  const document = render(setup, {
+    ...setup.renewal,
+    pricing: { ...setup.renewal.pricing!, paymentTerm },
+  })
+  assert.equal(document.pages.length, before.pages.length)
+  assert.ok(texts(document.pages[0]!).includes('Ödeme koşulu'))
+  const annex = texts(document.pages[pageOf(document, 'Ek 2 / Yenileme ücret kararı')]!)
+  assert.ok(annex.includes('Ödeme koşulu'))
+  assert.ok(annex.includes('Süreli · 3 taksit · %3 indirim'))
+})
+
 test('IST-100: yenileme sözleşmesi metin sayfasını büyütmez; dönem geçişi Ek 1, ücret kararı Ek 2', () => {
   const setup = fixture()
   const document = render(setup, setup.renewal)

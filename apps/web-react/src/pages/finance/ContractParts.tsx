@@ -17,6 +17,7 @@ import {
 } from '@kampus/school-core/lib/contract-status.ts'
 import { FEE_ITEM_KIND_LABELS, type FeeItemKind } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dateLabel, money, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { contractPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
@@ -102,6 +103,9 @@ export function ContractFacts({
     ['Durum', CONTRACT_STATUS_LABELS[status]],
     ['Sözleşme tarihi', day(contract.date)],
     ['Eğitim bedeli', money(contract.amount)],
+    ...(contract.paymentTerm
+      ? ([['Ödeme koşulu', contractPaymentTermLabel(contract.paymentTerm)]] as [string, string][])
+      : []),
     [
       'İmza yetkilisi',
       contract.signatory

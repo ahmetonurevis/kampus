@@ -37,6 +37,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/payments',
   'POST /api/v1/payments/{paymentId}/mebbis-record',
   'POST /api/v1/payments/{paymentId}/reverse',
+  // Gün kapanışı ve yeniden açma (routes/finance-day-closings.ts; DOM-FIN-036).
+  'POST /api/v1/finance/day-closings/{closingDate}/close',
+  'POST /api/v1/finance/day-closings/{closingDate}/reopen',
   'PATCH /api/v1/payment-settings',
   'PATCH /api/v1/finance/export-profile',
   'POST /api/v1/bank-accounts',
@@ -46,11 +49,17 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',
   // Tarifeye bağlı yenileme sözleşme ve taksit yazar (routes/finance-renewals.ts; DOM-FIN-002).
   'POST /api/v1/finance/renewals',
+  // Paket satışı sözleşme ve taksit yazar (routes/finance-packages.ts; IST-078).
+  'POST /api/v1/finance/package-sales',
+  // Toplu yenileme planı öğrenci başına sözleşme ve taksit yazar (IST-105, ON-086).
+  'POST /api/v1/finance/renewals/bulk-plan',
   // Sözleşme onayı ve ek protokol (routes/finance-contracts.ts; IST-092, DOM-FIN-010).
   'POST /api/v1/finance/contracts/{contractId}/signatory',
   'POST /api/v1/finance/contracts/{contractId}/approve',
   'POST /api/v1/finance/contracts/{contractId}/amendments',
   'POST /api/v1/finance/contracts/{contractId}/cancel-amendment',
+  // e-Özel işareti ücret satırında tahsilatın MEBBİS işaretini yazar (routes/finance-e-ozel.ts; IST-085).
+  'POST /api/v1/finance/e-ozel/items/{kind}/{sourceId}/record',
 ]
 // Onur: kayıt ve finans sonu
 

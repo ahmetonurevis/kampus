@@ -3,6 +3,7 @@ import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   useFinanceExport,
   useFinanceSummary,
+  useFinanceWorkbookExport,
   type FinanceExportKind,
 } from '@kampus/react-shared/use-finance-exports.ts'
 import { REAUTHENTICATION_CODE } from '@kampus/react-shared/use-withdrawals.ts'
@@ -12,6 +13,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
@@ -23,6 +25,7 @@ const FILES: readonly { kind: FinanceExportKind; label: string; name: string }[]
   { kind: 'invoices', label: 'Taksit dosyası', name: 'taksitler' },
 ]
 const BOM = '﻿'
+type FileFormat = 'csv' | 'xlsx'
 
 /**
  * Muhasebe aktarımı (IST-111, ADR 0006 karar 11): toplamlar ve dosya sunucuda aynı satırlardan
@@ -33,27 +36,32 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
   const today = dayKey()
   const [from, setFrom] = useState(`${today.slice(0, 7)}-01`)
   const [to, setTo] = useState(today)
+  const [format, setFormat] = useState<FileFormat>('csv')
   const [pending, setPending] = useState<(typeof FILES)[number] | null>(null)
   const complete = from !== '' && to !== ''
   const summary = useFinanceSummary({ from, to }, { enabled: complete })
   const exporter = useFinanceExport()
+  const workbookExporter = useFinanceWorkbookExport()
   const data = summary.data?.data
 
   async function download(file: (typeof FILES)[number]) {
-    const outcome = await exporter.submit({ kind: file.kind, from, to })
+    const query = { kind: file.kind, from, to }
+    const outcome =
+      format === 'xlsx' ? await workbookExporter.submit(query) : await exporter.submit(query)
     if (outcome.status === 'failed' && outcome.error.code === REAUTHENTICATION_CODE)
       setPending(file)
     if (outcome.status !== 'success') return
-    // Yanıt çözülürken BOM düşer; Excel Türkçe karakterleri onunla tanır.
-    const csv = String(outcome.data).replace(BOM, '')
-    saveBlob(
-      new Blob([BOM, csv], { type: 'text/csv;charset=utf-8' }),
-      `${file.name}-${from}-${to}.csv`,
-    )
+    const name = `${file.name}-${from}-${to}.${format}`
+    if (outcome.data instanceof Blob) saveBlob(outcome.data, name)
+    else {
+      // Yanıt çözülürken BOM düşer; Excel Türkçe karakterleri onunla tanır.
+      const csv = String(outcome.data).replace(BOM, '')
+      saveBlob(new Blob([BOM, csv], { type: 'text/csv;charset=utf-8' }), name)
+    }
     notify.success('Dosya indirildi.')
   }
 
-  const busy = exporter.isPending
+  const busy = exporter.isPending || workbookExporter.isPending
   return (
     <section
       aria-labelledby="muhasebe-aktarimi"
@@ -120,20 +128,37 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
         />
       ) : null}
       {canDownload ? (
-        <div className="flex flex-wrap gap-3">
-          {FILES.map((file) => (
-            <Button
-              key={file.kind}
-              variant="secondary"
-              disabled={busy || !complete || Boolean(summary.error)}
-              aria-busy={busy || undefined}
-              onClick={() => void download(file)}
-            >
-              <Icon name="Download" size={17} aria-hidden="true" />
-              {file.label}
-            </Button>
-          ))}
-          <FinanceExportProfileButton />
+        <div className="grid gap-4">
+          <div className="max-w-xs">
+            <FormField id="aktarim-bicimi" label="Dosya biçimi">
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={format}
+                  disabled={busy}
+                  onChange={(event) => setFormat(event.target.value as FileFormat)}
+                >
+                  <NativeSelectOption value="csv">CSV (.csv)</NativeSelectOption>
+                  <NativeSelectOption value="xlsx">Excel (.xlsx)</NativeSelectOption>
+                </NativeSelect>
+              )}
+            </FormField>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {FILES.map((file) => (
+              <Button
+                key={file.kind}
+                variant="secondary"
+                disabled={busy || !complete || Boolean(summary.error)}
+                aria-busy={busy || undefined}
+                onClick={() => void download(file)}
+              >
+                <Icon name="Download" size={17} aria-hidden="true" />
+                {file.label}
+              </Button>
+            ))}
+            <FinanceExportProfileButton />
+          </div>
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Aktarım dosyalarını yönetici indirir.</p>

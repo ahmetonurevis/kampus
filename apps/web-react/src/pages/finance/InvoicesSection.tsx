@@ -31,6 +31,7 @@ import {
   type InvoiceRow,
 } from './finance-rows.ts'
 import { InvoicePresets } from './InvoicePresets.tsx'
+import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { LookupError } from '../academic/AcademicParts.tsx'
 
 const INVOICE_URL_FILTERS = { status: 'durum', branchId: 'kampus', classId: 'sinif' }
@@ -159,13 +160,16 @@ export function InvoicesSection({
               ariaLabel={`${row.studentName} ${row.installment}. taksit dekontunu görüntüle`}
             />
           ) : (
-            <Button
-              size="sm"
-              aria-label={`${row.studentName} ${row.installment}. taksiti tahsil et`}
-              onClick={() => onOpenPayment(row.id)}
-            >
-              Tahsil et
-            </Button>
+            <span className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                aria-label={`${row.studentName} ${row.installment}. taksiti tahsil et`}
+                onClick={() => onOpenPayment(row.id)}
+              >
+                Tahsil et
+              </Button>
+              <InvoiceRemindButton row={row} size="sm" />
+            </span>
           ),
       },
     ],

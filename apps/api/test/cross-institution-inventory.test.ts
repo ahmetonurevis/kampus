@@ -1011,7 +1011,7 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'başka kurumun satışında kullanılan saat 404, B değişmez',
     'usedUrl(bSale.id)',
   ),
-  'GET /api/v1/students/:studentId/enrollment-certificate': kayit(
+  'GET /api/v1/prospects/students/:studentId/enrollment-certificate': kayit(
     'enrollment-certificates.test.ts',
     'DOM-KAY-027: başka kurumun öğrencisi 404, denetim yazılmaz; olmayan öğrenci 404',
     "get(url('cert-other'), a.cookie)",

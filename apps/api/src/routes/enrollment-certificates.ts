@@ -20,7 +20,7 @@ export function registerEnrollmentCertificateRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
 
   typed.get(
-    '/api/v1/students/:studentId/enrollment-certificate',
+    '/api/v1/prospects/students/:studentId/enrollment-certificate',
     {
       preValidation: [app.requireModule('crm'), app.requireRole(ENROLLMENT_CERTIFICATE_ROLES)],
       schema: {

@@ -36,7 +36,7 @@ export function useEnrollmentCertificatePdf(studentId: string, enabled: boolean)
       try {
         const [{ data }, { renderPdf }] = await Promise.all([
           runRequest(() =>
-            client.GET('/api/v1/students/{studentId}/enrollment-certificate', {
+            client.GET('/api/v1/prospects/students/{studentId}/enrollment-certificate', {
               params: { path: { studentId } },
               signal,
             }),

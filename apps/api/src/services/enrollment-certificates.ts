@@ -48,7 +48,7 @@ const AUDITED_FIELDS = [
 ]
 
 /**
- * Öğrenci belgesi verisi (`GET /students/:id/enrollment-certificate`; DOM-KAY-027, DOM-YTK-052).
+ * Öğrenci belgesi verisi (`GET /prospects/students/:id/enrollment-certificate`; DOM-KAY-027, DOM-YTK-052).
  * Kişisel veri dışa aktarımı olduğu için her düzenleme aynı transaction'da denetime yazılır; belge
  * kimliği denetim satırının kimliğidir, denetim yazılamazsa belge dönmez. Arşivlenmiş ya da başka
  * kurumun öğrencisi 404.

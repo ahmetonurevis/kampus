@@ -82750,7 +82750,7 @@
         }
       }
     },
-    "/api/v1/students/{studentId}/enrollment-certificate": {
+    "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
       "get": {
         "operationId": "getEnrollmentCertificate",
         "summary": "Öğrenci belgesi verisi",

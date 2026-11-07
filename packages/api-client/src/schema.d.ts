@@ -3628,7 +3628,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/students/{studentId}/enrollment-certificate": {
+    "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
         parameters: {
             query?: never;
             header?: never;

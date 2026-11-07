@@ -24,10 +24,10 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 
-// Öğrenci belgesi verisi (`GET /students/:id/enrollment-certificate`; DOM-KAY-027, ON-049): yalnız
+// Öğrenci belgesi verisi (`GET /prospects/students/:id/enrollment-certificate`; DOM-KAY-027, ON-049): yalnız
 // yönetici ve ön büro, modül `crm`, her düzenleme denetim kaydında, içerik izin listesi.
 
-const url = (studentId: string) => `/api/v1/students/${studentId}/enrollment-certificate`
+const url = (studentId: string) => `/api/v1/prospects/students/${studentId}/enrollment-certificate`
 const STUDENT = 'cert-s1'
 const student = (overrides: RecordData = {}): RecordData => ({
   id: STUDENT,

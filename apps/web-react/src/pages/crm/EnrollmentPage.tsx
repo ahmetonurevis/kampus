@@ -59,6 +59,8 @@ import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
+import { EnrollmentCertificateButton } from './EnrollmentCertificateButton.tsx'
+import { EnrollmentCertificateSection } from './EnrollmentCertificateSection.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
 import { StudentImportSection } from './StudentImportSection.tsx'
 import { enrollmentParentId } from './enrollment-guardian-account.ts'
@@ -184,6 +186,12 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
                 ariaLabel={`${done.studentName} sözleşmesini görüntüle`}
               />
             ) : null}
+            {done.studentId ? (
+              <EnrollmentCertificateButton
+                studentId={done.studentId}
+                studentName={done.studentName}
+              />
+            ) : null}
             {paymentsHref ? (
               <Button asChild variant="secondary">
                 <Link to={paymentsHref}>Ödeme planını görüntüle</Link>
@@ -211,6 +219,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
           onDone={setDone}
         />
       )}
+      <EnrollmentCertificateSection />
       <GuardianInvitationsSection />
       <StudentImportSection />
     </>

@@ -195,7 +195,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Öğrenci belgesi ön büronun sık aldığı bir taleptir; platform belgesi resmî belgeyle karıştırılmamalı (`DOM-AKD-050`, `DOM-DIL-080`), belge amacına yetmeyen kişisel veri taşımamalıdır (KVKK md. 4). Ayrılan öğrenciye "kayıtlıdır" diyen belge yanıltır.
 - **Kaynak:** İşletme kuralı; KVKK md. 4 (ölçülülük). Resmî öğrenci belgesi e-Okul'dan alınır.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `packages/school-core/src/lib/enrollment-certificate.ts` (`buildEnrollmentCertificate`, izin listeli `enrollmentCertificateSchema`; pasif öğrenci 422 `enrollment_certificate_inactive`), `GET /api/v1/students/:studentId/enrollment-certificate` (yönetici, ön büro; modül `crm`; denetim `enrollment_certificate.issue`, DOM-YTK-052; başka kurum ve arşivli öğrenci 404). Kurum adı kayıtlı addır; unvan ve logo IST-013 (OG-162) ile gelir.
+- **Kodda:** var (API, web) — `packages/school-core/src/lib/enrollment-certificate.ts` (`buildEnrollmentCertificate`, izin listeli `enrollmentCertificateSchema`; pasif öğrenci 422 `enrollment_certificate_inactive`), `GET /api/v1/students/:studentId/enrollment-certificate` (yönetici, ön büro; modül `crm`; denetim `enrollment_certificate.issue`, DOM-YTK-052; başka kurum ve arşivli öğrenci 404). PDF web'de üretilir: `apps/web-react/src/lib/pdf/templates/enrollment-certificate.ts`, ekran Kayıt İşlemleri "Öğrenci belgesi" bölümü (`pages/crm/EnrollmentCertificateSection.tsx`) ve kayıt sonrası özet. Kurum adı kayıtlı addır; unvan ve logo IST-013 (OG-162) ile gelir.
 
 ## Aday işlemleri (ön büro)
 

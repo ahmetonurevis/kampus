@@ -944,7 +944,8 @@ test.describe('Finans: tahsilat', () => {
     await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
     await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
     const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
-    await dialog.getByLabel('Öğrenci').selectOption({ label: student.data.record.name })
+    // Dil okulunda kayıtlı kişi kursiyerdir (DOM-KAY-012, ON-324).
+    await dialog.getByLabel('Kursiyer').selectOption({ label: student.data.record.name })
     await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
     await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
     await dialog.getByRole('button', { name: 'Hesabı göster' }).click()

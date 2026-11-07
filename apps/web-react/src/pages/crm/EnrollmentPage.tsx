@@ -25,6 +25,7 @@ import {
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
@@ -124,6 +125,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
   const [, setParams] = useSearchParams()
   const { session } = useAuth()
   const institutionType = session?.institution.type ?? 'school'
+  const learner = learnerWords(institutionType)
   const year = session?.institution.academicYear ?? Number(dayKey().slice(0, 4))
   const tariffs = useEffectiveFeeTariff({
     academicYear: year,
@@ -156,7 +158,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
             {done.studentName} kaydedildi
           </h2>
           <p className="text-sm text-muted-foreground">
-            Öğrenci, veli, sözleşme ve taksit planı oluşturuldu.
+            {learner.title}, veli, sözleşme ve taksit planı oluşturuldu.
           </p>
           {done.tariffCarriedOverFromYear === null ? null : (
             <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
@@ -238,6 +240,7 @@ function EnrollmentForm({
   institutionType: InstitutionType
   onDone: (done: Done) => void
 }) {
+  const learner = learnerWords(institutionType)
   const [params] = useSearchParams()
   const prospects = useCoreAll('prospects')
   const classes = useCoreAll('classes')
@@ -505,7 +508,7 @@ function EnrollmentForm({
         className="panel rounded-card border bg-surface p-6 max-[650px]:p-4"
       >
         <h2 id="kayit-formu" className="mb-3 text-lg font-semibold">
-          Öğrenci kayıt bilgileri
+          {learner.title} kayıt bilgileri
         </h2>
         {carriedOverFromYear === null ? null : (
           <p role="note" className="mb-3 rounded-md border bg-warning-soft p-3 text-sm">
@@ -527,7 +530,7 @@ function EnrollmentForm({
           </h3>
           {step === 0 ? (
             <>
-              <FormField id="kayit-aday" label="Aday öğrenci" error={errors.prospectId}>
+              <FormField id="kayit-aday" label={`Aday ${learner.noun}`} error={errors.prospectId}>
                 {(control) => (
                   <NativeSelect
                     {...control}
@@ -792,7 +795,7 @@ function EnrollmentForm({
                       </NativeSelectOption>
                       {(matches.data?.data ?? []).map((match) => (
                         <NativeSelectOption key={match.parentId} value={match.parentId}>
-                          {match.name} ({match.studentCount} öğrenci
+                          {match.name} ({match.studentCount} {learner.noun}
                           {match.match === 'sibling' ? ', kardeş adayın velisi' : ''})
                         </NativeSelectOption>
                       ))}

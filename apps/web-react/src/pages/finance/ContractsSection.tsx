@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import {
   collectionQueryFromList,
@@ -46,6 +47,7 @@ type ContractRow = {
  * panelde ayrıntıyı ve işlemleri açar (`?sozlesme=`).
  */
 export function ContractsSection() {
+  const learner = useEnrollmentLearner()
   const list = useListState('sozlesmeler')
   const search = useDebouncedValue(list.state.query)
   const query = useMemo(
@@ -84,7 +86,7 @@ export function ContractsSection() {
 
   const columns = useMemo<DataColumn<ContractRow>[]>(
     () => [
-      { key: 'studentName', label: 'Öğrenci' },
+      { key: 'studentName', label: learner.title },
       {
         key: 'title',
         label: 'Sözleşme',
@@ -117,7 +119,7 @@ export function ContractsSection() {
         ),
       },
     ],
-    [openContract],
+    [openContract, learner],
   )
 
   return (

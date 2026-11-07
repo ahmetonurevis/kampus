@@ -17,6 +17,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
@@ -50,8 +51,9 @@ const amount = (key: keyof Row, label: string): DataColumn<Row> => ({
   cell: (row) => money(row[key] as number),
 })
 
-const COLUMNS: readonly DataColumn<Row>[] = [
-  { key: 'studentName', label: 'Öğrenci' },
+/** Sütunlar; kayıtlı kişi sütunu kurum türünün terimini taşır (DOM-KAY-012). */
+const columnsFor = (learner: string): readonly DataColumn<Row>[] => [
+  { key: 'studentName', label: learner },
   amount('openingCents', 'Açılış'),
   amount('accruedCents', 'Tahakkuk'),
   amount('withdrawalAdjustmentCents', 'Ayrılış düzeltmesi'),
@@ -86,6 +88,7 @@ const COLUMNS: readonly DataColumn<Row>[] = [
  * kapatmaz. Hesap sunucudadır. Dosya taze oturum ister: oturum eskiyse parola sorulup yinelenir.
  */
 export function FinanceReconciliationSection({ academicYear }: { academicYear: number }) {
+  const learner = useEnrollmentLearner()
   const [year, setYear] = useState(academicYear)
   const [onlyMismatches, setOnlyMismatches] = useState(false)
   const [reauth, setReauth] = useState(false)
@@ -102,11 +105,12 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
   const exporter = useFinanceReconciliationExport()
   const data = report.data?.data
 
+  const columns = useMemo(() => columnsFor(learner.title), [learner])
   const rows = useMemo(
     () =>
       data?.rows.map((row): Row => ({
         id: row.studentId,
-        studentName: row.studentName || 'Kaydı bulunamayan öğrenci',
+        studentName: row.studentName || `Kaydı bulunamayan ${learner.noun}`,
         openingCents: row.openingCents,
         accruedCents: row.accruedCents,
         withdrawalAdjustmentCents: row.withdrawalAdjustmentCents,
@@ -120,7 +124,7 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
         differenceCents: row.differenceCents,
         mismatchReason: row.mismatchReason,
       })),
-    [data],
+    [data, learner],
   )
 
   async function download() {
@@ -159,8 +163,9 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Burs ve indirim taksitlerden zaten düşüldüğü için formüle girmez. Eksi bakiye kurumun
-          öğrenciye borcudur (avans, dağıtılmayan tahsilat ya da ödenmemiş iade). Açılış aktarımı
-          dosyadan aktarılan geçmiş ödemedir; borcu kapatır, tahsilat değildir, kasayı değiştirmez.
+          {learner.dative} borcudur (avans, dağıtılmayan tahsilat ya da ödenmemiş iade). Açılış
+          aktarımı dosyadan aktarılan geçmiş ödemedir; borcu kapatır, tahsilat değildir, kasayı
+          değiştirmez.
         </p>
         <div className="mt-4 grid max-w-md grid-cols-2 gap-4 max-[420px]:grid-cols-1">
           <label className="grid gap-1 text-sm font-medium">
@@ -179,7 +184,7 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
             </NativeSelect>
           </label>
           <label className="grid gap-1 text-sm font-medium">
-            Gösterilecek öğrenciler
+            Gösterilecek {learner.plural}
             <NativeSelect
               value={onlyMismatches ? 'mismatch' : 'all'}
               onChange={(event) => setOnlyMismatches(event.target.value === 'mismatch')}
@@ -199,8 +204,8 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
             }
           >
             {data.mismatchCount === 0
-              ? `${String(data.studentCount)} öğrencinin toplamı tutuyor.`
-              : `${String(data.studentCount)} öğrenciden ${String(data.mismatchCount)} tanesinin toplamı tutmuyor.`}
+              ? `${String(data.studentCount)} ${learner.genitive} toplamı tutuyor.`
+              : `${String(data.studentCount)} ${learner.noun}den ${String(data.mismatchCount)} tanesinin toplamı tutmuyor.`}
           </p>
           <StatGrid
             label="Mutabakat toplamları"
@@ -250,10 +255,12 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
         rows={rows}
         total={report.data?.meta.total ?? 0}
         sortable={NO_SORT}
-        columns={COLUMNS}
+        columns={columns}
         mobileColumns={MOBILE_COLUMNS}
-        caption="Öğrenci bazında mutabakat"
-        empty={onlyMismatches ? 'Toplamı tutmayan öğrenci yok.' : 'Bu yılda finans hareketi yok.'}
+        caption={`${learner.title} bazında mutabakat`}
+        empty={
+          onlyMismatches ? `Toplamı tutmayan ${learner.noun} yok.` : 'Bu yılda finans hareketi yok.'
+        }
         loading={report.isPending}
         fetching={report.isFetching && !report.isPending}
         error={

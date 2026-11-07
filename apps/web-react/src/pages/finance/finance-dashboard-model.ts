@@ -16,9 +16,14 @@ export function overdueTrendPoints(
   return months.map((month) => ({ label: monthLabel(month.month), value: month.overdueCents }))
 }
 
-/** Gecikmiş kartının notu: borçlu öğrenci sayısı. */
-export function overdueStudentsNote(students: number): string {
-  return students > 0 ? `${number(students)} öğrencide gecikmiş borç` : 'Gecikmiş borç bulunmuyor'
+/**
+ * Gecikmiş kartının notu: borçlu öğrenci sayısı. Kayıtlı kişi kurum türünün terimiyle yazılır
+ * (`learner`: okulda "öğrenci", dil okulu ve kursta "kursiyer"; DOM-KAY-012).
+ */
+export function overdueStudentsNote(students: number, learner = 'öğrenci'): string {
+  return students > 0
+    ? `${number(students)} ${learner}de gecikmiş borç`
+    : 'Gecikmiş borç bulunmuyor'
 }
 
 /**

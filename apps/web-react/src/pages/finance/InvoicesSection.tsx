@@ -12,6 +12,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { sortableColumns } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
@@ -55,6 +56,7 @@ export function InvoicesSection({
   onOpenInvoice: (id: string) => void
   onOpenPayment: (id: string) => void
 }) {
+  const learner = useEnrollmentLearner()
   const list = useListState('taksitler', { urlFilters: INVOICE_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
   const branchQuery = useCoreAll('branches')
@@ -109,7 +111,7 @@ export function InvoicesSection({
     () => [
       {
         key: 'studentName',
-        label: 'Öğrenci',
+        label: learner.title,
         cell: (row) => (
           <span className="person-cell flex items-center gap-2.5">
             <Avatar name={row.studentName} size="small" />
@@ -173,7 +175,7 @@ export function InvoicesSection({
           ),
       },
     ],
-    [onOpenInvoice, onOpenPayment],
+    [onOpenInvoice, onOpenPayment, learner],
   )
 
   function download() {

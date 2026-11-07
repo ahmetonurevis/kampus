@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
@@ -66,6 +67,7 @@ const dayFilter = (value: unknown) =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
 
 export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
+  const learner = useEnrollmentLearner()
   const setMebbis = useSetPaymentMebbis()
   const list = useListState('tahsilatlar')
   const search = useDebouncedValue(list.state.query)
@@ -114,7 +116,7 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
         cell: (row) => dateLabel(row.paidAt, { year: 'numeric' }),
       },
       { key: 'receipt', label: 'Dekont no' },
-      { key: 'studentName', label: 'Öğrenci' },
+      { key: 'studentName', label: learner.title },
       { key: 'method', label: 'Yöntem' },
       { key: 'reference', label: 'İşlem referansı' },
       { key: 'bankAccount', label: 'Banka hesabı' },
@@ -185,7 +187,7 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
         ),
       },
     ],
-    [canReverse, setMebbis],
+    [canReverse, setMebbis, learner],
   )
 
   const total = payments.data?.meta.total ?? 0

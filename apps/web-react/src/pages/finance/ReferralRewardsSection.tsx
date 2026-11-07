@@ -15,6 +15,7 @@ import { FormField } from '@/components/FormField.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 
 const NO_SORT: readonly string[] = []
@@ -120,11 +121,12 @@ export function ReferralRewardsSection() {
  * ve referansla gelen öğrenci yanıtta yoktur, doğmamış hak listelenmez (KVKK). Hak yoksa bölüm çıkmaz.
  */
 export function FamilyReferralRewards() {
+  const learner = useEnrollmentLearner()
   const list = useListState('referans-haklarim')
   const rewards = useReferralRewards({ page: list.state.page, pageSize: list.state.pageSize })
   const columns = useMemo<DataColumn<ReferralReward>[]>(
     () => [
-      { key: 'referrer', label: 'Öğrenci', cell: (row) => row.referrerStudentName ?? '—' },
+      { key: 'referrer', label: learner.title, cell: (row) => row.referrerStudentName ?? '—' },
       { key: 'academicYear', label: 'Eğitim yılı' },
       { key: 'status', label: 'Durum', cell: statusCell },
       {
@@ -136,7 +138,7 @@ export function FamilyReferralRewards() {
             : `${usedCell(row)} · ${dateLabel(row.usedAt, { year: 'numeric' })}`,
       },
     ],
-    [],
+    [learner],
   )
   if (!rewards.error && (rewards.data?.meta.total ?? 0) === 0) return null
   return (

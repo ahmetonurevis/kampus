@@ -45,6 +45,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
@@ -83,6 +84,7 @@ const isRefundStatus = (value: unknown): value is keyof typeof STATUS_LABELS =>
   typeof value === 'string' && Object.hasOwn(STATUS_LABELS, value)
 
 export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
+  const learner = useEnrollmentLearner()
   const list = useListState('ayrilislar')
   // Öğrenci adı araması ve iade durumu sunucuda süzülür (ON-118).
   const search = useDebouncedValue(list.state.query)
@@ -121,7 +123,7 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
 
   const columns = useMemo<DataColumn<WithdrawalRow>[]>(
     () => [
-      { key: 'studentName', label: 'Öğrenci' },
+      { key: 'studentName', label: learner.title },
       {
         key: 'withdrawalDate',
         label: 'Ayrılış',
@@ -173,7 +175,7 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
         ),
       },
     ],
-    [canManage],
+    [canManage, learner],
   )
 
   const total = withdrawals.data?.meta.total ?? 0
@@ -371,6 +373,7 @@ function BreakdownList({
 
 function StartModal({ onClose }: { onClose: () => void }) {
   const { session } = useAuth()
+  const learner = useEnrollmentLearner()
   const students = useCoreAll('students')
   const quote = useQuoteWithdrawal()
   const withdraw = useWithdrawStudent()
@@ -525,10 +528,10 @@ function StartModal({ onClose }: { onClose: () => void }) {
           onSubmit={(event) => void onPreview(event)}
           className="grid grid-cols-2 gap-4 max-[650px]:grid-cols-1"
         >
-          <FormField id="ayrilis-ogrenci" label="Öğrenci" error={errors.studentId}>
+          <FormField id="ayrilis-ogrenci" label={learner.title} error={errors.studentId}>
             {(control) => (
               <NativeSelect {...control} {...form.register('studentId')} disabled={locked}>
-                <NativeSelectOption value="">Öğrenci seçin</NativeSelectOption>
+                <NativeSelectOption value="">{learner.title} seçin</NativeSelectOption>
                 {options.map((option) => (
                   <NativeSelectOption key={option.id} value={option.id}>
                     {option.name}
@@ -704,8 +707,8 @@ function StartModal({ onClose }: { onClose: () => void }) {
             </label>
           ) : null}
           <p className="mt-3 text-sm text-muted-foreground">
-            Onayla öğrenci pasifleşir, açık taksitler iptal edilir, ileri tarihli etüt, servis ve
-            kulüp kayıtları sonlanır
+            Onayla {learner.noun} pasifleşir, açık taksitler iptal edilir, ileri tarihli etüt,
+            servis ve kulüp kayıtları sonlanır
             {preview.contracts?.some((line) => line.packageSaleId !== undefined)
               ? ', paketlerin kalan saati iade edilmiş yazılır'
               : ''}

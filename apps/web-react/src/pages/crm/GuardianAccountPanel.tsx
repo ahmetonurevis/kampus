@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCoreAll, useCoreItem, type CoreRecord } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { notify } from '@/lib/notify.ts'
 import { FormActions, RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
@@ -127,6 +128,7 @@ function GuardianAccountForm({
 }) {
   const invite = useInviteGuardianAccount()
   const { run, reauthModal } = useReauthRetry()
+  const learner = useEnrollmentLearner()
   const form = useForm<GuardianAccountFormValues, unknown, Output>({
     resolver: zodResolver(guardianAccountFormSchema),
     defaultValues: guardianAccountDefaults(parent, studentId),
@@ -170,8 +172,8 @@ function GuardianAccountForm({
         className="grid gap-5"
       >
         <p className="text-sm text-muted-foreground">
-          Veli e-postadaki bağlantıyla parolasını belirleyip giriş yapar; seçilen öğrencileri görür
-          ve rızalarını Rızalarım bölümünden verir. Hesap {parent.name} veli kaydına bağlanır.
+          Veli e-postadaki bağlantıyla parolasını belirleyip giriş yapar; seçilen {learner.plural}i
+          görür ve rızalarını Rızalarım bölümünden verir. Hesap {parent.name} veli kaydına bağlanır.
         </p>
         <FormField id="veli-hesap-ad" label="Veli adı soyadı" error={errors.name}>
           {(control) => (
@@ -195,7 +197,7 @@ function GuardianAccountForm({
           aria-invalid={studentsError ? true : undefined}
           aria-describedby={studentsError ? 'veli-hesap-ogrenci-hata' : undefined}
         >
-          <legend className="mb-1 font-medium">Hesabın göreceği öğrenciler</legend>
+          <legend className="mb-1 font-medium">Hesabın göreceği {learner.plural}</legend>
           {students.map((student) => (
             <label key={student.id} className="flex min-h-6 items-center gap-2">
               <input

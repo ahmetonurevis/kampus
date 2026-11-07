@@ -6,6 +6,7 @@ import { FormField } from '@/components/FormField.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Input } from '@/components/ui/input'
 import type { CoreRecord } from '@/hooks/use-core-collection.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { notify } from '@/lib/notify.ts'
 import { FormActions, RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import {
@@ -59,6 +60,7 @@ function EditForm({
   onClose: () => void
 }) {
   const update = useUpdateProspectDetails()
+  const learner = useEnrollmentLearner()
   const form = useForm<EditFormValues, unknown, Output>({
     resolver: zodResolver(editFormSchema),
     defaultValues: editDefaults(prospect),
@@ -96,7 +98,7 @@ function EditForm({
     >
       <p className="text-sm text-muted-foreground">
         Adayın talebiyle bilgisini düzeltin. Aşama ve ticari ileti onayı değişmez; kesin kayda
-        dönmüş adayın düzeltmesi öğrenci ve veli kaydına yansımaz.
+        dönmüş adayın düzeltmesi {learner.noun} ve veli kaydına yansımaz.
       </p>
       <FormField id="duzelt-ad" label="Ad soyad" error={errors.name}>
         {(control) => <Input {...control} {...form.register('name')} disabled={busy} />}

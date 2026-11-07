@@ -11,6 +11,7 @@ import type {
   ScheduleProspectMeetingBody,
   ScheduleTrialLessonBody,
 } from '@kampus/react-shared/use-prospect-commands.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import {
   addProspectNoteSchema,
@@ -78,7 +79,7 @@ export function createFormSchema(type: InstitutionType) {
         if (guardian.length < 2) fail('guardianName', 'Velinin adını yazın.')
       }
       if (value.source === REFERRAL_SOURCE && !text(value.referrerStudentId))
-        fail('referrerStudentId', 'Referans veren öğrenciyi seçin.')
+        fail('referrerStudentId', `Referans veren ${learnerWords(type).accusative} seçin.`)
       if (value.emailConsent && !text(value.email))
         fail('emailConsent', 'E-posta onayı için e-posta adresi girin.')
     })

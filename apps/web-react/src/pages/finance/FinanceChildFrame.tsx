@@ -9,6 +9,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useFinanceChild, type FinanceChildOption } from './use-finance-child.ts'
 
 /** Sayfa gövdesinin aldığı seçili çocuk; ödeyici çocukta ad ve sınıf seçici listesinden gelir. */
@@ -28,6 +29,7 @@ export function FinanceChildFrame({
 }) {
   const finance = useFinanceChild()
   const location = useLocation()
+  const learner = useEnrollmentLearner()
   if (finance.cleanSearch !== null)
     return (
       <Navigate
@@ -39,7 +41,7 @@ export function FinanceChildFrame({
   if (finance.status === 'loading')
     body = (
       <p role="status" className="text-sm text-muted-foreground">
-        Öğrenciler yükleniyor…
+        {learner.title}ler yükleniyor…
       </p>
     )
   else if (finance.status === 'error')
@@ -47,8 +49,8 @@ export function FinanceChildFrame({
   else if (!finance.childId)
     body = (
       <EmptyState
-        title="Bağlı öğrenci bulunamadı."
-        description="Hesabınıza bağlı bir öğrenci olduğunda ödeme bilgileri burada görünür."
+        title={`Bağlı ${learner.noun} bulunamadı.`}
+        description={`Hesabınıza bağlı bir ${learner.noun} olduğunda ödeme bilgileri burada görünür.`}
       />
     )
   else
@@ -91,14 +93,15 @@ function FinanceChildBar({
   onChange: (childId: string) => void
 }) {
   const pending = childNamesPending(options)
+  const learner = useEnrollmentLearner()
   return (
     <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border bg-surface px-[18px] py-3 text-sm">
       <span className="flex items-center gap-2 font-medium text-primary">
         <Icon name="Wallet" size={18} aria-hidden="true" />
-        Ödemesi görüntülenen öğrenci
+        Ödemesi görüntülenen {learner.noun}
       </span>
       <NativeSelect
-        aria-label="Ödemesi görüntülenen öğrenci"
+        aria-label={`Ödemesi görüntülenen ${learner.noun}`}
         aria-busy={pending || undefined}
         disabled={pending}
         value={pending ? '' : value}
@@ -106,7 +109,7 @@ function FinanceChildBar({
         className="min-h-11 bg-surface py-[5px] pr-7 pl-2.5 text-sm"
       >
         {pending ? (
-          <NativeSelectOption value="">Öğrenciler yükleniyor…</NativeSelectOption>
+          <NativeSelectOption value="">{learner.title}ler yükleniyor…</NativeSelectOption>
         ) : (
           options.map((child) => (
             <NativeSelectOption key={child.id} value={child.id}>
@@ -117,8 +120,8 @@ function FinanceChildBar({
       </NativeSelect>
       <span className="text-xs text-muted-foreground sm:ml-auto">
         {payerOnly
-          ? 'Ödeyicisi olduğunuz öğrencinin yalnız ödeme bilgileri gösterilir.'
-          : 'Ödeyicisi olduğunuz öğrencilerin ödemelerini de buradan seçebilirsiniz.'}
+          ? `Ödeyicisi olduğunuz ${learner.genitive} yalnız ödeme bilgileri gösterilir.`
+          : `Ödeyicisi olduğunuz ${learner.plural}in ödemelerini de buradan seçebilirsiniz.`}
       </span>
     </div>
   )

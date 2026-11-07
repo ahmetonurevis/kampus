@@ -1,11 +1,12 @@
 // Kayıt ve finans belgelerinin ortak parçaları: öğrenci bilgi alanları ve taksit tablosu sütunları.
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
+import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import type { DocumentLayout } from '../layout.ts'
 
 type Fields = Parameters<DocumentLayout['fields']>[0]
 
-export type LearnerTerm = 'Öğrenci' | 'Kursiyer'
+export type LearnerTerm = ReturnType<typeof learnerWords>['title']
 
 /**
  * Kayıtlı kişiyi adlandıran şablonların seçeneği: etkin kurumun türü (oturumdaki
@@ -19,7 +20,7 @@ export type LearnerTermOptions = { institutionType?: InstitutionType }
  * okul dışındaki türlerde (dil okulu, kurs) kursiyer. Tür bilinmiyorsa okul sayılır.
  */
 export function learnerTerm(type: InstitutionType | undefined): LearnerTerm {
-  return type === undefined || type === 'school' ? 'Öğrenci' : 'Kursiyer'
+  return learnerWords(type).title
 }
 
 export function studentFields(

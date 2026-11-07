@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 
 const KIND_LABELS: Record<string, string> = {
   tc: 'T.C. kimlik numarası',
@@ -19,6 +20,7 @@ const KIND_LABELS: Record<string, string> = {
  */
 export function StudentIdentitySection({ studentId }: { studentId: string }) {
   const { session } = useAuth()
+  const learner = useEnrollmentLearner()
   const reveal = useStudentIdentityReveal(studentId)
   const staff = session?.role === 'yonetici' || session?.role === 'onburo'
   if (!staff || session?.modules.crm !== true || studentId === '') return null
@@ -47,7 +49,7 @@ export function StudentIdentitySection({ studentId }: { studentId: string }) {
         </p>
       ) : isApiError(reveal.query.error) && reveal.query.error.status === 404 ? (
         <p role="status" className="mt-1 text-sm text-muted-foreground">
-          Bu öğrenci için kimlik kaydı yok; kimlik kesin kayıtta alınır.
+          Bu {learner.noun} için kimlik kaydı yok; kimlik kesin kayıtta alınır.
         </p>
       ) : reveal.query.error ? (
         <div className="mt-2">

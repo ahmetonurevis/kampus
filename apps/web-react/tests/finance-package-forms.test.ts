@@ -208,7 +208,7 @@ test('IST-078: satış formu öğrenci ve paket ister, sunucu alanını eşler',
   assert.equal(result.success, false)
   assert.deepEqual(
     result.error?.issues.map((issue) => issue.message),
-    ['Öğrenci seçin.', 'Paket seçin.'],
+    ['Kursiyer seçin.', 'Paket seçin.'],
   )
   assert.equal(saleFormField('installmentCount'), 'installmentCount')
   assert.equal(saleFormField('discounts'), null)

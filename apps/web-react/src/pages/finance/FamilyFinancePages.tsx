@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { FamilyEnrollmentCertificate } from '../crm/FamilyEnrollmentCertificate.tsx'
@@ -60,9 +61,10 @@ function StudentSummary({ childId }: { childId: string }) {
 }
 
 function SummaryCard({ name, className }: { name: string; className: string | null }) {
+  const learner = useEnrollmentLearner()
   return (
     <section
-      aria-label="Öğrenci özeti"
+      aria-label={`${learner.title} özeti`}
       className="panel mb-6 flex flex-wrap items-center gap-4 rounded-card border bg-surface px-6 py-5"
     >
       <Avatar name={name} size="large" />
@@ -245,6 +247,7 @@ function Contracts({
   /** `null`: onay düğmesi yok (velayetsiz ödeyici veli). */
   onApprove: ((contractId: string) => void) | null
 }) {
+  const learner = useEnrollmentLearner()
   const contracts = useCoreAll('contracts', { filters: { studentId: childId } })
   if (contracts.error)
     return <QueryError error={contracts.error} onRetry={() => void contracts.refetch()} />
@@ -303,7 +306,9 @@ function Contracts({
       {hasScholarshipContract(all, childId) ? null : (
         <li className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6">
           <h2 className="text-lg font-semibold">Taksit taahhütnamesi</h2>
-          <p className="text-sm text-muted-foreground">Öğrencinin güncel ödeme planı belgesi.</p>
+          <p className="text-sm text-muted-foreground">
+            {learner.titleGenitive} güncel ödeme planı belgesi.
+          </p>
           <div>
             <PdfButton
               type="payment-plan"

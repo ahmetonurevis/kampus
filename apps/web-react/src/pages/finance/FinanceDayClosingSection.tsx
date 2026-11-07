@@ -27,6 +27,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useFinanceDayClosingPdf } from '@/hooks/use-finance-day-closing-pdf.ts'
 import { notify } from '@/lib/notify.ts'
 import { cashDifferenceLabel, DAY_CLOSING_TITLE } from '@/lib/pdf/templates/finance-day-closing.ts'
@@ -90,6 +91,9 @@ const LINE_MOBILE = ['receipt', 'studentName', 'amountCents']
 const METHOD_NO_FILTERS = METHOD_COLUMNS.map((column) => column.key)
 const COLLECTED_NO_FILTERS = COLLECTED_COLUMNS.map((column) => column.key)
 const REVERSED_NO_FILTERS = REVERSED_COLUMNS.map((column) => column.key)
+/** Kayıtlı kişi sütunu kurum türünün terimini taşır: okulda öğrenci, dil okulu ve kursta kursiyer (DOM-KAY-012). */
+const withLearner = (columns: readonly DataColumn<LineRow>[], learner: string) =>
+  columns.map((column) => (column.key === 'studentName' ? { ...column, label: learner } : column))
 
 const validDay = (value: string | null, today: string) =>
   value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= today ? value : today
@@ -246,6 +250,9 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
   )
   const collectedRows = useMemo(() => report.collected.map(lineRow), [report.collected])
   const reversedRows = useMemo(() => report.reversed.map(lineRow), [report.reversed])
+  const learner = useEnrollmentLearner()
+  const collectedColumns = useMemo(() => withLearner(COLLECTED_COLUMNS, learner.title), [learner])
+  const reversedColumns = useMemo(() => withLearner(REVERSED_COLUMNS, learner.title), [learner])
   return (
     <>
       <StatGrid
@@ -283,7 +290,7 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
         <DataTable
           listKey={`gun-sonu-tahsilat-${closingDate}`}
           rows={collectedRows}
-          columns={COLLECTED_COLUMNS}
+          columns={collectedColumns}
           mobileColumns={LINE_MOBILE}
           caption="Günün tahsilatları"
           search={false}
@@ -299,7 +306,7 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
         <DataTable
           listKey={`gun-sonu-iptal-${closingDate}`}
           rows={reversedRows}
-          columns={REVERSED_COLUMNS}
+          columns={reversedColumns}
           mobileColumns={LINE_MOBILE}
           caption="Günün iptalleri"
           search={false}

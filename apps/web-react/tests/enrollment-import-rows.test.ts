@@ -144,6 +144,14 @@ describe('önizleme satırları (ON-060, ON-061)', () => {
       }),
       '3 satır · 2 öğrenci yazılacak · 1 zaten kayıtlı, atlanacak · 1 yeni veli, 1 mevcut veli',
     )
+    // DOM-KAY-012: dil okulu ve kursta kayıtlı kişi kursiyerdir.
+    assert.match(
+      studentImportSummary(
+        { ...counts, dryRun: true, newGuardianCount: 0, existingGuardianCount: 0, rows: [] },
+        'kursiyer',
+      ),
+      /2 kursiyer yazılacak/,
+    )
     const summary = installmentImportSummary({
       ...counts,
       dryRun: true,

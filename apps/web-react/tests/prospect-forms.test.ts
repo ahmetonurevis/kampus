@@ -96,6 +96,15 @@ test('DOM-KAY-003: aydınlatma onayı, e-posta onayı ve referans öğrencisi so
   if (ok.success) assert.equal(createBody(ok.data, 'school').referrerStudentId, 's1')
 })
 
+test('DOM-KAY-003, DOM-KAY-012: referans veren okulda öğrenci, dil okulunda kursiyerdir', () => {
+  const message = (type: 'school' | 'language_school') =>
+    createFormSchema(type)
+      .safeParse({ ...valid, guardianName: 'Ayşe Güven', minor: 'no', source: 'Veli referansı' })
+      .error?.issues.find((issue) => issue.path[0] === 'referrerStudentId')?.message
+  assert.equal(message('school'), 'Referans veren öğrenciyi seçin.')
+  assert.equal(message('language_school'), 'Referans veren kursiyeri seçin.')
+})
+
 test('mükerrer ret kodları tanınır', () => {
   assert.equal(isDuplicateCode('prospect_duplicate'), true)
   assert.equal(isDuplicateCode('prospect_contact_shared'), true)

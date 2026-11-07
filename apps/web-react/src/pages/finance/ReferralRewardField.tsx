@@ -6,6 +6,7 @@ import {
 } from '@kampus/react-shared/use-finance-referrals.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { referralOptionLabel } from './referral-forms.ts'
 
 /**
@@ -28,6 +29,7 @@ export function ReferralRewardField({
   register: Omit<ComponentProps<typeof NativeSelect>, 'children'>
 }) {
   const { items } = useAvailableReferralRewards(query)
+  const learner = useEnrollmentLearner()
   return (
     <FormField
       id={id}
@@ -42,7 +44,7 @@ export function ReferralRewardField({
           </NativeSelectOption>
           {items.map((reward) => (
             <NativeSelectOption key={reward.id} value={reward.id}>
-              {referralOptionLabel(reward)}
+              {referralOptionLabel(reward, learner.title)}
             </NativeSelectOption>
           ))}
         </NativeSelect>

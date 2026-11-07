@@ -59,7 +59,7 @@ async function sellThroughApi(client: ApiClient, packageId: string, studentId = 
 }
 
 async function fillSale(dialog: Locator, count: string) {
-  await dialog.getByLabel('Öğrenci').selectOption('s1')
+  await dialog.getByLabel('Kursiyer', { exact: true }).selectOption('s1')
   await dialog.getByLabel('Paket', { exact: true }).selectOption({ index: 1 })
   await dialog.getByLabel('Taksit sayısı').selectOption(count)
 }
@@ -143,9 +143,9 @@ test.describe('IST-078: paket satışı ekranı', () => {
     ])
     await expect(dialog.getByText(/burs/i)).toHaveCount(0)
 
-    // Öğrenci ve paket seçilmeden önizleme açılmaz.
+    // Kursiyer ve paket seçilmeden önizleme açılmaz; paket satışı yalnız dil okulundadır (DOM-KAY-012).
     await dialog.getByRole('button', { name: 'Ücreti göster' }).click()
-    await expect(dialog.getByText('Öğrenci seçin.')).toBeVisible()
+    await expect(dialog.getByText('Kursiyer seçin.')).toBeVisible()
 
     await fillSale(dialog, '1')
     await expect(dialog.getByRole('checkbox', { name: 'Peşin ödeme' })).toBeVisible()
@@ -288,7 +288,11 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await page.goto(WITHDRAWALS_URL)
     await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
     const start = page.getByRole('dialog', { name: 'Ayrılış başlat' })
-    await start.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+    // Dil okulunda kayıtlı kişi "kursiyer"dir: seçim alanı ve boş seçenek (DOM-KAY-012, ON-324).
+    const learner = start.getByLabel('Kursiyer', { exact: true })
+    await expect(learner.locator('option').first()).toHaveText('Kursiyer seçin')
+    await expect(start.getByLabel('Öğrenci', { exact: true })).toHaveCount(0)
+    await learner.selectOption({ label: name })
     await start.getByLabel('Dönem başlangıcı').fill('2026-09-07')
     await start.getByRole('button', { name: 'Hesabı göster' }).click()
     await expect(start.getByRole('alert')).toContainText('Kullanılan saat girilmedi')
@@ -328,7 +332,7 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await loginAs(school.user('yonetici'))
     await page.goto(WITHDRAWALS_URL)
     await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
-    await start.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+    await start.getByLabel('Kursiyer', { exact: true }).selectOption({ label: name })
     await start.getByLabel('Dönem başlangıcı').fill('2026-09-07')
     await start.getByRole('button', { name: 'Hesabı göster' }).click()
     await expect(start.getByRole('alert')).toHaveCount(0)
@@ -341,6 +345,10 @@ test.describe('IST-078: paket satışı ekranı', () => {
     await start.getByRole('checkbox', { name: /iade tutarını inceledim/ }).check()
     await start.getByRole('button', { name: 'Ayrılışı onayla' }).click()
     await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    // Ayrılış tablosunun kişi sütunu da kurum türünün terimidir (DOM-KAY-012, ON-324).
+    const withdrawals = page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })
+    await expect(withdrawals.getByRole('columnheader', { name: 'Kursiyer' })).toBeVisible()
+    await expect(withdrawals.getByRole('columnheader', { name: 'Öğrenci' })).toHaveCount(0)
     await admin.dispose()
   })
 

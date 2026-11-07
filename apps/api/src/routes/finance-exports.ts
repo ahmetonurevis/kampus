@@ -97,6 +97,12 @@ const reconciliationAmounts = z.object({
     .int()
     .describe('Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi'),
   collectedCents: z.number().int().describe('Ödeme günü dönemde olan tahsilatlar (brüt)'),
+  openingImportCents: z
+    .number()
+    .int()
+    .describe(
+      'Ödeme günü dönemde olan açılış aktarımı (dosyadan gelen geçmiş ödeme); tahsilat değildir (DOM-FIN-014)',
+    ),
   reversedCents: z.number().int().describe('İptal günü dönemde olan tahsilatlar'),
   refundedCents: z.number().int().describe('Ödeme günü dönemde olan iadeler'),
   scholarshipCents: z
@@ -111,10 +117,13 @@ const reconciliationAmounts = z.object({
   expectedClosingCents: z
     .number()
     .int()
-    .describe('Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade'),
+    .describe('Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade'),
   differenceCents: z.number().int().describe('Kapanış − beklenen kapanış'),
   openDebtCents: z.number().int().describe('Dönem sonunda vadesi gelmiş açık taksit tutarı'),
-  creditCents: z.number().int().describe('Dağıtılmamış tahsilat, avans ve ödenmemiş iade'),
+  creditCents: z
+    .number()
+    .int()
+    .describe('Dağıtılmamış tahsilat, vadesi gelmemiş avans ya da aktarım ve ödenmemiş iade'),
 })
 
 const reconciliationResponse = z.object({
@@ -455,7 +464,7 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
         tags: ['finance-exports'],
         summary: 'Yıl sonu mutabakatı',
         description:
-          'Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.',
+          'Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Dosyadan aktarılan geçmiş ödeme tahsilat sayılmaz, ödeme gününde `openingImportCents` alanına yazılır (DOM-FIN-014). Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.',
         querystring: financeReconciliationQuerySchema.extend(pageQuerySchema.shape),
         response: { 200: reconciliationResponse, ...commandErrors },
       },

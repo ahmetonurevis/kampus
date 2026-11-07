@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { defaultFinanceExportProfile } from '@kampus/school-core/lib/finance-export-profile.ts'
+import { OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
@@ -76,6 +77,7 @@ type Amounts = {
   accruedCents: number
   withdrawalAdjustmentCents: number
   collectedCents: number
+  openingImportCents: number
   reversedCents: number
   refundedCents: number
   scholarshipCents: number
@@ -229,7 +231,8 @@ describe('yıl sonu mutabakatı', () => {
         amounts.openingCents +
           amounts.accruedCents -
           amounts.withdrawalAdjustmentCents -
-          amounts.collectedCents +
+          amounts.collectedCents -
+          amounts.openingImportCents +
           amounts.reversedCents +
           amounts.refundedCents,
         amounts.closingCents,
@@ -491,6 +494,77 @@ describe('yıl sonu mutabakatı', () => {
     assert.equal(none.data.totals.accruedCents, NET)
   })
 
+  const importedInvoice = (id: string, installment: number) =>
+    invoice(id, installment, {
+      paidAt: '2026-09-14T09:00:00.000Z',
+      method: OPENING_IMPORT_METHOD,
+    })
+
+  test('DOM-FIN-056 DOM-FIN-014: açılış aktarımı tahsilat sayılmaz, tutmayan çıkmaz; dosyada ayrı sütun', async () => {
+    const a = await institution(
+      {},
+      { invoices: [importedInvoice('test-inv-1', 1), invoice('test-inv-2', 2)] },
+    )
+    const totals = await balanced(a.cookie)
+    assert.equal(totals.accruedCents, NET)
+    assert.equal(totals.collectedCents, 0)
+    assert.equal(totals.openingImportCents, HALF)
+    assert.equal(totals.closingCents, HALF)
+
+    const listed = (await report(a.cookie, `${URL_2026}&status=mismatch`)).json()
+    assert.equal(listed.meta.total, 0)
+    const [row] = (await report(a.cookie)).json().data.rows
+    assert.equal(row.openingImportCents, HALF)
+    assert.equal(row.mismatchReason, null)
+
+    const file = await send('GET', EXPORT_2026, a.cookie)
+    assert.equal(file.statusCode, 200, file.body)
+    assert.match(file.body, /"Tahsilat \(₺\)";"Açılış aktarımı \(₺\)";/)
+    assert.match(file.body, /;0,00;50000,00;0,00;0,00;0,00;0,00;50000,00;50000,00;0,00;"Tutuyor"/)
+  })
+
+  test('DOM-FIN-014 DOM-FIN-041: aktarılmış ödemeyle ayrılışta iade ödenince formül tutar', async () => {
+    const a = await institution(
+      {},
+      { invoices: [importedInvoice('test-inv-1', 1), invoice('test-inv-2', 2)] },
+    )
+    const left = await withdraw(a.cookie)
+    assert.equal(left.statusCode, 201, left.body)
+    const { id, version, refundCents } = left.json().data
+    assert.equal(refundCents, 3_000_000)
+
+    const unpaid = await balanced(a.cookie)
+    assert.equal(unpaid.accruedCents, HALF)
+    assert.equal(unpaid.openingImportCents, HALF)
+    assert.equal(unpaid.collectedCents, 0)
+    assert.equal(unpaid.closingCents, -3_000_000)
+
+    assert.equal((await payRefund(a.cookie, id, version)).statusCode, 200)
+    const paid = await balanced(a.cookie)
+    assert.equal(paid.refundedCents, 3_000_000)
+    assert.equal(paid.closingCents, 0)
+  })
+
+  test('DOM-FIN-056: aktarım dışında tahsilatsız ödenmiş taksit tutmayan kalır', async () => {
+    const a = await institution(
+      {},
+      {
+        invoices: [
+          invoice('test-inv-1', 1, {
+            paidAt: '2026-09-14T09:00:00.000Z',
+            method: 'Banka havalesi',
+          }),
+          importedInvoice('test-inv-2', 2),
+        ],
+      },
+    )
+    const { data } = (await report(a.cookie)).json()
+    assert.equal(data.mismatchCount, 1)
+    assert.equal(data.totals.openingImportCents, HALF)
+    assert.equal(data.totals.differenceCents, -HALF)
+    assert.equal(data.rows[0].mismatchReason, 'unrecorded_payment')
+  })
+
   test('IST-111: dosya BOM, ad ve kaçışla iner; satır toplamı rapora eşittir', async () => {
     const a = await institution()
     await pay(a.cookie, 3_000_000, 'TR-F1')
@@ -503,7 +577,7 @@ describe('yıl sonu mutabakatı', () => {
     )
     assert.equal(file.body.startsWith('﻿"Öğrenci";"Okul no";"Açılış (₺)"'), true)
     assert.equal(file.body.includes(`"${STUDENT?.name ?? 'yok'}"`), true)
-    assert.equal(file.body.includes('100000,00;0,00;30000,00'), true)
+    assert.equal(file.body.includes('100000,00;0,00;30000,00;0,00'), true)
     assert.equal(file.body.includes('"Tutuyor"'), true)
   })
 

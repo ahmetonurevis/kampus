@@ -722,7 +722,7 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     assertError(await get(`${SALES}?bilinmeyen=1`, a.admin), 400)
   })
 
-  test('K-40, DOM-FIN-058: veli ve öğrenci satış listesinde ve ayrıntısında tutar anahtarı yok; personelde var', async () => {
+  test('K-40, K-41, DOM-FIN-058: veli ve öğrenci satış listesinde ve ayrıntısında tutar ve iç kimlik anahtarı yok; personelde var', async () => {
     const a = await ready()
     const own = await sold(a)
     const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: 's3' }])
@@ -737,6 +737,15 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       'installments',
       'invoices',
     ]
+    const idKeys = [
+      'version',
+      'packageId',
+      'courseId',
+      'studentId',
+      'contractId',
+      'tariffId',
+      'tariffVersion',
+    ]
     const hourKeys = ['purchasedHours', 'consumedHours', 'remainingHours', 'expiresDate', 'status']
     for (const cookie of [parent, student]) {
       const listed = await get(SALES, cookie)
@@ -745,7 +754,10 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       assert.equal(detail.statusCode, 200, detail.body)
       for (const row of [listed.json().data[0], detail.json().data]) {
         for (const amountKey of amountKeys) assert.equal(amountKey in row, false, amountKey)
+        for (const idKey of idKeys) assert.equal(idKey in row, false, idKey)
         for (const hourKey of hourKeys) assert.equal(hourKey in row, true, hourKey)
+        assert.equal(row.id, own.id)
+        assert.equal(row.kind, HOURS_BODY.kind)
         assert.equal(row.packageName, HOURS_BODY.name)
         assert.equal(row.purchasedHours, 40)
         assert.equal(row.status, 'active')
@@ -758,6 +770,11 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
         assert.equal(row.hourlyCents, HOURLY)
         assert.equal(row.grossCents, 40 * HOURLY)
         assert.equal(typeof row.netCents, 'number')
+        for (const idKey of idKeys) assert.equal(idKey in row, true, idKey)
+        assert.equal(row.studentId, 's3')
+        assert.equal(row.contractId, own.contractId)
+        assert.equal(typeof row.tariffId, 'string')
+        assert.equal(typeof row.tariffVersion, 'number')
       }
       assert.equal(detail.invoices.length, 4)
       assert.equal(typeof detail.invoices[0].amountCents, 'number')

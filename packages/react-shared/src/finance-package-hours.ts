@@ -2,10 +2,10 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 
 // Öğrencinin ve velinin gördüğü paket saati (K-24, DOM-DIL-051). Ders planlaması içindir, ödeme
-// bilgisi sayılmaz: tutar alanları (`amounts`) öğrenci ve veli yanıtında hiç yoktur (K-40),
-// personel yanıtında olsa da satıra kopyalanmaz. Saatler ve durum bakiye ucundan
-// (`/finance/students/:id/package-balance`) gelir, burada yeniden hesaplanmaz; süresi dolan saat
-// kalan saatin içindedir, ayrıca gösterilir.
+// bilgisi sayılmaz: tutar alanları öğrenci ve veli yanıtında hiç yoktur (K-40), iç kimlikler
+// (sözleşme, tarife, sürüm) de öyle (K-41); personel yanıtında olsa da satıra kopyalanmaz. Saatler
+// ve durum bakiye ucundan (`/finance/students/:id/package-balance`) gelir, burada yeniden
+// hesaplanmaz; süresi dolan saat kalan saatin içindedir, ayrıca gösterilir.
 
 type BalanceSale =
   operations['getStudentPackageBalance']['responses'][200]['content']['application/json']['data']['sales'][number]

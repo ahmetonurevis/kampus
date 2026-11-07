@@ -388,20 +388,37 @@ async function studentNames(ctx: ServiceContext, ids: readonly string[]) {
 const institutionWide = (ctx: ServiceContext) =>
   ctx.actor.role === 'yonetici' || ctx.actor.role === 'onburo'
 
-/** Satış satırının tutar alanları; yalnız yönetici ve ön büro yanıtında (K-40, DOM-FIN-058). */
-const SALE_AMOUNT_FIELDS = ['hourlyCents', 'grossCents', 'netCents', 'invoices'] as const
-type SaleAmountField = (typeof SALE_AMOUNT_FIELDS)[number]
+/**
+ * Satış satırının yalnız yönetici ve ön büroya giden alanları: tutar ve taksit (K-40, DOM-FIN-058)
+ * ile iç kimlikler, yani paket, kur, öğrenci, sözleşme, tarife ve sürümler (K-41).
+ */
+const STAFF_ONLY_SALE_FIELDS = [
+  'hourlyCents',
+  'grossCents',
+  'netCents',
+  'invoices',
+  'version',
+  'packageId',
+  'courseId',
+  'studentId',
+  'contractId',
+  'tariffId',
+  'tariffVersion',
+] as const
+type StaffOnlySaleField = (typeof STAFF_ONLY_SALE_FIELDS)[number]
 
-type FamilySaleView<T> = Omit<T, SaleAmountField> & Partial<Pick<T, SaleAmountField & keyof T>>
+type FamilySaleView<T> = Omit<T, StaffOnlySaleField> &
+  Partial<Pick<T, StaffOnlySaleField & keyof T>>
 
 /**
- * Veli ve öğrenci yanıtı: saat, son kullanma, durum ve paket adı kalır; saat ücreti, brüt ve net
- * ücret ile taksitler silinir (K-40). Yalnız şemadan düşmesine güvenilmez, alan yanıtta hiç yoktur.
+ * Veli ve öğrenci yanıtı: satış kimliği, paket adı ve türü, saatler, son kullanma ve durum kalır;
+ * tutar, taksit (K-40) ve iç kimlik alanları (K-41) silinir. Yalnız şemadan düşmesine güvenilmez,
+ * alan yanıtta hiç yoktur.
  */
 function forReader<T extends object>(ctx: ServiceContext, sale: T): FamilySaleView<T> {
   const view: FamilySaleView<T> = { ...sale }
   if (institutionWide(ctx)) return view
-  for (const field of SALE_AMOUNT_FIELDS) Reflect.deleteProperty(view, field)
+  for (const field of STAFF_ONLY_SALE_FIELDS) Reflect.deleteProperty(view, field)
   return view
 }
 
@@ -409,7 +426,7 @@ function forReader<T extends object>(ctx: ServiceContext, sale: T): FamilySaleVi
  * Kapsam `/finance/students/:id/balance` ile aynıdır: yönetici ve ön büro kurum geneli, veli bağlı
  * çocuğu ve ödeyicisi olduğu öğrenci, öğrenci kendisi (DOM-FIN-052, K-04). Kapsam `studentId`
  * süzgeciyle daraltılır, genişletilmez. Varsayılan sıra yeni satış önce. Veli ve öğrenci satırında
- * tutar alanı yoktur (K-40).
+ * tutar (K-40) ve iç kimlik (K-41) alanı yoktur.
  */
 export async function listPackageSalesFor(
   ctx: ServiceContext,
@@ -471,8 +488,8 @@ const storedInvoiceSchema = z.object({
 
 /**
  * Satış ayrıntısı: satın alınan, kullanılan ve kalan saat (IST-078), son kullanma günü ve
- * sözleşmenin yalnız kendi taksitleri (DOM-FIN-012). Kapsam listeyle aynı; kapsam dışı 404. Tutar ve
- * taksit yalnız yönetici ve ön büroya döner (K-40).
+ * sözleşmenin yalnız kendi taksitleri (DOM-FIN-012). Kapsam listeyle aynı; kapsam dışı 404. Tutar,
+ * taksit (K-40) ve iç kimlikler (K-41) yalnız yönetici ve ön büroya döner.
  */
 export async function getPackageSaleFor(ctx: ServiceContext, id: string) {
   const scope = await readScope(ctx)

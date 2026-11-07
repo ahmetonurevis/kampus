@@ -213,17 +213,16 @@ async function renewalContext(
 }
 
 /**
- * Sözleşmesi yüklenecek öğrenciler: kardeş indirimi kardeşin o yılki kaydına ve ücretine baktığı için
- * velinin öteki öğrencileri de okunur (DOM-FIN-022, K-22); indirim yoksa yalnız kendileri.
+ * Sözleşmesi yüklenecek öğrenciler: velinin öteki öğrencileri de okunur. Kardeş indirimi kardeşin o
+ * yılki kaydına ve ücretine (DOM-FIN-022, K-22), tavan istisnası kardeşin yenileme yılındaki kaydına
+ * bakar (DOM-FIN-023); istisna indirim seçilmese de değerlendirilir. Mezuniyet ücret hesaplamaz.
  */
 export const renewalContractStudents = (
   ctx: ServiceContext,
   studentIds: readonly string[],
-  discounts: readonly string[],
+  priced = true,
 ): Promise<readonly string[]> =>
-  discounts.includes('sibling')
-    ? loadStudentFamilies(ctx.db, ctx.institutionId, studentIds)
-    : Promise.resolve(studentIds)
+  priced ? loadStudentFamilies(ctx.db, ctx.institutionId, studentIds) : Promise.resolve(studentIds)
 
 /**
  * Öğrencinin sözleşmeleri tavanın bazıdır; taksitler okunmaz, yeni kayıtlar sona eklenir. Kurumun
@@ -239,7 +238,7 @@ export const renewalLoadScope = (contractStudentIds: readonly string[]) => ({
 /** Formun ücret özeti: hiçbir kayıt yazılmaz (DOM-FIN-005). Kapsam ve rol planla aynıdır. */
 export async function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
   const data = renewalQuoteSchema.parse(input)
-  const contractStudents = await renewalContractStudents(ctx, [data.studentId], data.discounts)
+  const contractStudents = await renewalContractStudents(ctx, [data.studentId])
   return runReadOnly(ctx, {
     action: 'renewal.quote',
     collections: SPEC.collections,
@@ -266,7 +265,7 @@ export async function planRenewalCommand(
   const contractStudents = await renewalContractStudents(
     ctx,
     [data.studentId],
-    data.mode === 'renew' ? data.discounts : [],
+    data.mode === 'renew',
   )
   return runCommand(
     ctx,

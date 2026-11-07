@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { resolveEffectiveTariff } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import { renewalCourseOffer } from '@kampus/school-core/lib/renewal-course-offer.ts'
 import { renewalPricingSchema } from '@kampus/school-core/lib/renewal-ceiling.ts'
 import {
   createPriceIndexSchema,
@@ -19,7 +20,9 @@ import {
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
+import { listProgressionDecisions } from '../db/cefr.ts'
 import type { Database } from '../db/client.ts'
+import { loadCourses } from '../db/courses.ts'
 import {
   allPriceIndexes,
   findPriceIndex,
@@ -39,11 +42,13 @@ import { findReferralReward } from '../db/finance-referrals.ts'
 import { loadStudentFamilies } from '../db/finance-renewal-candidates.ts'
 import { allocatedForInvoices } from '../db/payments.ts'
 import { loadRecordsByIds } from '../db/records.ts'
+import { listStudentCourseEnrollments } from '../db/renewal-course-offer.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getCollectionItem, listCollection, type CollectionItem } from './collection-reads.ts'
 import { commandBody } from './command-result.ts'
 import { environment } from './commands.ts'
+import { getInstitution } from './memberships.ts'
 import { withTariffCarryOver } from './fee-tariffs.ts'
 import { useReferralReward } from './finance-referrals.ts'
 import {
@@ -59,11 +64,33 @@ import { auditWork } from './task-work.ts'
  * Tarifeye bağlı kayıt yenileme servisi (docs/domain/finans.md DOM-FIN-002, -005, -023, -025;
  * kayit-ve-crm.md DOM-KAY-020, -021; IST-100). Kural core `lib/renewals.ts`'tedir. Plan, sözleşme,
  * taksit ve burs ataması tek transaction'da yazılır; ücret ve kontenjan kurum kilidi altında
- * denetlenir. Sınıf geçişi ayrı işlemdir (iş akışı köprüsünün `renewal-activate` çekirdeği).
+ * denetlenir. Sınıf geçişi ayrı işlemdir (iş akışı köprüsünün `renewal-activate` çekirdeği). Dil
+ * okulunda teklif son kurun kur sonu kararından başlar (dil-okulu.md DOM-DIL-070; core
+ * `lib/renewal-course-offer.ts`); karar onaylanmadan plan 422 ile reddedilir.
  */
 
 const SPEC = WORKFLOW_COMMANDS.renewal
 const PRICE_INDEX = 'price_index_rates'
+
+/**
+ * Dil okulunda öğrencinin son kurundaki kur sonu kararı (DOM-DIL-070): kur kayıtları, kurlar ve
+ * kararlar kurum kapsamında okunur; hesap core `renewalCourseOffer`'dadır. Okulda `null`: okul
+ * yenilemesi kurdan bağımsızdır.
+ */
+export async function renewalCourseOfferFor(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+) {
+  const institution = await getInstitution(db, institutionId)
+  if (institution?.type !== 'language_school') return null
+  const [enrollments, courses, decisions] = await Promise.all([
+    listStudentCourseEnrollments(db, institutionId, studentId),
+    loadCourses(db, institutionId),
+    listProgressionDecisions(db, institutionId, { learnerId: studentId }),
+  ])
+  return renewalCourseOffer({ studentId, enrollments, courses, decisions })
+}
 
 const debtInvoice = z.object({
   id: z.string(),
@@ -157,13 +184,15 @@ async function renewalContext(
     referralRewardId?: string | undefined
   },
 ): Promise<RenewalContext> {
-  const [shared, debts] = await Promise.all([
+  const [shared, debts, courseOffer] = await Promise.all([
     sharedRenewalContext(tx, ctx, institutionType, input),
     tuitionDebts(tx, ctx, [input.studentId], input.academicYear),
+    renewalCourseOfferFor(tx, ctx.institutionId, input.studentId),
   ])
   return {
     ...shared,
     outstandingTuitionCents: debts.get(input.studentId) ?? 0,
+    courseOffer,
     ...(input.referralRewardId === undefined
       ? {}
       : {

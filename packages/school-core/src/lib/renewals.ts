@@ -32,6 +32,7 @@ import {
   type PriceIndexEntry,
   type RenewalCeiling,
 } from './renewal-ceiling.ts'
+import { assertCourseOfferReady, type RenewalCourseOffer } from './renewal-course-offer.ts'
 import { mayRun, renewalPreconditions, type Renewal } from './school-workflows.ts'
 
 /**
@@ -40,6 +41,8 @@ import { mayRun, renewalPreconditions, type Renewal } from './school-workflows.t
  * taksitlerini yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı işlemdir (`renewal-activate`).
  * Öğrenim ücreti yayımlı tarifeden ve artış tavanından çıkar; indirim tarifedeki türlerden, burs
  * yalnız bildirilmiş programdan gelir. Yetki ve kapsam core `mayRun` + `renewalPreconditions`.
+ * Dil okulunda teklif son kurun onaylı kur sonu kararından başlar (dil-okulu.md DOM-DIL-070,
+ * `lib/renewal-course-offer.ts`): önizleme kararı bekleyen teklifi işaretler, plan reddeder.
  */
 
 const MAX_MONEY_CENTS = 100_000_000
@@ -100,6 +103,11 @@ export interface RenewalContext {
   priceIndexes: readonly PriceIndexEntry[]
   scholarshipProgram?: ScholarshipProgram | null
   scholarshipAwardedCount?: number
+  /**
+   * Dil okulunda son kurun kur sonu kararı dayanağı (DOM-DIL-070); servis yükler. Okulda verilmez,
+   * yenileme kurdan bağımsızdır.
+   */
+  courseOffer?: RenewalCourseOffer | null
   /** Öğrencinin yenileme yılında arşivlenmemiş burs ataması var mı; servis yükler (DOM-FIN-025). */
   scholarshipStudentAwarded?: boolean
   /** Gövdede seçilen referans hakkı; servis kurum kilidi altında yükler (DOM-FIN-024). */
@@ -132,6 +140,8 @@ export interface RenewalPrice {
   netCents: number
   extras: ExtraLine[]
   installments: number[]
+  /** Teklifin kur dayanağı; okulda `null`. `ready` dışındaki durumda plan yazılmaz. */
+  courseOffer: RenewalCourseOffer | null
   /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`. */
   paymentTerm: ContractPaymentTerm | null
   /** Önceki yıllardan ödenmemiş öğrenim ücreti; sıfırdan büyükse plan yönetici onayı ister. */
@@ -284,6 +294,7 @@ function priceRenewal(
     extras: price.extras,
     // Tam bursta öğrenim taksiti açılmaz.
     installments: netCents === 0 ? [] : installmentAmounts(netCents, data.installmentCount),
+    courseOffer: context.courseOffer ?? null,
     paymentTerm: price.paymentTerm,
     outstandingTuitionCents: context.outstandingTuitionCents ?? 0,
   }
@@ -413,6 +424,8 @@ export function planRenewal(
   }
   const { mode, tariffId, firstDueDate, debtApproved, ...quoteFields } = data
   const { student, oldClass, target, price } = priceRenewal(state, session, quoteFields, context)
+  // Kur sonu kararı onaylanmadan dil okulu yenilemesi yazılmaz (DOM-DIL-070).
+  if (price.courseOffer !== null) assertCourseOfferReady(price.courseOffer)
   requireDebtDecision(session, price.outstandingTuitionCents, debtApproved === true)
   if (tariffId !== price.tariffId)
     throw new DomainError(
@@ -503,6 +516,7 @@ export function planRenewal(
       discounts: price.discounts,
       extras: price.extras,
       scholarship: price.scholarship,
+      ...(price.courseOffer === null ? {} : { courseOffer: price.courseOffer }),
       ...(price.paymentTerm === null ? {} : { paymentTerm: price.paymentTerm }),
     },
     createdAt: now,

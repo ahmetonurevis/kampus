@@ -147,7 +147,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer sözleşme ve taksit engellenir; sınıf tekrarı gerçek bir durumdur.
 - **Kaynak:** İşletme kuralı; OİKY md. 31, OKY md. 58/1.
 - **Kurum türü:** `school`
-- **Kodda:** kısmen — tekillik ve hedef düzey `renewalPreconditions` (`lib/school-workflows.ts`; köprü ve tarifeli plan ortak); sınıf tekrarı yolu yok (yalnız +1, ON-081).
+- **Kodda:** kısmen — tekillik ve hedef düzey `renewalPreconditions` (`lib/school-workflows.ts`; köprü ve tarifeli plan ortak); sınıf tekrarı yolu yok (yalnız +1, ON-081). Dil okulunda teklifin seviyesi son kurun onaylı kur sonu kararından gelir (`DOM-DIL-070`, ON-295): `lib/renewal-course-offer.ts` `renewalCourseOffer` geçti kararında sonraki kuru ya da üst seviyeyi, tekrar ve devamsızlıkta aynı kuru verir; önizleme (`courseOffer`) onay bekleyen ya da verilmemiş kararı uyarı olarak gösterir, plan 422 `course_decision_pending`/`course_decision_missing`/`course_next_level_missing` ile reddedilir. Servis kur kayıtlarını `db/renewal-course-offer.ts` ile okur. Yenileme modülü bugün yalnız `school`'da açık olduğundan (`DOM-YTK-012`) dil okulu yolu ekrandan erişilemez.
 
 ### DOM-KAY-022 · Mezuniyet
 

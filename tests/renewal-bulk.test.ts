@@ -462,3 +462,22 @@ test('IST-105: atlanan kodlar yalnız borç ve mevcut plandır; borç iletisi to
   assert.match(renewalBulkProblem('renewal_debt_unapproved', 'x').message, /yönetici onayı gerekir/)
   assert.equal(renewalBulkProblem('class_capacity_full', 'x').message, 'x')
 })
+
+test('DOM-DIL-070: kur sonu kararı onaylanmamış kursiyer toplu önizlemede hazır görünmez', () => {
+  const state = seeded()
+  const offer = {
+    status: 'pending' as const,
+    decisionId: 'test-pd1',
+    outcome: null,
+    fromCourseId: 'test-c1',
+    fromLevel: null,
+    courseId: null,
+    level: null,
+  }
+  const [row] = previewRenewalBulk(state, ADMIN, body([S3]), makeIds(), NOW, {
+    ...CONTEXT,
+    courseOffers: new Map([['s3', offer]]),
+  })
+  assert.equal(row?.outcome, 'failed')
+  assert.equal(row?.problem?.code, 'course_decision_pending')
+})

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 import { z } from 'zod'
 
+import type { RenewalCourseOffer } from '@kampus/school-core/lib/renewal-course-offer.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import {
   LAST_GRADE,
@@ -29,6 +30,7 @@ import {
   planRenewalCommand,
   renewalContractStudents,
   renewalLoadScope,
+  renewalCourseOfferFor,
   sharedRenewalContext,
   tuitionDebts,
 } from './finance-renewals.ts'
@@ -155,6 +157,12 @@ export async function previewRenewalBulkFor(ctx: ServiceContext, input: unknown)
           ? undefined
           : studentsWithScholarshipAward(tx, ctx.institutionId, studentIds, data.academicYear),
       ])
+      // Plan satırı kararsız kursiyeri reddeder; önizleme "hazır" demesin (DOM-DIL-070). Üst sınır
+      // RENEWAL_BULK_LIMIT; okul kurumunda sorgu yok.
+      const courseOffers = new Map<string, RenewalCourseOffer | null>()
+      if (institutionType === 'language_school')
+        for (const studentId of studentIds)
+          courseOffers.set(studentId, await renewalCourseOfferFor(tx, ctx.institutionId, studentId))
       return {
         scalars,
         run: (state, { now, makeId }) => {
@@ -162,6 +170,7 @@ export async function previewRenewalBulkFor(ctx: ServiceContext, input: unknown)
           const rows = previewRenewalBulk(state, session, input, makeId, now, {
             ...shared,
             debts,
+            courseOffers,
             ...(scholarshipStudents === undefined ? {} : { scholarshipStudents }),
           }).map((row) => ({
             ...row,

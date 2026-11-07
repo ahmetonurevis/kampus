@@ -56,6 +56,7 @@ import { notify } from '@/lib/notify.ts'
 import {
   bulletinText,
   ceilingLines,
+  courseOfferNotice,
   priceIndexBody,
   priceIndexDefaults,
   priceIndexFormSchema,
@@ -587,6 +588,10 @@ function PlanModal({
     )
 
   const lines = preview !== null && preview !== 'graduate' ? quoteLines(preview) : null
+  // Dil okulunda onaysız kur sonu kararı planı engeller (DOM-DIL-070); önizleme yine görünür.
+  const offerNotice =
+    preview !== null && preview !== 'graduate' ? courseOfferNotice(preview.courseOffer) : null
+  const blocked = offerNotice?.blocking === true
   return (
     <Modal
       open
@@ -601,7 +606,7 @@ function PlanModal({
               Bilgileri düzenle
             </Button>
             <Button
-              disabled={busy || debtBlocked}
+              disabled={busy || blocked || debtBlocked}
               aria-busy={busy || undefined}
               onClick={() => void confirm()}
             >
@@ -818,6 +823,16 @@ function PlanModal({
           <h3 id="yenileme-ozeti" className="text-sm font-semibold">
             Yeni dönem ödeme özeti
           </h3>
+          {offerNotice ? (
+            <p
+              role={offerNotice.blocking ? 'alert' : 'status'}
+              className={
+                offerNotice.blocking ? 'text-sm text-danger' : 'text-sm text-muted-foreground'
+              }
+            >
+              {offerNotice.text}
+            </p>
+          ) : null}
           {lines.pricing.map((line) => (
             <p key={line} className="text-sm text-muted-foreground">
               {line}

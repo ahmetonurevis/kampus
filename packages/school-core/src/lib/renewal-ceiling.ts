@@ -8,6 +8,7 @@ import {
   type PriceIndexRates,
 } from './fee-tariffs.ts'
 import { money } from './format.ts'
+import { renewalCourseOfferSchema } from './renewal-course-offer.ts'
 import { contractPaymentTermSchema } from './payment-terms.ts'
 
 /**
@@ -70,6 +71,8 @@ export const renewalPricingSchema = z.object({
   discounts: z.array(lineSchema),
   extras: z.array(lineSchema),
   scholarship: z.object({ programId: z.string(), amountCents: z.number().int() }).nullable(),
+  /** Dil okulunda teklifin başladığı kur sonu kararı (DOM-DIL-070); okulda yok. */
+  courseOffer: renewalCourseOfferSchema.optional(),
   /** Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); eski kayıtta ve eski tarifede yoktur. */
   paymentTerm: contractPaymentTermSchema
     .optional()

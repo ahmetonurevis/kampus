@@ -5,6 +5,7 @@ import { daySchema, requiredText, type MakeId, type Session } from './domain.ts'
 import { itemFor } from './enrollment.ts'
 import { DomainError } from './errors.ts'
 import { latestContractTuition } from './renewal-ceiling.ts'
+import type { RenewalCourseOffer } from './renewal-course-offer.ts'
 import {
   planRenewal,
   quoteRenewal,
@@ -128,12 +129,17 @@ export function renewalBulkProblem(code: string, message: string): RenewalBulkPr
 /** Toplu istekte öğrenci başına değişmeyen fiyat girdileri; servis bir kez yükler. */
 export type RenewalBulkContext = Omit<
   RenewalContext,
-  'outstandingTuitionCents' | 'scholarshipStudentAwarded'
+  'outstandingTuitionCents' | 'scholarshipStudentAwarded' | 'courseOffer'
 > & {
   /** Öğrenci → önceki yıllardan ödenmemiş öğrenim ücreti (kuruş); borcu olmayan yoktur. */
   debts: ReadonlyMap<string, number>
   /** Yenileme yılında arşivlenmemiş burs ataması olan öğrenciler (DOM-FIN-025). */
   scholarshipStudents?: ReadonlySet<string>
+  /**
+   * Dil okulunda öğrenci → kur sonu kararı dayanağı (DOM-DIL-070); onaylı karar yoksa satır plan
+   * yazamaz, önizleme de bunu gösterir. Okulda verilmez.
+   */
+  courseOffers?: ReadonlyMap<string, RenewalCourseOffer | null>
 }
 
 type TargetClass = {
@@ -310,7 +316,7 @@ export function previewRenewalBulk(
 ): RenewalBulkPreviewRow[] {
   requireRenewalRole(session)
   const data = renewalBulkPreviewSchema.parse(input)
-  const { debts, scholarshipStudents, ...shared } = context
+  const { debts, scholarshipStudents, courseOffers, ...shared } = context
   let awardedCount = context.scholarshipAwardedCount ?? 0
   return data.rows.map((row): RenewalBulkPreviewRow => {
     const debtCents = debts.get(row.studentId) ?? 0
@@ -319,6 +325,7 @@ export function previewRenewalBulk(
       outstandingTuitionCents: debtCents,
       scholarshipAwardedCount: awardedCount,
       scholarshipStudentAwarded: scholarshipStudents?.has(row.studentId) ?? false,
+      courseOffer: courseOffers?.get(row.studentId) ?? null,
     }
     let price: RenewalPrice | null = null
     try {

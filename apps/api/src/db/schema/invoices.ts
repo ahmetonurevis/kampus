@@ -13,6 +13,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
+import { FEE_ITEM_KINDS } from '@kampus/school-core/lib/fee-tariffs.ts'
+
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 import { contracts } from './contracts.ts'
@@ -26,6 +28,8 @@ import { INVOICE_METHOD_KEYS } from './payments.ts'
  * onaylanmamış sürümün taksiti düzeltilebilir (ADR 0010 cevap 6). `student_id` `records`
  * kimliğidir, yabancı anahtar değildir. ON-046e'den beri `records`'un aynasıdır (migration 0063,
  * `db/finance-mirror-store.ts`); okuma geçişine (046f) kadar uygulama bu tablodan okumaz.
+ * `fee_kind` core kalem türü anahtarıdır (`FEE_ITEM_KINDS`, DOM-FIN-004); boşsa eski kayıttır ve
+ * öğrenim sayılır (ON-316, migration 0072).
  */
 export const invoices = pgTable(
   'invoices',
@@ -69,6 +73,7 @@ export const invoices = pgTable(
       'invoices_payment_method_check',
       oneOf(table.paymentMethod, Object.values(INVOICE_METHOD_KEYS)),
     ),
+    check('invoices_fee_kind_check', oneOf(table.feeKind, FEE_ITEM_KINDS)),
     check('invoices_paid_check', sql`(${table.paidAt} is null) = (${table.paymentMethod} is null)`),
     check(
       'invoices_contract_root_check',

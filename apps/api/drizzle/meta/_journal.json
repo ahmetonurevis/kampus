@@ -505,6 +505,13 @@
       "when": 1794029549348,
       "tag": "0071_withdrawal_reason_documented",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794081978238,
+      "tag": "0072_invoices_fee_kind_check",
+      "breakpoints": true
     }
   ]
 }

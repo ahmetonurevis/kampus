@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
+import { FEE_ITEM_KINDS, type FeeItemKind } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { INVOICE_METHODS, type InvoiceMethod } from '@kampus/school-core/lib/payments.ts'
 
 import { AppError, MESSAGES } from '../errors.ts'
@@ -68,7 +69,8 @@ export const invoiceRecordSchema = z
     paidAt: instantSchema.nullable(),
     method: z.enum(INVOICE_METHODS).nullable(),
     reminderAt: instantSchema.nullable(),
-    feeKind: z.string().min(1).optional(),
+    /** Core yalnız kalem türü anahtarı yazar (DOM-FIN-004); tablo kısıtı `invoices_fee_kind_check`. */
+    feeKind: z.enum(FEE_ITEM_KINDS).optional(),
     contractId: idSchema.optional(),
     academicYear: z.number().int().optional(),
     createdAt: instantSchema.optional(),
@@ -123,12 +125,18 @@ export function invoiceToColumns(data: RecordData, rootContractId: string | null
   }
 }
 
+const isFeeItemKind = (value: string): value is FeeItemKind =>
+  (FEE_ITEM_KINDS as readonly string[]).includes(value)
+
 const iso = (value: Date | null) => (value === null ? null : value.toISOString())
 
 /** Satır → core kaydı; boş isteğe bağlı kolon alanı hiç yazmaz (eski kayıt şekli korunur). */
 export function rowToInvoice(row: InvoiceRow): InvoiceRecord {
   const method = row.paymentMethod === null ? null : METHOD_LABELS.get(row.paymentMethod)
   if (method === undefined) throw programmingError(`unknown payment method ${row.paymentMethod}`)
+  const feeKind = row.feeKind
+  if (feeKind !== null && !isFeeItemKind(feeKind))
+    throw programmingError(`unknown fee kind ${feeKind}`)
   return {
     id: row.id,
     studentId: row.studentId,
@@ -138,7 +146,7 @@ export function rowToInvoice(row: InvoiceRow): InvoiceRecord {
     paidAt: iso(row.paidAt),
     method,
     reminderAt: iso(row.reminderAt),
-    ...(row.feeKind === null ? {} : { feeKind: row.feeKind }),
+    ...(feeKind === null ? {} : { feeKind }),
     ...(row.contractId === null ? {} : { contractId: row.contractId }),
     ...(row.academicYear === null ? {} : { academicYear: row.academicYear }),
     ...(row.coreCreatedAt === null ? {} : { createdAt: row.coreCreatedAt.toISOString() }),

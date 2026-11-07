@@ -4,6 +4,8 @@ import { after, before, describe, test } from 'node:test'
 
 import { and, eq, sql } from 'drizzle-orm'
 
+import { FEE_ITEM_KINDS } from '@kampus/school-core/lib/fee-tariffs.ts'
+
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { contractInvoices } from '../src/db/schema/contract-invoices.ts'
@@ -475,6 +477,48 @@ describe('0061: taksit ve sözleşme tabloları', () => {
         '23514',
       )
     assert.deepEqual(await db.select().from(invoices).where(eq(invoices.institutionId, id)), [])
+  })
+
+  test('ON-316, DOM-FIN-004: kalem türü core FEE_ITEM_KINDS anahtarıdır ya da boştur; etiket 23514', async () => {
+    const [constraint] = await rows<{ definition: string; comment: string | null }>(
+      sql`select pg_get_constraintdef(oid) as definition, obj_description(oid, 'pg_constraint') as comment
+            from pg_constraint where conname = 'invoices_fee_kind_check'`,
+    )
+    assert.ok(constraint, 'invoices_fee_kind_check yok')
+    const listed = [...constraint.definition.matchAll(/'([^']+)'/g)].map((match) => match[1])
+    assert.deepEqual(listed.toSorted(), [...FEE_ITEM_KINDS].toSorted())
+    assert.match(constraint.comment ?? '', /FEE_ITEM_KINDS/)
+
+    const { id } = await createInstitution(app)
+    await db.insert(contracts).values(contract(id, 'c1'))
+    await db
+      .insert(invoices)
+      .values([
+        ...FEE_ITEM_KINDS.map((feeKind, index) =>
+          invoice(id, `i-${feeKind}`, 'c1', { feeKind, installment: index + 1 }),
+        ),
+        invoice(id, 'i-eski', null, { feeKind: null }),
+      ])
+    for (const feeKind of ['Öğrenim ücreti', 'registration', 'Tuition', ''])
+      await violates(
+        db.insert(invoices).values(invoice(id, `i-x-${feeKind}`, null, { feeKind })),
+        'invoices_fee_kind_check',
+        '23514',
+      )
+    // Ödeme önbelleği değişen (onaylı olmayan) taksitin kalemi de etikete çevrilemez.
+    await violates(
+      db
+        .update(invoices)
+        .set({ feeKind: 'Yemek' })
+        .where(and(eq(invoices.institutionId, id), eq(invoices.id, 'i-meal'))),
+      'invoices_fee_kind_check',
+      '23514',
+    )
+    const stored = await db
+      .select({ feeKind: invoices.feeKind })
+      .from(invoices)
+      .where(eq(invoices.institutionId, id))
+    assert.equal(stored.length, FEE_ITEM_KINDS.length + 1)
   })
 
   test('silme ve boşaltma reddedilir; imha istisnası yalnız silmeyi, yabancı anahtar sırasıyla açar', async () => {

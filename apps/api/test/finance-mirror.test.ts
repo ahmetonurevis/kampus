@@ -496,6 +496,43 @@ describe('ON-046e/f: taksit ve sözleşme çift yazması', () => {
     assert.equal(loaded.length, seed.invoices.length)
   })
 
+  test('ON-316, DOM-FIN-004: kalem türü anahtar olan kaynak kaydı aynaya girer; etiketli eski kayıt girmez, işlem sürer', async () => {
+    const base = {
+      studentId: 's1',
+      amount: 10_000,
+      dueDate: at(15),
+      paidAt: null,
+      method: null,
+      reminderAt: null,
+    }
+    const meal = { ...base, id: 'test-meal', installment: 8, feeKind: 'meal' }
+    const labelled = { ...base, id: 'test-labelled', installment: 9, feeKind: 'Öğrenim ücreti' }
+    const ctx = await institution([
+      { collection: 'invoices', id: meal.id, data: meal },
+      { collection: 'invoices', id: labelled.id, data: labelled },
+    ])
+    const report = await auditFinanceRecords(db, ctx.institutionId)
+    assert.deepEqual(report.storeShapeMismatches, { invoices: 1, contracts: 0 })
+    const [, invoiceRows] = await tables(ctx.institutionId)
+    assert.equal(invoiceRows.find((row) => row.id === meal.id)?.feeKind, 'meal')
+    assert.ok(!invoiceRows.some((row) => row.id === labelled.id))
+    assert.equal(invoiceRows.length, seed.invoices.length + 1)
+    await assertFinanceMirror(db, [ctx.institutionId])
+    // Şema süzgeci olmadan da SQL aynası etiketi kısıtta (23514) atlar, öteki kaydı yazar.
+    const result = await db.execute(
+      sql`select kampus_mirror_finance_records(${ctx.institutionId}, null, array[${labelled.id}, ${meal.id}]) as skipped`,
+    )
+    assert.equal(Number((result as { rows: { skipped: unknown }[] }).rows[0]?.skipped), 1)
+    // Etiketli kaydın yazması yine aynayı durdurmaz: tabloya sığmayan kayıt sayılır, atlanır.
+    assert.equal(
+      await mirrorFinanceRecords(db, ctx.institutionId, [
+        { kind: 'archive', collection: 'invoices', id: labelled.id, expectedVersion: 1 },
+        { kind: 'archive', collection: 'invoices', id: meal.id, expectedVersion: 1 },
+      ]),
+      1,
+    )
+  })
+
   test('DOM-FIN-010: onaylı sözleşmenin taksit koşulunu değiştiren yazma aynada 55000 alır; records de geri alınır', async () => {
     const approved = {
       id: 'test-approved',

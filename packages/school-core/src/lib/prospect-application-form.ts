@@ -30,6 +30,8 @@ import {
  * - Yeni adayın formda işaretlediği kanal `verified: false` yazılır ve onay sayılmaz: formu kimin
  *   doldurduğu bilinmez. Personel kişiyle konuşup doğrularsa işaret kalkar (DOM-KAY-004).
  * - Gizli alan (`website`) dolu gönderim hiçbir şey yazmaz, yine aynı yanıtı alır.
+ * - Kurum tavanı doluyken başvuru alınmaz ve başvurana söylenir; tavan söylenmez, yöneticiye uyarı
+ *   çıkar (DOM-KAY-002, K-23). Denetim mükerrer aramasından öncedir: yanıt kişi varlığını belli etmez.
  */
 
 z.config(z.locales.tr())
@@ -53,6 +55,11 @@ export const APPLICATION_NOTE_FIELD_MAX = 40
  * karşı yetmez; tavan sahte aday yığılmasını ve kurum kilidinde beklemeyi sınırlar.
  */
 export const APPLICATION_DAILY_PROSPECT_LIMIT = 200
+/**
+ * Bir kurumda bir günde sayılan en çok alınamayan başvuru (K-23). Sayım denetim satırıdır ve tavan
+ * doluyken gönderim sürer; üst sınır, proxy havuzunun `audit_log`'u şişirmesini önler.
+ */
+export const APPLICATION_DAILY_REJECTED_LIMIT = 1000
 
 /** Form anahtarının biçimi: 24 rastgele baytın base64url karşılığı. */
 const FORM_KEY = /^[A-Za-z0-9_-]{32}$/

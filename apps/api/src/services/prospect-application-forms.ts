@@ -6,6 +6,7 @@ import type { FastifyBaseLogger } from 'fastify'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   APPLICATION_DAILY_PROSPECT_LIMIT,
+  APPLICATION_DAILY_REJECTED_LIMIT,
   applicationFrameAncestors,
   applicationNoticeVersion,
   isApplicationFormKey,
@@ -25,7 +26,8 @@ import { listPrivacyNotices } from '../db/privacy.ts'
 import {
   APPLICATION_NOTE_ACTION,
   APPLICATION_PROSPECT_ACTION,
-  countProspectsOpenedFromForm,
+  APPLICATION_REJECTED_ACTION,
+  countApplicationEvents,
   findApplicationForm,
   findApplicationFormByKey,
   insertApplicationForm,
@@ -67,6 +69,10 @@ import { auditWork } from './task-work.ts'
  * aktörünü üyeliği olan bir kullanıcı olarak alır, burada ise kullanıcı yoktur. Denetimde
  * `actor_user_id` boştur (işlem geçmişinde "Sistem") ve rol `APPLICATION_FORM_ACTOR_ROLE`'dür;
  * telefon, e-posta ve ad log ve denetime girmez (alan adları).
+ *
+ * Kurum günlük tavanı doluyken başvuru alınmaz, başvurana 422 `application_unavailable` döner ve
+ * yöneticinin ayar yanıtında uyarı görünür (DOM-KAY-002, K-23). Dolu olduğu gün kaydı ayrı tutulmaz,
+ * tavan sayımından türer; alınamayan başvuru yalnız kişisel veri taşımayan bir denetim satırıdır.
  */
 
 /** Açık uçtan gelen yazmanın denetim rolü; hiçbir üyelik rolü bu işlemi yapmış görünmez. */
@@ -78,6 +84,10 @@ const APPLICATION_LOCK_TIMEOUT = sql`set local lock_timeout = '3s'`
 const LOCK_NOT_AVAILABLE = '55P03'
 
 const ENTITY = 'prospect_application_form'
+
+/** Başvuranın gördüğü ret: dürüsttür ama tavanı ve sayıyı söylemez (K-23). */
+const APPLICATION_UNAVAILABLE_MESSAGE =
+  'Başvurunuz şu anda alınamadı. Lütfen kurumla doğrudan iletişime geçin.'
 
 const newFormKey = () => randomBytes(24).toString('base64url')
 
@@ -93,23 +103,47 @@ async function currentCandidateNotice(
 
 // --- Yönetici ------------------------------------------------------------------------------
 
-function settingsView(row: ApplicationFormRow | null, notice: PrivacyNotice | null) {
+/** Bugün (Europe/Istanbul) formdan açılan aday ve alınamayan başvuru; yalnız denetim indeksi okunur. */
+async function todayApplicationEvents(db: Database, institutionId: string, now: Date) {
+  const day = dayKey(now)
+  const range = dayRange('createdAt', day, day)
+  if (range?.fromInstant == null || range.toInstant == null) return { opened: 0, rejected: 0 }
+  return countApplicationEvents(
+    db,
+    institutionId,
+    new Date(range.fromInstant),
+    new Date(range.toInstant),
+  )
+}
+
+async function dailyLimitStatus(db: Database, institutionId: string, now: Date) {
+  const { opened, rejected } = await todayApplicationEvents(db, institutionId, now)
+  return { reached: opened >= APPLICATION_DAILY_PROSPECT_LIMIT, rejected }
+}
+
+function settingsView(
+  row: ApplicationFormRow | null,
+  notice: PrivacyNotice | null,
+  dailyLimit: Awaited<ReturnType<typeof dailyLimitStatus>>,
+) {
   return {
     enabled: row?.enabled ?? false,
     formKey: row?.formKey ?? null,
     siteOrigin: row?.siteOrigin ?? null,
     version: row?.version ?? null,
     noticeVersion: notice?.version ?? null,
+    dailyLimit,
   }
 }
 
 /** Yöneticinin form görünümü; satır ilk anahtar üretilene kadar yoktur. */
 export async function applicationFormSettings(ctx: ServiceContext) {
-  const [row, notice] = await Promise.all([
+  const [row, notice, dailyLimit] = await Promise.all([
     findApplicationForm(ctx.db, ctx.institutionId),
     currentCandidateNotice(ctx.db, ctx.institutionId),
+    dailyLimitStatus(ctx.db, ctx.institutionId, ctx.now),
   ])
-  return settingsView(row, notice)
+  return settingsView(row, notice, dailyLimit)
 }
 
 /**
@@ -153,7 +187,7 @@ export function updateApplicationForm(
       { type: ENTITY, id: ctx.institutionId },
       Object.keys(values),
     )
-    return settingsView(updated, notice)
+    return settingsView(updated, notice, await dailyLimitStatus(tx, ctx.institutionId, ctx.now))
   })
   return withDatabaseErrors(work)
 }
@@ -189,7 +223,11 @@ export function rotateApplicationFormKey(ctx: ServiceContext, expectedVersion: n
       { type: ENTITY, id: ctx.institutionId },
       ['formKey'],
     )
-    return settingsView(written, await currentCandidateNotice(tx, ctx.institutionId))
+    return settingsView(
+      written,
+      await currentCandidateNotice(tx, ctx.institutionId),
+      await dailyLimitStatus(tx, ctx.institutionId, ctx.now),
+    )
   })
   return withDatabaseErrors(work)
 }
@@ -291,30 +329,45 @@ function applicationWrites(
   return { writes, fields: Object.keys(data).sort() }
 }
 
-/** Bugün (Europe/Istanbul) formdan açılan aday sayısı tavana ulaştı mı; yalnız denetim indeksi okunur. */
-async function dailyLimitReached(db: Database, institutionId: string, now: Date): Promise<boolean> {
-  const day = dayKey(now)
-  const range = dayRange('createdAt', day, day)
-  if (range?.fromInstant == null || range.toInstant == null) return false
-  const opened = await countProspectsOpenedFromForm(
-    db,
-    institutionId,
-    new Date(range.fromInstant),
-    new Date(range.toInstant),
-  )
+async function dailyLimitReached(db: Database, institutionId: string, now: Date) {
+  const { opened } = await todayApplicationEvents(db, institutionId, now)
   return opened >= APPLICATION_DAILY_PROSPECT_LIMIT
 }
 
-/** Tavan doluyken gönderim: dış yanıt aynıdır, kişisel veri loglanmaz. */
-function limitedOutcome(context: PublicApplicationContext, institutionId: string) {
-  context.log.warn({ event: 'prospect.application.daily_limit', institutionId })
-  return { kind: 'ignored' } as const satisfies ProspectApplicationOutcome
+/** Kilit altında kararı transaction dışına taşır: ret satırı geri alınmasın, kilit beklemesin. */
+const OVER_LIMIT = 'over_limit'
+
+/**
+ * Tavan doluyken gönderim (K-23): başvuru saklanmaz, yalnız sayılır. Gövde, ad ve iletişim buraya hiç
+ * gelmez. Sayım tavan gibi günlüktür ve `APPLICATION_DAILY_REJECTED_LIMIT` ile sınırlıdır; eşzamanlı
+ * retler sınırı az aşabilir, sayı yalnız uyarı içindir. Olay logu günde bir kez yazılır.
+ */
+async function rejectOverLimit(context: PublicApplicationContext, institutionId: string) {
+  const { rejected } = await todayApplicationEvents(context.db, institutionId, context.now)
+  if (rejected === 0) context.log.warn({ event: 'prospect.application.daily_limit', institutionId })
+  if (rejected < APPLICATION_DAILY_REJECTED_LIMIT)
+    await context.db.insert(auditLog).values({
+      institutionId,
+      actorUserId: null,
+      actorRole: APPLICATION_FORM_ACTOR_ROLE,
+      action: APPLICATION_REJECTED_ACTION,
+      entityType: ENTITY,
+      entityId: institutionId,
+      changes: { fields: [] },
+      createdAt: context.now,
+    })
+  return mapOperationError(
+    new DomainError('application_unavailable', APPLICATION_UNAVAILABLE_MESSAGE),
+  )
 }
 
 /**
- * Başvuruyu işler (DOM-KAY-002, -003, -009). Dönen sonuç yanıta girmez: yeni aday, mükerrer not,
- * gizli alan ve dolu tavan dışarıdan aynıdır. Gizli alan doluysa kurum kilidi alınmaz, bütün adaylar
- * yüklenmez. Yazılacak bir şey yoksa (gizli alan, yinelenen not, tavan) denetim satırı da yoktur.
+ * Başvuruyu işler (DOM-KAY-002, -003, -009). Dönen sonuç yanıta girmez: yeni aday, mükerrer not ve
+ * gizli alan dışarıdan aynıdır. Gizli alan doluysa kurum kilidi alınmaz, bütün adaylar yüklenmez ve
+ * ret sayılmaz. Yazılacak bir şey yoksa (gizli alan, yinelenen not) denetim satırı da yoktur.
+ *
+ * Dolu tavan 422 `application_unavailable`'dır (K-23); denetim mükerrer aramasından önce olduğu için
+ * yeni başvuran ve kayıtlı aday aynı yanıtı alır, kişi varlığı belli olmaz.
  *
  * Kilitten önceki denetimler ucuz rettir: geçersiz form ve dolu tavan kurum kuyruğuna girmez, finans
  * işlemlerini bekletmez. Karar kilit altında yeniden verilir: kilit beklerken anahtar yenilenmiş, form
@@ -331,14 +384,13 @@ export async function submitApplication(
   if (isHoneypotFilled(input.website)) return { kind: 'ignored' }
   const { institutionId } = resolved.row
   if (await dailyLimitReached(context.db, institutionId, context.now))
-    return limitedOutcome(context, institutionId)
+    throw await withDatabaseErrors(rejectOverLimit(context, institutionId))
   const work = context.db.transaction(async (tx) => {
     await tx.execute(APPLICATION_LOCK_TIMEOUT)
     await lockInstitution(tx, institutionId)
     const form = await resolveOpenForm(tx, formKey)
     if (form === null) throw new NotFoundError()
-    if (await dailyLimitReached(tx, institutionId, context.now))
-      return limitedOutcome(context, institutionId)
+    if (await dailyLimitReached(tx, institutionId, context.now)) return OVER_LIMIT
     const { rows } = await loadOperationRecords(tx, institutionId, ['branches', 'prospects'], {})
     // Metin kilit altında okunur: eşzamanlı yayımdan sonra eski sürüm kabul edilmez.
     const notice = await currentCandidateNotice(tx, institutionId)
@@ -384,11 +436,14 @@ export async function submitApplication(
     })
     return outcome
   })
-  return withDatabaseErrors(
+  const outcome = await withDatabaseErrors(
     work.catch((error: unknown) => {
       if (databaseErrorInfo(error)?.code === LOCK_NOT_AVAILABLE)
         throw new TransientConflictError({ cause: error })
       throw error
     }),
   )
+  if (outcome === OVER_LIMIT)
+    throw await withDatabaseErrors(rejectOverLimit(context, institutionId))
+  return outcome
 }

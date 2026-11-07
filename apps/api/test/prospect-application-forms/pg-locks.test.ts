@@ -204,8 +204,22 @@ describe('PostgreSQL 16: ön başvuru formu kilidi (ON-133)', { skip: PG_SKIP },
     )
     const phones = Array.from({ length: 6 }, (_, index) => `0532999000${index}`)
     const responses = await Promise.all(phones.map((phone) => submit(form.formKey, phone)))
-    for (const response of responses) assert.equal(response.statusCode, 202, response.body)
+    // Kalanlar sessizce kaybolmaz: reddi öğrenir ve yöneticinin sayısına girer (K-23).
+    assert.deepEqual(
+      responses.map((response) => response.statusCode).sort(),
+      [202, 422, 422, 422, 422, 422],
+    )
     assert.equal(await prospectCount(institution.id), 1)
+    const [rejected] = await db
+      .select({ n: count() })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, institution.id),
+          eq(auditLog.action, 'prospect.application.rejected'),
+        ),
+      )
+    assert.equal(rejected?.n, 5)
     const [written] = await db
       .select({ n: count() })
       .from(auditLog)

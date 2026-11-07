@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNull, lt, sql } from 'drizzle-orm'
+import { and, count, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { auditLog } from './schema/audit-log.ts'
@@ -18,18 +18,24 @@ export const APPLICATION_PROSPECT_ACTION = 'prospect.application'
 export const APPLICATION_NOTE_ACTION = 'prospect.application.note'
 
 /**
- * Formdan `[from, to)` aralığında açılan aday sayısı. `audit_log` yalnız eklenir: arşivlenen aday
- * tavanı boşaltmaz; sistem aktörü `audit_log_actor_idx` ile yalnız aralığın satırlarını okur, kurumun
- * bütün adaylarını taramaz.
+ * Tavan doluyken alınamayan başvurunun denetim eylemi (K-23): yalnız sayılır, satır kurum dışında
+ * bilgi taşımaz. Kurum tavanına girmez.
  */
-export async function countProspectsOpenedFromForm(
+export const APPLICATION_REJECTED_ACTION = 'prospect.application.rejected'
+
+/**
+ * `[from, to)` aralığında formdan açılan aday ve alınamayan başvuru sayısı. `audit_log` yalnız
+ * eklenir: arşivlenen aday tavanı boşaltmaz; sistem aktörü `audit_log_actor_idx` ile yalnız aralığın
+ * satırlarını okur, kurumun bütün adaylarını taramaz.
+ */
+export async function countApplicationEvents(
   db: Database,
   institutionId: string,
   from: Date,
   to: Date,
-): Promise<number> {
-  const [row] = await db
-    .select({ total: count() })
+): Promise<{ opened: number; rejected: number }> {
+  const rows = await db
+    .select({ action: auditLog.action, total: count() })
     .from(auditLog)
     .where(
       and(
@@ -37,10 +43,15 @@ export async function countProspectsOpenedFromForm(
         isNull(auditLog.actorUserId),
         gte(auditLog.createdAt, from),
         lt(auditLog.createdAt, to),
-        eq(auditLog.action, APPLICATION_PROSPECT_ACTION),
+        inArray(auditLog.action, [APPLICATION_PROSPECT_ACTION, APPLICATION_REJECTED_ACTION]),
       ),
     )
-  return row?.total ?? 0
+    .groupBy(auditLog.action)
+  const totalOf = (action: string) => rows.find((row) => row.action === action)?.total ?? 0
+  return {
+    opened: totalOf(APPLICATION_PROSPECT_ACTION),
+    rejected: totalOf(APPLICATION_REJECTED_ACTION),
+  }
 }
 
 export async function findApplicationForm(

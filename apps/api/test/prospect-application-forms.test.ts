@@ -5,7 +5,10 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
-import { APPLICATION_DAILY_PROSPECT_LIMIT } from '@kampus/school-core/lib/prospect-application-form.ts'
+import {
+  APPLICATION_DAILY_PROSPECT_LIMIT,
+  APPLICATION_DAILY_REJECTED_LIMIT,
+} from '@kampus/school-core/lib/prospect-application-form.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
@@ -394,32 +397,146 @@ describe('Ön başvuru formu (ON-133)', () => {
       })),
     )
 
-  test('IST-145: günlük kurum tavanı doluysa aynı 202 döner, aday ve not yazılmaz; log yalnız kurum ve olay adı', async () => {
+  const UNAVAILABLE = 'Başvurunuz şu anda alınamadı. Lütfen kurumla doğrudan iletişime geçin.'
+
+  /** Alınamayan başvurunun denetim satırları. */
+  const rejectedRows = (institutionId: string) =>
+    db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, institutionId),
+          eq(auditLog.action, 'prospect.application.rejected'),
+        ),
+      )
+
+  const dailyLimitOf = async (cookie: string) => {
+    const response = await adminCall('GET', SETTINGS, cookie)
+    assert.equal(response.statusCode, 200, response.body)
+    return (response.json() as { data: { dailyLimit: Json } }).data.dailyLimit
+  }
+
+  test('DOM-KAY-002 K-23: tavan doluyken başvuran yeni ya da kayıtlı olsun aynı reddi alır, ileti tavanı anmaz, hiçbir şey saklanmaz', async () => {
     const { institution, form } = await world()
     const seed = SEED.prospects[0]
     assert.ok(seed)
-    const fresh = await submit(form.formKey, application({ phone: '05329990001' }))
-    assert.equal(fresh.statusCode, 202, fresh.body)
-    await openedFromForm(institution.id, APPLICATION_DAILY_PROSPECT_LIMIT - 1, FIXED_NOW)
+    await openedFromForm(institution.id, APPLICATION_DAILY_PROSPECT_LIMIT, FIXED_NOW)
 
     const before = await prospectsOf(institution.id)
     logs.length = 0
-    const blocked = await submit(form.formKey, application())
-    assert.equal(blocked.statusCode, fresh.statusCode)
-    assert.deepEqual(blocked.json(), fresh.json())
-    assert.deepEqual(Object.keys(blocked.headers).sort(), Object.keys(fresh.headers).sort())
+    const fresh = await submit(form.formKey, application())
+    assert.equal(fresh.statusCode, 422, fresh.body)
+    const body = fresh.json() as Json
+    assert.equal(body.code, 'application_unavailable')
+    assert.equal(body.message, UNAVAILABLE)
+    assert.equal(body.issues, undefined)
+    // Yanıt tavanı, sayıyı ya da nedeni söylemez.
+    assert.equal(/tavan|sınır|limit|doldu|\d/i.test(UNAVAILABLE), false)
+
+    // Kişi varlığı belli olmaz: açık adayın iletişimiyle gelen başvuru da aynı yanıtı alır.
     const repeat = await submit(form.formKey, application({ name: seed.name, phone: seed.phone }))
-    assert.equal(repeat.statusCode, 202)
+    assert.equal(repeat.statusCode, fresh.statusCode)
+    assert.deepEqual(
+      { ...(repeat.json() as Json), requestId: '' },
+      { ...(fresh.json() as Json), requestId: '' },
+    )
+    assert.deepEqual(Object.keys(repeat.headers).sort(), Object.keys(fresh.headers).sort())
     assert.deepEqual(await prospectsOf(institution.id), before)
 
+    // Sayı dışında iz yok: denetim satırı ve logda ad, telefon, e-posta bulunmaz.
+    const rows = await rejectedRows(institution.id)
+    assert.equal(rows.length, 2)
+    assert.equal(rows[0]?.actorUserId, null)
+    assert.equal(rows[0]?.actorRole, 'system')
+    assert.equal(rows[0]?.entityType, 'prospect_application_form')
+    assert.equal(rows[0]?.entityId, institution.id)
+    assert.deepEqual(rows[0]?.changes, { fields: [] })
+    const written = JSON.stringify(rows) + logs.join('\n')
+    for (const secret of [SECRET_PHONE, SECRET_NAME, SECRET_GUARDIAN, seed.phone, seed.name])
+      assert.equal(written.includes(secret), false, secret)
+
+    // Olay logu o gün için tektir, seviyesi uyarıdır ve yalnız kurumu taşır.
     const warnings = logs.filter((line) => line.includes('prospect.application.daily_limit'))
-    assert.ok(warnings.length >= 1)
+    assert.equal(warnings.length, 1)
     const entry = JSON.parse(warnings[0] ?? '{}') as Json
     assert.equal(entry.level, 40)
     assert.equal(entry.institutionId, institution.id)
-    const text = logs.join('\n')
-    for (const secret of [SECRET_PHONE, SECRET_NAME, SECRET_GUARDIAN])
-      assert.equal(text.includes(secret), false, secret)
+  })
+
+  test('DOM-KAY-002 K-23: yönetici tavanın dolduğunu ve alınamayan başvuru sayısını o gün için görür', async () => {
+    const { institution, form, admin: cookie } = await world()
+    const other = await world()
+    assert.deepEqual(await dailyLimitOf(cookie), { reached: false, rejected: 0 })
+
+    // Son yer dolana kadar uyarı yok; dolunca henüz ret yokken de uyarı çıkar.
+    await openedFromForm(institution.id, APPLICATION_DAILY_PROSPECT_LIMIT - 1, FIXED_NOW)
+    assert.deepEqual(await dailyLimitOf(cookie), { reached: false, rejected: 0 })
+    assert.equal((await submit(form.formKey, application())).statusCode, 202)
+    assert.deepEqual(await dailyLimitOf(cookie), { reached: true, rejected: 0 })
+
+    const next = (phone: string) => submit(form.formKey, application({ phone }))
+    assert.equal((await next('05329990001')).statusCode, 422)
+    assert.equal((await next('05329990002')).statusCode, 422)
+    assert.deepEqual(await dailyLimitOf(cookie), { reached: true, rejected: 2 })
+
+    // Gizli alan botu sayıya girmez ve eskisi gibi 202 alır.
+    const bot = await submit(form.formKey, application({ website: 'http://spam.example' }))
+    assert.equal(bot.statusCode, 202)
+    assert.deepEqual(await dailyLimitOf(cookie), { reached: true, rejected: 2 })
+
+    // Ayar yazma yanıtı da aynı durumu taşır; başka kurumun sayısına dokunulmaz.
+    const patched = await adminCall('PATCH', SETTINGS, cookie, { enabled: false }, form.version)
+    assert.equal(patched.statusCode, 200, patched.body)
+    assert.deepEqual((patched.json() as { data: { dailyLimit: Json } }).data.dailyLimit, {
+      reached: true,
+      rejected: 2,
+    })
+    assert.deepEqual(await dailyLimitOf(other.admin), { reached: false, rejected: 0 })
+  })
+
+  test('DOM-KAY-002 K-23: dünkü dolu tavan ve retler bugünün uyarısına girmez, ret tavanı tüketmez', async () => {
+    const { institution, form, admin: cookie } = await world()
+    const yesterday = new Date(FIXED_NOW.getTime() - 86_400_000)
+    await openedFromForm(institution.id, APPLICATION_DAILY_PROSPECT_LIMIT, yesterday)
+    await db.insert(auditLog).values(
+      Array.from({ length: APPLICATION_DAILY_PROSPECT_LIMIT + 5 }, (_, index) => ({
+        institutionId: institution.id,
+        actorRole: 'system',
+        action: 'prospect.application.rejected',
+        createdAt: index < 5 ? yesterday : FIXED_NOW,
+      })),
+    )
+    assert.deepEqual(await dailyLimitOf(cookie), {
+      reached: false,
+      rejected: APPLICATION_DAILY_PROSPECT_LIMIT,
+    })
+    assert.equal((await submit(form.formKey, application())).statusCode, 202)
+    const rows = await prospectsOf(institution.id)
+    assert.ok(rows.some((item) => item.phone === SECRET_PHONE))
+  })
+
+  test('DOM-KAY-002 K-23: sayım üst sınırda durur; gönderim sel gibi gelse de denetim satırı büyümez, ret sürer', async () => {
+    const { institution, form, admin: cookie } = await world()
+    await openedFromForm(institution.id, APPLICATION_DAILY_PROSPECT_LIMIT, FIXED_NOW)
+    await db.insert(auditLog).values(
+      Array.from({ length: APPLICATION_DAILY_REJECTED_LIMIT }, () => ({
+        institutionId: institution.id,
+        actorRole: 'system',
+        action: 'prospect.application.rejected',
+        createdAt: FIXED_NOW,
+      })),
+    )
+    logs.length = 0
+    const response = await submit(form.formKey, application())
+    assert.equal(response.statusCode, 422, response.body)
+    assert.equal((response.json() as Json).code, 'application_unavailable')
+    assert.equal((await rejectedRows(institution.id)).length, APPLICATION_DAILY_REJECTED_LIMIT)
+    assert.deepEqual(await dailyLimitOf(cookie), {
+      reached: true,
+      rejected: APPLICATION_DAILY_REJECTED_LIMIT,
+    })
+    assert.equal(logs.join('\n').includes('prospect.application.daily_limit'), false)
   })
 
   test('IST-145: tavan Europe/Istanbul günü ve kurum başınadır; mükerrer notlar saymaz', async () => {
@@ -444,7 +561,7 @@ describe('Ön başvuru formu (ON-133)', () => {
     const rows = await prospectsOf(institution.id)
     assert.ok(rows.some((item) => item.phone === SECRET_PHONE))
     // Öteki kurumun tavanı dolu: kendi formu yazmaz.
-    assert.equal((await submit(other.form.formKey, application())).statusCode, 202)
+    assert.equal((await submit(other.form.formKey, application())).statusCode, 422)
     const otherRows = await prospectsOf(other.institution.id)
     assert.equal(
       otherRows.some((item) => item.phone === SECRET_PHONE),
@@ -686,6 +803,7 @@ describe('Ön başvuru formu (ON-133)', () => {
       siteOrigin: null,
       version: null,
       noticeVersion: null,
+      dailyLimit: { reached: false, rejected: 0 },
     })
     const early = await adminCall('PATCH', SETTINGS, admin, { siteOrigin: SITE }, 1)
     assert.equal(early.statusCode, 404)

@@ -3121,7 +3121,7 @@ export interface paths {
         };
         /**
          * Web başvuru formu ayarı
-         * @description Yönetici formun anahtarını, durumunu, site adresini ve yayımlı aday aydınlatma sürümünü görür (ON-133). Modül `crm`. Rol: `yonetici`.
+         * @description Yönetici formun anahtarını, durumunu, site adresini, yayımlı aday aydınlatma sürümünü ve bugünkü tavan uyarısını (`dailyLimit`; DOM-KAY-002, K-23) görür (ON-133). Modül `crm`. Rol: `yonetici`.
          */
         get: operations["getProspectApplicationFormSettings"];
         put?: never;
@@ -3207,7 +3207,7 @@ export interface paths {
         put?: never;
         /**
          * Başvuru gönder
-         * @description Kimlik gerektirmez. Aday `Yeni aday` aşamasında, `Web sitesi` kaynağıyla açılır (DOM-KAY-001, -007, -009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, 18 yaş altında veli adı, aydınlatma sürümü ve kanal bazında ticari ileti onayı (varsayılan kapalı, DOM-KAY-004); T.C. kimlik no, doğum tarihi, adres, kaynak, referans, kardeş, kurum kimliği ve bilinmeyen alan 400. Eski aydınlatma sürümü 409 `notice_outdated` (DOM-KAY-003). Yanıt kişi varlığını belli etmez: aynı iletişimli açık aday varsa yeni kayıt açılmaz, adayın kartına temas notu düşülür (aday başına 24 saatte bir, DOM-KAY-002), onay yazılmaz ve aynı 202 döner; gizli alan (`website`) dolu gönderim ve kurumun günlük form tavanı doluyken gönderim de hiçbir şey yazmadan aynı 202'yi alır. Kurum kilidi 3 saniyede alınamazsa hiçbir şey yazılmaz: 409 `conflict`, aynı istek yeniden denenebilir. Başka kökenden gönderim 403 `csrf_rejected`. Gövde en çok 4096 bayt (413). IP başına 10 dakikada 5 gönderim; aşılırsa 429 `rate_limited` ve `Retry-After`. Telefon, e-posta ve ad loglanmaz.
+         * @description Kimlik gerektirmez. Aday `Yeni aday` aşamasında, `Web sitesi` kaynağıyla açılır (DOM-KAY-001, -007, -009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, 18 yaş altında veli adı, aydınlatma sürümü ve kanal bazında ticari ileti onayı (varsayılan kapalı, DOM-KAY-004); T.C. kimlik no, doğum tarihi, adres, kaynak, referans, kardeş, kurum kimliği ve bilinmeyen alan 400. Eski aydınlatma sürümü 409 `notice_outdated` (DOM-KAY-003). Yanıt kişi varlığını belli etmez: aynı iletişimli açık aday varsa yeni kayıt açılmaz, adayın kartına temas notu düşülür (aday başına 24 saatte bir, DOM-KAY-002), onay yazılmaz ve aynı 202 döner; gizli alan (`website`) dolu gönderim de hiçbir şey yazmadan aynı 202'yi alır. Kurumun günlük form tavanı doluyken başvuru saklanmaz: 422 `application_unavailable` döner, ileti başvurana kurumla iletişime geçmesini söyler ama tavanı anmaz; yeni başvuran ve kayıtlı aday aynı yanıtı alır (K-23). Kurum kilidi 3 saniyede alınamazsa hiçbir şey yazılmaz: 409 `conflict`, aynı istek yeniden denenebilir. Başka kökenden gönderim 403 `csrf_rejected`. Gövde en çok 4096 bayt (413). IP başına 10 dakikada 5 gönderim; aşılırsa 429 `rate_limited` ve `Retry-After`. Telefon, e-posta ve ad loglanmaz.
          */
         post: operations["submitProspectApplication"];
         delete?: never;
@@ -33638,6 +33638,13 @@ export interface operations {
                             version: number | null;
                             /** @description Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz */
                             noticeVersion: number | null;
+                            /** @description Yöneticinin uyarısı (DOM-KAY-002, K-23) */
+                            dailyLimit: {
+                                /** @description Bugün (Europe/Istanbul) kurumun form tavanı doldu */
+                                reached: boolean;
+                                /** @description Bugün tavan yüzünden alınamayan gönderim sayısı; kişi sayısı değildir */
+                                rejected: number;
+                            };
                         };
                     };
                 };
@@ -33724,6 +33731,13 @@ export interface operations {
                             version: number | null;
                             /** @description Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz */
                             noticeVersion: number | null;
+                            /** @description Yöneticinin uyarısı (DOM-KAY-002, K-23) */
+                            dailyLimit: {
+                                /** @description Bugün (Europe/Istanbul) kurumun form tavanı doldu */
+                                reached: boolean;
+                                /** @description Bugün tavan yüzünden alınamayan gönderim sayısı; kişi sayısı değildir */
+                                rejected: number;
+                            };
                         };
                     };
                 };
@@ -33830,6 +33844,13 @@ export interface operations {
                             version: number | null;
                             /** @description Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz */
                             noticeVersion: number | null;
+                            /** @description Yöneticinin uyarısı (DOM-KAY-002, K-23) */
+                            dailyLimit: {
+                                /** @description Bugün (Europe/Istanbul) kurumun form tavanı doldu */
+                                reached: boolean;
+                                /** @description Bugün tavan yüzünden alınamayan gönderim sayısı; kişi sayısı değildir */
+                                rejected: number;
+                            };
                         };
                     };
                 };

@@ -43,6 +43,15 @@ export const applicationFormSettingsResponseSchema = dataResponse(
       .int()
       .nullable()
       .describe('Yayımlı güncel aday aydınlatma sürümü; yoksa form açılamaz'),
+    dailyLimit: z
+      .object({
+        reached: z.boolean().describe('Bugün (Europe/Istanbul) kurumun form tavanı doldu'),
+        rejected: z
+          .number()
+          .int()
+          .describe('Bugün tavan yüzünden alınamayan gönderim sayısı; kişi sayısı değildir'),
+      })
+      .describe('Yöneticinin uyarısı (DOM-KAY-002, K-23)'),
   }),
 )
 

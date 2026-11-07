@@ -1,29 +1,49 @@
 // Aday/CRM ekranlarının saf hesapları: satırlar, aşama rozeti, süzgeç seçenekleri ve Tanışma
 // Görüşmeleri olayları. Kural core'dadır (`lib/prospects.ts`, DOM-KAY-005, -030…034); burada
 // yalnız arayüzün hangi seçeneği göstereceği türetilir. Karar yine sunucudadır.
-import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import {
-  nextProspectStages,
   OPEN_PROSPECT_STAGES,
-  PROSPECT_LOST_REASON_LABELS,
-  PROSPECT_LOST_REASONS,
   PROSPECT_SOURCES,
   PROSPECT_STAGES,
   prospectStageLabel,
   type ProspectStage,
 } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import {
+  dateTimeLabel,
+  MEETING_KIND_LABELS,
+  prospectContactOwner,
+  type ContactOwner,
+  type MeetingEvent,
+} from '@kampus/react-shared/prospect-model.ts'
 import type {
   CollectionCounts,
   CollectionFilters,
   CollectionQuery,
 } from '@kampus/react-shared/collections.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
-import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
+import type { CoreRow } from '@/hooks/use-core-collection.ts'
 import type { FilterField, FilterValue } from '@/lib/list-query.ts'
 import { addDays, isDayKey, weekDays, weekStart } from '../academic/academic-rows.ts'
 
-type Prospect = CoreRecord<'prospects'>
+// Web ile mobilde ortak saf hesaplar (`@kampus/react-shared/prospect-model.ts`); web içe aktarımları
+// bu dosyadan sürer.
+export {
+  CONTACT_LABELS,
+  dateTimeLabel,
+  isOpenStage,
+  lostReasonLabel,
+  MEETING_KIND_LABELS,
+  meetingEvents,
+  prospectContactOwner,
+  slotLabel,
+  stageTargets,
+  type ContactOwner,
+  type MeetingEvent,
+  type MeetingKind,
+} from '@kampus/react-shared/prospect-model.ts'
+
 type Lookups = { branches: ReadonlyMap<string, string> }
 
 /** Aşama rozeti tonu: `Kayıt oldu` yeşil, `Vazgeçti` kırmızı, `Teklif verildi` sarı. */
@@ -39,12 +59,6 @@ export const STAGE_TONES = {
 export function stageTone(stage: string): BadgeTone {
   const known = PROSPECT_STAGES.find((item) => item === stage)
   return known ? STAGE_TONES[known] : 'gray'
-}
-
-/** Vazgeçme nedeninin etiketi (DOM-KAY-005); tanınmayan eski kayıt olduğu gibi gösterilir. */
-export function lostReasonLabel(reason: string): string {
-  const known = PROSPECT_LOST_REASONS.find((item) => item === reason)
-  return known ? PROSPECT_LOST_REASON_LABELS[known] : reason
 }
 
 /** Aşama süzgeci: sabit seçenekler, dil okulunda görüşme aşaması seviye tespiti/deneme dersidir. */
@@ -123,20 +137,6 @@ export function stageTabs(counts: CollectionCounts | undefined, type: Institutio
   ]
 }
 
-/**
- * Adayın telefon ve e-postası kimin (DOM-KAY-003): 18 yaş altı adayda velinindir, yetişkinde adayın
- * kendisinindir. Kaydında `minor` olmayan eski aday 18 yaş altı sayılır (DOM-KAY-009).
- */
-export type ContactOwner = 'guardian' | 'self'
-export const prospectContactOwner = (prospect: { minor?: boolean | undefined }): ContactOwner =>
-  prospect.minor === false ? 'self' : 'guardian'
-
-/** İletişim alanı etiketleri: sahibi velise "Veli telefonu", adayın kendisiyse "Telefon". */
-export const CONTACT_LABELS = {
-  guardian: { phone: 'Veli telefonu', email: 'Veli e-postası' },
-  self: { phone: 'Telefon', email: 'E-posta' },
-} as const satisfies Record<ContactOwner, { phone: string; email: string }>
-
 export type ProspectRow = {
   id: string
   name: string
@@ -152,9 +152,6 @@ export type ProspectRow = {
   createdLabel: string
   meetingLabel: string
 }
-
-export const dateTimeLabel = (value: string) =>
-  dateLabel(value, { weekday: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 export function prospectRow(
   item: CoreRow<'prospects'>,
@@ -189,104 +186,7 @@ export const prospectCsvRow = (row: ProspectRow) => ({
   createdLabel: row.createdLabel,
 })
 
-/** "13:00 – 13:45" (Europe/Istanbul). */
-export const slotLabel = (startsAt: string, minutes: number) =>
-  `${timeLabel(startsAt)} – ${timeLabel(new Date(Date.parse(startsAt) + minutes * 60_000))}`
-
-/**
- * Detay sayfasında seçilebilen aşamalar (DOM-KAY-030): yalnız geçerli hedefler. `Görüşme
- * planlandı` planlamayla, `Kayıt oldu` kesin kayıtla girildiği için sunulmaz.
- */
-export function stageTargets(stage: string | undefined): ProspectStage[] {
-  return nextProspectStages(stage).filter(
-    (target) => target !== 'Görüşme planlandı' && target !== 'Kayıt oldu',
-  )
-}
-
-/** Aday açık aşamada mı (not, görüşme ve deneme dersi yalnız açık adaya, DOM-KAY-032). */
-export const isOpenStage = (stage: string | undefined) =>
-  (OPEN_PROSPECT_STAGES as readonly (string | undefined)[]).includes(stage)
-
 // --- Tanışma Görüşmeleri ------------------------------------------------------------------
-
-export type MeetingKind = 'meeting' | 'trial'
-export const MEETING_KIND_LABELS = {
-  meeting: 'Tanışma görüşmesi',
-  trial: 'Deneme dersi',
-} as const satisfies Record<MeetingKind, string>
-
-export type MeetingEvent = {
-  id: string
-  prospectId: string
-  name: string
-  kind: MeetingKind
-  kindLabel: string
-  startsAt: string
-  /** Europe/Istanbul günü (`YYYY-MM-DD`); tarih süzgeci bunu karşılaştırır. */
-  day: string
-  whenLabel: string
-  timeRange: string
-  branch: string
-  place: string
-  stage: string
-  stageLabel: string
-  upcoming: boolean
-}
-
-/**
- * Adaylardan planlanmış görüşme ve deneme dersleri. Görüşme `trialAt` (görüşme anı) ve `meeting`
- * alanından, deneme dersi `trialLesson`'dan gelir (DOM-KAY-033, -034). Kapalı (`Kayıt oldu`,
- * `Vazgeçti`) adayın olayı listelenmez. Yaklaşanlar önce ve yakından uzağa, geçmişler sonra ve
- * yeniden eskiye sıralanır.
- */
-export function meetingEvents(
-  prospects: readonly Prospect[],
-  type: InstitutionType,
-  context: {
-    now: number
-    branches: ReadonlyMap<string, string>
-    classes: ReadonlyMap<string, string>
-  },
-): MeetingEvent[] {
-  const events: MeetingEvent[] = []
-  for (const prospect of prospects) {
-    if (!isOpenStage(prospect.stage)) continue
-    const base = {
-      prospectId: prospect.id,
-      name: prospect.name,
-      branch: context.branches.get(prospect.branchId) ?? '—',
-      stage: prospect.stage ?? '',
-      stageLabel: prospectStageLabel(prospect.stage, type),
-    }
-    const add = (kind: MeetingKind, startsAt: string, minutes: number, place: string) =>
-      events.push({
-        ...base,
-        id: `${prospect.id}:${kind}`,
-        kind,
-        kindLabel: MEETING_KIND_LABELS[kind],
-        startsAt,
-        day: dayKey(startsAt),
-        whenLabel: dateLabel(startsAt, { weekday: 'long', year: 'numeric' }),
-        timeRange: slotLabel(startsAt, minutes),
-        place,
-        upcoming: Date.parse(startsAt) >= context.now,
-      })
-    if (prospect.trialAt)
-      add(
-        'meeting',
-        prospect.trialAt,
-        prospect.meeting?.duration ?? 30,
-        prospect.meeting?.room ?? '—',
-      )
-    const trial = prospect.trialLesson
-    if (trial) add('trial', trial.date, trial.duration, context.classes.get(trial.classId) ?? '—')
-  }
-  return events.sort((a, b) => {
-    if (a.upcoming !== b.upcoming) return a.upcoming ? -1 : 1
-    const order = Date.parse(a.startsAt) - Date.parse(b.startsAt)
-    return a.upcoming ? order : -order
-  })
-}
 
 export const MEETING_KIND_FILTER: FilterField = {
   key: 'kindLabel',

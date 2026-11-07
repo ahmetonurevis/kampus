@@ -21,6 +21,7 @@ import {
 import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import { createPriceIndexSchema } from '@kampus/school-core/lib/renewals.ts'
 import type { RenewalCeiling } from '@kampus/school-core/lib/renewal-ceiling.ts'
+import { ceilingLines } from '@kampus/react-shared/renewal-model.ts'
 import {
   COURSE_OFFER_MESSAGES,
   type RenewalCourseOffer,
@@ -32,7 +33,8 @@ export const RENEWAL_MODE_LABELS: Readonly<Record<RenewalMode, string>> = {
   renew: 'Yeni döneme yenile',
   graduate: 'Mezuniyet',
 }
-export const RENEWAL_STATUSES = ['Planlandı', 'Tamamlandı', 'Mezun', 'İptal'] as const
+// Durum listesi ve tavan açıklaması web ile mobilde ortaktır (`@kampus/react-shared/renewal-model.ts`).
+export { ceilingLines, RENEWAL_STATUSES } from '@kampus/react-shared/renewal-model.ts'
 
 export const renewalFormSchema = z
   .object({
@@ -163,36 +165,6 @@ export function studentOptions(
       label: `${item.name} · ${classNames.get(item.classId) ?? '—'}`,
     }))
     .sort((a, b) => a.label.localeCompare(b.label, 'tr'))
-}
-
-const percent = (basisPoints: number) =>
-  `%${(basisPoints / 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
-
-/** Tavanın açıklaması (DOM-FIN-005, DOM-FIN-023); uygulanmıyorsa nedeni. */
-export function ceilingLines(ceiling: RenewalCeiling): string[] {
-  if (ceiling.status === 'entry_grade')
-    return ['Kademenin başlangıç sınıfı: artış tavanı uygulanmaz, ücret ilanla sınırlıdır.']
-  if (ceiling.status === 'no_base')
-    return [
-      'Artış tavanı hesaplanamadı: öğrencinin önceki sözleşmesi ve önceki yılın ilan ücreti yok. Ücret ilanla sınırlıdır.',
-    ]
-  const source =
-    ceiling.baseSource === 'previous_tariff'
-      ? 'önceki yılın ilan ücreti'
-      : ceiling.baseSource === 'enrollment_contract'
-        ? 'kayıt yılındaki indirimsiz ücret'
-        : 'son sözleşmedeki ücret'
-  const rates = ceiling.rates
-    .map(
-      (rate) =>
-        `${String(rate.academicYear)}: ÜFE ${percent(rate.ppiBasisPoints)}, TÜFE ${percent(rate.cpiBasisPoints)}`,
-    )
-    .join('; ')
-  return [
-    `Artış tavanı: ${money(ceiling.ceilingCents)} (baz ${money(ceiling.baseCents)}, ${source}, ${String(ceiling.baseYear)})`,
-    `Uygulanan oranlar: ${rates} · ek ${percent(ceiling.extraBasisPoints)}`,
-    ...(ceiling.discountLoss ? [ceiling.discountLoss.reason] : []),
-  ]
 }
 
 export type RenewalQuoteView = {

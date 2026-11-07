@@ -15,6 +15,12 @@ import {
   useUpdatePriceIndex,
   type RenewalListQuery,
 } from '@kampus/react-shared/use-finance-renewals.ts'
+import {
+  renewalDetailSections,
+  renewalPeriod,
+  renewalRow,
+  type RenewalRow,
+} from '@kampus/react-shared/renewal-model.ts'
 import { useScholarshipPrograms } from '@kampus/react-shared/use-finance-scholarships.ts'
 import {
   carriedOverTariffNote,
@@ -23,11 +29,8 @@ import {
   type FeeDiscountKind,
   type FeeItemKind,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
-import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
-import {
-  announcedPaymentTermLabel,
-  contractPaymentTermLabel,
-} from '@kampus/school-core/lib/payment-terms.ts'
+import { dayKey, money } from '@kampus/school-core/lib/format.ts'
+import { announcedPaymentTermLabel } from '@kampus/school-core/lib/payment-terms.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -55,7 +58,6 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import {
   bulletinText,
-  ceilingLines,
   courseOfferNotice,
   priceIndexBody,
   priceIndexDefaults,
@@ -82,16 +84,6 @@ import { ReferralRewardField } from './ReferralRewardField.tsx'
 import { RenewalYearSection } from './RenewalYearSection.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
-type RenewalRow = {
-  id: string
-  version: number
-  studentName: string
-  period: string
-  transition: string
-  netCents: number
-  netLabel: string
-  status: string
-}
 type PriceIndexRow = {
   academicYear: number
   ppiBasisPoints: number
@@ -112,33 +104,6 @@ const STATUS_FIELD: FilterField = {
 const SORT_KEYS = new Set<string>(SORTABLE)
 const PLAN_FORM = 'yenileme-formu'
 const INDEX_FORM = 'oran-formu'
-
-const periodOf = (year: number) => `${String(year)}–${String(year + 1)}`
-type RenewalItem = {
-  id: string
-  version: number
-  studentName: string | null
-  fromClassName: string | null
-  targetClassName: string | null
-  mode: 'renew' | 'graduate'
-  academicYear: number
-  netCents: number
-  status: string
-}
-function toRow(item: RenewalItem): RenewalRow {
-  return {
-    id: item.id,
-    version: item.version,
-    studentName: item.studentName ?? '—',
-    period: periodOf(item.academicYear),
-    transition: `${item.fromClassName ?? '—'} → ${
-      item.mode === 'graduate' ? 'Mezuniyet' : (item.targetClassName ?? '—')
-    }`,
-    netCents: item.netCents,
-    netLabel: money(item.netCents),
-    status: item.status,
-  }
-}
 
 /**
  * Kayıt Yenileme (yönetici, ön büro, veli; IST-100). Liste ve ayrıntı `/finance/renewals`'tan,
@@ -173,7 +138,7 @@ export function RenewalsPage({ page }: { page: NavPage }) {
     ...(sort ? { sort, order } : {}),
   }
   const renewals = useRenewals({ ...query, page: list.state.page, pageSize: list.state.pageSize })
-  const rows = useMemo(() => renewals.data?.data.map(toRow), [renewals.data])
+  const rows = useMemo(() => renewals.data?.data.map(renewalRow), [renewals.data])
   const openRecord = panel.open
 
   const columns = useMemo<DataColumn<RenewalRow>[]>(
@@ -217,7 +182,7 @@ export function RenewalsPage({ page }: { page: NavPage }) {
           key: column.key === 'netCents' ? 'netLabel' : column.key,
           label: column.label,
         })),
-      async () => (await fetchAll(query)).map(toRow),
+      async () => (await fetchAll(query)).map(renewalRow),
     )
   }
 
@@ -330,54 +295,9 @@ function RenewalDetail({
           <div>
             <StatusBadge text={data.status} />
           </div>
-          <DetailSection
-            title="Dönem geçişi"
-            lines={[
-              periodOf(data.academicYear),
-              `${data.fromClassName ?? '—'} → ${
-                data.mode === 'graduate' ? 'Mezuniyet' : (data.targetClassName ?? '—')
-              }`,
-              data.status === 'Planlandı'
-                ? 'Dönem geçişi uygulanınca sınıf değişir; geçmiş not, yoklama ve tahsilatlar korunur.'
-                : 'Dönem geçişi uygulanmış.',
-            ]}
-          />
-          {data.mode === 'renew' ? (
-            <DetailSection
-              title="Ücret"
-              lines={[
-                ...(data.pricing?.tariffCarriedOverFromYear
-                  ? [carriedOverTariffNote(data.pricing.tariffCarriedOverFromYear)]
-                  : []),
-                ...(data.pricing
-                  ? [`İlan edilen ücret: ${money(data.pricing.announcedCents)}`]
-                  : []),
-                ...(data.pricing ? ceilingLines(data.pricing.ceiling) : []),
-                ...(data.pricing?.paymentTerm
-                  ? [`Ödeme koşulu: ${contractPaymentTermLabel(data.pricing.paymentTerm)}`]
-                  : []),
-                ...(data.tuitionCents === null
-                  ? []
-                  : [`Öğrenim ücreti: ${money(data.tuitionCents)}`]),
-                ...(data.discountCents ? [`İndirim: −${money(data.discountCents)}`] : []),
-                ...(data.scholarshipCents ? [`Burs: −${money(data.scholarshipCents)}`] : []),
-                `Net eğitim bedeli: ${money(data.netCents)}`,
-              ]}
-            />
-          ) : null}
-          {data.invoices.length ? (
-            <DetailSection
-              title="Yeni dönem taksitleri"
-              lines={data.invoices.map(
-                (invoice) =>
-                  `${String(invoice.installment)}. taksit · ${dateLabel(invoice.dueDate, { year: 'numeric' })} · ${money(invoice.amountCents)} · ${invoice.paidAt ? 'Ödendi' : 'Bekliyor'}${
-                    invoice.feeKind && invoice.feeKind !== 'tuition'
-                      ? ` · ${FEE_ITEM_KIND_LABELS[invoice.feeKind as FeeItemKind] ?? 'Ek hizmet'}`
-                      : ''
-                  }`,
-              )}
-            />
-          ) : null}
+          {renewalDetailSections(data).map((section) => (
+            <DetailSection key={section.title} title={section.title} lines={section.lines} />
+          ))}
           {data.contractId ? (
             <section aria-label="Belgeler" className="flex flex-wrap gap-2 border-t pt-4">
               <RenewalContractPdfButton
@@ -598,7 +518,7 @@ function PlanModal({
       size="wide"
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Kayıt yenile"
-      description={`${periodOf(academicYear)} eğitim yılı. Ücret yayımlı tarifeden ve artış tavanından hesaplanır; onaydan önce hiçbir kayıt yazılmaz. Sınıf değişimi ayrı dönem geçişi işlemiyle uygulanır.`}
+      description={`${renewalPeriod(academicYear)} eğitim yılı. Ücret yayımlı tarifeden ve artış tavanından hesaplanır; onaydan önce hiçbir kayıt yazılmaz. Sınıf değişimi ayrı dönem geçişi işlemiyle uygulanır.`}
       footer={
         preview ? (
           <>
@@ -741,7 +661,7 @@ function PlanModal({
               <QueryError error={tariffs.error} onRetry={tariffs.refetch} />
             ) : !tariffs.isPending && !tariff ? (
               <p role="alert" className="text-sm text-danger">
-                {periodOf(academicYear)} için yayımlanmış ücret tarifesi yok; önce tarifeyi
+                {renewalPeriod(academicYear)} için yayımlanmış ücret tarifesi yok; önce tarifeyi
                 yayımlayın.
               </p>
             ) : tariffs.carriedOverFromYear !== null ? (
@@ -958,7 +878,7 @@ function PriceIndexSection({
   const rows = indexes.data?.data.map((row) => ({
     ...row,
     id: row.academicYear,
-    year: periodOf(row.academicYear),
+    year: renewalPeriod(row.academicYear),
   }))
   return (
     <section

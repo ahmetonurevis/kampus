@@ -2557,7 +2557,7 @@ export interface paths {
         };
         /**
          * Yıl sonu mutabakatı
-         * @description Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.
+         * @description Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Dosyadan aktarılan geçmiş ödeme tahsilat sayılmaz, ödeme gününde `openingImportCents` alanına yazılır (DOM-FIN-014). Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.
          */
         get: operations["getFinanceReconciliation"];
         put?: never;
@@ -30311,6 +30311,8 @@ export interface operations {
                                 withdrawalAdjustmentCents: number;
                                 /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
                                 collectedCents: number;
+                                /** @description Ödeme günü dönemde olan açılış aktarımı (dosyadan gelen geçmiş ödeme); tahsilat değildir (DOM-FIN-014) */
+                                openingImportCents: number;
                                 /** @description İptal günü dönemde olan tahsilatlar */
                                 reversedCents: number;
                                 /** @description Ödeme günü dönemde olan iadeler */
@@ -30321,13 +30323,13 @@ export interface operations {
                                 discountCents: number;
                                 /** @description Dönem sonu bakiye: açık borç − alacak */
                                 closingCents: number;
-                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade */
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade */
                                 expectedClosingCents: number;
                                 /** @description Kapanış − beklenen kapanış */
                                 differenceCents: number;
                                 /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
                                 openDebtCents: number;
-                                /** @description Dağıtılmamış tahsilat, avans ve ödenmemiş iade */
+                                /** @description Dağıtılmamış tahsilat, vadesi gelmemiş avans ya da aktarım ve ödenmemiş iade */
                                 creditCents: number;
                             };
                             studentCount: number;
@@ -30342,6 +30344,8 @@ export interface operations {
                                 withdrawalAdjustmentCents: number;
                                 /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
                                 collectedCents: number;
+                                /** @description Ödeme günü dönemde olan açılış aktarımı (dosyadan gelen geçmiş ödeme); tahsilat değildir (DOM-FIN-014) */
+                                openingImportCents: number;
                                 /** @description İptal günü dönemde olan tahsilatlar */
                                 reversedCents: number;
                                 /** @description Ödeme günü dönemde olan iadeler */
@@ -30352,13 +30356,13 @@ export interface operations {
                                 discountCents: number;
                                 /** @description Dönem sonu bakiye: açık borç − alacak */
                                 closingCents: number;
-                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade */
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade */
                                 expectedClosingCents: number;
                                 /** @description Kapanış − beklenen kapanış */
                                 differenceCents: number;
                                 /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
                                 openDebtCents: number;
-                                /** @description Dağıtılmamış tahsilat, avans ve ödenmemiş iade */
+                                /** @description Dağıtılmamış tahsilat, vadesi gelmemiş avans ya da aktarım ve ödenmemiş iade */
                                 creditCents: number;
                                 studentId: string;
                                 studentName: string;

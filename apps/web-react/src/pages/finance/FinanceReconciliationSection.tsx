@@ -29,6 +29,7 @@ type Row = {
   accruedCents: number
   withdrawalAdjustmentCents: number
   collectedCents: number
+  openingImportCents: number
   reversedCents: number
   refundedCents: number
   scholarshipCents: number
@@ -55,6 +56,7 @@ const COLUMNS: readonly DataColumn<Row>[] = [
   amount('accruedCents', 'Tahakkuk'),
   amount('withdrawalAdjustmentCents', 'Ayrılış düzeltmesi'),
   amount('collectedCents', 'Tahsilat'),
+  amount('openingImportCents', 'Açılış aktarımı'),
   amount('reversedCents', 'İptal'),
   amount('refundedCents', 'İade'),
   amount('scholarshipCents', 'Burs'),
@@ -109,6 +111,7 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
         accruedCents: row.accruedCents,
         withdrawalAdjustmentCents: row.withdrawalAdjustmentCents,
         collectedCents: row.collectedCents,
+        openingImportCents: row.openingImportCents,
         reversedCents: row.reversedCents,
         refundedCents: row.refundedCents,
         scholarshipCents: row.scholarshipCents,
@@ -151,11 +154,13 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
             : ''}
         </p>
         <p className="mt-2 text-sm">
-          Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış
+          Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade =
+          kapanış
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Burs ve indirim taksitlerden zaten düşüldüğü için formüle girmez. Eksi bakiye kurumun
-          öğrenciye borcudur (avans, dağıtılmayan tahsilat ya da ödenmemiş iade).
+          öğrenciye borcudur (avans, dağıtılmayan tahsilat ya da ödenmemiş iade). Açılış aktarımı
+          dosyadan aktarılan geçmiş ödemedir; borcu kapatır, tahsilat değildir, kasayı değiştirmez.
         </p>
         <div className="mt-4 grid max-w-md grid-cols-2 gap-4 max-[420px]:grid-cols-1">
           <label className="grid gap-1 text-sm font-medium">
@@ -207,6 +212,11 @@ export function FinanceReconciliationSection({ academicYear }: { academicYear: n
                 value: money(totals.withdrawalAdjustmentCents),
               },
               { label: 'Tahsilat', value: money(totals.collectedCents) },
+              {
+                label: 'Açılış aktarımı',
+                value: money(totals.openingImportCents),
+                note: 'Tahsilat değildir',
+              },
               { label: 'Tahsilat iptali', value: money(totals.reversedCents) },
               { label: 'Ödenen iade', value: money(totals.refundedCents) },
               { label: 'Burs', value: money(totals.scholarshipCents), note: 'Formüle girmez' },

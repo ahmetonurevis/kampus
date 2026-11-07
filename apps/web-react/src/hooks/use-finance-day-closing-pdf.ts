@@ -21,6 +21,8 @@ export function useFinanceDayClosingPdf(closingDate: string, enabled: boolean) {
   const institutionId = useActiveInstitutionId()
   const { session } = useAuth()
   const institution = session?.institution.name ?? 'Kampüs'
+  // Tahsilat ve iptal tablolarının kişi sütunu kurum türüyle adlandırılır (DOM-KAY-012).
+  const institutionType = session?.institution.type
   return useQuery<DocumentPdf, DocumentPdfError>({
     queryKey: institutionKey(institutionId, 'document-pdf', 'finance-day-closing', closingDate),
     enabled: institutionId !== null && enabled,
@@ -41,7 +43,10 @@ export function useFinanceDayClosingPdf(closingDate: string, enabled: boolean) {
           import('@/lib/pdf/render.ts'),
         ])
         const { blob, pages } = await renderPdf((measurer) =>
-          financeDayClosingDocument(measurer, data, { institution }),
+          financeDayClosingDocument(measurer, data, {
+            institution,
+            ...(institutionType ? { institutionType } : {}),
+          }),
         )
         return { blob, pages, filename: dayClosingFilename(closingDate) }
       } catch (error) {

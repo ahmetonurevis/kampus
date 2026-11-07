@@ -9,6 +9,7 @@ import {
   RENEWAL_STATUS_OPTIONS,
   renewalListItem,
   renewalListQuery,
+  renewalListRefreshing,
 } from '../apps/mobile/src/api/renewal-mobile.ts'
 import { RENEWALS_SCREEN } from '../apps/mobile/src/api/renewal-screen.ts'
 import { SCREEN_REGISTRY, type ScreenEntry } from '../apps/mobile/src/api/screen-registry.ts'
@@ -97,5 +98,30 @@ describe('mobil kayıt yenileme (ON-122)', () => {
       status: 'Planlandı',
       label: 'Ece Yılmaz, 2027–2028, 12-A → Mezuniyet, Planlandı, ayrıntıyı aç',
     })
+  })
+
+  test('ON-321, IST-100: önceki sayfa yer tutucuyken ve tazelenirken liste soluk; ilk yüklemede değil', () => {
+    const state = (patch: Partial<Parameters<typeof renewalListRefreshing>[0]> = {}) => ({
+      isPlaceholderData: false,
+      isFetching: false,
+      isPending: false,
+      ...patch,
+    })
+    // Sayfa, arama ya da süzgeç değişti: eski satırlar yeni yanıt gelene kadar soluk kalır (ON-319).
+    assert.equal(renewalListRefreshing(state({ isPlaceholderData: true, isFetching: true })), true)
+    // Aynı sayfanın arka plan tazelemesi de web gibi soluk gösterilir.
+    assert.equal(renewalListRefreshing(state({ isFetching: true })), true)
+    // İlk yükleme satırsızdır, "yükleniyor" durumu ayrıca gösterilir.
+    assert.equal(renewalListRefreshing(state({ isPending: true, isFetching: true })), false)
+    assert.equal(renewalListRefreshing(state()), false)
+  })
+
+  test('ON-321: ekran tazelenen satırları soluk ve meşgul işaretler, tazelemeyi duyurur', () => {
+    const url = new URL('../apps/mobile/src/api/screens/renewal-list.tsx', import.meta.url)
+    const source = readFileSync(url, 'utf8')
+    assert.match(source, /renewalListRefreshing\(renewals\)/)
+    assert.match(source, /accessibilityState=\{\{ busy: refreshing \}\}/)
+    assert.match(source, /opacity: refreshing \? /)
+    assert.match(source, /accessibilityLiveRegion="polite"/)
   })
 })

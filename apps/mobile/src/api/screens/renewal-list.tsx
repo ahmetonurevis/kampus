@@ -9,6 +9,7 @@ import {
   RENEWAL_STATUS_OPTIONS,
   renewalListItem,
   renewalListQuery,
+  renewalListRefreshing,
 } from '../renewal-mobile.ts'
 import {
   API_PAGE_SIZE,
@@ -42,6 +43,7 @@ function RenewalList() {
   const search = useDebouncedValue(state.search)
   const query = useMemo(() => renewalListQuery(state, search), [state, search])
   const renewals = useRenewals(query)
+  const refreshing = renewalListRefreshing(renewals)
   const total = renewals.data?.meta.total
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
@@ -75,8 +77,18 @@ function RenewalList() {
         )
       ) : (
         <>
-          <T muted size={14}>{`${String(renewals.data.meta.total)} kayıt`}</T>
-          <View style={{ gap: 10 }} accessibilityRole="list">
+          <T muted size={14} accessibilityLiveRegion="polite">
+            {refreshing
+              ? 'Yenileme planları güncelleniyor…'
+              : `${String(renewals.data.meta.total)} kayıt`}
+          </T>
+          {/* Yeni sayfa gelene kadar önceki satırlar soluk kalır (ON-319, ON-321). */}
+          <View
+            style={{ gap: 10, opacity: refreshing ? 0.55 : 1 }}
+            accessibilityRole="list"
+            accessibilityState={{ busy: refreshing }}
+            aria-busy={refreshing}
+          >
             {renewals.data.data.map((item) => {
               const entry = renewalListItem(renewalRow(item))
               return (

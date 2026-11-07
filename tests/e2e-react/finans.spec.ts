@@ -6,6 +6,7 @@ import type { Download, Locator, Page, Request } from '@playwright/test'
 import { readWorkbook } from '../../apps/api/test/support/finance-workbook.ts'
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
+import { pdfText } from './support/finance-pdf-text.ts'
 import { seedScholarshipContract, seedStudentPayerContract } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
 import {
@@ -1876,6 +1877,31 @@ test.describe('Finans: gün sonu', () => {
     await expect(dayPanel(page)).toContainText('Açık')
     await expect(page.getByRole('heading', { name: 'Önceki kapanışlar' })).toBeVisible()
     await expect(page.getByText(/Gerekçe: Sayım yanlış girildi/)).toBeVisible()
+  })
+
+  test('IST-113, DOM-KAY-012: dil okulunda gün sonu PDF tablosu tahsilatı kursiyer adıyla yazar', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const academy = await tenant({ type: 'language_school', roles: [], students: ['s23'] })
+    await payThroughApi(await api(academy.user('yonetici')), 'inv-s23-5', 'Kredi kartı')
+
+    await loginAs(academy.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=gunsonu`)
+    await expect(page.getByRole('table', { name: 'Günün tahsilatları' })).toContainText(
+      'Kredi kartı',
+    )
+    await page.getByRole('button', { name: 'Gün sonu PDF' }).click()
+    const preview = page.getByRole('dialog', { name: 'Gün sonu raporu · Önizleme' })
+    const downloading = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    // ON-321: şablon kurum türünü alır; dil okulunda kişi sütunu "Kursiyer"dir, okul metni yoktur.
+    const text = await pdfText(await downloading)
+    expect(text).toContain('Tahsilatlar')
+    expect(text).toContain('Kursiyer')
+    expect(text).not.toContain('Öğrenci')
   })
 })
 

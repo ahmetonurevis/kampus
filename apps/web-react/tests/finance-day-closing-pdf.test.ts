@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import type { FinanceDayReport } from '@kampus/react-shared/use-finance-day-closings.ts'
 import { financeDaySummary } from '@kampus/school-core/lib/finance-day-closings.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import {
   cashDifferenceLabel,
   dayClosingFilename,
@@ -146,4 +147,18 @@ test('DOM-FIN-036: fark etiketi ve dosya adı', () => {
   assert.equal(cashDifferenceLabel(500), `${money(500)} fazla`)
   assert.equal(cashDifferenceLabel(-500), `${money(500)} eksik`)
   assert.equal(dayClosingFilename(DAY), 'gun-sonu-2026-10-06.pdf')
+})
+
+test('ADR 0008, DOM-KAY-012: dil okulunda gün sonu tablolarının sütunu "Kursiyer"; okulda "Öğrenci"', () => {
+  const day = report({ reversed: [line(2, { reversalReason: 'Yanlış kayıt' })] })
+  for (const options of [OPTIONS, { ...OPTIONS, institutionType: 'school' as const }]) {
+    const school = allTexts(financeDayClosingDocument(measurer, day, options))
+    assert.equal(school.filter((text) => text === 'Öğrenci').length, 2)
+    assert.equal(school.includes('Kursiyer'), false)
+  }
+  for (const institutionType of INSTITUTION_TYPES.filter((type) => type !== 'school')) {
+    const all = allTexts(financeDayClosingDocument(measurer, day, { ...OPTIONS, institutionType }))
+    assert.equal(all.filter((text) => text === 'Kursiyer').length, 2, institutionType)
+    assert.equal(all.includes('Öğrenci'), false, institutionType)
+  }
 })

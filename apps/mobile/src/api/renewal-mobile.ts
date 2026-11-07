@@ -58,3 +58,20 @@ export function renewalListItem(row: RenewalRow): RenewalListEntry {
     label: `${row.studentName}, ${row.period}, ${row.transition}, ${row.status}, ayrıntıyı aç`,
   }
 }
+
+/** Liste sorgusunun tazeleme kararına giren durumu (TanStack Query sonucu). */
+export type RenewalListFetchState = {
+  isPlaceholderData: boolean
+  isFetching: boolean
+  isPending: boolean
+}
+
+/**
+ * Liste tazeleniyor mu (ON-321): sayfa, arama ya da süzgeç değişince önceki sayfa yeni yanıt gelene
+ * kadar ekranda kalır (`isPlaceholderData`, ON-319); bu sürede ve aynı sayfanın arka plan
+ * tazelemesinde satırlar soluk ve meşgul gösterilir. Web `fetching={isFetching && !isPending}` ile
+ * aynı karar; ilk yükleme satırsızdır ve ayrı "yükleniyor" durumudur.
+ */
+export function renewalListRefreshing(query: RenewalListFetchState): boolean {
+  return query.isPlaceholderData || (query.isFetching && !query.isPending)
+}

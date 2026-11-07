@@ -2,7 +2,7 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
-import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Burs programı kancaları (`/finance/scholarship-programs`, `/finance/scholarship-awards`;
 // DOM-FIN-025). Atama kesin kayıtta yapılır (`scholarshipProgramId`).
@@ -28,18 +28,20 @@ export function useScholarshipPrograms(
   query: { academicYear?: number; page?: number; pageSize?: number } = {},
   options: { enabled?: boolean } = {},
 ) {
-  return useApiQuery({
-    key: ['scholarships', 'programs', query],
-    enabled: options.enabled ?? true,
-    request: (client, signal) =>
-      client.GET('/api/v1/finance/scholarship-programs', { params: { query }, signal }),
-  })
+  return useFinanceListQuery(
+    {
+      key: ['scholarships', 'programs', query],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/scholarship-programs', { params: { query }, signal }),
+    },
+    options,
+  )
 }
 
 export function useScholarshipAwards(
   query: { programId?: string; page?: number; pageSize?: number } = {},
 ) {
-  return useApiQuery({
+  return useFinanceListQuery({
     key: ['scholarships', 'awards', query],
     request: (client, signal) =>
       client.GET('/api/v1/finance/scholarship-awards', { params: { query }, signal }),

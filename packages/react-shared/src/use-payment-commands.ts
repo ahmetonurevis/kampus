@@ -4,6 +4,7 @@ import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Tahsilat kancaları (`/payments`, `/payment-settings`; ADR 0006, DOM-FIN-030…033). Komutlar
 // `exclusive`: yollu `issues` (referans, tarih, yöntem) yalnız form alanında görünür.
@@ -57,7 +58,7 @@ export function usePaymentList(query: {
   dateFrom?: string
   dateTo?: string
 }) {
-  return useApiQuery({
+  return useFinanceListQuery({
     key: [...PAYMENTS_KEY, 'list', query],
     request: (client, signal) => client.GET('/api/v1/payments', { params: { query }, signal }),
   })

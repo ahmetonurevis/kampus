@@ -252,7 +252,12 @@ export function RenewalYearSection({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={selectPage} disabled={!rows?.length}>
+          {/* Yeni sayfa gelene kadar önceki sayfa yer tutucudur; toplu seçim onu kapsamaz. */}
+          <Button
+            variant="secondary"
+            onClick={selectPage}
+            disabled={!rows?.length || candidates.isPlaceholderData}
+          >
             Sayfadakileri seç
           </Button>
           <Button

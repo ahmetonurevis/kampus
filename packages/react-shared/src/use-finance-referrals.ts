@@ -1,6 +1,6 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
-import { useApiQuery } from './use-api-query.ts'
+import { useFinanceListQuery, type FinanceListQueryOptions } from './use-finance-list-query.ts'
 
 // Referans indirimi hakkı kancası (`/finance/referral-rewards`; DOM-FIN-024). Yazma ucu yoktur: hak
 // kesin kayıtta açılır, tahsilatta doğar, kesin kayıt ya da yenilemede `referralRewardId` ile
@@ -19,14 +19,16 @@ export type ReferralRewardOwnerQuery = Pick<ReferralRewardsQuery, 'parentId' | '
 
 export function useReferralRewards(
   query: ReferralRewardsQuery = {},
-  options: { enabled?: boolean } = {},
+  options: FinanceListQueryOptions = {},
 ) {
-  return useApiQuery({
-    key: [...REFERRAL_REWARDS_KEY, query],
-    enabled: options.enabled ?? true,
-    request: (client, signal) =>
-      client.GET('/api/v1/finance/referral-rewards', { params: { query }, signal }),
-  })
+  return useFinanceListQuery(
+    {
+      key: [...REFERRAL_REWARDS_KEY, query],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/referral-rewards', { params: { query }, signal }),
+    },
+    options,
+  )
 }
 
 /**
@@ -36,7 +38,8 @@ export function useReferralRewards(
 export function useAvailableReferralRewards(owner: ReferralRewardOwnerQuery | null) {
   const rewards = useReferralRewards(
     { ...owner, status: 'available', pageSize: 100 },
-    { enabled: owner !== null },
+    // Hak önizlemede tutar kaynağıdır: başka ailenin hakkı yer tutucu olarak gösterilmez.
+    { enabled: owner !== null, keepPreviousPage: false },
   )
   return { items: owner === null ? [] : (rewards.data?.data ?? []) }
 }

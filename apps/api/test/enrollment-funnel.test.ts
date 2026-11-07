@@ -20,6 +20,7 @@ import {
   signInAs,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { lazySession } from './support/finance-sessions.ts'
 
 // Kayıt hunisi (`GET /api/v1/prospects/funnel`; DOM-KAY-040, IST-117): aday → görüşme → [deneme
 // dersi] → kesin kayıt, kaynak ve danışman kırılımı; yalnız yönetici ve ön büro, modül `crm`.
@@ -77,8 +78,8 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
     return {
       ...created,
       front,
-      cookie: await signInAs(app, created.admin),
-      frontCookie: await signInAs(app, front),
+      session: lazySession(app, created.admin),
+      frontSession: lazySession(app, front),
     }
   }
 
@@ -95,7 +96,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
       'dateFrom=2026-13-01',
       'dateTo=dün',
     ]) {
-      const response = await get(`${URL}?${query}`, a.cookie)
+      const response = await get(`${URL}?${query}`, await a.session())
       assert.equal(response.statusCode, 400, `${query}: ${response.body}`)
       assert.equal(response.json().code, 'validation_failed', query)
     }
@@ -111,7 +112,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
       assert.ok(!response.body.includes('prospects'), role)
     }
     const closed = await institution(() => [prospect('fn-1')], { enabledModules: { crm: false } })
-    for (const cookie of [closed.cookie, closed.frontCookie]) {
+    for (const cookie of [await closed.session(), await closed.frontSession()]) {
       const response = await get(URL, cookie)
       assert.equal(response.statusCode, 403, response.body)
       assert.equal(response.json().code, 'module_disabled')
@@ -132,7 +133,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
       // Örnek veri gibi açanı kayıtlı olmayan eski aday; tanınmayan eski kaynak.
       prospect('fn-5', { source: 'Gazete ilanı', stage: 'Teklif verildi' }),
     ])
-    for (const cookie of [a.cookie, a.frontCookie]) {
+    for (const cookie of [await a.session(), await a.frontSession()]) {
       const response = await get(URL, cookie)
       assert.equal(response.statusCode, 200, response.body)
       const data = response.json().data
@@ -195,7 +196,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
       ],
       { type: 'language_school' },
     )
-    const response = await get(URL, a.cookie)
+    const response = await get(URL, await a.session())
     assert.equal(response.statusCode, 200, response.body)
     const data = response.json().data
     assert.equal(data.institutionType, 'language_school')
@@ -218,18 +219,18 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
       // Açılış anı olmayan eski aday aralıkta sayılmaz, aralıksız sayılır.
       prospect('fn-5', { createdAt: undefined }),
     ])
-    const ranged = await get(`${URL}?dateFrom=2026-10-01&dateTo=2026-10-05`, a.cookie)
+    const ranged = await get(`${URL}?dateFrom=2026-10-01&dateTo=2026-10-05`, await a.session())
     assert.equal(ranged.statusCode, 200, ranged.body)
     assert.deepEqual(steps(ranged.json().data.total), [
       ['prospect', 2, null],
       ['meeting', 1, 50],
       ['enrolled', 1, 100],
     ])
-    const from = await get(`${URL}?dateFrom=2026-10-01`, a.cookie)
+    const from = await get(`${URL}?dateFrom=2026-10-01`, await a.session())
     assert.equal(from.json().data.total.prospects, 3)
-    const to = await get(`${URL}?dateTo=2026-09-30`, a.cookie)
+    const to = await get(`${URL}?dateTo=2026-09-30`, await a.session())
     assert.equal(to.json().data.total.prospects, 1)
-    const all = await get(URL, a.cookie)
+    const all = await get(URL, await a.session())
     assert.equal(all.json().data.total.prospects, 5)
   })
 
@@ -240,7 +241,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
     ])
     // A'nın adayını B'nin yöneticisi açmış görünüyor (taşınmış eski kayıt): ad A'da gösterilmez.
     const a = await institution(() => [prospect('fn-1', { createdBy: by(b.admin.id) })])
-    const response = await get(URL, a.cookie)
+    const response = await get(URL, await a.session())
     assert.equal(response.statusCode, 200, response.body)
     const data = response.json().data
     assert.equal(data.total.prospects, 1)
@@ -257,7 +258,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
       [[b.admin.id, null]],
     )
     // Sınama geçerli: B kendi iki adayını görür.
-    const own = await get(URL, b.cookie)
+    const own = await get(URL, await b.session())
     assert.equal(own.json().data.total.prospects, 2)
     assert.equal(own.json().data.byCounselor[0].counselorName, 'Test Yönetici')
   })
@@ -274,7 +275,7 @@ describe('kayıt hunisi (DOM-KAY-040, IST-117)', () => {
           eq(records.id, 'fn-2'),
         ),
       )
-    const response = await get(URL, a.cookie)
+    const response = await get(URL, await a.session())
     assert.equal(response.statusCode, 200, response.body)
     assert.deepEqual(steps(response.json().data.total), [
       ['prospect', 1, null],

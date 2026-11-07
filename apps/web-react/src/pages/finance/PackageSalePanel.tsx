@@ -38,7 +38,8 @@ const hoursText = (hours: number) => `${String(hours)} saat`
  * edilen ve kalan saat, son kullanma ve sözleşmenin kendi taksitleri. Süre dolunca kalan saat
  * silinmez; kursiyerin seçimine göre süre uzatılır ya da iade hesabına girer (H-19, doğrulanmalı).
  * Yoklama bağı gelene kadar kullanılan saati personel girer (K-21); girilmemişse uyarı görünür.
- * Tutar ve taksit yalnız yönetici ve ön büro yanıtında gelir (K-40); gelmezse satır çizilmez.
+ * Tutar ve taksit (K-40), sözleşme kimliği ve kayıt sürümü (K-41) yalnız yönetici ve ön büro
+ * yanıtında gelir; gelmezse satır, sözleşme bağlantısı ve sürüm isteyen işlem çizilmez.
  */
 export function PackageSalePanel({ saleId, onClose }: { saleId: string; onClose: () => void }) {
   return (
@@ -63,6 +64,7 @@ function SaleDetail({ saleId }: { saleId: string }) {
   const canExtend = sale.expiresDate !== null && sale.remainingHours > 0
   // İade yazılmış satışın hesabı ayrılışla kapanmıştır; sunucu da reddeder (DOM-FIN-041).
   const canEnterHours = sale.refundedHours === 0
+  const { version } = sale
   return (
     <>
       <div className="mb-5 grid gap-1">
@@ -135,40 +137,42 @@ function SaleDetail({ saleId }: { saleId: string }) {
         </>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        {canEnterHours ? (
+        {canEnterHours && version !== undefined ? (
           <Button onClick={() => setEnteringHours(true)}>Kullanılan saati gir</Button>
         ) : null}
-        {canExtend ? (
+        {canExtend && version !== undefined ? (
           <Button onClick={() => setExtending(true)}>
             <Icon name="Calendar" size={17} aria-hidden="true" />
             Süreyi uzat
           </Button>
         ) : null}
-        <Button asChild variant="secondary">
-          <Link
-            to={{
-              search: new URLSearchParams({
-                gorunum: 'sozlesmeler',
-                [CONTRACT_PANEL_PARAM]: sale.contractId,
-              }).toString(),
-            }}
-          >
-            Sözleşmeyi aç
-          </Link>
-        </Button>
+        {sale.contractId === undefined ? null : (
+          <Button asChild variant="secondary">
+            <Link
+              to={{
+                search: new URLSearchParams({
+                  gorunum: 'sozlesmeler',
+                  [CONTRACT_PANEL_PARAM]: sale.contractId,
+                }).toString(),
+              }}
+            >
+              Sözleşmeyi aç
+            </Link>
+          </Button>
+        )}
       </div>
-      {extending && sale.expiresDate ? (
+      {extending && sale.expiresDate && version !== undefined ? (
         <ExtendModal
           saleId={sale.id}
-          version={sale.version}
+          version={version}
           expiresDate={sale.expiresDate}
           onClose={() => setExtending(false)}
         />
       ) : null}
-      {enteringHours ? (
+      {enteringHours && version !== undefined ? (
         <UsedHoursModal
           saleId={sale.id}
-          version={sale.version}
+          version={version}
           purchasedHours={sale.purchasedHours}
           consumedHours={sale.consumedHours}
           onClose={() => setEnteringHours(false)}

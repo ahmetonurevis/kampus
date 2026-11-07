@@ -206,7 +206,15 @@ export function itemFor(
   )
 }
 
-type SiblingState = Pick<State, 'students' | 'contracts'>
+/**
+ * Kardeş kuralının okuduğu kayıtlar. `frozenAt` dondurma işlemiyle (DOM-KAY-024, ON-067) gelir;
+ * öğrenci dondurulunca `isActive` true kalır.
+ */
+type SiblingState = Pick<State, 'contracts'> & {
+  students: readonly (Pick<State['students'][number], 'id' | 'isActive'> & {
+    frozenAt?: string | null
+  })[]
+}
 
 /** Öğrencinin yürürlükteki sözleşmeleri, eğitim yılı ve tarihe göre eskiden yeniye. */
 function contractsInForce(state: SiblingState, studentId: string) {
@@ -221,45 +229,62 @@ function contractsInForce(state: SiblingState, studentId: string) {
 }
 
 /**
- * Kardeş indirimi ikinci ve sonraki çocuğa uygulanır (DOM-FIN-022). Tarife sıra tanımlamadığı için
- * varsayılan geçerlidir, ikinci çocuk ücreti düşük olandır: aynı veliye bağlı aktif çocuklardan
- * öğrenim ücreti (son yürürlükteki sözleşmenin ilan ücreti; eski sözleşmede tutar) en yüksek olan
- * ilk çocuktur ve indirim almaz. Eşit ücrette önce kaydolan öndedir; kesin kayıttaki aday her zaman
- * sonradır. Sözleşmesi olmayan kardeşin ücreti bilinmediği için aday lehine öne sayılır.
+ * Kardeş indirimi, aynı eğitim yılında aktif kaydı olan kardeşi bulunan ikinci ve sonraki çocuğa
+ * uygulanır (DOM-FIN-022, K-22).
+ *
+ * Aktif kayıt: öğrenci ayrılmamış, mezun olmamış ve dondurulmamıştır; o yıla ait yürürlükte
+ * sözleşmesi vardır. Yenilemede kardeşin planı o yılın sözleşmesini yazdığı için plan da kayıt
+ * sayılır. Yılı yazılmamış eski sözleşme cari yıla aittir (`renewalCeiling` ile aynı). Sözleşmesi hiç
+ * olmayan etkin kardeş (dosyadan aktarılan öğrenci) yalnız cari yılda kayıtlı sayılır.
+ *
+ * Tarife sıra tanımlamadığı için varsayılan geçerlidir, ikinci çocuk ücreti düşük olandır: kayıtlı
+ * çocuklardan o yılın öğrenim ücreti (son yürürlükteki sözleşmenin ilan ücreti; eski sözleşmede
+ * tutar) en yüksek olan ilk çocuktur ve indirim almaz. Eşit ücrette önce kaydolan öndedir; kesin
+ * kayıttaki aday her zaman sonradır. Sözleşmesiz kardeşin ücreti bilinmediği için aday lehine öne
+ * sayılır.
  */
 export function requireSiblingDiscountEligible(
   state: SiblingState,
   child: {
     /** Kesin kayıtta henüz öğrenci yoktur: `null`. */
     studentId: string | null
-    /** Aynı veliye bağlı aktif öteki çocuklar. */
+    /** Aynı veliye bağlı öteki çocuklar; aktif kayıt burada süzülür. */
     siblingIds: readonly string[]
-    /** Bu çocuğun bu işlemdeki ilan öğrenim ücreti (kuruş). */
+    /** Bu çocuğun bu işlemdeki öğrenim ücreti (kuruş); kardeşin sözleşme ücretiyle karşılaştırılır. */
     tuitionCents: number
+    /** İndirimin ait olduğu eğitim yılı. */
+    academicYear: number
+    /** Kurumun cari eğitim yılı. */
+    currentAcademicYear: number
   },
 ): void {
-  const siblings = state.students.filter(
-    (student) =>
-      student.isActive && student.id !== child.studentId && child.siblingIds.includes(student.id),
-  )
-  if (siblings.length === 0)
+  const { academicYear, currentAcademicYear } = child
+  const enrolled = state.students.flatMap((student) => {
+    if (student.id === child.studentId || !child.siblingIds.includes(student.id)) return []
+    if (!student.isActive || student.frozenAt) return []
+    const contracts = contractsInForce(state, student.id)
+    const ofYear = contracts.filter(
+      (item) => (item.academicYear ?? currentAcademicYear) === academicYear,
+    )
+    if (ofYear.length === 0 && (contracts.length > 0 || academicYear !== currentAcademicYear))
+      return []
+    return [{ id: student.id, first: contracts[0], latest: ofYear.at(-1) }]
+  })
+  if (enrolled.length === 0)
     throw new DomainError(
       'sibling_discount_ineligible',
-      'Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.',
+      'Kardeş indirimi için aynı veliye bağlı ve aynı eğitim yılında aktif kaydı olan bir kardeş gerekir.',
       { path: ['discounts'] },
     )
   const ownFirst = child.studentId === null ? null : contractsInForce(state, child.studentId)[0]
-  const ahead = siblings.some((sibling) => {
-    const contracts = contractsInForce(state, sibling.id)
-    const latest = contracts.at(-1)
+  const ahead = enrolled.some(({ id, first, latest }) => {
     if (latest === undefined) return true
     const tuitionCents = latest.grossCents ?? latest.amount
     if (tuitionCents !== child.tuitionCents) return tuitionCents > child.tuitionCents
-    const first = contracts[0]
     if (ownFirst === null || ownFirst === undefined || first === undefined) return true
     return (
       Date.parse(first.date) < Date.parse(ownFirst.date) ||
-      (first.date === ownFirst.date && sibling.id < (child.studentId ?? ''))
+      (first.date === ownFirst.date && id < (child.studentId ?? ''))
     )
   })
   if (!ahead)
@@ -707,6 +732,8 @@ export function enrollProspectWithTariff(
       studentId: null,
       siblingIds: existing?.studentIds ?? [],
       tuitionCents: price.grossCents,
+      academicYear: context.academicYear,
+      currentAcademicYear: context.academicYear,
     })
   // Burs indirim değildir, tavana girmez; indirimlerden sonra kalan neti aşamaz (DOM-FIN-021, -025).
   const program =

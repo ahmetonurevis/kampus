@@ -14,6 +14,7 @@ import type { CollectionName } from '../db/collections.ts'
 import { findFeeTariff } from '../db/fee-tariffs.ts'
 import { allocatedByInvoice } from '../db/payments.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
+import { loadStudentFamilies } from '../db/finance-renewal-candidates.ts'
 import { loadStudentGuardians } from '../db/student-guardians.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -59,10 +60,19 @@ const ofStudent = (studentId: string): LoadScope => ({
   match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
 })
 
-/** Yüklenen koleksiyonlardan sözleşme ve taksitleri öğrenciye daraltır (`contract.sign` taksit okumaz). */
-function loadScopeFor(action: ContractAction, studentId: string) {
-  const scope = ofStudent(studentId)
-  return action === 'contract.sign' ? { contracts: scope } : { contracts: scope, invoices: scope }
+/**
+ * Yüklenen koleksiyonlardan sözleşme ve taksitleri öğrenciye daraltır (`contract.sign` taksit okumaz).
+ * `contractStudents` verilirse sözleşmeler bu öğrencilerden okunur (kardeş sırası, DOM-FIN-022).
+ */
+function loadScopeFor(
+  action: ContractAction,
+  studentId: string,
+  contractStudents: readonly string[] = [studentId],
+) {
+  const contracts: LoadScope = {
+    match: [{ kind: 'equals', field: 'studentId', values: contractStudents }],
+  }
+  return action === 'contract.sign' ? { contracts } : { contracts, invoices: ofStudent(studentId) }
 }
 
 interface ContractCommand {
@@ -71,6 +81,8 @@ interface ContractCommand {
   auditAction?: string
   contractId: string
   studentId: string
+  /** Sözleşmesi yüklenecek öğrenciler; verilmezse yalnız `studentId`. */
+  contractStudents?: readonly string[]
   statusCode: number
   options: CommandOptions
   /** Kurum kilidi altında okunan girdilerle işlemi kurar. */
@@ -116,7 +128,7 @@ function execute(ctx: ServiceContext, command: ContractCommand): Promise<Command
       action: command.auditAction ?? command.action,
       collections: spec.collections,
       stores: FINANCE_TABLE_STORES,
-      loadScope: loadScopeFor(command.action, studentId),
+      loadScope: loadScopeFor(command.action, studentId, command.contractStudents),
       ...(options.expectedVersion === null
         ? {}
         : {
@@ -234,6 +246,8 @@ export async function amendContractCommand(
     action: 'contract.amend',
     contractId,
     studentId,
+    // İndirim yeniden hesaplanırsa kardeşin kaydı ve ücreti gerekir (DOM-FIN-022, K-22).
+    contractStudents: await loadStudentFamilies(ctx.db, ctx.institutionId, [studentId]),
     statusCode: 201,
     options,
     prepare: async (tx, actor, institutionType) => {

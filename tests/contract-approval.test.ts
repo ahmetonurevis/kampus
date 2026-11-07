@@ -657,6 +657,37 @@ test('DOM-FIN-022: kardeş indirimi aynı veliye bağlı aktif öğrenci ister',
   assert.equal(amendment.netCents, 9_000_000)
 })
 
+test('DOM-FIN-022, K-22: ek protokolde kardeş sözleşmenin yılında kayıtlı olmalıdır', () => {
+  const { state, student, contract } = approved()
+  const others = state.students.filter((item) => item.id !== student.id)
+  for (const other of others) other.parentId = 'baska-veli'
+  const sibling = others[0]!
+  sibling.parentId = student.parentId
+  sibling.isActive = true
+  state.contracts = [
+    contract,
+    {
+      id: 'test-sibling-contract',
+      studentId: sibling.id,
+      date: NOW,
+      amount: 90_000_000,
+      title: 'Sözleşme',
+      academicYear: 2025,
+      grossCents: 90_000_000,
+    },
+  ]
+  const amend = () =>
+    amendContract(
+      state,
+      'contract-1',
+      { ...AMEND, discounts: ['sibling'] },
+      amender({ tariff: TARIFF }),
+    )
+  assert.throws(amend, isDomainError('sibling_discount_ineligible', 'rule'))
+  state.contracts[1]!.academicYear = 2026
+  assert.equal(amend().netCents, 9_000_000)
+})
+
 test('DOM-FIN-025, DOM-FIN-010: ek protokol bursu korur; net tahsil edilenin altına inemez', () => {
   const { state, contract } = approved()
   contract.scholarship = { programId: 'program-1', amountCents: 9_800_000 }

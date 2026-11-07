@@ -27,6 +27,7 @@ import { loggableError } from '../plugins/error-handler.ts'
 import { environment } from './commands.ts'
 import {
   planRenewalCommand,
+  renewalContractStudents,
   renewalLoadScope,
   sharedRenewalContext,
   tuitionDebts,
@@ -136,14 +137,15 @@ export async function listRenewalCandidatesFor(
  * Toplu önizleme: hiçbir şey yazmaz, tek görüntüden okur (`runReadOnly`). Öğrenci başına değişen
  * girdiler (borç, burs ataması) tek sorguyla yüklenir; satır kararı core `previewRenewalBulk`.
  */
-export function previewRenewalBulkFor(ctx: ServiceContext, input: unknown) {
+export async function previewRenewalBulkFor(ctx: ServiceContext, input: unknown) {
   const data = renewalBulkPreviewSchema.parse(input)
   const studentIds = data.rows.map((row) => row.studentId)
+  const contractStudents = await renewalContractStudents(ctx, studentIds, data.discounts)
   return runReadOnly(ctx, {
     action: 'renewal.bulk_preview',
     collections: SPEC.collections,
     stores: FINANCE_TABLE_STORES,
-    loadScope: renewalLoadScope(studentIds),
+    loadScope: renewalLoadScope(contractStudents),
     load: async (tx) => {
       const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
       const [shared, debts, scholarshipStudents] = await Promise.all([

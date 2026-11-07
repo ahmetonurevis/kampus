@@ -73,7 +73,12 @@ export const ONUR_OPERATION_COMMANDS = {
   // ek protokolün planını taksitlere geçirir; ek protokol planlanmış yenilemeyi denetler.
   'contract.sign': spec('finance', [...SCOPE, 'contracts']),
   'contract.approve': spec('finance', [...SESSION, 'contracts', 'invoices']),
-  'contract.amend': spec('finance', [...SCOPE, 'contracts', 'invoices', 'renewals']),
+  // Kardeş kuralı eski sözleşmeyi cari yıla sayar (DOM-FIN-022).
+  'contract.amend': spec(
+    'finance',
+    [...SCOPE, 'contracts', 'invoices', 'renewals'],
+    ['modules', 'academicYear'],
+  ),
   'student.withdraw': spec('finance', [
     ...SCOPE,
     'parents',

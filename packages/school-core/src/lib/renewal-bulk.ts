@@ -294,12 +294,11 @@ const problemOf = (error: DomainError): RenewalBulkProblem =>
     : renewalBulkProblem(error.code, error.message)
 
 /**
- * Toplu önizleme: yazmaz. Her satır tek öğrenci önizlemesini ve planını kopya State üzerinde sırayla
+ * Toplu önizleme: yazmaz. Her satır tek öğrenci önizlemesini ve planını aynı State üzerinde sırayla
  * çalıştırır: öndeki satır sınıf ve burs kontenjanını doldurur, sonraki satır bunu görür; onaydaki
  * sonuç bu sırayla aynıdır. Borçlu öğrenci ücretiyle gösterilir, atlanır, yer tutmaz (DOM-KAY-025).
- * Çağıran State'i kaydetmez (`runReadOnly`). Her satır yalnız kendi sözleşmesini görür: tek öğrenci
- * planı da onu yükler (`renewalLoadScope`); öteki satırın sözleşmesi görünseydi kardeş indirimi kararı
- * önizleme ile onayda ayrılırdı (DOM-FIN-022).
+ * Çağıran State'i kaydetmez (`runReadOnly`). Öndeki satırın sözleşmesi de sonraki satıra görünür:
+ * onayda satırlar sırayla işlenir, kardeşin o yılki kaydı aynı sırayla oluşur (DOM-FIN-022, K-22).
  */
 export function previewRenewalBulk(
   state: State,
@@ -321,13 +320,9 @@ export function previewRenewalBulk(
       scholarshipAwardedCount: awardedCount,
       scholarshipStudentAwarded: scholarshipStudents?.has(row.studentId) ?? false,
     }
-    const rowState: State = {
-      ...state,
-      contracts: state.contracts.filter((item) => item.studentId === row.studentId),
-    }
     let price: RenewalPrice | null = null
     try {
-      price = quoteRenewal(rowState, session, renewalBulkRowQuote(data, row), rowContext)
+      price = quoteRenewal(state, session, renewalBulkRowQuote(data, row), rowContext)
       if (debtCents > 0)
         return {
           ...row,
@@ -336,7 +331,7 @@ export function previewRenewalBulk(
           problem: renewalBulkProblem(DEBT_CODE, DEBT_SKIP_MESSAGE),
         }
       const planned = planRenewal(
-        rowState,
+        state,
         session,
         renewalBulkRowPlan(data, row, price.tariffId),
         makeId,

@@ -230,14 +230,17 @@ function priceRenewal(
       path: ['tuitionCents'],
     })
   assertWithinCeiling(tuitionCents, ceiling, ['tuitionCents'])
-  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır (DOM-FIN-022).
+  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır: kardeş yenileme yılında kayıtlı
+  // olmalıdır. Ücret, sözleşmeye yazılan (tavanla düşmüş olabilen) ücrettir (DOM-FIN-022, K-22).
   if (data.discounts.includes('sibling'))
     requireSiblingDiscountEligible(state, {
       studentId: student.id,
       siblingIds: state.students
         .filter((item) => Boolean(student.parentId) && item.parentId === student.parentId)
         .map((item) => item.id),
-      tuitionCents: announcedCents,
+      tuitionCents,
+      academicYear: data.academicYear,
+      currentAcademicYear: state.academicYear,
     })
   // İndirim ilan ücretinden hesaplanır (DOM-FIN-020); tavanla düşen ücreti karşılayamaz.
   const discountCents = price.discounts.reduce((sum, line) => sum + line.amountCents, 0)

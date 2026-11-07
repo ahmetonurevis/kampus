@@ -267,7 +267,7 @@ export function enrollProspectCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['prospect.enroll']
-  const { identity, scholarshipProgramId, guardian, referralRewardId } =
+  const { identity, scholarshipProgramId, guardian, referralRewardId, discounts } =
     enrollProspectSchema.parse(input)
   // Seçilen mevcut velinin bağları: kısıtlı ya da velayetsiz veli kesin kayıtta bağlanamaz
   // (core `parent_not_guardian`; DOM-ILT-070, -074).
@@ -282,7 +282,11 @@ export function enrollProspectCommand(
       action: 'prospect.enroll',
       collections: spec.collections,
       stores: FINANCE_TABLE_STORES,
-      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
+      // Yeni sözleşme sona eklenir; yalnız kardeş sırası öteki sözleşmeleri okur (DOM-FIN-022, K-22).
+      loadScope: {
+        invoices: APPEND_ONLY,
+        ...(discounts.includes('sibling') ? {} : { contracts: APPEND_ONLY }),
+      },
       ...(options.expectedVersion !== null
         ? {
             expectedVersions: [

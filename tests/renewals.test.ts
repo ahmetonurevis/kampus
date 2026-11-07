@@ -397,7 +397,7 @@ test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulan
     date: NOW,
     amount: 1_000_000,
     title: 'Özel okul eğitim sözleşmesi',
-    academicYear: 2026,
+    academicYear: YEAR,
     grossCents: 1_000_000,
   })
   const withSibling = () =>
@@ -407,6 +407,107 @@ test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulan
   state.contracts.at(-1)!.grossCents = 90_000_000
   assert.deepEqual(
     withSibling().discounts.map((line) => line.kind),
+    ['sibling'],
+  )
+})
+
+/** s3 ve aynı veliye bağlı kardeşi; kardeşin sözleşmesini test verir. */
+function withSiblingOf(contract: Partial<State['contracts'][number]> | null, fields: object = {}) {
+  const state = seeded({ grossCents: 9_000_000 })
+  const student = state.students.find((s) => s.id === 's3')
+  assert.ok(student)
+  state.students.push({
+    ...student,
+    id: 'test-sibling',
+    name: 'Test Kardeş',
+    isActive: true,
+    ...fields,
+  })
+  if (contract !== null)
+    state.contracts.push({
+      id: 'test-sibling-contract',
+      studentId: 'test-sibling',
+      date: NOW,
+      amount: 90_000_000,
+      title: 'Özel okul eğitim sözleşmesi',
+      academicYear: YEAR,
+      grossCents: 90_000_000,
+      ...contract,
+    })
+  return state
+}
+
+const quoteWithSibling = (state: State) =>
+  quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['sibling'] }, CONTEXT)
+
+test('DOM-FIN-022, K-22: kardeşi olmayan tek çocuk yenilemede indirim alamaz', () => {
+  const state = seeded()
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: kardeşin yalnız önceki yıl sözleşmesi varsa bu yıl kaydı yoktur, indirim uygulanmaz', () => {
+  const state = withSiblingOf({ academicYear: YEAR - 1 })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: sözleşmesi hiç olmayan kardeş yenileme yılında kayıtlı sayılmaz', () => {
+  const state = withSiblingOf(null)
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: ayrılan kardeşin bu yıl sözleşmesi olsa da indirim uygulanmaz', () => {
+  const state = withSiblingOf({}, { isActive: false })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: dondurulan kardeş aktif kayıt sayılmaz', () => {
+  const state = withSiblingOf({}, { frozenAt: '2027-01-15T09:00:00.000Z' })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: kardeşin bu yılki sözleşmesi iptal edildiyse kayıt sayılmaz', () => {
+  const state = withSiblingOf({ cancelledAt: NOW })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: bu yıl aktif kaydı olan kardeş ücreti yüksekse indirim düşük ücretli çocuğa uygulanır', () => {
+  const discounted = quoteWithSibling(withSiblingOf({}))
+  assert.deepEqual(
+    discounted.discounts.map((line) => line.kind),
+    ['sibling'],
+  )
+  // Sıra korunur: bu yıl kayıtlı kardeşin ücreti düşükse çocuk ilk çocuktur.
+  const first = withSiblingOf({ grossCents: 1_000_000 })
+  unchangedOnFailure(first, () => quoteWithSibling(first), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: sıra aynı yılın ücretiyle kurulur; kardeşin başka yıl ücreti sayılmaz', () => {
+  const state = withSiblingOf({ grossCents: 1_000_000 })
+  for (const academicYear of [YEAR - 1, YEAR + 1])
+    state.contracts.push({
+      id: `test-sibling-${String(academicYear)}`,
+      studentId: 'test-sibling',
+      date: NOW,
+      amount: 90_000_000,
+      title: 'Özel okul eğitim sözleşmesi',
+      academicYear,
+      grossCents: 90_000_000,
+    })
+  unchangedOnFailure(state, () => quoteWithSibling(state), 'sibling_discount_ineligible')
+})
+
+test('DOM-FIN-022, K-22: tavanla düşen ücret kardeşin sözleşmesindeki ücretle karşılaştırılır', () => {
+  // s3'ün ilan ücreti 10.000.000, sözleşmesine yazılacak ücreti 7.000.000; kardeşin bu yılki ücreti
+  // 8.000.000. İlanla kıyaslansaydı s3 ilk çocuk sayılırdı.
+  const state = withSiblingOf({ grossCents: 8_000_000 })
+  const price = quoteRenewal(
+    state,
+    ADMIN,
+    { ...QUOTE, tuitionCents: 7_000_000, discounts: ['sibling'] },
+    CONTEXT,
+  )
+  assert.deepEqual(
+    price.discounts.map((line) => line.kind),
     ['sibling'],
   )
 })

@@ -373,6 +373,8 @@ function pricePackage(
         .filter((item) => Boolean(student.parentId) && item.parentId === student.parentId)
         .map((item) => item.id),
       tuitionCents: announcedCents,
+      academicYear: context.academicYear,
+      currentAcademicYear: context.academicYear,
     })
   return {
     student,

@@ -269,7 +269,8 @@ function repricedTerms(
       { path: ['discounts'] },
     )
   const student = state.students.find((item) => item.id === source.studentId)
-  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır (DOM-FIN-022).
+  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır: kardeş sözleşmenin yılında
+  // kayıtlı olmalıdır (DOM-FIN-022, K-22).
   if (discounts.includes('sibling'))
     requireSiblingDiscountEligible(state, {
       studentId: source.studentId,
@@ -277,6 +278,8 @@ function repricedTerms(
         .filter((item) => Boolean(student?.parentId) && item.parentId === student?.parentId)
         .map((item) => item.id),
       tuitionCents: source.grossCents,
+      academicYear: source.academicYear ?? state.academicYear,
+      currentAcademicYear: state.academicYear,
     })
   assertEarlyPaymentOnUpfront(paymentTerm, discounts)
   // Sözleşmedeki referans kalemi hakkın uygulanmış tutarıyla kalır, tarifeden yeniden hesaplanmaz

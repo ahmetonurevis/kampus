@@ -511,6 +511,51 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
     assert.equal(data.amount, 9_000_000)
   })
 
+  test('DOM-FIN-022, K-22: ek protokolde kardeş sözleşmenin yılında kayıtlı olmalıdır', async () => {
+    const t = await tenant()
+    await db
+      .update(feeTariffs)
+      .set({ discounts: [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }] })
+      .where(and(eq(feeTariffs.institutionId, t.id), eq(feeTariffs.id, TEST_TARIFF_ID)))
+    const siblingContract = (id: string, academicYear: number) => ({
+      collection: 'contracts' as const,
+      id,
+      data: {
+        id,
+        studentId: 'test-kardes',
+        date: '2026-09-01T09:00:00.000Z',
+        amount: 20_000_000,
+        title: 'Özel okul eğitim sözleşmesi',
+        academicYear,
+      },
+    })
+    await insertMissingRecords(
+      db,
+      t.id,
+      [
+        {
+          collection: 'students',
+          id: 'test-kardes',
+          data: { ...STUDENT, id: 'test-kardes', name: 'Test Kardeş', isActive: true },
+        },
+        siblingContract('test-contract-gecen-yil', 2025),
+      ],
+      FIXED_NOW,
+    )
+    const previous = await approve(t)
+    const body = { ...AMEND, discounts: ['sibling'] }
+    assertError(
+      await post(url(CONTRACT_ID, 'amendments'), t.admin, body, previous.version),
+      422,
+      'sibling_discount_ineligible',
+    )
+    await insertMissingRecords(db, t.id, [siblingContract('test-contract-bu-yil', 2026)], FIXED_NOW)
+    const created = await post(url(CONTRACT_ID, 'amendments'), t.admin, body, previous.version)
+    assert.equal(created.statusCode, 201, created.body)
+    const { data } = await contractOf(t.id, created.json().data.entity.id)
+    assert.deepEqual(data.discounts, [{ kind: 'sibling', amountCents: 1_000_000 }])
+  })
+
   test('DOM-FIN-013: ek protokol tarifenin ödeme koşulunun dışına çıkamaz; indirim değişmese de koşul denetlenir', async () => {
     const t = await tenant()
     const paymentTerm = {

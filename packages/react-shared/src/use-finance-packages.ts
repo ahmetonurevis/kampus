@@ -6,8 +6,8 @@ import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 
 // Dil okulu paket ve satış kancaları (`/finance/packages`, `/finance/package-sales`; IST-078,
-// DOM-DIL-050, -051). Tanım yönetici; satış ve süre uzatma yönetici ile ön büro; okuma veli ve
-// öğrencide kendi kapsamıyla. Komutlar `exclusive`: alan hatası formda, yolsuz hata tek toast.
+// DOM-DIL-050, -051). Tanım yönetici; satış, süre uzatma ve kullanılan saat yönetici ile ön büro;
+// okuma veli ve öğrencide kendi kapsamıyla. Komutlar `exclusive`: alan hatası formda, yolsuz hata tek toast.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -21,6 +21,7 @@ export type UpdateLessonPackageBody = JsonBody<'updateLessonPackage'>
 export type QuotePackageSaleBody = JsonBody<'quotePackageSale'>
 export type SellPackageBody = JsonBody<'sellPackage'>
 export type ExtendPackageSaleBody = JsonBody<'extendPackageSale'>
+export type SetPackageUsedHoursBody = JsonBody<'setPackageSaleUsedHours'>
 
 export const PACKAGE_CHANGED_MESSAGE =
   'Kayıt başka biri tarafından değiştirildi. Liste güncellendi.'
@@ -154,6 +155,25 @@ export function useExtendPackageSale() {
       headers: CommandHeaders,
     ) =>
       client.POST('/api/v1/finance/package-sales/{saleId}/extend', {
+        params: { path: { saleId: input.saleId }, header: versioned(headers) },
+        body: input.body,
+      }),
+    invalidates: [PACKAGES_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+/** Kullanılan saat elle girilir (K-21); ayrılış hesabı bu saate dayanır. */
+export function useSetPackageUsedHours() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { saleId: string; version: number; body: SetPackageUsedHoursBody },
+      headers: CommandHeaders,
+    ) =>
+      client.POST('/api/v1/finance/package-sales/{saleId}/set-used-hours', {
         params: { path: { saleId: input.saleId }, header: versioned(headers) },
         body: input.body,
       }),

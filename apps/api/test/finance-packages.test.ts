@@ -71,6 +71,8 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
   let close: () => Promise<void>
   let app: App
   let now = FIXED_NOW
+  let tenantCount = 0
+  let clientIp = '10.0.0.1'
   checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
@@ -94,6 +96,7 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     app.inject({
       method,
       url,
+      remoteAddress: clientIp,
       headers: {
         origin: TEST_ORIGIN,
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
@@ -108,6 +111,7 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     app.inject({
       method: 'GET',
       url,
+      remoteAddress: clientIp,
       headers: { origin: TEST_ORIGIN, ...(cookie === null ? {} : { cookie }) },
     })
   const key = () => ({ 'idempotency-key': randomUUID() })
@@ -122,6 +126,8 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
   }
 
   async function institution(overrides: Partial<InstitutionOverrides> = {}) {
+    // Genel hız sınırı (dakikada 300, IP başına) dosyanın bütününe değil her kuruma düşsün.
+    clientIp = `10.0.${String((tenantCount += 1))}.1`
     const created = await createInstitution(app, { type: 'language_school', ...overrides })
     await insertMissingRecords(
       db,
@@ -270,6 +276,7 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     assertError(await get(SALES, null), 401)
     assertError(await get(`${SALES}/${id}`, null), 401)
     assertError(await post(`${SALES}/${id}/extend`, null, {}, version(1)), 401)
+    assertError(await post(`${SALES}/${id}/set-used-hours`, null, {}, version(1)), 401)
   })
 
   test('DOM-FIN-052: tanım yönetici, satış ön büro da; öğretmen hiçbirine, veli ve öğrenci yazmaya erişemez; satır değişmez', async () => {
@@ -299,6 +306,16 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
         403,
         'forbidden',
       )
+      assertError(
+        await post(
+          `${sale}/set-used-hours`,
+          cookie,
+          { usedHours: 2, reason: 'Devam çizelgesi' },
+          version(1),
+        ),
+        403,
+        'forbidden',
+      )
     }
     assertError(await get(SALES, teacher), 403, 'forbidden')
     assertError(await get(sale, teacher), 403, 'forbidden')
@@ -318,6 +335,11 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     assertError(await post(PACKAGES, closed.admin, HOURS_BODY), 403, 'module_disabled')
     assertError(await post(SALES, closed.admin, {}, key()), 403, 'module_disabled')
     assertError(await get(SALES, closed.admin), 403, 'module_disabled')
+    assertError(
+      await post(`${SALES}/${randomUUID()}/set-used-hours`, closed.admin, {}, version(1)),
+      403,
+      'module_disabled',
+    )
     for (const type of INSTITUTION_TYPES.filter((item) => item !== 'language_school')) {
       const other = await institution({ type })
       const teacher = await member(other.id, 'ogretmen')
@@ -327,6 +349,10 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
         assertError(await post(`${SALES}/quote`, cookie, {}), 404)
         assertError(await post(SALES, cookie, {}, key()), 404)
         assertError(await get(SALES, cookie), 404)
+        assertError(
+          await post(`${SALES}/${randomUUID()}/set-used-hours`, cookie, {}, version(1)),
+          404,
+        )
       }
       assert.equal((await packageRows(other.id)).length, 0)
     }
@@ -821,6 +847,197 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
     })
   })
 
+  describe('K-21, DOM-DIL-051: kullanılan saat elle girilir', () => {
+    const USED = { usedHours: 12, reason: 'Devam çizelgesine göre' }
+    const usedUrl = (saleId: string) => `${SALES}/${saleId}/set-used-hours`
+    const hours = (institutionId: string) =>
+      db
+        .select({
+          kind: lessonPackageHourEntries.kind,
+          hours: lessonPackageHourEntries.hours,
+          sourceType: lessonPackageHourEntries.sourceType,
+          sourceId: lessonPackageHourEntries.sourceId,
+          archivedAt: lessonPackageHourEntries.archivedAt,
+          recordedByUserId: lessonPackageHourEntries.recordedByUserId,
+        })
+        .from(lessonPackageHourEntries)
+        .where(eq(lessonPackageHourEntries.institutionId, institutionId))
+        .orderBy(lessonPackageHourEntries.hours)
+    const audits = (institutionId: string) =>
+      db
+        .select({
+          action: auditLog.action,
+          entityId: auditLog.entityId,
+          reason: auditLog.reason,
+          changes: auditLog.changes,
+          actorRole: auditLog.actorRole,
+        })
+        .from(auditLog)
+        .where(
+          and(eq(auditLog.institutionId, institutionId), eq(auditLog.action, 'package.used_hours')),
+        )
+
+    test('yönetici ve ön büro girer; bakiye düşer, sürüm artar, denetime gerekçeyle yazılır', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      const desk = await member(a.id, 'onburo')
+      assert.equal((await get(`${SALES}/${sale.id}`, a.admin)).json().data.usedHoursRecorded, false)
+      const entered = await post(usedUrl(sale.id), desk, USED, version(1))
+      assert.equal(entered.statusCode, 200, entered.body)
+      const { data } = entered.json()
+      assert.equal(data.consumedHours, 12)
+      assert.equal(data.remainingHours, 28)
+      assert.equal(data.usedHoursRecorded, true)
+      assert.equal(data.version, 2)
+      assert.equal(JSON.stringify(entered.json()).includes(USED.reason), false)
+      const detail = (await get(`${SALES}/${sale.id}`, a.admin)).json().data
+      assert.equal(detail.consumedHours, 12)
+      assert.equal((await get(SALES, a.admin)).json().data[0].consumedHours, 12)
+      assert.deepEqual(await audits(a.id), [
+        {
+          action: 'package.used_hours',
+          entityId: sale.id,
+          reason: USED.reason,
+          changes: { fields: ['usedHours'] },
+          actorRole: 'onburo',
+        },
+      ])
+
+      const raised = await post(usedUrl(sale.id), a.admin, { ...USED, usedHours: 20 }, version(2))
+      assert.equal(raised.json().data.consumedHours, 20)
+      assert.equal(raised.json().data.version, 3)
+    })
+
+    test('azaltma gerekçeyle yapılır; eski değer arşivli harekette kalır, tek etkin satır olur', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      await post(usedUrl(sale.id), a.admin, USED, version(1))
+      const lowered = await post(
+        usedUrl(sale.id),
+        a.admin,
+        { usedHours: 5, reason: 'Yanlış girildi, düzeltildi' },
+        version(2),
+      )
+      assert.equal(lowered.statusCode, 200, lowered.body)
+      assert.equal(lowered.json().data.consumedHours, 5)
+      assert.equal(lowered.json().data.remainingHours, 35)
+      const rows = await hours(a.id)
+      assert.deepEqual(
+        rows.map((row) => [row.hours, row.sourceType, row.sourceId, row.archivedAt !== null]),
+        [
+          [5, 'manual', sale.id, false],
+          [12, 'manual', sale.id, true],
+        ],
+      )
+      assert.equal(
+        (await audits(a.id)).filter((row) => row.reason === 'Yanlış girildi, düzeltildi').length,
+        1,
+      )
+    })
+
+    test('400 ve kayıt değişmemesi: gerekçesiz, eksi, kurumlu gövde; If-Match yok', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      const rows = await saleRows(a.id)
+      assertError(await post(usedUrl(sale.id), a.admin, USED), 400, 'if_match_required')
+      for (const body of [
+        { usedHours: 2 },
+        { usedHours: 2, reason: ' ' },
+        { usedHours: -1, reason: 'Gerekçe' },
+        { usedHours: 1.5, reason: 'Gerekçe' },
+        { usedHours: 2, reason: 'x'.repeat(501) },
+        { ...USED, institutionId: 'baska' },
+      ])
+        assertError(await post(usedUrl(sale.id), a.admin, body, version(1)), 400)
+      assert.deepEqual(await saleRows(a.id), rows)
+      assert.deepEqual(await hours(a.id), [])
+      assert.deepEqual(await audits(a.id), [])
+    })
+
+    test('422: alınan saati aşamaz; sürüm tutmazsa 409; kayıt değişmez', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      const rows = await saleRows(a.id)
+      assertError(
+        await post(usedUrl(sale.id), a.admin, { ...USED, usedHours: 41 }, version(1)),
+        422,
+        'package_used_exceeds_purchased',
+      )
+      assertError(await post(usedUrl(sale.id), a.admin, USED, version(9)), 409, 'version_conflict')
+      assert.deepEqual(await saleRows(a.id), rows)
+      assert.deepEqual(await hours(a.id), [])
+      assert.deepEqual(await audits(a.id), [])
+    })
+
+    test('mükerrer: aynı anahtar aynı yanıt, eski sürüm 409, aynı değer 422; satır yinelenmez', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      const headers = { ...key(), ...version(1) }
+      const first = await post(usedUrl(sale.id), a.admin, USED, headers)
+      assert.equal(first.statusCode, 200, first.body)
+      const replay = await post(usedUrl(sale.id), a.admin, USED, headers)
+      assert.equal(replay.headers['idempotent-replayed'], 'true')
+      assert.deepEqual(replay.json(), first.json())
+      assertError(await post(usedUrl(sale.id), a.admin, USED, version(1)), 409, 'version_conflict')
+      assertError(
+        await post(usedUrl(sale.id), a.admin, USED, version(2)),
+        422,
+        'package_used_hours_unchanged',
+      )
+      assert.equal((await hours(a.id)).length, 1)
+      assert.equal((await audits(a.id)).length, 1)
+    })
+
+    test('sıfır girişi kullanılmadı bilgisidir; süresi dolan pakete de girilir', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      const zero = await post(usedUrl(sale.id), a.admin, { ...USED, usedHours: 0 }, version(1))
+      assert.equal(zero.statusCode, 200, zero.body)
+      assert.equal(zero.json().data.usedHoursRecorded, true)
+      assert.equal(zero.json().data.remainingHours, 40)
+      now = new Date('2027-05-01T09:00:00.000Z')
+      try {
+        const late = await post(usedUrl(sale.id), a.admin, USED, version(2))
+        assert.equal(late.statusCode, 200, late.body)
+        assert.equal(late.json().data.status, 'expired')
+        assert.equal(late.json().data.consumedHours, 12)
+      } finally {
+        now = FIXED_NOW
+      }
+    })
+
+    test('yoklamadan gelen saat toplamın parçasıdır, onun altına inilemez', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      await recordPackageHours(ctxOf(a.id), sale.id, {
+        kind: 'consumed',
+        hours: 8,
+        occurredDate: '2026-10-01',
+        sourceType: 'lesson',
+        sourceId: 'test-ders-elle',
+      })
+      assertError(
+        await post(usedUrl(sale.id), a.admin, { ...USED, usedHours: 7 }, version(1)),
+        422,
+        'package_used_below_lessons',
+      )
+      const set = await post(usedUrl(sale.id), a.admin, USED, version(1))
+      assert.equal(set.json().data.consumedHours, 12)
+    })
+
+    test('IST-002: başka kurumun satışında kullanılan saat 404, B değişmez', async () => {
+      const a = await ready()
+      const b = await ready()
+      const bSale = await sold(b)
+      const rows = await saleRows(b.id)
+      assertError(await post(usedUrl(bSale.id), a.admin, USED, version(1)), 404)
+      assertError(await post(usedUrl(randomUUID()), a.admin, USED, version(1)), 404)
+      assert.deepEqual(await saleRows(b.id), rows)
+      assert.deepEqual(await hours(b.id), [])
+      assert.deepEqual(await audits(a.id), [])
+    })
+  })
+
   test('IST-002: başka kurumun paketi ve satışı 404, B değişmez; listede yok; gövdedeki institutionId reddedilir', async () => {
     const a = await ready()
     const b = await ready()
@@ -957,11 +1174,18 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       )
     const quote = (cookie: string, body: unknown = WITHDRAW) =>
       post('/api/v1/students/s3/withdrawal-quote', cookie, body)
-    const withdraw = (cookie: string, headers: Headers = key()) =>
+    const DEPARTURE = { ...WITHDRAW, reason: 'relocation', targetSchool: null }
+    /** Yönetici önizlemede gördüğü iade tutarını onaylar (K-21). */
+    async function approval(cookie: string) {
+      const response = await quote(cookie)
+      assert.equal(response.statusCode, 200, response.body)
+      return response.json().data.breakdown.refundCents as number
+    }
+    const withdraw = async (cookie: string, headers: Headers = key()) =>
       post(
         '/api/v1/students/s3/withdraw',
         cookie,
-        { ...WITHDRAW, reason: 'relocation', targetSchool: null },
+        { ...DEPARTURE, approvedRefundCents: await approval(cookie) },
         headers,
       )
     const hourRows = (institutionId: string) =>
@@ -1086,9 +1310,8 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
         '/api/v1/students/s3/withdraw',
         a.admin,
         {
-          ...WITHDRAW,
-          reason: 'relocation',
-          targetSchool: null,
+          ...DEPARTURE,
+          approvedRefundCents: await approval(a.admin),
           payerDecision: { payer: 'student', reason: 'Ödemeyi kursiyer yaptı' },
         },
         key(),
@@ -1116,6 +1339,122 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
       const done = await refund(student?.data.name)
       assert.equal(done.statusCode, 200, done.body)
       assert.equal(done.json().data.refundStatus, 'paid')
+    })
+
+    test('K-21: ön büro hesabı görür ama paket içeren ayrılışı tamamlayamaz, kayıt değişmez', async () => {
+      const a = await withPackage({ tuition: false })
+      const desk = await member(a.id, 'onburo')
+      const refundCents = await approval(desk)
+      const rows = await hourRows(a.id)
+      assertError(
+        await post(
+          '/api/v1/students/s3/withdraw',
+          desk,
+          { ...DEPARTURE, approvedRefundCents: refundCents },
+          key(),
+        ),
+        403,
+      )
+      assert.deepEqual(await hourRows(a.id), rows)
+      assert.equal((await findRecord(db, a.id, 'students', 's3'))?.data.isActive, true)
+    })
+
+    test('K-21: yönetici tutarı görüp onaylamadan paketli ayrılış yazılmaz; tutar değiştiyse 409', async () => {
+      const a = await withPackage({ tuition: false })
+      const url = '/api/v1/students/s3/withdraw'
+      assert.equal((await pay(a.admin, PACKAGE_NET)).statusCode, 201)
+      const before = await approval(a.admin)
+      assertError(
+        await post(url, a.admin, DEPARTURE, key()),
+        422,
+        'withdrawal_refund_approval_required',
+      )
+      // Önizlemeden sonra saat girilir: tutar düşer, eski onay geçmez.
+      const entered = await post(
+        `${SALES}/${a.sale.id}/set-used-hours`,
+        a.admin,
+        { usedHours: 20, reason: 'Devam çizelgesine göre' },
+        version(a.sale.version),
+      )
+      assert.equal(entered.statusCode, 200, entered.body)
+      assertError(
+        await post(url, a.admin, { ...DEPARTURE, approvedRefundCents: before }, key()),
+        409,
+        'withdrawal_refund_changed',
+      )
+      assert.equal((await findRecord(db, a.id, 'students', 's3'))?.data.isActive, true)
+      const after = await approval(a.admin)
+      assert.equal(after, before - 10 * HOURLY)
+      const done = await post(url, a.admin, { ...DEPARTURE, approvedRefundCents: after }, key())
+      assert.equal(done.statusCode, 201, done.body)
+      const { breakdown, refundCents } = done.json().data
+      assert.equal(refundCents, after)
+      assert.equal(breakdown.refundApprovedCents, after)
+      const audit = await db
+        .select({ changes: auditLog.changes })
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student.withdraw')))
+      assert.ok(audit[0]?.changes?.fields?.includes('refundApprovedCents'))
+    })
+
+    test('K-21: elle girilen saat iadeyi düşürür; girilmeden önce önizleme uyarı alanı taşır', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      assert.equal((await pay(a.admin, PACKAGE_NET)).statusCode, 201)
+      const line = async () =>
+        (await quote(a.admin))
+          .json()
+          .data.breakdown.contracts.find(
+            (item: { packageSaleId?: string }) => item.packageSaleId === sale.id,
+          )
+      const missing = await line()
+      assert.equal(missing.usedHoursMissing, true)
+      assert.equal(missing.usageCents, 0)
+      assert.equal(missing.balanceCents, PACKAGE_NET - PACKAGE_NET / 10)
+      await post(
+        `${SALES}/${sale.id}/set-used-hours`,
+        a.admin,
+        { usedHours: 30, reason: 'Devam çizelgesine göre' },
+        version(1),
+      )
+      const entered = await line()
+      assert.equal(entered.usedHoursMissing, undefined)
+      assert.equal(entered.attendedUnits, 30)
+      assert.equal(entered.usageCents, 30 * HOURLY)
+      assert.equal(entered.balanceCents, PACKAGE_NET - PACKAGE_NET / 10 - 30 * HOURLY)
+      assert.equal(entered.returnedHours, 10)
+    })
+
+    test('K-21, DOM-FIN-041: ayrılıştan sonra kullanılan saat değişmez; önceki gün girişi hesaba girer', async () => {
+      const a = await ready()
+      const sale = await sold(a)
+      // Geriye dönük ayrılış: giriş bugünün tarihini taşır ama ayrılış hesabından düşmez.
+      now = new Date('2026-10-20T09:00:00.000Z')
+      try {
+        const set = await post(
+          `${SALES}/${sale.id}/set-used-hours`,
+          a.admin,
+          { usedHours: 9, reason: 'Devam çizelgesine göre' },
+          version(1),
+        )
+        assert.equal(set.statusCode, 200, set.body)
+        const line = (await quote(a.admin)).json().data.breakdown.contracts[0]
+        assert.equal(line.attendedUnits, 9)
+        const done = await withdraw(a.admin)
+        assert.equal(done.statusCode, 201, done.body)
+        assertError(
+          await post(
+            `${SALES}/${sale.id}/set-used-hours`,
+            a.admin,
+            { usedHours: 3, reason: 'Sonradan düzeltme' },
+            version(2),
+          ),
+          422,
+          'package_sale_closed',
+        )
+      } finally {
+        now = FIXED_NOW
+      }
     })
 
     test('DOM-YTK-001: başka kurumun satışı hesaba girmez', async () => {

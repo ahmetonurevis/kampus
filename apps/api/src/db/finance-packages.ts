@@ -19,7 +19,7 @@ import {
 
 /**
  * Paket ve satış deposu (IST-078; DOM-DIL-050, -051). Kurum kapsamlıdır: ilk parametre
- * `institutionId`. Satış satırı kopyadır; depo yalnız son kullanma gününü güncelleyebilir.
+ * `institutionId`. Satış satırı kopyadır; depo yalnız son kullanma gününü ve sürümü güncelleyebilir.
  */
 
 export type StoredPackage = LessonPackage & { version: number }
@@ -289,6 +289,26 @@ export async function extendPackageSale(
   return rows.length === 1
 }
 
+/** Saat girişi satırı değiştirmez, sürümü artırır: `If-Match` hareketleri de korur. Tutmazsa `false`. */
+export async function bumpPackageSaleVersion(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; expectedVersion: number; now: Date },
+): Promise<boolean> {
+  const rows = await tx
+    .update(lessonPackageSales)
+    .set({ updatedAt: input.now, version: input.expectedVersion + 1 })
+    .where(
+      and(
+        activeSale(institutionId),
+        eq(lessonPackageSales.id, input.id),
+        eq(lessonPackageSales.version, input.expectedVersion),
+      ),
+    )
+    .returning({ id: lessonPackageSales.id })
+  return rows.length === 1
+}
+
 // --- Saat hareketi -------------------------------------------------------------------------------
 
 /** Satışların arşivlenmemiş hareketleri; bakiye bunlardan hesaplanır (DOM-DIL-051). */
@@ -347,6 +367,7 @@ export async function loadWithdrawalPackageSales(
       kind: lessonPackageHourEntries.kind,
       hours: lessonPackageHourEntries.hours,
       occurredDate: lessonPackageHourEntries.occurredDate,
+      sourceType: lessonPackageHourEntries.sourceType,
     })
     .from(lessonPackageHourEntries)
     .where(
@@ -380,4 +401,27 @@ export async function insertPackageHourEntry(
   await tx
     .insert(lessonPackageHourEntries)
     .values({ ...fields, institutionId, createdAt: now, updatedAt: now })
+}
+
+/** Elle girilen eski toplamı arşivler; yenisi aynı kaynak anahtarıyla yazılır (K-21). */
+export async function archiveManualHourEntries(
+  tx: Database,
+  institutionId: string,
+  input: { saleId: string; now: Date },
+): Promise<void> {
+  await tx
+    .update(lessonPackageHourEntries)
+    .set({
+      archivedAt: input.now,
+      updatedAt: input.now,
+      version: sql`${lessonPackageHourEntries.version} + 1`,
+    })
+    .where(
+      and(
+        eq(lessonPackageHourEntries.institutionId, institutionId),
+        eq(lessonPackageHourEntries.saleId, input.saleId),
+        eq(lessonPackageHourEntries.sourceType, 'manual'),
+        isNull(lessonPackageHourEntries.archivedAt),
+      ),
+    )
 }

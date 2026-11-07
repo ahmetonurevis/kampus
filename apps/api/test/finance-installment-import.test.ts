@@ -587,6 +587,19 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
       assert.equal(summary.invoices.openingImportCents, 1_250_000)
     })
 
+    test('DOM-FIN-056: yıl sonu mutabakatı aktarımı ayrı kalemde sayar, tutmayan çıkmaz', async () => {
+      const { cookie } = await imported()
+      const response = await get(cookie, '/api/v1/finance/reconciliation?year=2026')
+      assert.equal(response.statusCode, 200, response.body)
+      const { totals, mismatchCount } = response.json().data
+      assert.equal(mismatchCount, 0)
+      assert.equal(totals.differenceCents, 0)
+      assert.equal(totals.collectedCents, 0)
+      assert.equal(totals.openingImportCents, 1_250_000)
+      assert.equal(totals.accruedCents, 1_250_000)
+      assert.equal(totals.closingCents, 0)
+    })
+
     test('bakiye ve toplamlar ödendi sayar, tahsilattan ayırır', async () => {
       const { cookie } = await imported()
       const balance = (await get(cookie, '/api/v1/finance/students/s-1/balance')).json().data

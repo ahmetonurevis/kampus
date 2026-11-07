@@ -23,6 +23,7 @@ import {
   type ReconciliationRow,
   type ReconciliationWithdrawal,
 } from '../packages/school-core/src/lib/finance-reconciliation.ts'
+import { OPENING_IMPORT_METHOD } from '../packages/school-core/src/lib/payments.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const PERIOD = { from: '2026-09-01', to: '2027-08-31' }
@@ -134,7 +135,8 @@ function assertBalanced(row: ReconciliationRow) {
     row.openingCents +
       row.accruedCents -
       row.withdrawalAdjustmentCents -
-      row.collectedCents +
+      row.collectedCents -
+      row.openingImportCents +
       row.reversedCents +
       row.refundedCents,
     row.closingCents,
@@ -527,6 +529,153 @@ test('DOM-FIN-030: taksiti aşan dağılım borçtan düşülmez, alacak kalır 
   assert.equal(row.creditCents, 2_000)
 })
 
+/** Dosyadan aktarılan geçmiş ödeme: taksit ödendi görünür, tahsilat satırı yoktur (DOM-FIN-014). */
+const imported = (id: string, amount: number, dueDate: string, paidDay: string) =>
+  invoice(id, amount, dueDate, {
+    paidAt: `${paidDay}T09:00:00.000Z`,
+    method: OPENING_IMPORT_METHOD,
+  })
+
+test('DOM-FIN-056 DOM-FIN-014: açılış aktarımı tahsilat sayılmaz, ayrı kalemle formül tutar', () => {
+  const result = reconcile({ invoices: [imported('i1', 30_000, '2026-10-15', '2026-10-16')] })
+  const row = only(result)
+  assertBalanced(row)
+  assert.equal(result.mismatchCount, 0)
+  assert.equal(row.accruedCents, 30_000)
+  assert.equal(row.collectedCents, 0)
+  assert.equal(row.openingImportCents, 30_000)
+  assert.equal(row.closingCents, 0)
+  assert.equal(result.totals.openingImportCents, 30_000)
+  assert.equal(result.totals.collectedCents, 0)
+})
+
+test('DOM-FIN-056 DOM-FIN-014: önceki yılın borcunu kapatan aktarım o yılın açılışından düşer', () => {
+  const row = only(reconcile({ invoices: [imported('i1', 30_000, '2026-05-15', '2026-09-10')] }))
+  assertBalanced(row)
+  assert.equal(row.openingCents, 30_000)
+  assert.equal(row.accruedCents, 0)
+  assert.equal(row.openingImportCents, 30_000)
+  assert.equal(row.closingCents, 0)
+})
+
+test('DOM-FIN-056 DOM-FIN-014: önceki yılda kapanmış aktarım bu yılda satır üretmez', () => {
+  const result = reconcile({ invoices: [imported('i1', 30_000, '2026-05-15', '2026-05-16')] })
+  assert.deepEqual(result.rows, [])
+  assert.equal(result.totals.openingImportCents, 0)
+})
+
+test('DOM-FIN-056 DOM-FIN-030: vadesinden önce aktarılan ödeme tahsilat gibi avanstır', () => {
+  // Önceki yılda ödenip bu yılda vadesi gelen: açılıştaki alacak tahakkukla kapanır.
+  const carried = only(
+    reconcile({ invoices: [imported('i1', 30_000, '2026-10-15', '2026-08-20')] }),
+  )
+  assertBalanced(carried)
+  assert.equal(carried.openingCents, -30_000)
+  assert.equal(carried.openingImportCents, 0)
+  assert.equal(carried.closingCents, 0)
+
+  // Bu yılda ödenip vadesi dönem sonrasında olan: kapanışa alacak kalır, tahakkuk yazılmaz.
+  const ahead = only(
+    reconcile({
+      invoices: [imported('i1', 30_000, '2027-05-15', '2026-09-10')],
+      period: { from: '2026-09-01', to: '2027-03-31' },
+    }),
+  )
+  assertBalanced(ahead)
+  assert.equal(ahead.accruedCents, 0)
+  assert.equal(ahead.openingImportCents, 30_000)
+  assert.equal(ahead.creditCents, 30_000)
+  assert.equal(ahead.closingCents, -30_000)
+})
+
+test('DOM-FIN-056 DOM-FIN-014: dönem sonrasındaki aktarım kapanışı değiştirmez, borç açık kalır', () => {
+  const row = only(reconcile({ invoices: [imported('i1', 30_000, '2026-10-15', '2027-09-10')] }))
+  assertBalanced(row)
+  assert.equal(row.openingImportCents, 0)
+  assert.equal(row.closingCents, 30_000)
+  assert.equal(row.openDebtCents, 30_000)
+})
+
+test('DOM-FIN-056 DOM-FIN-014: aktarım gün sınırı Europe/Istanbul günüdür', () => {
+  // 31 Ağustos 21:30Z İstanbul'da 1 Eylül'dür: açılışta değil, dönem hareketindedir.
+  const row = only(
+    reconcile({
+      invoices: [
+        invoice('i1', 30_000, '2026-05-15', {
+          paidAt: '2026-08-31T21:30:00.000Z',
+          method: OPENING_IMPORT_METHOD,
+        }),
+      ],
+    }),
+  )
+  assertBalanced(row)
+  assert.equal(row.openingCents, 30_000)
+  assert.equal(row.openingImportCents, 30_000)
+})
+
+test('DOM-FIN-056 DOM-FIN-014: aktarım, gerçek tahsilat ve iptali birbirine karışmaz', () => {
+  const result = reconcile({
+    invoices: [
+      imported('i1', 30_000, '2026-09-15', '2026-09-16'),
+      invoice('i2', 50_000, '2026-10-15'),
+    ],
+    payments: [
+      payment(20_000, '2026-10-20', { i2: 20_000 }, '2026-10-25'),
+      payment(5_000, '2026-11-01', { i2: 5_000 }),
+    ],
+  })
+  const row = only(result)
+  assertBalanced(row)
+  assert.equal(row.openingImportCents, 30_000)
+  assert.equal(row.collectedCents, 25_000)
+  assert.equal(row.reversedCents, 20_000)
+  assert.equal(row.closingCents, 45_000)
+})
+
+test('DOM-FIN-056 DOM-FIN-014: aktarımlı taksitte ayrılış iadesi formülü bozmaz', () => {
+  const row = only(
+    reconcile({
+      invoices: [imported('i1', 100_000, '2026-09-15', '2026-09-14')],
+      contracts: [contract('k1', ['i1'])],
+      withdrawals: [
+        withdrawal({ paidCents: 100_000, refundCents: 25_000, refundPaidDate: '2026-11-01' }),
+      ],
+    }),
+  )
+  assertBalanced(row)
+  assert.equal(row.openingImportCents, 100_000)
+  assert.equal(row.withdrawalAdjustmentCents, 25_000)
+  assert.equal(row.refundedCents, 25_000)
+  assert.equal(row.closingCents, 0)
+})
+
+test('DOM-FIN-056: tahsilatsız ödenmiş taksit aktarım değilse tutmayan kalır', () => {
+  const row = only(
+    reconcile({
+      invoices: [
+        invoice('legacy', 30_000, '2026-10-15', {
+          paidAt: '2026-10-16T09:00:00.000Z',
+          method: 'Banka havalesi',
+        }),
+      ],
+    }),
+  )
+  assert.equal(row.openingImportCents, 0)
+  assert.equal(row.differenceCents, -30_000)
+  assert.equal(row.mismatchReason, 'unrecorded_payment')
+})
+
+test('DOM-FIN-056 DOM-FIN-014: aktarımlı taksite tahsilat da dağıtılmışsa tutmaz, incelenir', () => {
+  const row = only(
+    reconcile({
+      invoices: [imported('i1', 30_000, '2026-10-15', '2026-10-16')],
+      payments: [payment(10_000, '2026-10-16', { i1: 10_000 })],
+    }),
+  )
+  assert.equal(row.differenceCents, 10_000)
+  assert.equal(row.mismatchReason, 'other')
+})
+
 test('DOM-FIN-056: gün sınırı Europe/Istanbul günüdür', () => {
   // 31 Ağustos 21:30 UTC, İstanbul'da 1 Eylül'dür; dönemin ilk gününe düşer.
   const row = only(
@@ -632,6 +781,7 @@ const ROW: ReconciliationRow = {
   accruedCents: 200_050,
   withdrawalAdjustmentCents: 0,
   collectedCents: 150_000,
+  openingImportCents: 0,
   reversedCents: 0,
   refundedCents: 0,
   scholarshipCents: 5_000,
@@ -644,12 +794,73 @@ const ROW: ReconciliationRow = {
   mismatchReason: null,
 }
 
+test('IST-111 DOM-FIN-014: aktarım varken de toplamlar aynı dönemin aktarım toplamlarına eşittir', () => {
+  const invoices = [
+    imported('i1', 30_000, '2026-09-15', '2026-09-16'),
+    invoice('i2', 40_000, '2026-10-15'),
+  ]
+  const payments = [payment(10_000, '2026-10-16', { i2: 10_000 })]
+  const result = reconcile({ invoices, payments })
+  const summary = financeSummary(
+    paymentLines(
+      payments.map((item, index) => ({
+        ...item,
+        method: 'Banka havalesi',
+        reference: null,
+        receiptYear: 2026,
+        receiptNumber: index + 1,
+      })),
+      directory,
+      PERIOD,
+    ),
+    [],
+    invoiceLines(invoices, new Map(), directory, PERIOD),
+  )
+  assert.equal(result.mismatchCount, 0)
+  assert.equal(result.totals.collectedCents, summary.payments.totalCents)
+  assert.equal(result.totals.accruedCents, summary.invoices.totalCents)
+  assert.equal(result.totals.openingImportCents, summary.invoices.openingImportCents)
+})
+
 test('IST-111: standart dosyada formül kaçışı, ondalık virgül ve eksi tutar', () => {
   const [header, line] = profiledReconciliationCsv([ROW], null).split('\r\n')
   assert.ok(header?.startsWith('"Öğrenci";"Okul no";"Açılış (₺)"'))
   assert.ok(header?.endsWith('"Denetim"'))
-  assert.ok(line?.startsWith(`"'=KOMUT()";"712";10,00;2000,50;0,00;1500,00;0,00;0,00;50,00;30,00;`))
+  assert.ok(
+    line?.startsWith(`"'=KOMUT()";"712";10,00;2000,50;0,00;1500,00;0,00;0,00;0,00;50,00;30,00;`),
+  )
   assert.ok(line?.includes(';-25,00;-25,00;0,00;"Tutuyor"'))
+})
+
+test('DOM-FIN-056 DOM-FIN-014: dosyada açılış aktarımı tahsilatın yanında ayrı sütundur', () => {
+  const [header, line] = profiledReconciliationCsv(
+    [{ ...ROW, openingImportCents: 12_345 }],
+    null,
+  ).split('\r\n')
+  const headers = header?.split(';') ?? []
+  const index = headers.indexOf('"Açılış aktarımı (₺)"')
+  assert.equal(headers[index - 1], '"Tahsilat (₺)"')
+  assert.equal(line?.split(';')[index], '123,45')
+})
+
+test('DOM-FIN-055 DOM-FIN-014: açılış aktarımı profilde seçilebilir sütundur', () => {
+  const profile = defaultFinanceExportProfile()
+  assert.ok(profile.columns.reconciliation?.some((item) => item.source === 'openingImport'))
+  const parsed = financeExportProfileSchema.safeParse({
+    ...profile,
+    columns: {
+      ...profile.columns,
+      reconciliation: [{ source: 'openingImport', header: 'Aktarım' }],
+    },
+  })
+  assert.equal(parsed.success, true)
+  assert.ok(parsed.success)
+  const [header, line] = profiledReconciliationCsv(
+    [{ ...ROW, openingImportCents: 500 }],
+    parsed.data,
+  ).split('\r\n')
+  assert.equal(header, '"Aktarım"')
+  assert.equal(line, '5,00')
 })
 
 test('DOM-FIN-056: tutmayan satırın nedeni dosyada yazılır', () => {

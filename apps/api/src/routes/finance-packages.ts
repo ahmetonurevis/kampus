@@ -9,6 +9,7 @@ import {
   PACKAGE_SELL_ROLES,
   packageQuoteSchema,
   sellPackageSchema,
+  setPackageUsedHoursSchema,
   updatePackageSchema,
 } from '@kampus/school-core/lib/finance-packages.ts'
 
@@ -25,6 +26,7 @@ import {
   listPackageSalesFor,
   quotePackageSaleFor,
   sellPackageCommand,
+  setPackageUsedHoursCommand,
   updatePackageCommand,
 } from '../services/finance-packages.ts'
 import { getInstitutionModules } from '../services/modules.ts'
@@ -314,6 +316,34 @@ export function registerFinancePackageRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const opts = options(request, 'optional')
       const result = await extendPackageSaleCommand(
+        contextOf(request),
+        request.params.saleId,
+        request.commandInput,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return saleResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    '/api/v1/finance/package-sales/:saleId/set-used-hours',
+    {
+      preValidation: [...guarded(PACKAGE_SELL_ROLES), requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'setPackageSaleUsedHours',
+        tags: ['finance-packages'],
+        summary: 'Kullanılan saati elle gir',
+        description: `Yoklama bağı (OG-116, OG-144) gelene kadar personel satışın o güne kadar kullanılan toplam saatini girer; ayrılıştaki iade bu saate dayanır (K-21, DOM-DIL-051, DOM-FIN-040). Azaltılabilir; gerekçe zorunludur ve yalnız denetim kaydına yazılır, eski değer arşivli saat hareketinde kalır. Alınan saati aşarsa 422 \`package_used_exceeds_purchased\`, derslerden yazılan saatin altına inerse 422 \`package_used_below_lessons\`, aynı değer 422 \`package_used_hours_unchanged\`, ayrılış hesabına girmiş satış 422 \`package_sale_closed\`. Olmayan ya da başka kurumun satışı 404, sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` zorunlu. ${LANGUAGE_ONLY} Roller: \`yonetici\`, \`onburo\`.`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: saleParams,
+        body: setPackageUsedHoursSchema,
+        response: { 200: saleResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await setPackageUsedHoursCommand(
         contextOf(request),
         request.params.saleId,
         request.commandInput,

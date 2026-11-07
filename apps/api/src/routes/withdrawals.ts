@@ -79,6 +79,10 @@ const breakdownSchema = z.object({
           .describe('Öğrenimde girilen görülen birim, pakette kullanılan saat'),
         totalUnits: z.number().int().describe('Öğrenimde toplam birim, pakette satın alınan saat'),
         returnedHours: z.number().int().optional().describe('Pakette iade edilen kalan saat'),
+        usedHoursMissing: z
+          .boolean()
+          .optional()
+          .describe('Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)'),
         scholarshipExempt: z.boolean(),
         baseCents: z.number().int(),
         deductionCents: z.number().int(),
@@ -106,6 +110,11 @@ const breakdownSchema = z.object({
     })
     .optional()
     .describe('Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)'),
+  refundApprovedCents: z
+    .number()
+    .int()
+    .optional()
+    .describe('Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok'),
 })
 
 const withdrawalSchema = z.object({
@@ -165,7 +174,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade hesabını önizle',
         description:
-          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.',
+          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.',
         params: studentParams,
         body: withdrawalQuoteSchema,
         response: {
@@ -211,7 +220,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Öğrencinin ayrılışını onayla',
         description:
-          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
+          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: studentParams,
         body: withdrawStudentSchema,

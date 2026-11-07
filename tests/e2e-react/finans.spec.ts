@@ -713,9 +713,11 @@ test.describe('Finans: tahsilat', () => {
     await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
     const section = page.getByRole('region', { name: 'Yıl sonu mutabakatı' })
     await expect(section.getByLabel('Mutabakat toplamları')).toContainText('Kapanış')
+    await expect(section.getByLabel('Mutabakat toplamları')).toContainText('Açılış aktarımı')
     await expect(section.getByRole('status').first()).toBeVisible()
 
     const table = section.getByRole('table', { name: 'Öğrenci bazında mutabakat' })
+    await expect(table.getByRole('columnheader', { name: 'Açılış aktarımı' })).toBeVisible()
     await section.getByLabel('Gösterilecek öğrenciler').selectOption('mismatch')
     await expect
       .poll(async () => (await table.getByText('Tutuyor', { exact: true }).count()) === 0)
@@ -728,6 +730,7 @@ test.describe('Finans: tahsilat', () => {
     const body = await readFile(await file.path(), 'utf8')
     expect(body.charCodeAt(0)).toBe(0xfeff)
     expect(body).toContain('"Beklenen kapanış (₺)"')
+    expect(body).toContain('"Açılış aktarımı (₺)"')
 
     await loginAs(school.user('onburo'))
     await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
@@ -951,6 +954,9 @@ test.describe('Finans: tahsilat', () => {
     await expect(dialog.getByRole('region', { name: 'Toplam' })).toContainText('Kalan borç')
     await expect(dialog).toContainText('paketlerin kalan saati iade edilmiş yazılır')
 
+    // K-21: paket içeren ayrılışta yönetici tutarı işaretlemeden onay açılmaz.
+    await expect(dialog.getByRole('button', { name: 'Ayrılışı onayla' })).toBeDisabled()
+    await dialog.getByRole('checkbox', { name: /iade tutarını inceledim/ }).check()
     await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
     await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
     await page

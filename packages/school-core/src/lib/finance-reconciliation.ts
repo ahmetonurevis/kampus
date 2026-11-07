@@ -11,6 +11,7 @@ import { isContractInForce } from './contract-status.ts'
 import { DomainError } from './errors.ts'
 import { assertFinancePeriod, type FinancePeriod, type StudentDirectory } from './finance-export.ts'
 import { dayKey } from './format.ts'
+import { isOpeningImport } from './payments.ts'
 import type { WithdrawalBreakdown } from './withdrawals.ts'
 
 /**
@@ -22,12 +23,17 @@ import type { WithdrawalBreakdown } from './withdrawals.ts'
  * Denetim iki yanı karşılaştırır. Kapanış, taksitin durumu ve dağılımlardan (stok); beklenen kapanış
  * açılışa hareketlerin eklenmesinden bulunur:
  *
- *   açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış
+ *   açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − açılış aktarımı + iptal + iade = kapanış
  *
  * Alacak tahsilat toplamından çıkarılarak bulunmaz, kaynaklarından tek tek toplanır (dağıtılmayan
  * kısım, avans, iptal edilen taksite alınan para). Bu yüzden iki yan yalnız kayıtlar birbiriyle
  * tutarlıysa eşitlenir: tahsilat kaydı olmadan ödenmiş taksit, başka öğrencinin taksitine yazılmış
  * dağılım ya da tahsilatı aşan dağılım farka düşer.
+ *
+ * Açılış aktarımı (DOM-FIN-014) dosyadan gelen geçmiş ödemedir: borcu ödeme gününde kapatır, tahsilat
+ * satırı yoktur, kasaya ve tahsilat kalemine girmez. Formülde kendi kalemi olduğu için tutmayan
+ * sayılmaz; tahakkuktan düşülmez, çünkü tahakkuk aktarım dosyasının taksit toplamına eşit kalmalıdır.
+ * Vadesinden önce aktarılan ödeme, tahsilat gibi vade gününe kadar alacaktır.
  *
  * Ödenen iade para çıkışıdır, borcu düşürmez: öğrenciye geri ödenen tutar kurumun iade borcunu
  * kapatır, bakiyeyi sıfıra doğru artırır. Borcu düşüren, ayrılışta hak edilmeyen tahakkuktur; ayrılış
@@ -108,18 +114,20 @@ export interface ReconciliationAmounts {
   /** Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi olabilir. */
   withdrawalAdjustmentCents: number
   collectedCents: number
+  /** Dosyadan aktarılan geçmiş ödeme; ödeme gününde borcu kapatır, tahsilat değildir. */
+  openingImportCents: number
   reversedCents: number
   refundedCents: number
   scholarshipCents: number
   discountCents: number
   /** Stoktan: açık borç − alacak. Eksi değer kurumun öğrenciye borcudur. */
   closingCents: number
-  /** Hareketlerden: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade. */
+  /** Hareketlerden: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat − aktarım + iptal + iade. */
   expectedClosingCents: number
   /** Kapanış − beklenen kapanış; sıfırdan farklıysa öğrenci tutmaz. */
   differenceCents: number
   openDebtCents: number
-  /** Dağıtılmamış tahsilat, vadesi gelmemiş taksite alınan avans ve ödenmemiş iade. */
+  /** Dağıtılmamış tahsilat, vadesi gelmemiş taksite alınan avans ya da aktarım, ödenmemiş iade. */
   creditCents: number
 }
 
@@ -145,7 +153,7 @@ export interface FinanceReconciliation {
 
 type Invoice = Pick<
   State['invoices'][number],
-  'id' | 'studentId' | 'amount' | 'paidAt' | 'dueDate' | 'installment'
+  'id' | 'studentId' | 'amount' | 'paidAt' | 'dueDate' | 'installment' | 'method'
 >
 type Contract = State['contracts'][number]
 
@@ -201,6 +209,7 @@ const EMPTY_AMOUNTS: ReconciliationAmounts = {
   accruedCents: 0,
   withdrawalAdjustmentCents: 0,
   collectedCents: 0,
+  openingImportCents: 0,
   reversedCents: 0,
   refundedCents: 0,
   scholarshipCents: 0,
@@ -238,6 +247,11 @@ export function financeReconciliation(input: {
 
   const invoiceById = new Map(input.invoices.map((invoice) => [invoice.id, invoice]))
   const dueDayOf = new Map(input.invoices.map((item) => [item.id, dayKey(item.dueDate)]))
+  const importDayOf = new Map(
+    input.invoices.flatMap((item) =>
+      item.paidAt && isOpeningImport(item) ? [[item.id, dayKey(item.paidAt)] as const] : [],
+    ),
+  )
 
   const paymentsOf = new Map<string, PaymentMovement[]>()
   const allocationsOf = new Map<string, Movement[]>()
@@ -285,7 +299,12 @@ export function financeReconciliation(input: {
     let unrecorded = 0
     let credit = 0
     for (const invoice of invoicesOf.get(studentId) ?? []) {
-      if ((dueDayOf.get(invoice.id) ?? '') > day) continue
+      const importDay = importDayOf.get(invoice.id)
+      const imported = importDay !== undefined && importDay <= day
+      if ((dueDayOf.get(invoice.id) ?? '') > day) {
+        if (imported) credit += invoice.amount
+        continue
+      }
       const allocated = sumOf(
         (allocationsOf.get(invoice.id) ?? []).filter((item) => standingOn(item, day)),
         (item) => item.amountCents,
@@ -293,7 +312,7 @@ export function financeReconciliation(input: {
       const applied = Math.min(allocated, invoice.amount)
       const settled = invoice.paidAt && dayKey(invoice.paidAt) <= day ? invoice.amount : applied
       openDebt += invoice.amount - settled
-      unrecorded += settled - applied
+      if (!imported) unrecorded += settled - applied
       // Taksiti aşan dağılım borçtan düşülmez, alacak kalır (`financeTotals` ile aynı kural).
       credit += allocated - applied
     }
@@ -346,6 +365,12 @@ export function financeReconciliation(input: {
       movements.filter((item) => inPeriod(item.paidDay)),
       (item) => item.amountCents,
     )
+    const openingImportCents = sumOf(
+      (invoicesOf.get(studentId) ?? []).filter((invoice) =>
+        inPeriod(importDayOf.get(invoice.id) ?? ''),
+      ),
+      (invoice) => invoice.amount,
+    )
     const reversedCents = sumOf(
       movements.filter((item) => item.reversedDay !== null && inPeriod(item.reversedDay)),
       (item) => item.amountCents,
@@ -362,7 +387,8 @@ export function financeReconciliation(input: {
       openingCents +
       accruedCents -
       withdrawalAdjustmentCents -
-      collectedCents +
+      collectedCents -
+      openingImportCents +
       reversedCents +
       refundedCents
     const closingCents = end.balance
@@ -372,6 +398,7 @@ export function financeReconciliation(input: {
       accruedCents,
       withdrawalAdjustmentCents,
       collectedCents,
+      openingImportCents,
       reversedCents,
       refundedCents,
       scholarshipCents,

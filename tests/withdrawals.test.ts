@@ -416,6 +416,19 @@ const sale = (entries: readonly ReturnType<typeof hour>[], purchasedHours = 40) 
   entries,
 })
 
+/** Paketli ayrılış yönetici onayı ister (K-21): önizlemenin tutarı onaylanmış olarak gönderilir. */
+function approved<T extends typeof WITHDRAW>(
+  state: ReturnType<typeof createSeed>,
+  studentId: string,
+  input: T,
+  options: WithdrawalContext,
+) {
+  const { withdrawalDate, termStartDate, attendedUnits, totalUnits } = input
+  const quote = { withdrawalDate, termStartDate, attendedUnits, totalUnits }
+  const { refundCents } = quoteWithdrawal(state, studentId, quote, options).breakdown
+  return { ...input, approvedRefundCents: refundCents }
+}
+
 test('DOM-FIN-040, K-06: paket satışı iade hesabına girer; kullanım kayıtlı saatten hesaplanır', () => {
   const { state, studentId } = fixture()
   withPackage(state, studentId)
@@ -606,13 +619,9 @@ test('DOM-KAY-024: yenileme planının sözleşmesi hesaba girmez, yalnız iptal
   state.renewals = [
     { id: 'r1', studentId, status: 'Planlandı', contractId: 'c-next' },
   ] as typeof state.renewals
-  const plan = withdrawStudent(
-    state,
-    studentId,
-    { ...WITHDRAW },
-    makeId,
-    context({ packageSales: [sale([])] }),
-  )
+  const options = context({ packageSales: [sale([])] })
+  const input = approved(state, studentId, WITHDRAW, options)
+  const plan = withdrawStudent(state, studentId, input, makeId, options)
   assert.deepEqual(
     plan.breakdown.contracts!.map((line) => line.contractId),
     ['c-now', 'c-package'],
@@ -641,13 +650,9 @@ test('DOM-FIN-040: geçen yılın sözleşmesi hesaba girmez, açık taksiti old
   })
   withPackage(state, studentId)
   state.contracts.at(-1)!.academicYear = 2025
-  const plan = withdrawStudent(
-    state,
-    studentId,
-    { ...WITHDRAW },
-    makeId,
-    context({ packageSales: [sale([])] }),
-  )
+  const options = context({ packageSales: [sale([])] })
+  const input = approved(state, studentId, WITHDRAW, options)
+  const plan = withdrawStudent(state, studentId, input, makeId, options)
   assert.deepEqual(
     plan.breakdown.contracts!.map((line) => line.contractId),
     ['c-now', 'c-package'],
@@ -684,12 +689,13 @@ test('DOM-FIN-041, K-06: ayrılış bütün sözleşmelerin açık taksitini ipt
   state.invoices.push({ ...state.invoices[0]!, id: 'p-paid', installment: 7, amount: 1 })
   state.contracts.find((item) => item.id === 'c-package')!.invoiceIds = ['p-1', 'p-paid']
   const half = { ...WITHDRAW, attendedUnits: 150 }
+  const options = context({ packageSales: [sale([hour(30)])] })
   const plan = withdrawStudent(
     state,
     studentId,
-    half,
+    approved(state, studentId, half, options),
     makeId,
-    context({ packageSales: [sale([hour(30)])] }),
+    options,
   )
   assert.equal(plan.contractId, 'c-package')
   const debt = state.invoices.find((invoice) => invoice.id === plan.breakdown.debtInvoiceId)
@@ -814,7 +820,8 @@ test('K-12: ödeyicisi aynı olan öğrencide önizleme farkı bildirmez, karar 
   const input = { ...WITHDRAW, attendedUnits: 1 }
   const options = context({ packageSales: [sale([])] })
   assert.equal(quoteWithdrawal(state, studentId, AFTER, options).payersDiffer, false)
-  const plan = withdrawStudent(state, studentId, input, makeId, options)
+  const body = approved(state, studentId, input, options)
+  const plan = withdrawStudent(state, studentId, body, makeId, options)
   assert.ok(plan.breakdown.refundCents > 0)
   assert.equal(plan.breakdown.payerDecision, undefined)
 })
@@ -871,9 +878,8 @@ test('K-12: karar kayda girer, hesap değişmez; iade yalnız seçilen ödeyiciy
     { ...AFTER, attendedUnits: 1 },
     options,
   )
-  const plan = withdrawStudent(state, studentId, { ...input, payerDecision: DECISION }, makeId, {
-    ...options,
-  })
+  const body = { ...approved(state, studentId, input, options), payerDecision: DECISION }
+  const plan = withdrawStudent(state, studentId, body, makeId, { ...options })
   assert.deepEqual(plan.breakdown.payerDecision, DECISION)
   assert.equal(plan.breakdown.refundCents, quoted.refundCents)
   assert.deepEqual(plan.breakdown.contracts, quoted.contracts)
@@ -896,7 +902,7 @@ test('K-12: iadesi sıfır olan ayrılışta karar istenmez, verilse de yazılma
   const plan = withdrawStudent(
     state,
     studentId,
-    { ...WITHDRAW, payerDecision: DECISION },
+    { ...approved(state, studentId, WITHDRAW, options), payerDecision: DECISION },
     makeId,
     options,
   )
@@ -949,6 +955,99 @@ test('K-12: adı bulunamayan ödeyici seçilemez', () => {
     () => withdrawStudent(state, studentId, input, makeId, context({ packageSales: [sale([])] })),
     isDomainError('withdrawal_payer_invalid'),
   )
+})
+
+test('K-21, DOM-FIN-040: paketli ayrılış yönetici onayı ister; onay gördüğü tutara bağlıdır, kayıt değişmez', () => {
+  const { state, studentId } = fixture()
+  withPackage(state, studentId)
+  state.invoices.find((invoice) => invoice.id === 'p-1')!.paidAt = NOW
+  const options = context({ packageSales: [sale([hour(10)])] })
+  const before = JSON.stringify(state)
+  assert.throws(
+    () => withdrawStudent(state, studentId, WITHDRAW, makeId, options),
+    (error: unknown) => {
+      assert.ok(isDomainError('withdrawal_refund_approval_required')(error))
+      assert.deepEqual((error as { path?: unknown }).path, ['approvedRefundCents'])
+      return true
+    },
+  )
+  const body = approved(state, studentId, WITHDRAW, options)
+  // Önizlemeden sonra saat girildiyse eski tutarın onayı geçmez.
+  assert.throws(
+    () =>
+      withdrawStudent(
+        state,
+        studentId,
+        { ...body, approvedRefundCents: body.approvedRefundCents + 1 },
+        makeId,
+        options,
+      ),
+    isDomainError('withdrawal_refund_changed', 'conflict'),
+  )
+  assert.throws(() =>
+    withdrawStudent(state, studentId, { ...body, approvedRefundCents: -1 }, makeId, options),
+  )
+  assert.equal(JSON.stringify(state), before)
+  const plan = withdrawStudent(state, studentId, body, makeId, options)
+  assert.equal(plan.breakdown.refundApprovedCents, body.approvedRefundCents)
+  assert.equal(plan.breakdown.refundApprovedCents, plan.breakdown.refundCents)
+})
+
+test('K-21: paket yoksa onay istenmez, tutar dökümde yazmaz', () => {
+  const { state, studentId } = fixture()
+  const plan = withdrawStudent(state, studentId, WITHDRAW, makeId, context())
+  assert.equal(plan.breakdown.refundApprovedCents, undefined)
+})
+
+test('K-21, DOM-DIL-051: elle girilen toplam ayrılış gününe göre elenmez, ders saati elenir', () => {
+  const { state, studentId } = fixture()
+  withPackage(state, studentId)
+  const entries = [
+    { ...hour(6, '2026-10-05'), sourceType: 'manual' as const },
+    { ...hour(4, '2026-10-05'), sourceType: 'lesson' as const },
+  ]
+  const early = { ...AFTER, withdrawalDate: '2026-10-01' }
+  const { breakdown } = quoteWithdrawal(
+    state,
+    studentId,
+    early,
+    context({ packageSales: [sale(entries)] }),
+  )
+  const line = breakdown.contracts!.find((item) => item.packageSaleId === 'sale-1')
+  assert.equal(line?.attendedUnits, 6)
+  assert.equal(line?.usedHoursMissing, undefined)
+})
+
+test('K-21: saat girilmemişse satır işaretlenir ve döküm söyler; sıfır girişi saat girilmiş sayılır', () => {
+  const { state, studentId } = fixture()
+  withPackage(state, studentId)
+  const lineOf = (entries: readonly ReturnType<typeof hour>[]) =>
+    quoteWithdrawal(
+      state,
+      studentId,
+      AFTER,
+      context({ packageSales: [sale(entries)] }),
+    ).breakdown.contracts!.find((item) => item.packageSaleId === 'sale-1')!
+  const missing = lineOf([])
+  assert.equal(missing.usedHoursMissing, true)
+  assert.deepEqual(
+    contractLineRows(missing, 1_000).find(([label]) => label === 'Kullanılan saat'),
+    ['Kullanılan saat', 'Girilmedi; hesap sıfır saate göre'],
+  )
+  const zero = lineOf([hour(0)])
+  assert.equal(zero.usedHoursMissing, undefined)
+  assert.equal(
+    contractLineRows(zero, 1_000).some(([label]) => label === 'Kullanılan saat'),
+    false,
+  )
+  // Öğrenim satırı bu uyarıyı taşımaz.
+  const tuition = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ packageSales: [sale([])] }),
+  ).breakdown.contracts!.find((item) => item.packageSaleId === undefined)
+  assert.equal(tuition?.usedHoursMissing, undefined)
 })
 
 test('DOM-FIN-041: kararsız ayrılışta iade kaydın sözleşmesinin ödeyicisinedir', () => {

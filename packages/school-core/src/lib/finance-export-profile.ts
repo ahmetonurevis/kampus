@@ -59,6 +59,11 @@ const RECONCILIATION_SOURCES = {
     read: (line) => line.withdrawalAdjustmentCents,
   },
   collected: { label: 'Tahsilat (₺)', kind: 'amount', read: (line) => line.collectedCents },
+  openingImport: {
+    label: 'Açılış aktarımı (₺)',
+    kind: 'amount',
+    read: (line) => line.openingImportCents,
+  },
   reversed: { label: 'Tahsilat iptali (₺)', kind: 'amount', read: (line) => line.reversedCents },
   refunded: { label: 'İade (₺)', kind: 'amount', read: (line) => line.refundedCents },
   scholarship: { label: 'Burs (₺)', kind: 'amount', read: (line) => line.scholarshipCents },

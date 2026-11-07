@@ -13,7 +13,9 @@ import {
   planPackageExtension,
   planPackageHourEntry,
   planPackageUpdate,
+  planPackageUsedHours,
   quotePackageSale,
+  packageUsedHoursRecorded,
   sellPackage,
   type LessonPackage,
   type PackageCourse,
@@ -688,4 +690,95 @@ test('DOM-FIN-013: koşulsuz eski tarifede paket satışı önceki gibi hesaplan
   const quote = quotePackageSale(seed(), { ...QUOTE, installmentCount: 12 }, NOW, CONTEXT)
   assert.equal(quote.paymentTerm, null)
   assert.deepEqual(quote.discounts, [])
+})
+
+const manual = (hours: number): PackageHourEntry => ({
+  kind: 'consumed',
+  hours,
+  sourceType: 'manual',
+  sourceId: 'satis-1',
+})
+const USED = { usedHours: 6, reason: 'Devam çizelgesine göre' }
+const OPEN = { studentActive: true }
+const SOLD = { purchasedHours: 10 }
+
+test('K-21, DOM-DIL-051: kullanılan saat toplamdır; alınan saati aşamaz, azaltılabilir', () => {
+  assert.deepEqual(planPackageUsedHours(SOLD, [], USED, OPEN), {
+    usedHours: 6,
+    manualHours: 6,
+    reason: USED.reason,
+  })
+  assert.equal(
+    planPackageUsedHours(SOLD, [manual(6)], { ...USED, usedHours: 2 }, OPEN).manualHours,
+    2,
+  )
+  assert.equal(planPackageUsedHours(SOLD, [], { ...USED, usedHours: 10 }, OPEN).manualHours, 10)
+  assert.throws(
+    () => planPackageUsedHours(SOLD, [], { ...USED, usedHours: 11 }, OPEN),
+    isDomainError('package_used_exceeds_purchased'),
+  )
+})
+
+test('K-21: gerekçe her girişte zorunludur, saat tam ve eksi olmayan sayıdır', () => {
+  for (const body of [
+    { usedHours: 2 },
+    { usedHours: 2, reason: ' ' },
+    { usedHours: 2, reason: 'x'.repeat(501) },
+    { usedHours: -1, reason: 'Gerekçe' },
+    { usedHours: 1.5, reason: 'Gerekçe' },
+    { usedHours: 2_001, reason: 'Gerekçe' },
+    { reason: 'Gerekçe' },
+    { ...USED, institutionId: 'b' },
+  ])
+    assert.throws(() => planPackageUsedHours(SOLD, [manual(6)], body, OPEN), isZodError)
+})
+
+test('K-21: sıfır girişi saat girilmiş sayılır; aynı değer yinelenmez', () => {
+  assert.equal(packageUsedHoursRecorded([]), false)
+  assert.equal(packageUsedHoursRecorded([{ kind: 'refunded' }]), false)
+  assert.equal(packageUsedHoursRecorded([manual(0)]), true)
+  const zero = { ...USED, usedHours: 0 }
+  assert.equal(planPackageUsedHours(SOLD, [], zero, OPEN).manualHours, 0)
+  assert.throws(
+    () => planPackageUsedHours(SOLD, [manual(0)], zero, OPEN),
+    isDomainError('package_used_hours_unchanged'),
+  )
+  assert.throws(
+    () => planPackageUsedHours(SOLD, [manual(6)], USED, OPEN),
+    isDomainError('package_used_hours_unchanged'),
+  )
+})
+
+test('K-21: elle girilen, derslerden yazılan saatin üstündeki farktır; onun altına inilemez', () => {
+  const entries = [lesson(4), manual(2)]
+  assert.equal(planPackageUsedHours(SOLD, entries, { ...USED, usedHours: 9 }, OPEN).manualHours, 5)
+  assert.equal(planPackageUsedHours(SOLD, entries, { ...USED, usedHours: 4 }, OPEN).manualHours, 0)
+  assert.throws(
+    () => planPackageUsedHours(SOLD, entries, { ...USED, usedHours: 3 }, OPEN),
+    isDomainError('package_used_below_lessons'),
+  )
+})
+
+test('K-21, DOM-FIN-041: ayrılış hesabına girmiş satışın saati değişmez', () => {
+  assert.throws(
+    () => planPackageUsedHours(SOLD, [], USED, { studentActive: false }),
+    isDomainError('package_sale_closed'),
+  )
+  const refunded: PackageHourEntry = {
+    kind: 'refunded',
+    hours: 4,
+    sourceType: 'withdrawal',
+    sourceId: 'ayrilis-1',
+  }
+  assert.throws(
+    () => planPackageUsedHours(SOLD, [refunded], USED, OPEN),
+    isDomainError('package_sale_closed'),
+  )
+})
+
+test('K-21: elle giriş kaynağı saat hareketi girdisi olarak kabul edilmez', () => {
+  assert.throws(
+    () => planPackageHourEntry(LIVE, [], { ...ENTRY, sourceType: 'manual' }, TODAY),
+    isZodError,
+  )
 })

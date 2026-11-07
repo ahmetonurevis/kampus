@@ -5,6 +5,7 @@ import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { FEE_ITEM_KIND_LABELS } from './fee-tariffs.ts'
+import { receiptNumberLabel } from './finance-receipt.ts'
 import { dayKey } from './format.ts'
 import { isOpeningImport, OPENING_IMPORT_METHOD } from './payments.ts'
 
@@ -114,7 +115,7 @@ export function paymentLines(
   const lines: PaymentLine[] = []
   for (const payment of payments) {
     const shared = {
-      receipt: `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`,
+      receipt: receiptNumberLabel(payment),
       ...studentCells(students, payment.studentId),
       method: payment.method,
       reference: payment.reference ?? '',

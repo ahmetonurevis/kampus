@@ -267,7 +267,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veli ödediğini kanıtlayabilmeli; ardışık numara eksik veya mükerrer belgeyi görünür kılar.
 - **Kaynak:** İşletme kuralı. Eğitim hizmetinde fatura/e-arşiv zorunluluğu (M-01, M-02), KDV oranı (M-03) ve kartla ödemede dekontun yeterliliği (M-05) **doğrulanmalı**; sistem bu değerleri hesaplamaz.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — API tahsilata kurum ve yıl içinde ardışık numara verir (`receiptYear`, `receiptNumber`). Belge kodu (`lib/document-data.ts`) henüz taksit kimliğini kullanır.
+- **Kodda:** kısmen — API tahsilata kurum ve yıl içinde ardışık numara verir (`receiptYear`, `receiptNumber`). Numara her yerde (web, mobil, PDF, dışa aktarım, e-Özel, ekstre) tek biçimde, `<yıl>-<sıra>` olarak yazılır (`lib/finance-receipt.ts` `receiptNumberLabel`). Belge kodu (`lib/document-data.ts`) henüz taksit kimliğini kullanır.
 
 ### DOM-FIN-051 · Sözleşme ve ödeme planı belgesi
 

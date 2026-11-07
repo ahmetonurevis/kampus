@@ -4,6 +4,7 @@
 // (`dateLabel`). Bakiye ve ekstre sunucuda core `studentBalance`/`studentStatement` ile hesaplanır,
 // burada yeniden hesaplanmaz. Kapsam (velayetli, kısıtsız ya da ödeyici veli) sunucudadır.
 import type { operations } from '@kampus/api-client/schema.d.ts'
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { statementLineLabel } from '@kampus/school-core/lib/finance-statement.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { isOpeningImport, OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
@@ -108,7 +109,7 @@ export function familyInvoiceFacts(row: InvoiceRow): FactRow[] {
 
 /** Dekont numarası (yıl-sıra; DOM-FIN-050), ekstre satırı ve dekont belgesiyle aynı biçim. */
 export const receiptNumber = (payment: Pick<FamilyPayment, 'receiptYear' | 'receiptNumber'>) =>
-  `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`
+  receiptNumberLabel(payment)
 
 export const familyPaymentStatus = (payment: Pick<FamilyPayment, 'reversedAt'>) =>
   payment.reversedAt === null ? 'Geçerli' : 'İptal edildi'

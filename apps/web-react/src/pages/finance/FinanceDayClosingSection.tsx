@@ -15,6 +15,7 @@ import {
   reopenFinanceDaySchema,
   type FinanceDayFormValues,
 } from '@kampus/school-core/lib/finance-day-closings.ts'
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { amountInputValue, PAYMENT_METHOD_LABELS } from '@kampus/school-core/lib/payments.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -93,13 +94,11 @@ const REVERSED_NO_FILTERS = REVERSED_COLUMNS.map((column) => column.key)
 const validDay = (value: string | null, today: string) =>
   value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= today ? value : today
 const stampOf = (at: string) => `${dateLabel(at, { year: 'numeric' })} ${timeLabel(at)}`
-const receiptOf = (line: { receiptYear: number; receiptNumber: number }) =>
-  `${String(line.receiptYear)}-${String(line.receiptNumber)}`
 
 function lineRow(line: FinanceDayReport['collected'][number]): LineRow {
   return {
     id: line.paymentId,
-    receipt: receiptOf(line),
+    receipt: receiptNumberLabel(line),
     studentName: line.studentName ?? '—',
     method: PAYMENT_METHOD_LABELS[line.method],
     reference: line.reference ?? '—',

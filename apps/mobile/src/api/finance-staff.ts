@@ -17,6 +17,7 @@ import {
   type RecordPaymentBody,
   type usePaymentList,
 } from '@kampus/react-shared/use-payment-commands.ts'
+import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
 import {
   amountInputValue,
@@ -303,7 +304,7 @@ export function paymentListQuery(state: ListState, search: string) {
 
 export const paymentReceipt = (
   payment: Pick<PaymentRecord, 'receiptYear' | 'receiptNumber'>,
-): string => `${String(payment.receiptYear)}-${String(payment.receiptNumber)}`
+): string => receiptNumberLabel(payment)
 
 export const paymentStatus = (payment: Pick<PaymentRecord, 'reversedAt'>) =>
   payment.reversedAt === null ? 'Geçerli' : 'İptal edildi'

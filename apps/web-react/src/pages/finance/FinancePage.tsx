@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { CourseOffersSection } from './CourseOffersSection.tsx'
 import { EOzelSection } from './EOzelSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
@@ -35,6 +36,7 @@ const VIEWS = {
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
   packages: { label: 'Paketler', param: 'paket' },
+  courseOffers: { label: 'Kur yenileme', param: 'kur-yenileme' },
   scholarships: { label: 'Burslar', param: 'burs' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
@@ -47,12 +49,13 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
   label: view.label,
 }))
 /**
- * Paket satışı yalnız dil okulundadır (IST-078), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
+ * Paket satışı ve kur yenileme teklifi yalnız dil okulundadır (IST-078, IST-088), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
  * kapalı sekme gizlenir, adresi taksitlere düşer.
  */
 const viewOptionsFor = (institutionType: string | undefined) =>
   VIEW_OPTIONS.filter(({ value }) => {
-    if (value === 'packages') return institutionType === 'language_school'
+    if (value === 'packages' || value === 'courseOffers')
+      return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
     return true
   })
@@ -135,6 +138,12 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'packages' ? (
         <PackagesSection
           canManage={isManager}
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'courseOffers' ? (
+        <CourseOffersSection
+          canApproveCapException={isManager}
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
       ) : null}

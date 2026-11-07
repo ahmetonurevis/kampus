@@ -17,10 +17,12 @@ import {
   setPackageUsedHoursSchema,
   updatePackageSchema,
 } from '@kampus/school-core/lib/finance-packages.ts'
+import { COURSE_OFFER_LIST_ROLES } from '@kampus/school-core/lib/renewal-course-offer-list.ts'
 
 import type { ROLES } from '../auth.ts'
 import { NotFoundError } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
+import { listCourseOffersFor } from '../services/finance-course-offers.ts'
 import {
   archivePackageCommand,
   createPackageCommand,
@@ -44,6 +46,8 @@ import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
+  courseOfferListQuery,
+  courseOfferListResponse,
   packageArchiveResponse,
   packageBalanceResponse,
   packageReportQuery,
@@ -67,6 +71,7 @@ import {
  * türlerinde her uç her rol için 404, rol denetiminden önce (DOM-YTK-012). Sıra: 401 → 403 modül →
  * 404 tür → 403 rol → `If-Match` → 400 → işlem. Tanım yönetici, satış yönetici ve ön büro; okuma
  * kapsamı `/finance/students/:id/balance` ile aynıdır. Çevrim içi satış kanalı yoktur (DOM-FIN-042).
+ * Kur yenileme teklif listesi (IST-088, ON-082) satışın girişidir: teklif paket satışıyla açılır.
  */
 
 const MANAGE_ROLES = WRITE_ACTION_ROLES['tariff.manage']
@@ -370,6 +375,32 @@ export function registerFinancePackageRoutes(app: FastifyInstance) {
         opts.idempotency,
       )
       return saleResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/course-offers',
+    {
+      preValidation: guarded(COURSE_OFFER_LIST_ROLES),
+      schema: {
+        operationId: 'listCourseOffers',
+        tags: ['finance-packages'],
+        summary: 'Kur yenileme ve üst kur tekliflerini listele',
+        description: `Son kurunun geçerli kur sonu kararı onaylı kursiyerler, ada göre (IST-088; DOM-DIL-070, DOM-DIL-071). Karar \`geçti\` ise teklif zincirdeki sonraki kura ya da üst seviyeye, \`tekrar\` ve \`devamsızlıktan tamamlamadı\` ise aynı kura açılır; üst seviye ya da sonraki kur yoksa satır \`no_next_level\` olur ve teklif açılmaz. Onay bekleyen, reddedilmiş ya da hiç verilmemiş karar ve pasif kursiyer listede yoktur. \`options\` teklife uyan etkin paketlerin kurum tarifesinden indirimsiz fiyatıdır (DOM-DIL-050); tarife, paket ya da tarife kalemi yoksa \`problem\` nedeni söyler. Teklif paket satışıyla (\`POST /api/v1/finance/package-sales\`) açılır; indirim yalnız tarifede ilanlı türden seçilir (DOM-FIN-020). \`saleId\` karar onayından sonra teklif edilen kur ya da seviyede yapılan satıştır. Kararın gerekçesi, dayanağı ve öğretmen notu dönmez. \`q\` kursiyer adında arar, \`outcome\` süzer; \`studentId\` tek kursiyeri verir, olmayan ya da başka kurumun öğrencisi 404. Hiçbir şey yazılmaz. ${LANGUAGE_ONLY} Roller: \`yonetici\`, \`onburo\`.`,
+        querystring: courseOfferListQuery,
+        response: { 200: courseOfferListResponse, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize, q, outcome, studentId } = request.query
+      const { items, total } = await listCourseOffersFor(contextOf(request), {
+        page,
+        pageSize,
+        q,
+        outcome,
+        studentId,
+      })
+      return { data: items, meta: { page, pageSize, total } }
     },
   )
 

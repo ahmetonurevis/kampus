@@ -330,18 +330,15 @@ function requireSaleable(state: State, data: PriceInput, context: PackageSaleCon
 }
 
 /**
- * Önizleme ve satışın ortak fiyatı; State değişmez (DOM-DIL-050, DOM-FIN-006). Tarifenin üstünde
- * saat ücreti reddedilir. İndirim ilan ücretinden hesaplanır, zincirlenmez (DOM-FIN-020). İlan altı
- * saat ücreti fiili indirim sayılır ve %50 tavanına girer (DOM-FIN-021; temkinli yorum).
+ * Paketin indirimsiz tarife fiyatı (DOM-DIL-050): saat kur ücretinde kurdan, öteki pakette paketten;
+ * saat ücreti tarifenin seviye kalemidir, paketin ilan altı ücreti ilanı aşamaz. Satış ve kur
+ * yenileme teklif listesi (`renewal-course-offer-list.ts`) aynı hesabı çalıştırır. Saftır.
  */
-function pricePackage(
-  state: State,
-  data: PriceInput,
-  now: string,
-  context: PackageSaleContext,
-): { price: PackagePrice; student: State['students'][number]; pkg: LessonPackage } {
-  const { pkg, tariff, student } = requireSaleable(state, data, context)
-  const course = pkg.courseId === null ? null : context.course
+export function packageTariffPrice(
+  pkg: LessonPackage,
+  course: Pick<PackageCourse, 'level' | 'totalHours'> | null,
+  tariff: Pick<EnrollmentTariff, 'items'>,
+) {
   const level = course?.level ?? pkg.level
   const purchasedHours = pkg.kind === 'course' ? course?.totalHours : pkg.lessonHours
   if (purchasedHours === undefined || purchasedHours === null)
@@ -359,8 +356,30 @@ function pricePackage(
       'Paketin saat ücreti ilan edilen saat ücretini aşamaz.',
       { path: ['packageId'] },
     )
-  const announcedCents = purchasedHours * announcedHourlyCents
-  const grossCents = purchasedHours * hourlyCents
+  return {
+    level,
+    purchasedHours,
+    announcedHourlyCents,
+    hourlyCents,
+    announcedCents: purchasedHours * announcedHourlyCents,
+    grossCents: purchasedHours * hourlyCents,
+  }
+}
+
+/**
+ * Önizleme ve satışın ortak fiyatı; State değişmez (DOM-DIL-050, DOM-FIN-006). Tarifenin üstünde
+ * saat ücreti reddedilir. İndirim ilan ücretinden hesaplanır, zincirlenmez (DOM-FIN-020). İlan altı
+ * saat ücreti fiili indirim sayılır ve %50 tavanına girer (DOM-FIN-021; temkinli yorum).
+ */
+function pricePackage(
+  state: State,
+  data: PriceInput,
+  now: string,
+  context: PackageSaleContext,
+): { price: PackagePrice; student: State['students'][number]; pkg: LessonPackage } {
+  const { pkg, tariff, student } = requireSaleable(state, data, context)
+  const { level, purchasedHours, announcedHourlyCents, hourlyCents, announcedCents, grossCents } =
+    packageTariffPrice(pkg, pkg.courseId === null ? null : context.course, tariff)
   // Taksit sayısı ilanlı koşula bağlanır, koşulun fiyat farkı indirim kalemi olur (DOM-FIN-013).
   const paymentTerm = resolvePaymentTerm(tariff.paymentTerms, data.installmentCount)
   assertEarlyPaymentOnUpfront(paymentTerm, data.discounts)

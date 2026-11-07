@@ -5,8 +5,8 @@ import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 
-// Dil okulu paket ve satış kancaları (`/finance/packages`, `/finance/package-sales`; IST-078,
-// DOM-DIL-050, -051). Tanım yönetici; satış, süre uzatma ve kullanılan saat yönetici ile ön büro;
+// Dil okulu paket ve satış kancaları (`/finance/packages`, `/finance/package-sales`,
+// `/finance/course-offers`; IST-078, IST-088, DOM-DIL-050, -051). Tanım yönetici; satış, süre uzatma ve kullanılan saat yönetici ile ön büro;
 // okuma veli ve öğrencide kendi kapsamıyla. Komutlar `exclusive`: alan hatası formda, yolsuz hata tek toast.
 
 type JsonBody<TOperation extends keyof operations> =
@@ -132,6 +132,23 @@ export function usePackageSales(query: {
     key: [...PACKAGES_KEY, 'sales', query],
     request: (client, signal) =>
       client.GET('/api/v1/finance/package-sales', { params: { query }, signal }),
+  })
+}
+
+export type CourseOfferListQuery = NonNullable<
+  operations['listCourseOffers']['parameters']['query']
+>
+
+/**
+ * Kur yenileme ve üst kur teklif listesi (IST-088, ON-082; DOM-DIL-070): onaylı kur sonu kararı olan
+ * kursiyerler ve teklife uyan paketlerin tarife fiyatı. Anahtar paket önekindedir: satış listeyi
+ * yeniler, satılan teklif `saleId` ile kapanır.
+ */
+export function useCourseOffers(query: CourseOfferListQuery & { page: number; pageSize: number }) {
+  return useApiQuery({
+    key: [...PACKAGES_KEY, 'course-offers', query],
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/course-offers', { params: { query }, signal }),
   })
 }
 

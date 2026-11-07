@@ -67962,6 +67962,348 @@
         }
       }
     },
+    "/api/v1/finance/course-offers": {
+      "get": {
+        "operationId": "listCourseOffers",
+        "summary": "Kur yenileme ve üst kur tekliflerini listele",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Son kurunun geçerli kur sonu kararı onaylı kursiyerler, ada göre (IST-088; DOM-DIL-070, DOM-DIL-071). Karar `geçti` ise teklif zincirdeki sonraki kura ya da üst seviyeye, `tekrar` ve `devamsızlıktan tamamlamadı` ise aynı kura açılır; üst seviye ya da sonraki kur yoksa satır `no_next_level` olur ve teklif açılmaz. Onay bekleyen, reddedilmiş ya da hiç verilmemiş karar ve pasif kursiyer listede yoktur. `options` teklife uyan etkin paketlerin kurum tarifesinden indirimsiz fiyatıdır (DOM-DIL-050); tarife, paket ya da tarife kalemi yoksa `problem` nedeni söyler. Teklif paket satışıyla (`POST /api/v1/finance/package-sales`) açılır; indirim yalnız tarifede ilanlı türden seçilir (DOM-FIN-020). `saleId` karar onayından sonra teklif edilen kur ya da seviyede yapılan satıştır. Kararın gerekçesi, dayanağı ve öğretmen notu dönmez. `q` kursiyer adında arar, `outcome` süzer; `studentId` tek kursiyeri verir, olmayan ya da başka kurumun öğrencisi 404. Hiçbir şey yazılmaz. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kursiyer adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "passed",
+                "repeat",
+                "incomplete_attendance"
+              ]
+            },
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "description": "Kur sonu kararının sonucu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Tek kursiyer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ready",
+                              "no_next_level"
+                            ],
+                            "description": "`ready` teklif açılabilir; `no_next_level` geçti ama üst seviye ya da kur yok"
+                          },
+                          "decisionId": {
+                            "type": "string",
+                            "description": "Teklifin dayandığı onaylı kur sonu kararı"
+                          },
+                          "outcome": {
+                            "type": "string",
+                            "enum": [
+                              "passed",
+                              "repeat",
+                              "incomplete_attendance"
+                            ]
+                          },
+                          "approvedAt": {
+                            "description": "Kararın onaylandığı an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fromCourseId": {
+                            "type": "string"
+                          },
+                          "fromCourseName": {
+                            "type": "string"
+                          },
+                          "fromLevel": {
+                            "type": "string"
+                          },
+                          "courseId": {
+                            "description": "Teklif edilen kur; zincirsiz kurdan geçişte boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "courseName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "level": {
+                            "description": "Teklif edilen seviye",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "options": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "packageId": {
+                                  "type": "string"
+                                },
+                                "packageName": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "course",
+                                    "hours",
+                                    "private"
+                                  ]
+                                },
+                                "hours": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "announcedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Saat × tarifenin saat ücreti, kuruş"
+                                },
+                                "priceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Saat × uygulanan saat ücreti, kuruş; indirimler satışta düşer"
+                                }
+                              },
+                              "required": [
+                                "packageId",
+                                "packageName",
+                                "kind",
+                                "hours",
+                                "announcedCents",
+                                "priceCents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Teklife uyan etkin paketler ve kurum tarifesinden indirimsiz fiyatı"
+                          },
+                          "saleId": {
+                            "description": "Karar onayından sonra teklif edilen kur ya da seviyede yapılan son satış",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "problem": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "message"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Teklif açılamıyorsa nedeni"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "studentName",
+                          "status",
+                          "decisionId",
+                          "outcome",
+                          "approvedAt",
+                          "fromCourseId",
+                          "fromCourseName",
+                          "fromLevel",
+                          "courseId",
+                          "courseName",
+                          "level",
+                          "options",
+                          "saleId",
+                          "problem"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/students/{studentId}/package-balance": {
       "get": {
         "operationId": "getStudentPackageBalance",

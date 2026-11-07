@@ -1,10 +1,15 @@
 import { z } from 'zod'
 
+import { PROGRESSION_OUTCOMES } from '@kampus/school-core/cefr/progression.ts'
+import { enumKeys } from '@kampus/school-core/content/taxonomy.ts'
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import { PACKAGE_KINDS, PACKAGE_SALE_STATUSES } from '@kampus/school-core/lib/finance-packages.ts'
 import { contractPaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
+import { COURSE_OFFER_ROW_STATUSES } from '@kampus/school-core/lib/renewal-course-offer-list.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+
+const PROGRESSION_OUTCOME_KEYS = enumKeys(PROGRESSION_OUTCOMES)
 
 /** Paket ve satış uçlarının sorgu ve yanıt şemaları (IST-078; DOM-DIL-050, -051). */
 
@@ -110,6 +115,58 @@ export const saleListQuery = z.strictObject({
   ...pageQuerySchema.shape,
   studentId: z.string().min(1).max(200).optional().describe('Öğrenci; kapsamı daraltır'),
   packageId: z.uuid('Paket geçersiz.').optional(),
+})
+
+/** Kur yenileme ve üst kur teklif listesi (IST-088, ON-082; DOM-DIL-070, DOM-DIL-050). */
+export const courseOfferListQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  q: z.string().trim().min(2).max(100).optional().describe('Kursiyer adında arama'),
+  outcome: z.enum(PROGRESSION_OUTCOME_KEYS).optional().describe('Kur sonu kararının sonucu'),
+  studentId: z.string().trim().min(1).max(200).optional().describe('Tek kursiyer'),
+})
+
+const courseOfferSchema = z.object({
+  studentId: z.string(),
+  studentName: z.string(),
+  status: z
+    .enum(COURSE_OFFER_ROW_STATUSES)
+    .describe('`ready` teklif açılabilir; `no_next_level` geçti ama üst seviye ya da kur yok'),
+  decisionId: z.string().describe('Teklifin dayandığı onaylı kur sonu kararı'),
+  outcome: z.enum(PROGRESSION_OUTCOME_KEYS),
+  approvedAt: z.string().nullable().describe('Kararın onaylandığı an'),
+  fromCourseId: z.string(),
+  fromCourseName: z.string(),
+  fromLevel: z.string(),
+  courseId: z.string().nullable().describe('Teklif edilen kur; zincirsiz kurdan geçişte boş'),
+  courseName: z.string().nullable(),
+  level: z.string().nullable().describe('Teklif edilen seviye'),
+  options: z
+    .array(
+      z.object({
+        packageId: z.string(),
+        packageName: z.string(),
+        kind: z.enum(PACKAGE_KINDS),
+        hours: z.number().int(),
+        announcedCents: z.number().int().describe('Saat × tarifenin saat ücreti, kuruş'),
+        priceCents: z
+          .number()
+          .int()
+          .describe('Saat × uygulanan saat ücreti, kuruş; indirimler satışta düşer'),
+      }),
+    )
+    .describe('Teklife uyan etkin paketler ve kurum tarifesinden indirimsiz fiyatı'),
+  saleId: z
+    .string()
+    .nullable()
+    .describe('Karar onayından sonra teklif edilen kur ya da seviyede yapılan son satış'),
+  problem: z
+    .object({ code: z.string(), message: z.string() })
+    .nullable()
+    .describe('Teklif açılamıyorsa nedeni'),
+})
+export const courseOfferListResponse = z.object({
+  data: z.array(courseOfferSchema),
+  meta: pageMetaSchema,
 })
 
 // --- Bakiye ve rapor (IST-114; DOM-FIN-058) ------------------------------------------------------

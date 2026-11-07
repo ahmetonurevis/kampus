@@ -20,6 +20,7 @@ import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { requireFamilyLoaded, withStudentFamilies } from './finance-families.ts'
 import { notify } from './notify.ts'
 import {
   runCommand,
@@ -242,33 +243,39 @@ export async function amendContractCommand(
   const studentId = source?.data.studentId
   if (typeof studentId !== 'string') throw new NotFoundError()
   const tariffId = source?.data.tariffId
-  return execute(ctx, {
-    action: 'contract.amend',
-    contractId,
-    studentId,
-    // İndirim yeniden hesaplanırsa kardeşin kaydı ve ücreti gerekir (DOM-FIN-022, K-22).
-    contractStudents: await loadStudentFamilies(ctx.db, ctx.institutionId, [studentId]),
-    statusCode: 201,
-    options,
-    prepare: async (tx, actor, institutionType) => {
-      const [tariff, allocated] = await Promise.all([
-        // Ek protokolün taksit sayısı da tarifenin koşuluna bağlıdır (DOM-FIN-013).
-        typeof tariffId === 'string' ? findFeeTariff(tx, ctx.institutionId, tariffId) : null,
-        allocatedByInvoice(tx, ctx.institutionId, studentId),
-      ])
-      return (state, { now, makeId }) => {
-        requireAuthorized(actor, 'contract.amend', {}, state, { now, institutionType })
-        return amendContract(state, contractId, input, {
-          tariff,
-          canApproveCapException: ctx.actor.role === 'yonetici',
-          allocated,
-          userId: ctx.actor.userId,
-          now,
-          makeId,
-        })
-      }
-    },
-  })
+  // İndirim yeniden hesaplanırsa kardeşin kaydı ve ücreti gerekir (DOM-FIN-022, K-22). Kilit dışı
+  // aile ön tahmindir; kilit altında yeniden doğrulanır, arada kardeş kaydolduysa yeniden kurulur.
+  return withStudentFamilies(
+    () => loadStudentFamilies(ctx.db, ctx.institutionId, [studentId]),
+    (family) =>
+      execute(ctx, {
+        action: 'contract.amend',
+        contractId,
+        studentId,
+        contractStudents: family,
+        statusCode: 201,
+        options,
+        prepare: async (tx, actor, institutionType) => {
+          await requireFamilyLoaded(tx, ctx.institutionId, [studentId], family)
+          const [tariff, allocated] = await Promise.all([
+            // Ek protokolün taksit sayısı da tarifenin koşuluna bağlıdır (DOM-FIN-013).
+            typeof tariffId === 'string' ? findFeeTariff(tx, ctx.institutionId, tariffId) : null,
+            allocatedByInvoice(tx, ctx.institutionId, studentId),
+          ])
+          return (state, { now, makeId }) => {
+            requireAuthorized(actor, 'contract.amend', {}, state, { now, institutionType })
+            return amendContract(state, contractId, input, {
+              tariff,
+              canApproveCapException: ctx.actor.role === 'yonetici',
+              allocated,
+              userId: ctx.actor.userId,
+              now,
+              makeId,
+            })
+          }
+        },
+      }),
+  )
 }
 
 /** Onaylanmamış ek protokolü gerekçeyle kapatır. 200. */

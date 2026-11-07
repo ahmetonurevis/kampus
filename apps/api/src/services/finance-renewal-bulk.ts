@@ -26,11 +26,13 @@ import { AppError, MESSAGES } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { loggableError } from '../plugins/error-handler.ts'
 import { environment } from './commands.ts'
+import { withStudentFamilies } from './finance-families.ts'
 import {
   planRenewalCommand,
   renewalContractStudents,
   renewalLoadScope,
   renewalCourseOfferFor,
+  requireRenewalFamily,
   sharedRenewalContext,
   tuitionDebts,
 } from './finance-renewals.ts'
@@ -96,9 +98,25 @@ export async function listRenewalCandidatesFor(
   const studentIds = rows.map((row) => row.id)
   // Kardeş kaybı (DOM-FIN-023) velinin öteki öğrencisinin yenileme yılındaki sözleşmesine bakar
   // (DOM-FIN-022, K-22); onlar ve sözleşmeleri de yüklenir.
-  const family = await loadStudentFamilies(ctx.db, ctx.institutionId, studentIds)
+  // Kilit dışı aile ön tahmindir; görüntüde yeniden doğrulanır (`requireRenewalFamily`).
   const scope = [{ kind: 'equals' as const, field: 'studentId', values: studentIds }]
-  const items = await runReadOnly(ctx, {
+  const items = await withStudentFamilies(
+    () => loadStudentFamilies(ctx.db, ctx.institutionId, studentIds),
+    (family) => candidateLines(ctx, query.academicYear, studentIds, family, scope),
+  )
+  return { items, total }
+}
+
+/** Aday sayfasının satırları; aile tahmini aynı görüntüde doğrulanır. */
+function candidateLines(
+  ctx: ServiceContext,
+  academicYear: number,
+  studentIds: readonly string[],
+  family: readonly string[],
+  scope: { kind: 'equals'; field: string; values: readonly string[] }[],
+) {
+  const query = { academicYear }
+  return runReadOnly(ctx, {
     action: 'renewal.candidates',
     collections: CANDIDATE_COLLECTIONS,
     stores: FINANCE_TABLE_STORES,
@@ -108,6 +126,7 @@ export async function listRenewalCandidatesFor(
       renewals: { match: scope },
     },
     load: async (tx) => {
+      await requireRenewalFamily(tx, ctx, studentIds, family)
       const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
       const [shared, debts] = await Promise.all([
         sharedRenewalContext(tx, ctx, institutionType, { academicYear: query.academicYear }),
@@ -133,7 +152,6 @@ export async function listRenewalCandidatesFor(
       }
     },
   })
-  return { items, total }
 }
 
 /**
@@ -143,13 +161,27 @@ export async function listRenewalCandidatesFor(
 export async function previewRenewalBulkFor(ctx: ServiceContext, input: unknown) {
   const data = renewalBulkPreviewSchema.parse(input)
   const studentIds = data.rows.map((row) => row.studentId)
-  const contractStudents = await renewalContractStudents(ctx, studentIds)
+  return withStudentFamilies(
+    () => renewalContractStudents(ctx, studentIds),
+    (contractStudents) => previewRenewalBulkAttempt(ctx, input, data, contractStudents),
+  )
+}
+
+/** Toplu önizlemenin tek denemesi; aile tahmini aynı görüntüde doğrulanır (`requireRenewalFamily`). */
+function previewRenewalBulkAttempt(
+  ctx: ServiceContext,
+  input: unknown,
+  data: z.output<typeof renewalBulkPreviewSchema>,
+  contractStudents: readonly string[],
+) {
+  const studentIds = data.rows.map((row) => row.studentId)
   return runReadOnly(ctx, {
     action: 'renewal.bulk_preview',
     collections: SPEC.collections,
     stores: FINANCE_TABLE_STORES,
     loadScope: renewalLoadScope(contractStudents),
     load: async (tx) => {
+      await requireRenewalFamily(tx, ctx, studentIds, contractStudents)
       const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
       const [shared, debts, scholarshipStudents] = await Promise.all([
         sharedRenewalContext(tx, ctx, institutionType, data),

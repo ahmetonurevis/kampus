@@ -303,6 +303,31 @@ test('IST-114: arşivlenip yenisi yazılmamış elle giriş bakiyeye girmez, rap
   assert.equal(studentPackageBalance('s3', [orphan], TODAY).usedHoursRecorded, false)
 })
 
+test('DOM-DIL-051, DOM-FIN-058, K-43: ayrılış gününden sonraki ders bakiyeye ve rapora girmez; kalan sıfırdır', () => {
+  // Geriye tarihli ayrılış: 20 saatin 5'i önce, 3'ü sonra kullanılmış; ayrılış 15 saati iade eder.
+  const sold = sale({
+    purchasedHours: 20,
+    netCents: 800_000,
+    entries: [
+      lesson(5, '2026-10-10'),
+      lesson(3, '2026-10-20'),
+      manual(1, '2026-10-25'),
+      refund(14, '2026-10-15'),
+    ],
+  })
+  const balance = studentPackageBalance('s3', [sold], TODAY)
+  assert.equal(balance.usedHours, 6)
+  assert.equal(balance.refundedHours, 14)
+  assert.equal(balance.remainingHours, 0)
+  assert.equal(balance.amounts.recognizedCents, 240_000)
+  assert.equal(balance.amounts.deferredCents, 0)
+  const report = packageHourReport([sold], { from: '2026-10-01', to: TODAY }, TODAY)
+  assert.equal(report.totals.usedHours, 6)
+  assert.equal(report.totals.closingHours, 0)
+  assert.equal(report.totals.recognizedCents, 240_000)
+  assertRollForward(report.totals)
+})
+
 test('IST-114: CSV formül kaçışlıdır, tutar ondalık virgüllüdür', () => {
   const report = packageHourReport(
     [sale({ packageName: '=HYPERLINK("x")', entries: [lesson(4, '2026-10-10')] })],

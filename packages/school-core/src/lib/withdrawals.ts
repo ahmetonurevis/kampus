@@ -5,7 +5,7 @@ import type { InstitutionType } from '../modules/collection-modules.ts'
 import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { packageHourBalance, packageUsedHoursRecorded } from './finance-package-hours.ts'
+import { packageUsedHoursRecorded, packageWithdrawalHours } from './finance-package-hours.ts'
 import type { PackageHourKind, PackageHourSource } from './finance-packages.ts'
 import { dayKey, money } from './format.ts'
 
@@ -230,7 +230,7 @@ export interface WithdrawalPackageSale {
     kind: PackageHourKind
     hours: number
     occurredDate: string
-    /** `manual` satırı girildiği güne kadarki toplamdır; ayrılış gününe göre elenmez (K-21). */
+    /** `manual` satırı girildiği güne kadarki toplamdır; ayrılış gününe göre elenmez (K-21, K-43). */
     sourceType?: PackageHourSource
   }[]
 }
@@ -348,16 +348,12 @@ function quoteContract(
   started: boolean,
   allocated: ReadonlyMap<string, number>,
 ): { line: WithdrawalContractLine; extras: WithdrawalExtraLine[] } {
-  // Ayrılıştan sonraki ders kayıtlı olunan süreye girmez (DOM-DIL-051). Elle girilen toplam ayrılıştan
-  // sonra yazılmış olabilir, ama tarihi girişin günüdür, dersin değil: elenirse fazla iade çıkar (K-21).
-  const usedHours = sale?.entries
-    .filter(
-      (entry) =>
-        entry.kind === 'consumed' &&
-        (entry.sourceType === 'manual' || entry.occurredDate <= data.withdrawalDate),
-    )
-    .reduce((sum, entry) => sum + entry.hours, 0)
-  const attendedUnits = usedHours ?? data.attendedUnits
+  // Ücrete yazılan ve iade edilen saat aynı hareket kümesinden çıkar (DOM-DIL-051, K-43): ayrılıştan
+  // sonraki ders ücrete girmez, iade edilir; elle girilen toplam girişin günüyle elenmez (K-21).
+  const saleHours = sale
+    ? packageWithdrawalHours(sale.purchasedHours, sale.entries, data.withdrawalDate)
+    : undefined
+  const attendedUnits = saleHours?.usedHours ?? data.attendedUnits
   const totalUnits = sale?.purchasedHours ?? data.totalUnits
   const isTuition = (invoice: Invoice) => !invoice.feeKind || invoice.feeKind === 'tuition'
   const share = (amount: number) => Math.floor((amount * attendedUnits) / totalUnits)
@@ -395,10 +391,7 @@ function quoteContract(
       ...(sale
         ? {
             packageSaleId: sale.id,
-            returnedHours: Math.max(
-              packageHourBalance(sale.purchasedHours, sale.entries).remainingHours,
-              0,
-            ),
+            returnedHours: saleHours?.returnedHours ?? 0,
             ...(packageUsedHoursRecorded(sale.entries) ? {} : { usedHoursMissing: true }),
           }
         : {}),

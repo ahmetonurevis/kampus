@@ -1040,6 +1040,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-payer-children.test.ts',
     'başka kurumun öğrencisi listede yok, finans okuması 404',
   ),
+  // Onur: yetişkin kursiyerin sözleşmeleri (ON-068, IST-082).
+  'GET /api/v1/finance/students/:studentId/contracts': kayit(
+    'contract-self-service.test.ts',
+    'DOM-FIN-059: başka kurumun kursiyeri 404, B kurumunun sözleşmesi değişmez',
+    'get(url(B_ONLY), await a.learner(ADULT))',
+  ),
 }
 
 /**

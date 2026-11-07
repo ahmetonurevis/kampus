@@ -27,6 +27,7 @@ import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
 import { FamilyReferralRewards } from './ReferralRewardsSection.tsx'
 import { FamilyPackagesSection } from './FamilyPackagesSection.tsx'
+import { OwnContractsSection } from './OwnContractsSection.tsx'
 import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
 
@@ -320,7 +321,8 @@ function Contracts({
 /**
  * Öğrenci Ödemelerim (`odemelerim`): kendi taksitleri, salt okunur. Öğrenci ödemeleri telefonda
  * gösterilmez (mobil uygulama sayfayı menüden de çıkarır); dar ekranda veri hiç okunmaz. Öğrenci
- * belgesi ödeme bilgisi değildir (K-32): telefonda da görünür, ücret verisi okumaz.
+ * belgesi ödeme bilgisi değildir (K-32): telefonda da görünür, ücret verisi okumaz. Yetişkin
+ * kursiyerin sözleşmeleri ödeme bilgisidir; telefonda gösterilmez (IST-082, DOM-FIN-059).
  */
 export function StudentPaymentsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -341,6 +343,7 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
           <OwnStatement />
           <FamilyReferralRewards />
           <OwnPackages />
+          <OwnContractsSection />
         </>
       )}
     </>

@@ -2264,6 +2264,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/students/{studentId}/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yetişkin kursiyerin kendi sözleşmeleri
+         * @description Velisi olmayan kursiyer sözleşme sürümlerini kendi hesabından salt okur görür (IST-082, DOM-FIN-059): kayıt, türetilmiş durum ve ödeme planı özeti (plan satırı sayısı, toplam, ödenen satır, yürürlükteki sürümde sıradaki vade). Onay ve ek protokol bu uçta yoktur. Öğrenci yalnız kendisini okur; başka öğrenci, olmayan ya da başka kurumun öğrencisi 404. Yalnız okul dışındaki kurum türlerinde (bugün `language_school`); okulda 404. 18 yaşını doldurmamış kursiyer 403 `adult_learner_only` (yaş doğum tarihinden, Europe/Istanbul gününe göre; DOM-KAY-012). Rol: `ogrenci` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listOwnContracts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/e-ozel/items": {
         parameters: {
             query?: never;
@@ -28326,6 +28346,191 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listOwnContracts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kursiyerin öğrenci kimliği (oturumdaki kendisi) */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sözleşme sürümünün kaydı (core sözleşme kaydı) */
+                            contract: {
+                                id: string;
+                                studentId: string;
+                                date: string;
+                                amount: number;
+                                title: string;
+                                classId?: string;
+                                academicYear?: number;
+                                invoiceIds?: string[];
+                                /** Format: uuid */
+                                tariffId?: string;
+                                tariffVersion?: number;
+                                grossCents?: number;
+                                netCents?: number;
+                                discounts?: {
+                                    kind: string;
+                                    amountCents: number;
+                                }[];
+                                extras?: {
+                                    kind: string;
+                                    amountCents: number;
+                                }[];
+                                approvedByUserId?: string;
+                                /** @enum {string} */
+                                payer?: "guardian" | "student";
+                                scholarship?: {
+                                    /** Format: uuid */
+                                    programId: string;
+                                    amountCents: number;
+                                };
+                                paymentTerm?: {
+                                    /** @enum {string} */
+                                    kind: "upfront" | "installment";
+                                    minInstallments: number;
+                                    maxInstallments: number;
+                                    discountPercentBasisPoints: number | null;
+                                    discountAmountCents: number | null;
+                                    installmentCount: number;
+                                };
+                                signatory?: {
+                                    name: string;
+                                    /** @enum {string} */
+                                    role: "founder" | "founder_representative";
+                                    recordedAt: string;
+                                    recordedByUserId: string;
+                                };
+                                approval?: {
+                                    /** @enum {string} */
+                                    method: "wet_signature" | "electronic";
+                                    approvedAt: string;
+                                    approvedByUserId: string;
+                                    payerName: string;
+                                    plan: {
+                                        invoiceId: string | null;
+                                        installment: number;
+                                        amount: number;
+                                        dueDate: string;
+                                        feeKind?: string;
+                                    }[];
+                                };
+                                revision?: number;
+                                amendsContractId?: string;
+                                amendmentReason?: string;
+                                proposedPlan?: {
+                                    kept: {
+                                        invoiceId: string | null;
+                                        installment: number;
+                                        amount: number;
+                                        dueDate: string;
+                                        feeKind?: string;
+                                    }[];
+                                    replacedInvoiceIds: string[];
+                                    added: {
+                                        invoiceId: string | null;
+                                        installment: number;
+                                        amount: number;
+                                        dueDate: string;
+                                        feeKind?: string;
+                                    }[];
+                                };
+                                cancelledAt?: string;
+                                cancelledByUserId?: string;
+                                cancelReason?: string;
+                            };
+                            /**
+                             * @description Türetilmiş durum (core `contractStatus`; DOM-FIN-010, -051)
+                             * @enum {string}
+                             */
+                            status: "awaiting_signatory" | "awaiting_approval" | "approved" | "superseded" | "cancelled";
+                            /** @description Ödeme planı özeti (core `contractPlanSummary`) */
+                            plan: {
+                                /** @description Plan satırı sayısı (Ek 1) */
+                                installmentCount: number;
+                                /** @description Plan toplamı (kuruş) */
+                                totalCents: number;
+                                /** @description Tamamı ödenmiş satır sayısı */
+                                paidCount: number;
+                                /** @description Yürürlükteki sürümde vadesi en yakın ödenmemiş taksit */
+                                nextDue: {
+                                    /** @description Vade günü (YYYY-MM-DD, Europe/Istanbul) */
+                                    date: string;
+                                    amountCents: number;
+                                } | null;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

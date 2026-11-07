@@ -512,6 +512,13 @@
       "when": 1794081978238,
       "tag": "0072_invoices_fee_kind_check",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794083288309,
+      "tag": "0073_validate_fee_kind_scrub_health_replays",
+      "breakpoints": true
     }
   ]
 }

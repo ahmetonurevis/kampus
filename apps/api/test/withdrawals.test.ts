@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
-import type { Database } from '../src/db/client.ts'
+import { MIGRATIONS_FOLDER, type Database } from '../src/db/client.ts'
 import { loadInvoices } from '../src/db/invoice-store.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
@@ -713,6 +715,60 @@ describe('ayrılış ve iade uçları', () => {
     assert.equal(replay.statusCode, 200, replay.body)
     assert.equal(replay.headers['idempotent-replayed'], 'true')
     assert.deepEqual(replay.json(), first.json())
+  })
+
+  test('ON-318, K-30: 0071 öncesi saklanan health yanıtının tekrarı 500 verir; 0073 onu documented yapar, tekrar ilk başarıyı döner', async () => {
+    const a = await institution()
+    assert.equal((await pay(a.cookie, NET / 2, 'TR-H1')).statusCode, 201)
+    const withdrawHeaders = key()
+    const withdrawn = await withdraw(a.cookie, WITHDRAW, withdrawHeaders)
+    assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+    const { id, version } = withdrawn.json().data
+    const refundHeaders = { 'if-match': `"${String(version)}"`, ...key() }
+    const url = `/api/v1/withdrawals/${String(id)}/pay-refund`
+    const first = await send('POST', url, a.cookie, REFUND, refundHeaders)
+    assert.equal(first.statusCode, 200, first.body)
+
+    // 0071'den önceki durum: yanıtlar `health` ile saklanmış, kayıt 0071 ile `documented` olmuş.
+    const keys = [withdrawHeaders['idempotency-key'], refundHeaders['idempotency-key']]
+    for (const stored of keys)
+      await db.execute(
+        sql`update idempotency_keys set response_body = jsonb_set(response_body, '{data,reason}', '"health"')
+              where institution_id = ${a.id} and key = ${stored}`,
+      )
+    await db
+      .update(studentWithdrawals)
+      .set({ reason: 'documented' })
+      .where(and(eq(studentWithdrawals.institutionId, a.id), eq(studentWithdrawals.id, id)))
+    assertError(await send('POST', url, a.cookie, REFUND, refundHeaders), 500, 'internal_error')
+
+    // 0073'ün adımları (üretim veritabanında migration olarak çalışır; burada yeniden uygulanır,
+    // kısıt doğrulaması tekrar etkisizdir).
+    const migration = await readFile(
+      path.join(MIGRATIONS_FOLDER, '0073_validate_fee_kind_scrub_health_replays.sql'),
+      'utf8',
+    )
+    for (const statement of migration.split('--> statement-breakpoint'))
+      await db.execute(sql.raw(statement))
+
+    const stored = await db
+      .select({ body: idempotencyKeys.responseBody })
+      .from(idempotencyKeys)
+      .where(eq(idempotencyKeys.institutionId, a.id))
+    assert.equal(JSON.stringify(stored).includes('health'), false)
+    const documented = (body: { data: object }) => ({
+      data: { ...body.data, reason: 'documented' },
+    })
+    const refundReplay = await send('POST', url, a.cookie, REFUND, refundHeaders)
+    assert.equal(refundReplay.statusCode, 200, refundReplay.body)
+    assert.equal(refundReplay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(refundReplay.json(), documented(first.json()))
+    const withdrawReplay = await withdraw(a.cookie, WITHDRAW, withdrawHeaders)
+    assert.equal(withdrawReplay.statusCode, 201, withdrawReplay.body)
+    assert.equal(withdrawReplay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(withdrawReplay.json(), documented(withdrawn.json()))
+    const detail = await send('GET', `/api/v1/withdrawals/${String(id)}`, a.cookie)
+    assert.equal(detail.json().data.reason, 'documented')
   })
 
   test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat iptal edilir, ayrılış öncesi edilemez', async () => {

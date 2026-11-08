@@ -363,6 +363,18 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
 - **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
 
+## Öneriyle uygulanan kararlar
+
+Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
+
+| Kimlik | Tarih      | Kural         | Uygulanan öneri                                                                                                                                                                                                                                                                      | Değişirse                                                                                                  |
+| ------ | ---------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| K-54   | 2026-11-08 | `DOM-FIN-061` | Açılış penceresi yıl (dil okulunda seçilen dönem) başlangıcından 30 gün önce başlar, 6 hafta sonra biter; elle en çok 120 gün.                                                                                                                                                       | `OPENING_WINDOW_*` sabitleri (`lib/finance-opening-watch.ts`).                                             |
+| K-55   | 2026-11-08 | `DOM-FIN-061` | İlk taksit, sözleşme zincirinin seçilen yıla ait en küçük numaralı güncel taksitidir; vadesi geçmiş ya da 7 gün içinde gelecek, kalanı olan ilk taksit listelenir. Yılı olmayan eski taksit sayılmaz.                                                                                | `OPENING_DUE_SOON_DAYS`, `firstInstallments` (`lib/finance-opening-watch.ts`).                             |
+| K-56   | 2026-11-08 | `DOM-FIN-061` | Onaylanmamış sözleşme listesine ek protokol de girer; ayrılan ya da mezun öğrencinin bekleyen sözleşmesi girmez.                                                                                                                                                                     | `unapprovedContracts` süzgeci.                                                                             |
+| K-57   | 2026-11-08 | `DOM-FIN-061` | Kayıt değişikliği yalnız var olan olaylardır (kesin kayıt, yenileme, dönem geçişi, mezuniyet, ayrılış). Yenileme dışı sınıf/şube değişikliği ve dondurma kaydı tutulmadığı için görünmez; veliden gelen ayrılış talebi kaydı da yoktur, yalnız onaylanmış ayrılış ve iadesi izlenir. | Sınıf değişikliği olayı (Oğuzhan alanı, öğrenci düzenleme) ve dondurma (ON-067) gelince olay türü eklenir. |
+| K-58   | 2026-11-08 | `DOM-FIN-061` | Görünüm yönetici ve ön büroya açıktır, ön büro da tutarları görür; her bölüm en çok 20 satır gösterir, tamamı mevcut listelerdedir.                                                                                                                                                  | Rol dizisi (`routes/finance-opening-watch.ts`), `OPENING_WATCH_ROW_LIMIT`.                                 |
+
 ## Kararlaştırılanlar
 
 Aşağıdakiler soru değildir; proje sahibinin kararıdır ve kural belgelerine "kullanıcı kararı" olarak işlenmiştir.

@@ -1967,4 +1967,64 @@ test.describe('Finans: gelir ve nakit akışı tahmini', () => {
     await expect(page.getByRole('table', { name: TABLE })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Gelir tahmini' })).toHaveCount(0)
   })
+
+  test('DOM-FIN-067 ON-248: yönetici senaryoları temel ile karşılaştırır; adres paylaşılır, CSV iner', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s22'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tahmin`)
+
+    const section = page.getByRole('region', { name: 'Senaryo analizi' })
+    await section.getByLabel('Senaryo 1 adı').fill('Kötümser')
+    await section.getByLabel('Senaryo 1 yeni kayıt değişimi').fill('-10')
+    await section.getByRole('button', { name: 'Senaryo ekle' }).click()
+    await section.getByLabel('Senaryo 2 adı').fill('Zamlı')
+    const price = section.getByLabel('Senaryo 2 fiyat değişimi (%)')
+    await price.fill('300')
+    await section.getByRole('button', { name: 'Karşılaştır' }).click()
+    await expect(section.getByText('Fiyat en çok %200 artabilir.')).toBeVisible()
+    await expect(price).toHaveAttribute('aria-invalid', 'true')
+    await expect(section.getByRole('table', { name: 'Senaryo karşılaştırması' })).toHaveCount(0)
+
+    await price.fill('20')
+    await section.getByLabel('Senaryo 2 mevcut sözleşmelere uygula').check()
+    await section.getByLabel('Nakit akışına etkisi').selectOption('6')
+    await section.getByRole('button', { name: 'Karşılaştır' }).click()
+    const comparison = section.getByRole('table', { name: 'Senaryo karşılaştırması' })
+    await expect(comparison.getByRole('columnheader', { name: 'Kötümser' })).toBeVisible()
+    await expect(comparison.getByRole('columnheader', { name: 'Zamlı' })).toBeVisible()
+    await expect(page).toHaveURL(/senaryo1=K%C3%B6t%C3%BCmser/)
+    await expect(page).toHaveURL(/senaryo2\.fiyat=20/)
+    await expect(page).toHaveURL(/senaryoNakit=6/)
+    await expect(section.getByRole('table', { name: 'Senaryoların nakit akışı' })).toBeVisible()
+
+    // Temel sütunu gelir tahmininin beklenen toplamıdır.
+    const revenueTotal = page
+      .getByRole('region', { name: 'Gelir tahmini' })
+      .getByRole('row', { name: /Beklenen toplam/ })
+      .getByRole('cell')
+      .last()
+    const baselineTotal = comparison
+      .getByRole('row', { name: /Beklenen toplam/ })
+      .getByRole('cell')
+      .nth(1)
+    await expect(baselineTotal).toHaveText((await revenueTotal.textContent()) ?? '')
+
+    const file = page.waitForEvent('download')
+    await section.getByRole('button', { name: 'CSV indir' }).click()
+    const csv = await file
+    expect(csv.suggestedFilename()).toMatch(/^gelir-senaryolari-\d{4}\.csv$/)
+    const body = await readFile(await csv.path(), 'utf8')
+    expect(body).toContain('"Ölçüt";"Temel";"Kötümser";"Zamlı"')
+    expect(body).toContain('"Mevcut sözleşmelere uygulanır";"";"Hayır";"Evet"')
+    await expectNoHorizontalOverflow(page)
+
+    // Adres yeniden açılınca senaryo formu ve karşılaştırma geri gelir.
+    await page.reload()
+    await expect(section.getByLabel('Senaryo 2 fiyat değişimi (%)')).toHaveValue('20')
+    await expect(comparison.getByRole('columnheader', { name: 'Zamlı' })).toBeVisible()
+  })
 })

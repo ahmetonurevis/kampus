@@ -266,7 +266,8 @@ const lineInput = {
   itemId: id(2),
   amountCents: 1_200_000,
 }
-const lineContext = {
+type LineContext = Parameters<typeof planBudgetLine>[1]
+const lineContext: LineContext = {
   period: period(1),
   center: { isActive: true },
   item: { isActive: true },
@@ -299,7 +300,7 @@ test('DOM-FIN-062: satır planlanan tutarı ve isteğe bağlı aylık dağılım
 })
 
 test('DOM-FIN-062: kapalı dönem, eksik ya da pasif merkez ve kalem, mükerrer satır reddedilir', () => {
-  const cases: [Partial<typeof lineContext>, string, string?][] = [
+  const cases: [Partial<LineContext>, string, string?][] = [
     [{ period: period(1, { status: 'closed' }) }, 'budget_period_closed'],
     [{ center: null }, 'cost_center_not_found'],
     [{ center: { isActive: false } }, 'cost_center_inactive'],

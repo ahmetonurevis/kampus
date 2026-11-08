@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { useFinanceTotals } from '@kampus/react-shared/use-finance-exports.ts'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -17,8 +18,6 @@ import { EOzelSection } from './EOzelSection.tsx'
 import { FinanceBankMatchingSection } from './FinanceBankMatchingSection.tsx'
 import { FinanceBudgetSection } from './FinanceBudgetSection.tsx'
 import { FinanceCostReportsSection } from './FinanceCostReportsSection.tsx'
-import { FinancePurchaseRequestsSection } from './FinancePurchaseRequestsSection.tsx'
-import { FinanceSuppliersSection } from './FinanceSuppliersSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
@@ -39,6 +38,15 @@ import { PaymentsSection } from './PaymentsSection.tsx'
 import { ContractsSection } from './ContractsSection.tsx'
 import { WithdrawalsSection } from './WithdrawalsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
+import { SummaryLoading } from '../management/SummaryParts.tsx'
+
+// Satın alma sekmeleri ayrı parçadır: Finans rota parçası 100 KB bütçesinin altında kalır.
+const FinanceSuppliersSection = lazy(async () => ({
+  default: (await import('./FinanceSuppliersSection.tsx')).FinanceSuppliersSection,
+}))
+const FinancePurchaseRequestsSection = lazy(async () => ({
+  default: (await import('./FinancePurchaseRequestsSection.tsx')).FinancePurchaseRequestsSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -212,8 +220,15 @@ export function FinancePage({ page }: { page: NavPage }) {
         />
       ) : null}
       {tab === 'costs' ? <FinanceCostReportsSection /> : null}
-      {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
-      {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
+      {tab === 'suppliers' || tab === 'purchaseRequests' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          {tab === 'suppliers' ? (
+            <FinanceSuppliersSection canManage={isManager} />
+          ) : (
+            <FinancePurchaseRequestsSection />
+          )}
+        </Suspense>
+      ) : null}
       {tab === 'boardReport' ? (
         <FinanceBoardReportSection
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}

@@ -457,8 +457,8 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ## Sonra · Faz 3
 
-| ID     | Görev                                             | Boyut | Durum       | Dal / commit          | Not                                                       |
-| ------ | ------------------------------------------------- | ----- | ----------- | --------------------- | --------------------------------------------------------- |
-| ON-099 | Banka hareketi eşleştirme (IST-115)               | L     | bekliyor    |                       | Dış servis: banka hareket servisi                         |
-| ON-100 | Kurumsal müşteri grupları, toplu fatura (IST-089) | M     | çalışılıyor | onur/kurumsal-musteri | Migration gerekirse sıradaki numara (ON-087 dalında 0074) |
-| ON-101 | Revir ve ilaç onayı (IST-102)                     | M     | bekliyor    |                       | Kullanıcı kararı, 2 Kasım (K9); Oğuzhan'daki OG-195 iptal |
+| ID     | Görev                                             | Boyut | Durum    | Dal / commit | Not                                                                                                                                   |
+| ------ | ------------------------------------------------- | ----- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| ON-099 | Banka hareketi eşleştirme (IST-115)               | L     | bekliyor |              | Dış servis: banka hareket servisi                                                                                                     |
+| ON-100 | Kurumsal müşteri grupları, toplu fatura (IST-089) | M     | bitti    | 3e515405     | Migration gerekirse sıradaki numara (ON-087 dalında 0074); Migration 0074; şirket yetkilisi girişi #65 bekliyor; K-45…K-53 varsayılan |
+| ON-101 | Revir ve ilaç onayı (IST-102)                     | M     | bekliyor |              | Kullanıcı kararı, 2 Kasım (K9); Oğuzhan'daki OG-195 iptal                                                                             |

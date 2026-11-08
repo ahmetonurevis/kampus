@@ -114290,6 +114290,748 @@
         }
       }
     },
+    "/api/v1/finance/purchase-report": {
+      "get": {
+        "operationId": "getFinancePurchaseReport",
+        "summary": "Satın alma raporu",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "periodId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "period",
+                            "range"
+                          ],
+                          "description": "Bütçe dönemi ya da tarih aralığı"
+                        },
+                        "from": {
+                          "type": "string",
+                          "description": "Kapsamın ilk günü `YYYY-MM-DD`"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Kapsamın son günü `YYYY-MM-DD`"
+                        },
+                        "period": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "open",
+                                    "closed"
+                                  ]
+                                },
+                                "startDate": {
+                                  "type": "string"
+                                },
+                                "endDate": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "status",
+                                "startDate",
+                                "endDate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bütçe dönemi kapsamında dönem; aralıkta boş"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "orderCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilmemiş sipariş sayısı"
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV hariç tutar, kuruş"
+                            },
+                            "vatCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                            },
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV dahil tutar, kuruş"
+                            },
+                            "supplierCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Siparişi olan tedarikçi sayısı"
+                            }
+                          },
+                          "required": [
+                            "orderCount",
+                            "netCents",
+                            "vatCents",
+                            "grossCents",
+                            "supplierCount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "cancelled": {
+                          "type": "object",
+                          "properties": {
+                            "orderCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen KDV dahil tutar"
+                            }
+                          },
+                          "required": [
+                            "orderCount",
+                            "grossCents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kapsamda iptal edilen siparişler; toplamlara girmez"
+                        },
+                        "leadTime": {
+                          "type": "object",
+                          "properties": {
+                            "orderCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "averageDays": {
+                              "description": "Ortalama takvim günü, bir ondalık",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "minDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "maxDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "orderCount",
+                            "averageDays",
+                            "minDays",
+                            "maxDays"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "stationery",
+                                  "cleaning",
+                                  "food",
+                                  "it",
+                                  "maintenance",
+                                  "furniture",
+                                  "educational",
+                                  "services",
+                                  "transport",
+                                  "other"
+                                ]
+                              },
+                              "supplierCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "orderCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş sipariş sayısı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "shareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş"
+                              }
+                            },
+                            "required": [
+                              "category",
+                              "supplierCount",
+                              "orderCount",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "shareBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157)"
+                        },
+                        "suppliers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rank": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Brüt tutara göre sıra, 1 en çok"
+                              },
+                              "supplierId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Tedarikçinin güncel unvanı; şahıs tedarikçide kişisel veri (K-155)"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "company",
+                                  "individual"
+                                ]
+                              },
+                              "categories": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "stationery",
+                                    "cleaning",
+                                    "food",
+                                    "it",
+                                    "maintenance",
+                                    "furniture",
+                                    "educational",
+                                    "services",
+                                    "transport",
+                                    "other"
+                                  ]
+                                }
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "orderCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş sipariş sayısı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "shareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş"
+                              },
+                              "averageLeadDays": {
+                                "description": "Talepten siparişe ortalama takvim günü, bir ondalık (K-158)",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rank",
+                              "supplierId",
+                              "name",
+                              "type",
+                              "categories",
+                              "isActive",
+                              "orderCount",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "shareBasisPoints",
+                              "averageLeadDays"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Brüt tutara göre azalan"
+                        },
+                        "topSuppliers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rank": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Brüt tutara göre sıra, 1 en çok"
+                              },
+                              "supplierId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Tedarikçinin güncel unvanı; şahıs tedarikçide kişisel veri (K-155)"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "company",
+                                  "individual"
+                                ]
+                              },
+                              "categories": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "stationery",
+                                    "cleaning",
+                                    "food",
+                                    "it",
+                                    "maintenance",
+                                    "furniture",
+                                    "educational",
+                                    "services",
+                                    "transport",
+                                    "other"
+                                  ]
+                                }
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "orderCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş sipariş sayısı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "shareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş"
+                              },
+                              "averageLeadDays": {
+                                "description": "Talepten siparişe ortalama takvim günü, bir ondalık (K-158)",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rank",
+                              "supplierId",
+                              "name",
+                              "type",
+                              "categories",
+                              "isActive",
+                              "orderCount",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "shareBasisPoints",
+                              "averageLeadDays"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "En çok harcama yapılan beş tedarikçi"
+                        },
+                        "costCenters": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "orderCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş sipariş sayısı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "shareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "isActive",
+                              "orderCount",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "shareBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin maliyet merkezine göre"
+                        },
+                        "budgetItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "orderCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş sipariş sayısı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "shareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "isActive",
+                              "orderCount",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "shareBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin gider kalemine göre"
+                        }
+                      },
+                      "required": [
+                        "scope",
+                        "from",
+                        "to",
+                        "period",
+                        "totals",
+                        "cancelled",
+                        "leadTime",
+                        "categories",
+                        "suppliers",
+                        "topSuppliers",
+                        "costCenters",
+                        "budgetItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

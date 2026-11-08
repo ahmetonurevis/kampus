@@ -382,30 +382,30 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 | ON-241 | Bütçe dönemi ve kalemleri: gelir ve gider kalemleri, dönem              | S     | çalışılıyor | onur/butce-maliyet         | bağımlılık: IST-011; Migration 0075 (ON-242 ile aynı dal)                                                                        |
 | ON-242 | Maliyet merkezi: kampüs, birim, program                                 | S     | çalışılıyor | onur/butce-maliyet         | bağımlılık: IST-010; ON-241 ile aynı dal                                                                                         |
 | ON-243 | Bütçe hazırlama ve onay: birim taslakları, revizyon, onay               | S     | bekliyor    |                            | bağımlılık: K27 iş akışı motoru                                                                                                  |
-| ON-244 | Bütçe–gerçekleşen raporu: tahsilat ve satın alma verisinden             | S     | bekliyor    |                            | bağımlılık: K2, K23                                                                                                              |
+| ON-244 | Bütçe–gerçekleşen raporu: tahsilat ve satın alma verisinden             | S     | çalışılıyor | onur/butce-gerceklesen     | bağımlılık: K2, K23; ON-241 bütçesi üzerine                                                                                      |
 | ON-245 | Bütçe aşımı denetimi: talep anında kalan bütçe uyarısı                  | S     | bekliyor    |                            | bağımlılık: K23 satın alma talebi                                                                                                |
 | ON-246 | Gelir tahmini: kayıt hunisi ve fiyat listesinden                        | S     | bitti       | a0f2302b                   | bağımlılık: IST-117, IST-104; ON-247 ile aynı dal; DOM-FIN-063, K-65…K-71 varsayılan, M-15; envanter satırı izinle (ortak dosya) |
 | ON-247 | Nakit akışı tahmini: taksit vadeleri ve gider planından                 | S     | bitti       | a0f2302b                   | bağımlılık: IST-105; ON-246 ile aynı dal; ON-246 ile birlikte; gider ON-241 bütçesinden beslenecek                               |
-| ON-248 | Senaryo analizi: öğrenci sayısı, fiyat artışı ve burs oranı senaryoları | M     | bekliyor    |                            | bağımlılık: gelir tahmini                                                                                                        |
-| ON-249 | Öğrenci başı maliyet: maliyet merkezi bölüşümüyle                       | S     | bekliyor    |                            | bağımlılık: maliyet merkezi                                                                                                      |
-| ON-250 | Çok kampüslü konsolide rapor: kampüsler toplamı ve karşılaştırması      | S     | bekliyor    |                            | bağımlılık: maliyet merkezi                                                                                                      |
+| ON-248 | Senaryo analizi: öğrenci sayısı, fiyat artışı ve burs oranı senaryoları | M     | çalışılıyor | onur/senaryo-analizi       | bağımlılık: gelir tahmini; ON-246 tahmini üzerine                                                                                |
+| ON-249 | Öğrenci başı maliyet: maliyet merkezi bölüşümüyle                       | S     | çalışılıyor | onur/maliyet-konsolide     | bağımlılık: maliyet merkezi; ON-250 ile aynı dal                                                                                 |
+| ON-250 | Çok kampüslü konsolide rapor: kampüsler toplamı ve karşılaştırması      | S     | çalışılıyor | onur/maliyet-konsolide     | bağımlılık: maliyet merkezi; ON-249 ile aynı dal                                                                                 |
 | ON-251 | Yönetim kurulu raporu PDF'i: dönemlik finans ve kayıt özeti             | S     | çalışılıyor | onur/yonetim-kurulu-raporu | bağımlılık: PDF motoru                                                                                                           |
 
 ### K26 · Mezunlar ve kurumsal ilişkiler
 
-| ID     | Görev                                                                          | Boyut | Durum    | Dal / commit | Not                                      |
-| ------ | ------------------------------------------------------------------------------ | ----- | -------- | ------------ | ---------------------------------------- |
-| ON-252 | Mezun hesabı: mezuniyette hesabın mezun profiline dönüşmesi, yeni rıza         | M     | bekliyor |              | KVKK: amaç değişikliği için açık rıza    |
-| ON-253 | Mezun dizini: isteğe bağlı görünürlük, meslek ve şehir                         | S     | bekliyor |              | KVKK                                     |
-| ON-254 | Mezun iletişim tercihi: kanal tercihi ve ticari ileti izni                     | S     | bekliyor |              | bağımlılık: IST-135                      |
-| ON-255 | Mezun etkinliği: davet, kayıt, katılım                                         | S     | bekliyor |              | bağımlılık: K9 etkinlik bileti           |
-| ON-256 | Üniversite ve meslek yerleşme takibi: yıllara göre yerleşme özeti              | S     | bekliyor |              | bağımlılık: K14 yerleşme kaydı           |
-| ON-257 | Mezun mentorluğu: öğrencilerle kariyer görüşmesi, kurum aracılığıyla           | M     | bekliyor |              | KVKK: çocukla iletişim kurallı (IST-070) |
-| ON-258 | Bağış kampanyası: hedef, bağışçı, makbuz                                       | S     | bekliyor |              | doğrulanmalı (bağış ve vergi mevzuatı)   |
-| ON-259 | Burs fonu: bağış kaynaklı fon, burs ataması ve fon bakiyesi                    | M     | bekliyor |              | bağımlılık: IST-105                      |
-| ON-260 | Mezun belge talebi: diploma örneği, transkript, öğrenim belgesi                | M     | bekliyor |              | bağımlılık: K27 şablonlu belge           |
-| ON-261 | Mezun bülteni: dönemlik bülten                                                 | S     | bekliyor |              | bağımlılık: IST-068                      |
-| ON-262 | Paydaş ve sponsor kaydı: kurumsal paydaşlar, iş birlikleri, sözleşme tarihleri | M     | bekliyor |              | bağımlılık: K27 belge deposu             |
+| ID     | Görev                                                                          | Boyut | Durum       | Dal / commit   | Not                                      |
+| ------ | ------------------------------------------------------------------------------ | ----- | ----------- | -------------- | ---------------------------------------- |
+| ON-252 | Mezun hesabı: mezuniyette hesabın mezun profiline dönüşmesi, yeni rıza         | M     | bekliyor    |                | KVKK: amaç değişikliği için açık rıza    |
+| ON-253 | Mezun dizini: isteğe bağlı görünürlük, meslek ve şehir                         | S     | bekliyor    |                | KVKK                                     |
+| ON-254 | Mezun iletişim tercihi: kanal tercihi ve ticari ileti izni                     | S     | bekliyor    |                | bağımlılık: IST-135                      |
+| ON-255 | Mezun etkinliği: davet, kayıt, katılım                                         | S     | bekliyor    |                | bağımlılık: K9 etkinlik bileti           |
+| ON-256 | Üniversite ve meslek yerleşme takibi: yıllara göre yerleşme özeti              | S     | bekliyor    |                | bağımlılık: K14 yerleşme kaydı           |
+| ON-257 | Mezun mentorluğu: öğrencilerle kariyer görüşmesi, kurum aracılığıyla           | M     | bekliyor    |                | KVKK: çocukla iletişim kurallı (IST-070) |
+| ON-258 | Bağış kampanyası: hedef, bağışçı, makbuz                                       | S     | bekliyor    |                | doğrulanmalı (bağış ve vergi mevzuatı)   |
+| ON-259 | Burs fonu: bağış kaynaklı fon, burs ataması ve fon bakiyesi                    | M     | çalışılıyor | onur/burs-fonu | bağımlılık: IST-105; Migration 0076      |
+| ON-260 | Mezun belge talebi: diploma örneği, transkript, öğrenim belgesi                | M     | bekliyor    |                | bağımlılık: K27 şablonlu belge           |
+| ON-261 | Mezun bülteni: dönemlik bülten                                                 | S     | bekliyor    |                | bağımlılık: IST-068                      |
+| ON-262 | Paydaş ve sponsor kaydı: kurumsal paydaşlar, iş birlikleri, sözleşme tarihleri | M     | bekliyor    |                | bağımlılık: K27 belge deposu             |
 
 ## D9 · Entegrasyon ve ekosistem
 

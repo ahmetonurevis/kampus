@@ -994,7 +994,12 @@ test('K-12: karar kayda girer, hesap değişmez; iade yalnız seçilen ödeyiciy
   assert.deepEqual(plan.breakdown.contracts, quoted.contracts)
   assert.equal(refundPayerName(state, plan), studentName)
 
-  const row = { refundCents: 100, refundPaidDate: null, payerName: refundPayerName(state, plan) }
+  const row = {
+    refundCents: 100,
+    refundPaidDate: null,
+    payerName: refundPayerName(state, plan),
+    withdrawalDate: '2026-10-01',
+  }
   const pay = { paidDate: '2026-10-05', iban: IBAN, accountHolder: studentName }
   assert.equal(planRefundPayment(row, pay, '2026-10-06').accountHolder, studentName)
   assert.throws(

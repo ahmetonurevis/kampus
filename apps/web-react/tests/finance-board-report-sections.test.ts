@@ -143,3 +143,35 @@ test('DOM-FIN-064 etiketler: oran on binde birden yüzde, bütçe dönemi seçim
     false,
   )
 })
+
+test('DOM-FIN-064 PDF: gizli kampüsün sayısı ve tutarları "Gizli" yazar, tamamı gizliyse not düşer (K-116)', () => {
+  const costs = BUDGET_SECTIONS.costs
+  assert.ok(costs)
+  const hiddenRow = {
+    studentCount: null,
+    accruedCents: null,
+    netCollectedCents: null,
+    budgetExpenseCents: null,
+    accruedPerStudentCents: null,
+    budgetExpensePerStudentCents: null,
+    suppressed: true,
+  }
+  const lines = render(
+    {
+      ...BUDGET_SECTIONS,
+      costs: {
+        ...costs,
+        campuses: costs.campuses.map((row) => ({ ...row, ...hiddenRow })),
+      },
+    },
+    { budget: false, costs: true, forecast: false },
+  )
+  assert.equal(
+    lines.filter((line) => line.startsWith('Gizli')).length,
+    10,
+    'iki kampüs × beş hücre',
+  )
+  assert.equal(has(lines, money(1_000_000)), false, 'Kadıköy tahakkuku yazılmaz')
+  assert.ok(has(lines, 'tamamen gizlidir'))
+  assert.ok(has(lines, money(1_400_000)), 'kurum toplamı yazar')
+})

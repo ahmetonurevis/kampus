@@ -164,19 +164,19 @@ function costSection(doc: DocumentLayout, report: BoardReportSectionData, learne
     `${dayLabel(costs.from)} – ${dayLabel(costs.to)} bütçe dönemi; maliyet bütçe gideridir (ortak gider payı dahil).`,
     9,
   )
+  const hidden = `Gizli (<${String(costs.minGroupSize)})`
+  const amount = (cents: number | null) => (cents === null ? hidden : money(cents))
   const perStudent = (row: { budgetExpensePerStudentCents: number | null; suppressed: boolean }) =>
-    row.suppressed
-      ? `Gizli (<${String(costs.minGroupSize)})`
-      : optional(row.budgetExpensePerStudentCents)
+    row.suppressed ? hidden : optional(row.budgetExpensePerStudentCents)
   doc.table(
     CAMPUS_COLUMNS,
     [
       ...costs.campuses.map((row) => [
         row.name,
-        String(row.studentCount),
-        money(row.accruedCents),
-        money(row.netCollectedCents),
-        money(row.budgetExpenseCents),
+        row.studentCount === null ? hidden : String(row.studentCount),
+        amount(row.accruedCents),
+        amount(row.netCollectedCents),
+        amount(row.budgetExpenseCents),
         perStudent(row),
       ]),
       [
@@ -191,9 +191,14 @@ function costSection(doc: DocumentLayout, report: BoardReportSectionData, learne
     true,
   )
   doc.paragraph(
-    `${String(costs.minGroupSize)} ${learnerNoun}den az olan kampüste kişi başı maliyet gizlenir; kampüs toplamı görünür.`,
+    `${String(costs.minGroupSize)} ${learnerNoun}den az olan kampüsün sayısı ve tutarları gizlenir; gizli kampüs toplamdan bulunabileceği için en küçük ikinci kampüs de, gerekirse bütün kampüsler gizlenir. Toplam kurum genelidir.`,
     9,
   )
+  if (costs.campuses.length > 0 && costs.campuses.every((row) => row.suppressed))
+    doc.paragraph(
+      `Bu dönemde kampüs kırılımı ${String(costs.minGroupSize)} kişiden az kişi içerdiği için tamamen gizlidir.`,
+      9,
+    )
 }
 
 const PIPELINE_NOTES = {

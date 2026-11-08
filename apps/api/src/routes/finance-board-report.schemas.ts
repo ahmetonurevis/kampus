@@ -124,8 +124,30 @@ const sections = {
       from: z.string(),
       to: z.string(),
       minGroupSize: z.number().int(),
-      campuses: z.array(campusRow.extend({ campusId: z.string().nullable(), name: z.string() })),
-      totals: campusRow,
+      campuses: z
+        .array(
+          z.object({
+            campusId: z.string().nullable(),
+            name: z.string(),
+            studentCount: hidden(z.number().int()),
+            accruedCents: hidden(cents()),
+            netCollectedCents: hidden(cents()),
+            budgetExpenseCents: hidden(cents()),
+            accruedPerStudentCents: cents()
+              .nullable()
+              .describe('Gizli, 5 kişiden az ya da öğrencisiz `null`'),
+            budgetExpensePerStudentCents: cents()
+              .nullable()
+              .describe('Öğrenci başı maliyet; gizli, 5 kişiden az ya da öğrencisiz `null`'),
+            suppressed: z
+              .boolean()
+              .describe(
+                'Küçük grup (K-116): 1–4 kişilik kampüs, toplamdan geri hesaplanmasın diye ikincil gizlenen ya da tamamı gizli kırılım; sayı ve tutarlar `null`',
+              ),
+          }),
+        )
+        .describe('Kampüs satırları; kişi sayısı kurul raporunun küçük grup kuralıyla gizlenir'),
+      totals: campusRow.describe('Kurum geneli toplam; gizlenmez'),
     })
     .nullable()
     .describe(

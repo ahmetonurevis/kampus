@@ -245,13 +245,28 @@ describe('DOM-FIN-064: yönetim kurulu raporunun bütçe, maliyet ve tahmin böl
       'suppressed',
     ])
       assert.equal((costs.totals as Json)[field], consolidationTotals[field], field)
+    // K-116: Ataşehir'de 3 öğrenci; sayı ve tutarlar gizli. Tek küçük kampüs toplamdan geri
+    // hesaplanmasın diye en küçük görünür kampüs (Kadıköy, 6) de gizlenir (ON-328 kuralı).
+    const hidden = {
+      studentCount: null,
+      accruedCents: null,
+      netCollectedCents: null,
+      budgetExpenseCents: null,
+      accruedPerStudentCents: null,
+      budgetExpensePerStudentCents: null,
+      suppressed: true,
+    }
     const ata = (costs.campuses as Json[]).find((row) => row.campusId === ATASEHIR?.id)
-    assert.equal(ata?.studentCount, 3)
-    assert.equal(ata?.budgetExpensePerStudentCents, null, 'küçük grup (K-102)')
-    assert.equal(ata?.suppressed, true)
+    assert.deepEqual(ata, { campusId: ATASEHIR?.id, name: ata?.name, ...hidden })
     const kad = (costs.campuses as Json[]).find((row) => row.campusId === KADIKOY?.id)
-    assert.equal(kad?.suppressed, false)
-    assert.equal(typeof kad?.budgetExpensePerStudentCents, 'number')
+    assert.deepEqual(kad, { campusId: KADIKOY?.id, name: kad?.name, ...hidden })
+    // Maliyet sekmesinin kendi raporu K-102 ile kalır: kampüs tutarı görünür.
+    const ataScreen = (consolidation.campuses as Json[]).find(
+      (row) => row.campusId === ATASEHIR?.id,
+    )
+    assert.equal(ataScreen?.studentCount, 3)
+    assert.equal(typeof ataScreen?.accruedCents, 'number')
+    assert.equal(ataScreen?.budgetExpensePerStudentCents, null)
 
     const revenue = await get('/api/v1/finance/forecasts/revenue?year=2027', t.admin)
     const cashFlow = await get('/api/v1/finance/forecasts/cash-flow?months=12', t.admin)

@@ -2,6 +2,7 @@ import type { BudgetActuals, BudgetActualTotals } from './finance-budget-actuals
 import type { BudgetItemKind, BudgetPeriodStatus } from './finance-budget.ts'
 import type { CampusConsolidation, CampusConsolidationRow } from './finance-campus-consolidation.ts'
 import { DomainError } from './errors.ts'
+import { BOARD_REPORT_MIN_GROUP, suppressSmallGroups } from './finance-board-report.ts'
 import {
   CASH_FLOW_DEFAULT_MONTHS,
   schoolYearOfDay,
@@ -15,8 +16,8 @@ import {
  * ON-329, K-81'in öngördüğü genişleme). Bölümler yeni hesap yazmaz: bütçe–gerçekleşen `budgetActuals`
  * (DOM-FIN-066), kampüs konsolide ve öğrenci başı maliyet `campusConsolidation` (DOM-FIN-065), gelir
  * ve nakit tahmini `revenueForecast`/`cashFlowForecast` (DOM-FIN-063) sonucundan kurul özeti çıkarır.
- * Kişi adı ve kimliği taşımaz; küçük grup kuralı kaynak hesabındır (öğrenci başı değer 5 kişiden az
- * kampüste gizli, K-102).
+ * Kişi adı ve kimliği taşımaz. Kampüs tablosunda küçük grup kurul raporunun kuralıyla (K-77, K-116)
+ * gizlenir: 5 kişiden az kampüsün sayısı ve tutarları da yazılmaz.
  *
  * Bütçe dönemi (K-113): yönetici dönemi seçebilir; seçmezse rapor dönemiyle en çok gün örtüşen açık
  * ya da kapalı dönem alınır, öyle dönem yoksa taslak dönemlerden aynı kuralla. Hiçbiri örtüşmüyorsa
@@ -204,10 +205,8 @@ export function boardBudgetSummary(
 
 // --- Kampüs konsolide ve öğrenci başı maliyet -----------------------------------------------------
 
-export type BoardCampusRow = Pick<
+type CampusFields = Pick<
   CampusConsolidationRow,
-  | 'campusId'
-  | 'name'
   | 'studentCount'
   | 'accruedCents'
   | 'netCollectedCents'
@@ -217,37 +216,82 @@ export type BoardCampusRow = Pick<
   | 'suppressed'
 >
 
+/** Kampüs satırı; gizli satırda (`suppressed`) sayı ve bütün tutarlar `null` (K-116). */
+export type BoardCampusRow = Pick<CampusConsolidationRow, 'campusId' | 'name'> & {
+  [K in keyof CampusFields]: K extends 'suppressed' ? boolean : CampusFields[K] | null
+}
+
 export interface BoardCostSummary {
   from: string
   to: string
   minGroupSize: number
   campuses: BoardCampusRow[]
-  totals: Omit<BoardCampusRow, 'campusId' | 'name'>
+  /** Kurum geneli toplam; gizlenmez (K-77). Öğrenci başı değer kaynak kuralıyla (K-102). */
+  totals: CampusFields
 }
 
 /**
- * Konsolide rapordan kurul özeti: kampüs satırları ve kurum toplamı. Öğrenci başı maliyet kampüs
- * merkezinin bütçe gideridir (ortak gider payı dahil); 5 kişiden az kampüste öğrenci başı değer
- * kaynak hesapta gizlidir (K-102), burada yeniden hesaplanmaz.
+ * Kampüs satırının kişileri. Konsolide raporda her öğrenci tek kampüs satırına yazılır (satırlar
+ * ayrıktır), bu yüzden satırın kişi sayısı dönemde sayılan öğrencisidir ve sayı yeterlidir: kişiler
+ * satıra özgü yer tutucularla verilir. Dönem öğrencisi olmayan ama öğrenci hareketi (tahakkuk,
+ * tahsilat, iptal, iade) taşıyan satır en az bir kişilik sayılır; yalnız bütçe gideri olan satır kişi
+ * taşımaz.
+ */
+function campusMembers(row: CampusConsolidationRow, index: number): string[] {
+  const moved =
+    row.accruedCents !== 0 ||
+    row.collectedCents !== 0 ||
+    row.reversedCents !== 0 ||
+    row.refundedCents !== 0
+  const count = row.studentCount > 0 ? row.studentCount : moved ? 1 : 0
+  return Array.from({ length: count }, (_, member) => `${String(index)}:${String(member)}`)
+}
+
+/**
+ * Konsolide rapordan kurul özeti: kampüs satırları ve kurum toplamı (K-116). Kurul raporu kişi
+ * verisi taşımadığından kampüs satırı kırılım hücresidir: 1–4 kişilik kampüsün öğrenci sayısı,
+ * tahakkuku, net tahsilatı, bütçe gideri ve öğrenci başı değerleri gizlenir; gizli kampüsler toplamdan
+ * geri hesaplanmasın diye ikincil gizleme ve gerekirse kırılımın tamamının gizlenmesi
+ * `suppressSmallGroups` (K-77, ON-328) ile yapılır. Maliyet sekmesinin kendi raporu (K-102)
+ * değişmez; öğrenci başı değerler kaynak hesaptan gelir, burada yeniden hesaplanmaz.
  */
 export function boardCostSummary(consolidation: CampusConsolidation): BoardCostSummary {
-  const row = (item: CampusConsolidationRow): BoardCampusRow => ({
-    campusId: item.campusId,
-    name: item.name,
-    studentCount: item.studentCount,
-    accruedCents: item.accruedCents,
-    netCollectedCents: item.netCollectedCents,
-    budgetExpenseCents: item.budgetExpenseCents,
-    accruedPerStudentCents: item.accruedPerStudentCents,
-    budgetExpensePerStudentCents: item.budgetExpensePerStudentCents,
-    suppressed: item.suppressed,
-  })
+  const cells = consolidation.campuses.map((row, index) => ({
+    row,
+    members: campusMembers(row, index),
+  }))
+  const campuses = suppressSmallGroups(cells, (cell) => cell.members).map(
+    ({ row, suppressed }): BoardCampusRow =>
+      suppressed
+        ? {
+            campusId: row.campusId,
+            name: row.name,
+            studentCount: null,
+            accruedCents: null,
+            netCollectedCents: null,
+            budgetExpenseCents: null,
+            accruedPerStudentCents: null,
+            budgetExpensePerStudentCents: null,
+            suppressed: true,
+          }
+        : {
+            campusId: row.campusId,
+            name: row.name,
+            studentCount: row.studentCount,
+            accruedCents: row.accruedCents,
+            netCollectedCents: row.netCollectedCents,
+            budgetExpenseCents: row.budgetExpenseCents,
+            accruedPerStudentCents: row.accruedPerStudentCents,
+            budgetExpensePerStudentCents: row.budgetExpensePerStudentCents,
+            suppressed: row.suppressed,
+          },
+  )
   const { totals } = consolidation
   return {
     from: consolidation.from,
     to: consolidation.to,
-    minGroupSize: consolidation.minGroupSize,
-    campuses: consolidation.campuses.map(row),
+    minGroupSize: BOARD_REPORT_MIN_GROUP,
+    campuses,
     totals: {
       studentCount: totals.studentCount,
       accruedCents: totals.accruedCents,

@@ -281,52 +281,63 @@ const campus = (overrides: Partial<CampusConsolidationRow>): CampusConsolidation
   ...overrides,
 })
 
-test('DOM-FIN-064 maliyet özeti: konsolide raporun satırları, küçük grup kaynak hesaptan (K-102)', () => {
-  const consolidation: CampusConsolidation = {
-    from: '2026-09-01',
-    to: '2027-08-31',
-    minGroupSize: 5,
-    campuses: [
+const TOTALS: CampusConsolidation['totals'] = {
+  studentCount: 9,
+  accruedCents: 1_000_000,
+  collectedCents: 500_000,
+  reversedCents: 0,
+  refundedCents: 0,
+  netCollectedCents: 500_000,
+  budgetExpenseCents: 1_500_000,
+  budgetSharedCents: 300_000,
+  accruedPerStudentCents: 111_111,
+  budgetExpensePerStudentCents: 166_667,
+  suppressed: false,
+}
+const consolidationOf = (campuses: CampusConsolidationRow[]): CampusConsolidation => ({
+  from: '2026-09-01',
+  to: '2027-08-31',
+  minGroupSize: 5,
+  campuses,
+  totals: TOTALS,
+})
+const ATASEHIR = campus({
+  campusId: 'ata',
+  name: 'Ataşehir',
+  studentCount: 3,
+  accruedCents: 400_000,
+  netCollectedCents: 0,
+  budgetExpenseCents: 300_000,
+  accruedPerStudentCents: null,
+  budgetExpensePerStudentCents: null,
+  suppressed: true,
+})
+const HIDDEN_CAMPUS = {
+  studentCount: null,
+  accruedCents: null,
+  netCollectedCents: null,
+  budgetExpenseCents: null,
+  accruedPerStudentCents: null,
+  budgetExpensePerStudentCents: null,
+  suppressed: true,
+}
+
+test('DOM-FIN-064 maliyet özeti: 5 kişiden az kampüsün tutarları da gizlenir (K-116)', () => {
+  const summary = boardCostSummary(
+    consolidationOf([
       campus({}),
-      campus({
-        campusId: 'ata',
-        name: 'Ataşehir',
-        studentCount: 3,
-        accruedCents: 400_000,
-        netCollectedCents: 0,
-        budgetExpenseCents: 300_000,
-        accruedPerStudentCents: null,
-        budgetExpensePerStudentCents: null,
-        suppressed: true,
-      }),
-    ],
-    totals: {
-      studentCount: 9,
-      accruedCents: 1_000_000,
-      collectedCents: 500_000,
-      reversedCents: 0,
-      refundedCents: 0,
-      netCollectedCents: 500_000,
-      budgetExpenseCents: 1_500_000,
-      budgetSharedCents: 300_000,
-      accruedPerStudentCents: 111_111,
-      budgetExpensePerStudentCents: 166_667,
-      suppressed: false,
-    },
-  }
-  const summary = boardCostSummary(consolidation)
+      campus({ campusId: 'bey', name: 'Beylikdüzü', studentCount: 12, accruedCents: 2_000_000 }),
+      ATASEHIR,
+    ]),
+  )
   assert.equal(summary.minGroupSize, 5)
-  assert.deepEqual(summary.campuses[1], {
-    campusId: 'ata',
-    name: 'Ataşehir',
-    studentCount: 3,
-    accruedCents: 400_000,
-    netCollectedCents: 0,
-    budgetExpenseCents: 300_000,
-    accruedPerStudentCents: null,
-    budgetExpensePerStudentCents: null,
-    suppressed: true,
-  })
+  // Ataşehir'in 3 öğrencisi: tahakkuk tek kişinin ücretini belli eder; sayı ve tutar gizli.
+  assert.deepEqual(summary.campuses[2], { campusId: 'ata', name: 'Ataşehir', ...HIDDEN_CAMPUS })
+  // Toplamdan geri hesaplanmasın diye en küçük görünür kampüs (Kadıköy, 6) de gizlenir (ON-328).
+  assert.deepEqual(summary.campuses[0], { campusId: 'kad', name: 'Kadıköy', ...HIDDEN_CAMPUS })
+  assert.equal(summary.campuses[1]?.accruedCents, 2_000_000)
+  assert.equal(summary.campuses[1]?.suppressed, false)
+  // Kurum geneli toplam görünür (K-77).
   assert.deepEqual(summary.totals, {
     studentCount: 9,
     accruedCents: 1_000_000,
@@ -338,6 +349,57 @@ test('DOM-FIN-064 maliyet özeti: konsolide raporun satırları, küçük grup k
   })
   // Kurul özeti kişi kimliği ya da öğrenci listesi taşımaz.
   assert.doesNotMatch(JSON.stringify(summary), /studentId|"students"/)
+})
+
+test('DOM-FIN-064 maliyet özeti: gizlenecek görünür kampüs yoksa kırılımın tamamı gizlenir', () => {
+  const summary = boardCostSummary(
+    consolidationOf([
+      ATASEHIR,
+      campus({
+        campusId: 'bos',
+        name: 'Boş kampüs',
+        collectedCents: 0,
+        studentCount: 0,
+        accruedCents: 0,
+        netCollectedCents: 0,
+        budgetExpenseCents: 0,
+      }),
+    ]),
+  )
+  assert.ok(summary.campuses.every((row) => row.suppressed && row.accruedCents === null))
+})
+
+test('DOM-FIN-064 maliyet özeti: dönem öğrencisi olmayan ama hareketi olan satır küçük grup sayılır', () => {
+  // Kampüse bağlı olmayan satırda dönemde sayılan öğrenci yok, ayrılan öğrencinin tahsilatı var.
+  const summary = boardCostSummary(
+    consolidationOf([
+      campus({}),
+      campus({ campusId: 'bey', name: 'Beylikdüzü', studentCount: 12 }),
+      campus({
+        campusId: null,
+        name: 'Kampüse bağlı olmayan',
+        studentCount: 0,
+        accruedCents: 0,
+        netCollectedCents: 150_000,
+        collectedCents: 150_000,
+        budgetExpenseCents: 0,
+      }),
+      campus({
+        campusId: 'gid',
+        name: 'Yalnız gider',
+        studentCount: 0,
+        accruedCents: 0,
+        netCollectedCents: 0,
+        budgetExpenseCents: 90_000,
+        collectedCents: 0,
+      }),
+    ]),
+  )
+  assert.equal(summary.campuses[2]?.netCollectedCents, null)
+  assert.equal(summary.campuses[0]?.suppressed, true, 'en küçük görünür kampüs (ikincil)')
+  assert.equal(summary.campuses[1]?.suppressed, false)
+  // Kişi hareketi olmayan, yalnız bütçe gideri olan satır gizlenmez.
+  assert.equal(summary.campuses[3]?.budgetExpenseCents, 90_000)
 })
 
 // --- Tahmin ---------------------------------------------------------------------------------

@@ -97850,7 +97850,7 @@
         "tags": [
           "finance-board-report"
         ],
-        "description": "Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Bütçe bölümleri (ON-329): `budgetPeriodId` bütçe dönemini seçer; verilmezse rapor dönemiyle en çok gün örtüşen açık ya da kapalı dönem, yoksa taslak dönem alınır (`budgetPeriod.selection`), uyan yoksa `budgetPeriod`, `budget` ve `costs` `null` gelir. `budget` dönemin bütçe–gerçekleşen özetidir (DOM-FIN-066, tahakkuk esası): gelir ve gider toplamı, gerçekleşme oranı ve en çok sapan beş kalem; gider gerçekleşeni kaynağı yoksa `expenseData` `none`, gider gerçekleşeni `null`. `costs` kampüs konsolide özet ve öğrenci başı maliyettir (DOM-FIN-065); 5 kişiden az kampüste öğrenci başı değer `null`. `forecast` bugün itibarıyla gelecek eğitim yılının gelir tahmini ve 12 aylık nakit akışıdır (DOM-FIN-063). Kurumda olmayan bütçe dönemi 422 `board_report_budget_period_not_found`. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.",
+        "description": "Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Bütçe bölümleri (ON-329): `budgetPeriodId` bütçe dönemini seçer; verilmezse rapor dönemiyle en çok gün örtüşen açık ya da kapalı dönem, yoksa taslak dönem alınır (`budgetPeriod.selection`), uyan yoksa `budgetPeriod`, `budget` ve `costs` `null` gelir. `budget` dönemin bütçe–gerçekleşen özetidir (DOM-FIN-066, tahakkuk esası): gelir ve gider toplamı, gerçekleşme oranı ve en çok sapan beş kalem; gider gerçekleşeni kaynağı yoksa `expenseData` `none`, gider gerçekleşeni `null`. `costs` kampüs konsolide özet ve öğrenci başı maliyettir (DOM-FIN-065); 1–4 kişilik kampüsün sayısı ve tutarları `null`, `suppressed: true` gelir, toplamdan geri hesaplanmasın diye en küçük görünür kampüs de gizlenir, gerekirse kırılımın tamamı (K-116); kurum toplamı gizlenmez. `forecast` bugün itibarıyla gelecek eğitim yılının gelir tahmini ve 12 aylık nakit akışıdır (DOM-FIN-063). Kurumda olmayan bütçe dönemi 422 `board_report_budget_period_not_found`. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -99003,27 +99003,66 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
+                                      "campusId": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
                                       "studentCount": {
-                                        "type": "integer",
-                                        "minimum": -9007199254740991,
-                                        "maximum": 9007199254740991
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
                                       },
                                       "accruedCents": {
-                                        "type": "integer",
-                                        "minimum": -9007199254740991,
-                                        "maximum": 9007199254740991
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
                                       },
                                       "netCollectedCents": {
-                                        "type": "integer",
-                                        "minimum": -9007199254740991,
-                                        "maximum": 9007199254740991,
-                                        "description": "Tahsilat − iptal − iade"
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
                                       },
                                       "budgetExpenseCents": {
-                                        "type": "integer",
-                                        "minimum": -9007199254740991,
-                                        "maximum": 9007199254740991,
-                                        "description": "Bütçe gideri (ortak gider payı dahil)"
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
                                       },
                                       "accruedPerStudentCents": {
                                         "anyOf": [
@@ -99036,7 +99075,7 @@
                                             "type": "null"
                                           }
                                         ],
-                                        "description": "5 kişiden az ya da öğrencisiz `null`"
+                                        "description": "Gizli, 5 kişiden az ya da öğrencisiz `null`"
                                       },
                                       "budgetExpensePerStudentCents": {
                                         "anyOf": [
@@ -99049,35 +99088,27 @@
                                             "type": "null"
                                           }
                                         ],
-                                        "description": "Öğrenci başı maliyet; 5 kişiden az ya da öğrencisiz `null`"
+                                        "description": "Öğrenci başı maliyet; gizli, 5 kişiden az ya da öğrencisiz `null`"
                                       },
                                       "suppressed": {
                                         "type": "boolean",
-                                        "description": "Küçük grup: öğrenci başı değer gizli (K-102)"
-                                      },
-                                      "campusId": {
-                                        "type": [
-                                          "string",
-                                          "null"
-                                        ]
-                                      },
-                                      "name": {
-                                        "type": "string"
+                                        "description": "Küçük grup (K-116): 1–4 kişilik kampüs, toplamdan geri hesaplanmasın diye ikincil gizlenen ya da tamamı gizli kırılım; sayı ve tutarlar `null`"
                                       }
                                     },
                                     "required": [
+                                      "campusId",
+                                      "name",
                                       "studentCount",
                                       "accruedCents",
                                       "netCollectedCents",
                                       "budgetExpenseCents",
                                       "accruedPerStudentCents",
                                       "budgetExpensePerStudentCents",
-                                      "suppressed",
-                                      "campusId",
-                                      "name"
+                                      "suppressed"
                                     ],
                                     "additionalProperties": false
-                                  }
+                                  },
+                                  "description": "Kampüs satırları; kişi sayısı kurul raporunun küçük grup kuralıyla gizlenir"
                                 },
                                 "totals": {
                                   "type": "object",
@@ -99144,7 +99175,8 @@
                                     "budgetExpensePerStudentCents",
                                     "suppressed"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": false,
+                                  "description": "Kurum geneli toplam; gizlenmez"
                                 }
                               },
                               "required": [

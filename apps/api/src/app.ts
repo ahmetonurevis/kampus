@@ -32,8 +32,12 @@ import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
+import { registerFinanceBoardReportRoutes } from './routes/finance-board-report.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
+import { registerFinanceBudgetRoutes } from './routes/finance-budget.ts'
+import { registerFinanceBudgetActualsRoutes } from './routes/finance-budget-actuals.ts'
 import { registerFinanceCorporateRoutes } from './routes/finance-corporate.ts'
+import { registerFinanceCostReportRoutes } from './routes/finance-cost-reports.ts'
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
@@ -45,6 +49,7 @@ import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
 import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-children.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
+import { registerFinanceScholarshipFundRoutes } from './routes/finance-scholarship-funds.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
@@ -432,6 +437,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerFinanceScholarshipFundRoutes(app)
   registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
@@ -444,6 +450,10 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceCorporateRoutes(app)
   registerFinanceForecastRoutes(app)
   registerFinanceOpeningWatchRoutes(app)
+  registerFinanceBudgetRoutes(app)
+  registerFinanceBoardReportRoutes(app)
+  registerFinanceBudgetActualsRoutes(app)
+  registerFinanceCostReportRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

@@ -340,6 +340,17 @@ type TotalsInvoice = Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt' 
   method?: string | null
 }
 
+/**
+ * Taksitin bugün ödenmiş sayılan kısmı (DOM-FIN-030): kapanmış taksitin tamamı, açık taksitte dağıtılmış
+ * tahsilat (taksiti aşan kısım sayılmaz). Kartlar, özet, bakiye ve yaşlandırma aynı kuralı kullanır.
+ */
+export function invoicePaidCents(
+  invoice: Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt'>,
+  allocated: ReadonlyMap<string, number>,
+): number {
+  return invoice.paidAt ? invoice.amount : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+}
+
 /** Finans ekranı kartları: kurum geneli; gecikmiş tutar kalan kısımdır, taksitin tamamı değil. */
 export function financeTotals(
   invoices: readonly TotalsInvoice[],
@@ -351,9 +362,7 @@ export function financeTotals(
   let openingImportCents = 0
   let overdueCents = 0
   for (const invoice of invoices) {
-    const paid = invoice.paidAt
-      ? invoice.amount
-      : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+    const paid = invoicePaidCents(invoice, allocated)
     totalCents += invoice.amount
     paidCents += paid
     if (isOpeningImport(invoice)) openingImportCents += paid
@@ -459,9 +468,7 @@ export function financeOverview(input: {
   const students = new Map<string, OverdueStudent>()
   for (const invoice of invoices) {
     const day = dayKey(invoice.dueDate)
-    const paid = invoice.paidAt
-      ? invoice.amount
-      : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+    const paid = invoicePaidCents(invoice, allocated)
     const open = invoice.amount - paid
     const overdue = day < today ? open : 0
     if (inPeriod(day, period)) {
@@ -536,9 +543,7 @@ export function studentBalance(
   let overdueCount = 0
   let nextDue: StudentBalance['nextDue'] = null
   for (const invoice of invoices) {
-    const paid = invoice.paidAt
-      ? invoice.amount
-      : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+    const paid = invoicePaidCents(invoice, allocated)
     const open = invoice.amount - paid
     if (open <= 0) continue
     const day = dayKey(invoice.dueDate)

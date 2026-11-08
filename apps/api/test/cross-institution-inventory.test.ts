@@ -1133,6 +1133,111 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
     'SCENARIOS',
   ),
+  // Onur: bütçe ve maliyet merkezi (ON-241, ON-242; DOM-FIN-062).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/cost-centers', 'ids(CENTERS)'],
+        ['gövde', 'POST /api/v1/finance/cost-centers', 'parentId: b.campus.id'],
+        ['kayıt', 'PATCH /api/v1/finance/cost-centers/:costCenterId', "call('PATCH', bCenter"],
+        ['liste', 'GET /api/v1/finance/budget-items', 'ids(ITEMS)'],
+        ['gövde', 'POST /api/v1/finance/budget-items', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/budget-items/:itemId', "call('PATCH', bItem"],
+        ['liste', 'GET /api/v1/finance/budget-periods', 'ids(PERIODS)'],
+        ['gövde', 'POST /api/v1/finance/budget-periods', "name: 'Sızma'"],
+        ['kayıt', 'GET /api/v1/finance/budget-periods/:periodId', 'get(bPeriod, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/budget-periods/:periodId', "call('PATCH', bPeriod"],
+        ['kayıt', 'POST /api/v1/finance/budget-periods/:periodId/open', '`${bPeriod}/open`'],
+        ['kayıt', 'POST /api/v1/finance/budget-periods/:periodId/close', '`${bPeriod}/close`'],
+        ['kayıt', 'GET /api/v1/finance/budget-periods/:periodId/lines', 'get(`${bPeriod}/lines`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/budget-periods/:periodId/lines',
+          "call('POST', `${bPeriod}/lines`",
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/budget-periods/:periodId/lines/:lineId',
+          "call('PATCH', bLineUrl",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/budget-periods/:periodId/lines/:lineId',
+          "call('DELETE', bLineUrl",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-budget.test.ts',
+        'başka kurumun merkezi, kalemi, dönemi ve satırı 404',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: yönetim kurulu raporu (ON-251, DOM-FIN-064).
+  'GET /api/v1/finance/board-report': liste(
+    'finance-board-report.test.ts',
+    'başka kurumun kayıtları raporda sayılmaz',
+    'URL_BASE',
+  ),
+  // Onur: bütçe–gerçekleşen (ON-244; DOM-FIN-066).
+  'GET /api/v1/finance/budget-periods/:periodId/actuals': kayit(
+    'finance-budget-actuals.test.ts',
+    'başka kurumun dönemi 404, taksiti ve tahsilatı raporda yok',
+    "send('GET', b.url, a.cookie)",
+  ),
+  // Onur: öğrenci başı maliyet ve kampüs konsolidasyonu (ON-249, ON-250; DOM-FIN-065).
+  ...Object.fromEntries(
+    ['GET /api/v1/finance/cost-per-student', 'GET /api/v1/finance/campus-consolidation'].map(
+      (key) => [
+        key,
+        liste(
+          'finance-cost-reports.test.ts',
+          'DOM-FIN-065: başka kurumun dönemi 404; başka kurumun satırı ve öğrencisi raporda yok',
+          'query(b)',
+        ),
+      ],
+    ),
+  ),
+  // Onur: burs fonu (ON-259; DOM-FIN-068).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/scholarship-funds', 'get(FUNDS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/scholarship-funds', "call('POST', FUNDS, a.admin"],
+        ['kayıt', 'GET /api/v1/finance/scholarship-funds/:fundId/report', '`${bUrl}/report`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/donations',
+          'donate(a.admin, bFund.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/allocations',
+          'allocate(a.admin, bFund.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/donations/:donationId/cancel',
+          '`${bUrl}/donations/${String(bDonation.id)}/cancel`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/allocations/:allocationId/cancel',
+          '`${bUrl}/allocations/${String(bAllocation.id)}/cancel`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/scholarship-funds/:fundId/close', '`${bUrl}/close`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-scholarship-funds.test.ts',
+        'başka kurumun fonu, bağışı, ataması ve bursu 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

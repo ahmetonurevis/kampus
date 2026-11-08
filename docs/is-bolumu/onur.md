@@ -395,19 +395,19 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ### K26 · Mezunlar ve kurumsal ilişkiler
 
-| ID     | Görev                                                                          | Boyut | Durum       | Dal / commit   | Not                                      |
-| ------ | ------------------------------------------------------------------------------ | ----- | ----------- | -------------- | ---------------------------------------- |
-| ON-252 | Mezun hesabı: mezuniyette hesabın mezun profiline dönüşmesi, yeni rıza         | M     | bekliyor    |                | KVKK: amaç değişikliği için açık rıza    |
-| ON-253 | Mezun dizini: isteğe bağlı görünürlük, meslek ve şehir                         | S     | bekliyor    |                | KVKK                                     |
-| ON-254 | Mezun iletişim tercihi: kanal tercihi ve ticari ileti izni                     | S     | bekliyor    |                | bağımlılık: IST-135                      |
-| ON-255 | Mezun etkinliği: davet, kayıt, katılım                                         | S     | bekliyor    |                | bağımlılık: K9 etkinlik bileti           |
-| ON-256 | Üniversite ve meslek yerleşme takibi: yıllara göre yerleşme özeti              | S     | bekliyor    |                | bağımlılık: K14 yerleşme kaydı           |
-| ON-257 | Mezun mentorluğu: öğrencilerle kariyer görüşmesi, kurum aracılığıyla           | M     | bekliyor    |                | KVKK: çocukla iletişim kurallı (IST-070) |
-| ON-258 | Bağış kampanyası: hedef, bağışçı, makbuz                                       | S     | bekliyor    |                | doğrulanmalı (bağış ve vergi mevzuatı)   |
-| ON-259 | Burs fonu: bağış kaynaklı fon, burs ataması ve fon bakiyesi                    | M     | çalışılıyor | onur/burs-fonu | bağımlılık: IST-105; Migration 0076      |
-| ON-260 | Mezun belge talebi: diploma örneği, transkript, öğrenim belgesi                | M     | bekliyor    |                | bağımlılık: K27 şablonlu belge           |
-| ON-261 | Mezun bülteni: dönemlik bülten                                                 | S     | bekliyor    |                | bağımlılık: IST-068                      |
-| ON-262 | Paydaş ve sponsor kaydı: kurumsal paydaşlar, iş birlikleri, sözleşme tarihleri | M     | bekliyor    |                | bağımlılık: K27 belge deposu             |
+| ID     | Görev                                                                          | Boyut | Durum    | Dal / commit | Not                                                                                                                                            |
+| ------ | ------------------------------------------------------------------------------ | ----- | -------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| ON-252 | Mezun hesabı: mezuniyette hesabın mezun profiline dönüşmesi, yeni rıza         | M     | bekliyor |              | KVKK: amaç değişikliği için açık rıza                                                                                                          |
+| ON-253 | Mezun dizini: isteğe bağlı görünürlük, meslek ve şehir                         | S     | bekliyor |              | KVKK                                                                                                                                           |
+| ON-254 | Mezun iletişim tercihi: kanal tercihi ve ticari ileti izni                     | S     | bekliyor |              | bağımlılık: IST-135                                                                                                                            |
+| ON-255 | Mezun etkinliği: davet, kayıt, katılım                                         | S     | bekliyor |              | bağımlılık: K9 etkinlik bileti                                                                                                                 |
+| ON-256 | Üniversite ve meslek yerleşme takibi: yıllara göre yerleşme özeti              | S     | bekliyor |              | bağımlılık: K14 yerleşme kaydı                                                                                                                 |
+| ON-257 | Mezun mentorluğu: öğrencilerle kariyer görüşmesi, kurum aracılığıyla           | M     | bekliyor |              | KVKK: çocukla iletişim kurallı (IST-070)                                                                                                       |
+| ON-258 | Bağış kampanyası: hedef, bağışçı, makbuz                                       | S     | bekliyor |              | doğrulanmalı (bağış ve vergi mevzuatı)                                                                                                         |
+| ON-259 | Burs fonu: bağış kaynaklı fon, burs ataması ve fon bakiyesi                    | M     | bitti    | 729dc5d1     | bağımlılık: IST-105; Migration 0076; Migration 0076; DOM-FIN-068; K-95…K-99 varsayılan; M-21, M-22, H-26; envanter satırı izinle (ortak dosya) |
+| ON-260 | Mezun belge talebi: diploma örneği, transkript, öğrenim belgesi                | M     | bekliyor |              | bağımlılık: K27 şablonlu belge                                                                                                                 |
+| ON-261 | Mezun bülteni: dönemlik bülten                                                 | S     | bekliyor |              | bağımlılık: IST-068                                                                                                                            |
+| ON-262 | Paydaş ve sponsor kaydı: kurumsal paydaşlar, iş birlikleri, sözleşme tarihleri | M     | bekliyor |              | bağımlılık: K27 belge deposu                                                                                                                   |
 
 ## D9 · Entegrasyon ve ekosistem
 

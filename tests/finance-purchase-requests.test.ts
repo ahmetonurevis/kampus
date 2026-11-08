@@ -192,6 +192,8 @@ test('DOM-FIN-071, ON-245: kalan plan eksi gönderilmiş ve onaylanmış taleple
       plannedCents: 100_000,
       approvedCents: 60_000,
       pendingCents: 10_000,
+      orderedCents: 0,
+      receivedCents: 0,
       committedCents: 70_000,
       remainingCents: 30_000,
       exceedsRemaining: true,

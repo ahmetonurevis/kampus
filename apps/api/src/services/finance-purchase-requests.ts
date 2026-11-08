@@ -228,6 +228,8 @@ export async function purchaseBudgetStatusFor(
     plannedCents: info.plannedCents,
     approvedCents: info.approvedCents,
     pendingCents: info.pendingCents,
+    orderedCents: info.orderedCents,
+    receivedCents: info.receivedCents,
     committedCents: info.committedCents,
     remainingCents: info.remainingCents,
   }

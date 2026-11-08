@@ -99,6 +99,12 @@ export function actualsNotes(
     notes.push(
       'Gider gerçekleşeni yok: satın alma ve gider kaydı modülü kurulunca gider satırları doldurulacak.',
     )
+  else
+    notes.push(
+      report.basis === 'accrual'
+        ? 'Gider gerçekleşeni satın alma mal kabulündendir: kabul edilen miktar × sipariş birim fiyatı, KDV hariç, kabul gününde sayılır. Satın alma dışı gider henüz kaydedilmez.'
+        : 'Gider gerçekleşeni tahsilat esasında tedarikçi ödemesiyle sayılır; ödeme kaydı henüz olmadığından gider sıfırdır.',
+    )
   if (report.unmatched.some((entry) => entry.feeKind !== null))
     notes.push(
       `Kaleme eşlenmemiş ücret türleri: ${report.unmatched

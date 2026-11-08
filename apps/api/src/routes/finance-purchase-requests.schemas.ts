@@ -16,10 +16,22 @@ const ref = z.object({ id: z.string(), code: z.string(), name: z.string() })
 
 const budgetStatusShape = {
   plannedCents: cents('Dönem × merkez × kalem satırının planı; satır yoksa boş').nullable(),
-  approvedCents: cents('Aynı satırdaki onaylanmış talepler (bu talep hariç)'),
+  approvedCents: cents(
+    'Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)',
+  ),
   pendingCents: cents('Aynı satırdaki kararı bekleyen talepler (bu talep hariç)'),
-  committedCents: cents('Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)'),
-  remainingCents: cents('Plan eksi taahhüt; plan yoksa boş, eksi olabilir').nullable(),
+  orderedCents: cents(
+    'Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)',
+  ),
+  receivedCents: cents(
+    'Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)',
+  ),
+  committedCents: cents(
+    'Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)',
+  ),
+  remainingCents: cents(
+    'Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir',
+  ).nullable(),
 }
 
 /** Bütçe kalanı ve aşım bilgisi (DOM-FIN-071, ON-245, K-145). */

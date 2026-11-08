@@ -256,12 +256,13 @@ describe('DOM-FIN-066: bütçe–gerçekleşen ucu', () => {
     assert.equal((await report(b.cookie, `${b.url}?basis=cash`)).totals.income.actualCents, 777_777)
   })
 
-  test('DOM-FIN-066: tahakkuk varsayılan; gelmemiş ay boş, gider "gerçekleşen verisi yok"', async () => {
+  test('DOM-FIN-066: tahakkuk varsayılan; gelmemiş ay boş, gider mal kabulden gelir, kabul yoksa sıfır (K-151)', async () => {
     const a = await institution()
     const data = await report(a.cookie, a.url)
     assert.equal(data.basis, 'accrual')
     assert.equal(data.asOfDate, '2026-10-06')
-    assert.equal(data.expenseData, 'none')
+    // Gider kaynağı satın alma mal kabulüdür (DOM-FIN-074); kabul yokken gerçekleşen sıfırdır.
+    assert.equal(data.expenseData, 'available')
     const tuition = data.rows.find((row) => row.itemCode === 'G-100')
     assert.ok(tuition)
     assert.equal(tuition.costCenterCode, 'KAD')
@@ -271,10 +272,10 @@ describe('DOM-FIN-066: bütçe–gerçekleşen ucu', () => {
     assert.equal(tuition.months[0]?.actualCents, 2 * HALF)
     assert.equal(tuition.months[2]?.actualCents, null)
     const expense = data.rows.find((row) => row.itemCode === 'P-100')
-    assert.equal(expense?.status, 'no_expense_data')
-    assert.equal(expense?.actualCents, null)
-    assert.equal(data.totals.expense.actualCents, null)
-    assert.equal(data.totals.net.actualCents, null)
+    assert.equal(expense?.status, 'mapped')
+    assert.equal(expense?.actualCents, 0)
+    assert.equal(data.totals.expense.actualCents, 0)
+    assert.equal(data.totals.net.actualCents, data.totals.income.actualCents)
     // Yemek taksiti Kasım vadeli ve kaleme eşlenmemiş: henüz eşlenmemiş gelirde de görünmez.
     assert.deepEqual(data.unmatched, [])
   })

@@ -202,16 +202,23 @@ export function purchaseRequestNumber(sequence: number): string {
 export interface PurchaseBudgetFigures {
   /** Dönem × merkez × kalem satırının planı; satır yoksa `null`. */
   plannedCents: number | null
-  /** Aynı satıra yazılmış onaylanmış taleplerin toplamı (bu talep hariç). */
+  /** Aynı satıra yazılmış, etkin siparişi olmayan onaylanmış taleplerin toplamı (bu talep hariç). */
   approvedCents: number
   /** Aynı satıra yazılmış, kararı bekleyen (gönderilmiş) taleplerin toplamı (bu talep hariç). */
   pendingCents: number
+  /**
+   * Etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154): sipariş açılınca onaylı
+   * talebin tahmini toplamının yerine sayılır. Verilmezse 0.
+   */
+  orderedCents?: number
+  /** Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154). */
+  receivedCents?: number
 }
 
-export interface PurchaseBudgetInfo extends PurchaseBudgetFigures {
-  /** Taahhüt: onaylanmış ve kararı bekleyen taleplerin toplamı (K-145). */
+export interface PurchaseBudgetInfo extends Required<PurchaseBudgetFigures> {
+  /** Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154). */
   committedCents: number
-  /** Plan eksi taahhüt; plan yoksa `null`. Eksi olabilir. */
+  /** Plan eksi taahhüt eksi gerçekleşen; plan yoksa `null`. Eksi olabilir. */
   remainingCents: number | null
   /** Bu talep kalanı aşıyor mu (K-145); kalana eşit talep aşmaz. */
   exceedsRemaining: boolean
@@ -221,21 +228,26 @@ export interface PurchaseBudgetInfo extends PurchaseBudgetFigures {
 
 /**
  * Bütçe kalanı (DOM-FIN-071, ON-245, K-145): dönem × merkez × kalem satırının planından aynı
- * satırdaki taahhüt düşülür. Taahhüt gönderilmiş ve onaylanmış taleplerin tahmini toplamıdır; taslak,
- * reddedilen ve iptal edilen talep sayılmaz. Gider gerçekleşeni (DOM-FIN-066) ve sipariş (ON-225)
- * bugün yoktur; geldiklerinde onaylanmış talebin yerine sayılırlar. Denetim dönem toplamı
+ * satırdaki taahhüt ve gerçekleşen düşülür. Taahhüt gönderilmiş ve onaylanmış taleplerin tahmini
+ * toplamıdır; taslak, reddedilen ve iptal edilen talep sayılmaz. Etkin siparişi olan onaylı talep
+ * tahmini toplamıyla değil siparişin KDV hariç tutarıyla sayılır: mal kabulde kabul edilen kısım
+ * gerçekleşen, kalanı sipariş taahhüdüdür; bir tutar iki kez sayılmaz (K-154). Denetim dönem toplamı
  * üzerindendir: aylık dağılım ve üst merkezin satırı hesaba girmez (K-147).
  */
 export function purchaseBudgetInfo(
   figures: PurchaseBudgetFigures,
   requestCents: number,
 ): PurchaseBudgetInfo {
-  const committedCents = figures.approvedCents + figures.pendingCents
+  const orderedCents = figures.orderedCents ?? 0
+  const receivedCents = figures.receivedCents ?? 0
+  const committedCents = figures.approvedCents + figures.pendingCents + orderedCents
   const remainingCents =
-    figures.plannedCents === null ? null : figures.plannedCents - committedCents
+    figures.plannedCents === null ? null : figures.plannedCents - committedCents - receivedCents
   const overrunCents = remainingCents === null ? 0 : Math.max(requestCents - remainingCents, 0)
   return {
     ...figures,
+    orderedCents,
+    receivedCents,
     committedCents,
     remainingCents,
     exceedsRemaining: overrunCents > 0,
@@ -264,7 +276,7 @@ export function purchaseBudgetWarningMessage(info: PurchaseBudgetInfo): string |
   if (warning === 'unplanned')
     return 'Bu dönemde talep eden birim ve gider kalemi için bütçe satırı yok; talep bütçesizdir. Sürdürmek için bütçesiz olduğunu açıkça onaylayın.'
   if (warning === 'over')
-    return `Bu talep bütçe kalanını ${money(info.overrunCents)} aşıyor (plan ${money(info.plannedCents)}, gönderilmiş ve onaylanmış talepler ${money(info.committedCents)}, kalan ${money(info.remainingCents)}). Sürdürmek için aşımı açıkça onaylayın.`
+    return `Bu talep bütçe kalanını ${money(info.overrunCents)} aşıyor (plan ${money(info.plannedCents)}, taahhüt ${money(info.committedCents)}${info.receivedCents > 0 ? `, gerçekleşen ${money(info.receivedCents)}` : ''}, kalan ${money(info.remainingCents)}). Sürdürmek için aşımı açıkça onaylayın.`
   return null
 }
 

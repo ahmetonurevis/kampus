@@ -50,7 +50,8 @@ const PERIOD_STATUS = { draft: 'taslak', open: 'açık', closed: 'kapalı' } as 
 
 /**
  * Bütçe satırının durumu ve talebin aşımı (DOM-FIN-071, ON-245, K-145): plan, onaylanmış ve kararı
- * bekleyen talepler, kalan (plan eksi taahhüt) ve kalanı aşan tutar. Satır yoksa talep bütçesizdir.
+ * bekleyen talepler, siparişlerin kalan kısmı ve mal kabulle gerçekleşen (K-154), kalan (plan eksi
+ * taahhüt eksi gerçekleşen) ve kalanı aşan tutar. Satır yoksa talep bütçesizdir.
  * Aşım ve bütçesiz talep engellenmez; gönderim ve onay açık onay ister (K-146).
  */
 export function BudgetFigures({
@@ -58,7 +59,10 @@ export function BudgetFigures({
   requestCents,
   open = true,
 }: {
-  budget: Pick<PurchaseBudgetStatus, 'plannedCents' | 'approvedCents' | 'pendingCents'>
+  budget: Pick<
+    PurchaseBudgetStatus,
+    'plannedCents' | 'approvedCents' | 'pendingCents' | 'orderedCents' | 'receivedCents'
+  >
   requestCents: number
   /** Talep henüz karara bağlanmadı: açık onay notu gösterilir. */
   open?: boolean
@@ -75,8 +79,11 @@ export function BudgetFigures({
     ['Plan', money(info.plannedCents)],
     ['Onaylanmış talepler', money(info.approvedCents)],
     ['Kararı bekleyen talepler', money(info.pendingCents)],
-    ['Kalan', money(info.remainingCents)],
   ]
+  // Siparişli talep sipariş tutarıyla sayılır; kabul edilen kısım gerçekleşendir (K-154).
+  if (info.orderedCents > 0) pairs.push(['Siparişler (kalan kısım)', money(info.orderedCents)])
+  if (info.receivedCents > 0) pairs.push(['Gerçekleşen (mal kabul)', money(info.receivedCents)])
+  pairs.push(['Kalan', money(info.remainingCents)])
   if (info.exceedsRemaining) pairs.push(['Aşım', money(info.overrunCents)])
   return (
     <div className="grid gap-2">

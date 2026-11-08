@@ -62,7 +62,12 @@ export const employeeParams = z.object({
 })
 export const employeeListQuery = z.strictObject({
   ...pageQuerySchema.shape,
-  status: z.enum(['active', 'ended']).optional().describe('`active` etkin, `ended` biten bağlar'),
+  status: z
+    .enum(['active', 'ended'])
+    .optional()
+    .describe(
+      '`active` bugünü kapsayan (bitişi ileri tarihli dahil), `ended` bitişi bugünden önce olan bağlar (Europe/Istanbul günü); başlangıcı ileri tarihli bağ yalnız süzgeçsiz listededir',
+    ),
 })
 
 export const periodQuery = z.strictObject({

@@ -159,6 +159,8 @@ export function studentStatement(
     for (const { invoiceId, amountCents } of payment.allocations) {
       // Ayrılış iptal edilen taksiti listeden kaldırır; tahsilat iptali ayrılıştan sonra yalnız borç
       // taksitinde mümkün olduğundan listede olmayan taksite geçerli dağılım ayrılış hesabındadır.
+      // Ek protokol yalnız geçerli dağılımı olmayan taksiti kaldırır (onayda da denetlenir,
+      // `contract_amendment_stale`); ona kalan dağılım iptal edilmiş tahsilatındır ve buraya girmez.
       if (!reversed && !amounts.has(invoiceId) && withdrawals.length > 0) {
         const index = withdrawalIndexFor(withdrawals, dayKey(payment.paidAt))
         settled[index] = (settled[index] ?? 0) + amountCents

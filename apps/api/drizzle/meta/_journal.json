@@ -519,6 +519,13 @@
       "when": 1794083288309,
       "tag": "0073_validate_fee_kind_scrub_health_replays",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794097104024,
+      "tag": "0074_create_corporate_customers",
+      "breakpoints": true
     }
   ]
 }

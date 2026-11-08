@@ -162,7 +162,7 @@ test('DOM-FIN-060: toplu fatura dönemde ve bağ içinde vadesi gelen taksitleri
     invoice({ id: 'test-inv-2', installment: 2, dueDate: '2026-11-15' }),
     invoice({ id: 'test-inv-3', studentId: 'test-s2', dueDate: '2026-10-05' }),
     invoice({ id: 'test-inv-4', studentId: 'test-s3', dueDate: '2026-10-20' }),
-    invoice({ id: 'test-inv-5', feeKind: 'book', installment: 3, dueDate: '2026-10-01' }),
+    invoice({ id: 'test-inv-5', feeKind: 'stationery', installment: 3, dueDate: '2026-10-01' }),
   ]
   const links = [
     link(),

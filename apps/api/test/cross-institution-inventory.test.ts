@@ -1046,6 +1046,70 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-FIN-059: başka kurumun kursiyeri 404, B kurumunun sözleşmesi değişmez',
     'get(url(B_ONLY), await a.learner(ADULT))',
   ),
+  // Onur: kurumsal müşteri ve toplu fatura (ON-100, IST-089).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/corporate-customers', 'get(CUSTOMERS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/corporate-customers',
+          "call('POST', CUSTOMERS, a.admin, intruder)",
+        ],
+        ['kayıt', 'GET /api/v1/finance/corporate-customers/:customerId', 'get(bCustomer, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/corporate-customers/:customerId',
+          "call('PATCH', bCustomer",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/corporate-customers/:customerId',
+          "call('DELETE', bCustomer",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/corporate-customers/:customerId/employees',
+          '`${bCustomer}/employees`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/corporate-customers/:customerId/employees',
+          'link(a, b.customerId',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/corporate-customers/:customerId/employees/:linkId/end',
+          '`${bCustomer}/employees/${String(bLink.id)}/end`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/corporate-customers/:customerId/billable',
+          '`${bCustomer}/billable?${PERIOD}`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/corporate-customers/:customerId/attendance-report',
+          '`${bCustomer}/attendance-report`',
+        ],
+        ['liste', 'GET /api/v1/finance/corporate-invoices', 'get(INVOICES, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/corporate-invoices', 'issue(a.admin, b.customerId)'],
+        ['kayıt', 'GET /api/v1/finance/corporate-invoices/:invoiceId', 'get(bInvoiceUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/corporate-invoices/:invoiceId/cancel',
+          '`${bInvoiceUrl}/cancel`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-corporate.test.ts',
+        'başka kurumun şirketi, bağı ve faturası 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

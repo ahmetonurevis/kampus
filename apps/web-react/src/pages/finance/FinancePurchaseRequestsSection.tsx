@@ -25,8 +25,17 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
-import { PurchaseRequestFormModal, ReasonModal } from './FinancePurchaseRequestForms.tsx'
-import { REQUEST_STATUS_VIEW } from './finance-procurement-forms.ts'
+import {
+  BudgetFigures,
+  PurchaseRequestFormModal,
+  ReasonModal,
+} from './FinancePurchaseRequestForms.tsx'
+import {
+  budgetWarningState,
+  isBudgetWarning,
+  REQUEST_STATUS_VIEW,
+  type BudgetWarningState,
+} from './finance-procurement-forms.ts'
 
 const NO_SORT: readonly string[] = []
 const MOBILE = ['number', 'status', 'total']
@@ -53,8 +62,9 @@ type Row = {
 /**
  * Satın alma talepleri (`?gorunum=satin-alma`; DOM-FIN-071, ON-222). Yönetici ve ön büro talep açar,
  * düzeltir, gönderir ve iptal eder (ön büro yalnız kendi talebini; K-128); onay ve ret yöneticidedir
- * (K-129). Talep ayrıntısı (`?talep=`) bütçe kalanını bilgi olarak gösterir; aşım engellenmez
- * (K-131). Kademeli onay ON-223 ile gelir.
+ * (K-129). Talep ayrıntısı (`?talep=`) bütçe kalanını ve aşımı gösterir; kalanı aşan ya da bütçesiz
+ * talebin gönderimi ve onayı sunucunun uyarısından sonra açık onay ister (ON-245, K-145, K-146).
+ * Kademeli onay ON-223 ile gelir.
  */
 export function FinancePurchaseRequestsSection() {
   const list = useListState('satin-alma-talepleri', { urlPrefix: 'talep_' })
@@ -212,18 +222,28 @@ function RequestDetail({ requestId }: { requestId: string }) {
   const item = usePurchaseRequest(requestId)
   const transition = useTransitionPurchaseRequest()
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [warning, setWarning] = useState<BudgetWarningState | null>(null)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   const request = item.data?.data
   if (!request) return <SummaryLoading />
   const view = REQUEST_STATUS_VIEW[request.status]
   const busy = transition.isPending
+  // Bütçe uyarısı (K-146) okunan sürüme bağlıdır: talep değişince uyarı kalkar, yeniden denetlenir.
+  const warningKey = `${request.id}|${String(request.version)}`
+  const warned = warning !== null && warning.key === warningKey
   const submit = async () => {
-    const outcome = await transition.submit({
-      requestId: request.id,
-      version: request.version,
-      action: 'submit',
-    })
+    const outcome = await transition.submit(
+      {
+        requestId: request.id,
+        version: request.version,
+        action: 'submit',
+        ...(warned ? { confirmOverBudget: true } : {}),
+      },
+      { silent: isBudgetWarning },
+    )
     if (outcome.status === 'success') notify.success(`${request.number} onaya gönderildi.`)
+    else if (outcome.status === 'failed' && isBudgetWarning(outcome.error))
+      setWarning(budgetWarningState(outcome.error, warningKey))
   }
   return (
     <div className="grid gap-6">
@@ -254,7 +274,11 @@ function RequestDetail({ requestId }: { requestId: string }) {
               onClick={() => void submit()}
             >
               <Icon name="Send" size={16} aria-hidden="true" />
-              Onaya gönder
+              {!warned
+                ? 'Onaya gönder'
+                : warning.unplanned
+                  ? 'Bütçesiz olarak gönder'
+                  : 'Aşımı onaylayarak gönder'}
             </Button>
           ) : null}
           {request.actions.decide ? (
@@ -283,6 +307,11 @@ function RequestDetail({ requestId }: { requestId: string }) {
             </Button>
           ) : null}
         </div>
+        {warned && request.actions.submit ? (
+          <p role="alert" className="rounded-md border border-warning p-3 text-sm">
+            {warning.message}
+          </p>
+        ) : null}
       </section>
       <BudgetInfo request={request} />
       <section aria-labelledby="talep-kalemleri" className="grid gap-3">
@@ -351,33 +380,18 @@ function Facts({ request }: { request: PurchaseRequestDetail }) {
   )
 }
 
-/** Bütçe kalanı bilgisi (K-131): plan, onaylanmış ve bekleyen talepler; aşım yalnız uyarıdır. */
+/** Bütçe kalanı ve aşım (K-145): plan, onaylanmış ve bekleyen talepler, kalan, aşım tutarı. */
 function BudgetInfo({ request }: { request: PurchaseRequestDetail }) {
-  const budget = request.budget
   return (
     <section aria-labelledby="talep-butce" className="grid gap-3">
       <h3 id="talep-butce" className="text-base font-semibold">
         Bütçe durumu
       </h3>
-      {budget.plannedCents === null ? (
-        <p className="text-sm text-muted-foreground">
-          Bu dönemde birim ve gider kalemi için bütçe planı yok.
-        </p>
-      ) : (
-        <Pairs
-          pairs={[
-            ['Plan', money(budget.plannedCents)],
-            ['Onaylanmış talepler', money(budget.approvedCents)],
-            ['Kararı bekleyen talepler', money(budget.pendingCents)],
-            ['Kalan', money(budget.remainingCents ?? 0)],
-          ]}
-        />
-      )}
-      {budget.exceedsRemaining ? (
-        <p role="status" className="text-sm font-medium text-destructive">
-          Bu talep bütçe kalanını aşıyor. Gönderim ve onay engellenmez; karar yöneticinindir.
-        </p>
-      ) : null}
+      <BudgetFigures
+        budget={request.budget}
+        requestCents={request.totalCents}
+        open={request.status === 'draft' || request.status === 'submitted'}
+      />
     </section>
   )
 }

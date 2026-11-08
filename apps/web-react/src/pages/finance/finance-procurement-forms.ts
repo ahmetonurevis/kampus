@@ -11,6 +11,8 @@ import type {
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import { amountInputValue, parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import {
+  BUDGET_LINE_MISSING_WARNING,
+  PURCHASE_BUDGET_WARNING_CODES,
   PURCHASE_ITEMS_MAX,
   PURCHASE_REQUEST_STATUS_LABELS,
   PURCHASE_UNIT_PRICE_MAX_CENTS,
@@ -251,6 +253,22 @@ export function formTotalCents(items: readonly Partial<RequestFormItem>[]): numb
     if (Number.isInteger(quantity) && quantity > 0 && price !== null) total += quantity * price
   }
   return total
+}
+
+/**
+ * Gönderim ve onayın bütçe uyarısı (ON-245, K-146): sunucunun mesajı ve uyarının verildiği talep
+ * sürümü. Sürüm değişince uyarı kalkar; ikinci gönderim `confirmOverBudget` taşır.
+ */
+export type BudgetWarningState = { message: string; unplanned: boolean; key: string }
+
+export const isBudgetWarning = (error: { code: string }) =>
+  PURCHASE_BUDGET_WARNING_CODES.some((code) => code === error.code)
+
+export function budgetWarningState(
+  error: { code: string; message: string },
+  key: string,
+): BudgetWarningState {
+  return { message: error.message, unplanned: error.code === BUDGET_LINE_MISSING_WARNING, key }
 }
 
 export const reasonFormSchema = z.object({

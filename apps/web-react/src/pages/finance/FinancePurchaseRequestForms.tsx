@@ -1,10 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import {
   useCreatePurchaseRequest,
+  usePurchaseBudgetStatus,
   usePurchaseRequestOptions,
   useTransitionPurchaseRequest,
   useUpdatePurchaseRequest,
+  type PurchaseBudgetStatus,
   type PurchaseRequestDetail,
 } from '@kampus/react-shared/use-finance-procurement.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
@@ -12,6 +15,7 @@ import {
   PURCHASE_ITEMS_MAX,
   PURCHASE_UNIT_LABELS,
   PURCHASE_UNITS,
+  purchaseBudgetInfo,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -25,14 +29,17 @@ import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import {
+  budgetWarningState,
   EMPTY_ITEM,
   formTotalCents,
+  isBudgetWarning,
   noteFormSchema,
   reasonFormSchema,
   requestBody,
   requestDefaults,
   requestFormField,
   requestFormSchema,
+  type BudgetWarningState,
   type ReasonFormValues,
   type RequestFormValues,
 } from './finance-procurement-forms.ts'
@@ -40,6 +47,92 @@ import {
 const REQUEST_FORM = 'satin-alma-talebi-formu'
 const REASON_FORM = 'satin-alma-karar-formu'
 const PERIOD_STATUS = { draft: 'taslak', open: 'açık', closed: 'kapalı' } as const
+
+/**
+ * Bütçe satırının durumu ve talebin aşımı (DOM-FIN-071, ON-245, K-145): plan, onaylanmış ve kararı
+ * bekleyen talepler, kalan (plan eksi taahhüt) ve kalanı aşan tutar. Satır yoksa talep bütçesizdir.
+ * Aşım ve bütçesiz talep engellenmez; gönderim ve onay açık onay ister (K-146).
+ */
+export function BudgetFigures({
+  budget,
+  requestCents,
+  open = true,
+}: {
+  budget: Pick<PurchaseBudgetStatus, 'plannedCents' | 'approvedCents' | 'pendingCents'>
+  requestCents: number
+  /** Talep henüz karara bağlanmadı: açık onay notu gösterilir. */
+  open?: boolean
+}) {
+  const info = purchaseBudgetInfo(budget, requestCents)
+  const hint = open ? ' Gönderim ve onay açık onay ister.' : ''
+  if (info.plannedCents === null)
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        {`Bu dönemde birim ve gider kalemi için bütçe satırı yok; talep bütçesizdir.${hint}`}
+      </p>
+    )
+  const pairs: [string, string][] = [
+    ['Plan', money(info.plannedCents)],
+    ['Onaylanmış talepler', money(info.approvedCents)],
+    ['Kararı bekleyen talepler', money(info.pendingCents)],
+    ['Kalan', money(info.remainingCents)],
+  ]
+  if (info.exceedsRemaining) pairs.push(['Aşım', money(info.overrunCents)])
+  return (
+    <div className="grid gap-2">
+      <dl className="grid gap-2 text-sm">
+        {pairs.map(([label, value]) => (
+          <div
+            key={label}
+            className="grid grid-cols-[minmax(0,11rem)_1fr] gap-2 max-[480px]:grid-cols-1"
+          >
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {info.exceedsRemaining ? (
+        <p role="status" className="text-sm font-medium text-destructive">
+          {`Bu talep bütçe kalanını ${money(info.overrunCents)} aşıyor.${hint}`}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/** Formda seçilen dönem × birim × kalem satırının bütçe durumu; üçü seçilince okunur (K-148). */
+function FormBudgetStatus({
+  periodId,
+  costCenterId,
+  budgetItemId,
+  requestCents,
+}: {
+  periodId: string
+  costCenterId: string
+  budgetItemId: string
+  requestCents: number
+}) {
+  const ready = periodId !== '' && costCenterId !== '' && budgetItemId !== ''
+  const status = usePurchaseBudgetStatus(ready ? { periodId, costCenterId, budgetItemId } : null)
+  return (
+    <section aria-labelledby="talep-form-butce" className="col-span-full grid gap-2">
+      <h3 id="talep-form-butce" className="text-sm font-semibold">
+        Bütçe durumu
+      </h3>
+      {!ready ? (
+        <p className="text-sm text-muted-foreground">
+          Birim, dönem ve gider kalemini seçince bütçe kalanı görünür.
+        </p>
+      ) : status.error ? (
+        <QueryError error={status.error} onRetry={() => void status.refetch()} />
+      ) : status.data ? (
+        <BudgetFigures budget={status.data.data} requestCents={requestCents} />
+      ) : (
+        <SummaryLoading />
+      )}
+    </section>
+  )
+}
 
 /**
  * Satın alma talebi formu (DOM-FIN-071): birim, bütçe dönemi, gider kalemi, isteğe bağlı tedarikçi,
@@ -105,6 +198,10 @@ function RequestForm({
   })
   const items = useFieldArray({ control: form.control, name: 'items' })
   const watched = useWatch({ control: form.control, name: 'items' })
+  const [costCenterId, periodId, budgetItemId] = useWatch({
+    control: form.control,
+    name: ['costCenterId', 'periodId', 'budgetItemId'],
+  })
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const fields = {
@@ -209,6 +306,12 @@ function RequestForm({
         options.suppliers.map((item) => ({ value: item.id, label: item.name })),
         'Tedarikçi önerme',
       )}
+      <FormBudgetStatus
+        periodId={periodId}
+        costCenterId={costCenterId}
+        budgetItemId={budgetItemId}
+        requestCents={formTotalCents(watched ?? [])}
+      />
       <div className="col-span-full">
         <FormField id="talep-gerekce" label="Gerekçe" error={errors.justification}>
           {(control) => (
@@ -346,7 +449,11 @@ const REASON_TEXT = {
   },
 } as const
 
-/** Onay (isteğe bağlı not), ret ve iptal (zorunlu gerekçe) penceresi. */
+/**
+ * Onay (isteğe bağlı not), ret ve iptal (zorunlu gerekçe) penceresi. Onayda bütçe kalanı ve aşım
+ * tutarı gösterilir; sunucu aşım ya da bütçesiz uyarısı (409) verirse ikinci onay
+ * `confirmOverBudget` taşır (ON-245, K-146).
+ */
 export function ReasonModal({
   request,
   action,
@@ -363,6 +470,9 @@ export function ReasonModal({
     defaultValues: { reason: '' },
   })
   const busy = transition.isPending || form.formState.isSubmitting
+  const [warning, setWarning] = useState<BudgetWarningState | null>(null)
+  const warningKey = `${request.id}|${String(request.version)}`
+  const warned = warning !== null && warning.key === warningKey
   const onSubmit = form.handleSubmit(async (values) => {
     const text = (values.reason ?? '').trim()
     const outcome = await transition.submit(
@@ -370,9 +480,12 @@ export function ReasonModal({
         requestId: request.id,
         version: request.version,
         action,
-        ...(action === 'approve' ? { note: text === '' ? null : text } : { reason: text }),
+        ...(action === 'approve'
+          ? { note: text === '' ? null : text, ...(warned ? { confirmOverBudget: true } : {}) }
+          : { reason: text }),
       },
       {
+        silent: isBudgetWarning,
         setError: (_name: string, error: { type: string; message: string }) =>
           form.setError('reason', error, { shouldFocus: true }),
       },
@@ -380,8 +493,15 @@ export function ReasonModal({
     if (outcome.status === 'success') {
       notify.success(`${request.number} ${copy.done}.`)
       onClose()
-    } else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onClose()
+    } else if (outcome.status === 'failed' && isBudgetWarning(outcome.error))
+      setWarning(budgetWarningState(outcome.error, warningKey))
+    else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onClose()
   })
+  const button = !warned
+    ? copy.button
+    : warning.unplanned
+      ? 'Bütçesiz olarak onayla'
+      : 'Aşımı onaylayarak onayla'
   return (
     <Modal
       open
@@ -394,7 +514,7 @@ export function ReasonModal({
             Vazgeç
           </Button>
           <Button type="submit" form={REASON_FORM} disabled={busy} aria-busy={busy || undefined}>
-            {copy.button}
+            {button}
           </Button>
         </>
       }
@@ -404,12 +524,26 @@ export function ReasonModal({
         noValidate
         aria-label={copy.title}
         onSubmit={(event) => void onSubmit(event)}
+        className="grid gap-4"
       >
+        {action === 'approve' ? (
+          <section aria-labelledby="talep-onay-butce" className="grid gap-2">
+            <h3 id="talep-onay-butce" className="text-sm font-semibold">
+              Bütçe durumu
+            </h3>
+            <BudgetFigures budget={request.budget} requestCents={request.totalCents} />
+          </section>
+        ) : null}
         <FormField id="talep-karar-gerekce" label={copy.label} error={form.formState.errors.reason}>
           {(control) => (
             <Textarea {...control} {...form.register('reason')} rows={3} disabled={busy} />
           )}
         </FormField>
+        {warned ? (
+          <p role="alert" className="rounded-md border border-warning p-3 text-sm">
+            {warning.message}
+          </p>
+        ) : null}
       </form>
     </Modal>
   )

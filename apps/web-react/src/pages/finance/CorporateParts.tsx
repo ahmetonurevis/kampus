@@ -72,17 +72,23 @@ type PdfQuery = {
   refetch: () => unknown
 }
 
-/** PDF önizleme düğmesi; belge pencere açılınca hazırlanır, odak düğmeye döner. */
-export function PdfDialogButton({
+/**
+ * PDF önizleme düğmesi; belge pencere açılınca hazırlanır, odak düğmeye döner. `id` belgenin
+ * kimliğidir (birden çok kimlik isteyen belge nesne verir, ör. sipariş + mal kabul). Aynı listede
+ * birden çok düğme varsa `accessibleName` görünür etiketi içeren ayırt edici ad verir.
+ */
+export function PdfDialogButton<Id>({
   label,
   title,
   id,
   usePdf,
+  accessibleName,
 }: {
   label: string
   title: string
-  id: string
-  usePdf: (id: string, enabled: boolean) => PdfQuery
+  id: Id
+  usePdf: (id: Id, enabled: boolean) => PdfQuery
+  accessibleName?: string
 }) {
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
@@ -94,6 +100,7 @@ export function PdfDialogButton({
         type="button"
         variant="secondary"
         aria-haspopup="dialog"
+        aria-label={accessibleName}
         onClick={() => setOpen(true)}
       >
         <Icon name="FileText" size={16} aria-hidden="true" />

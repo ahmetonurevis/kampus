@@ -33,7 +33,9 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { FixedAssetAssignmentSection, holderText } from './FinanceFixedAssetAssignments.tsx'
 import { FixedAssetFormModal } from './FinanceFixedAssetForm.tsx'
+import { FinanceFixedAssetStaffSection } from './FinanceFixedAssetStaffSection.tsx'
 import {
   FIXED_ASSET_STATUS_VIEW,
   scrapFormSchema,
@@ -66,15 +68,26 @@ type Row = {
   value: string
   acquisitionDate: string
   supplier: string
+  holder: string
   status: FixedAssetStatus
 }
 
 /**
  * Demirbaşlar (`?gorunum=demirbas`; DOM-FIN-085, ON-235). Yalnız yönetici (K-189): kayıt,
- * düzeltme ve ayrıntı panelinde (`?demirbas=`) gerekçeli hurdaya ayırma (K-188). Liste etiket, ad
- * ve konumda aranır; durum, kategori ve kampüs süzgeçlidir, sunucu sayfalıdır.
+ * düzeltme ve ayrıntı panelinde (`?demirbas=`) zimmet ve iade (DOM-FIN-086) ile gerekçeli hurdaya
+ * ayırma (K-188). Liste etiket, ad ve konumda aranır; durum, kategori ve kampüs süzgeçlidir, sunucu
+ * sayfalıdır. Altında personel zimmetleri listesi (K-214).
  */
 export function FinanceFixedAssetsSection() {
+  return (
+    <div className="grid gap-6">
+      <FixedAssetsList />
+      <FinanceFixedAssetStaffSection />
+    </div>
+  )
+}
+
+function FixedAssetsList() {
   const list = useListState('demirbaslar', { urlPrefix: 'demirbas_' })
   const search = useDebouncedValue(list.state.query).trim()
   const status = text(list.state.filters.status)
@@ -120,6 +133,7 @@ export function FinanceFixedAssetsSection() {
         value: money(item.acquisitionValueCents),
         acquisitionDate: dayText(item.acquisitionDate),
         supplier: item.supplierName ?? '—',
+        holder: item.assignment ? holderText(item.assignment) : '—',
         status: item.status,
       })),
     [assets.data],
@@ -133,6 +147,7 @@ export function FinanceFixedAssetsSection() {
       { key: 'value', label: 'Alım değeri' },
       { key: 'acquisitionDate', label: 'Alım günü' },
       { key: 'supplier', label: 'Tedarikçi' },
+      { key: 'holder', label: 'Zimmet' },
       {
         key: 'status',
         label: 'Durum',
@@ -247,7 +262,8 @@ function FixedAssetDetailView({ assetId }: { assetId: string }) {
           </div>
         )}
       </section>
-      {scrapped ? null : <ScrapForm asset={asset} />}
+      <FixedAssetAssignmentSection asset={asset} />
+      {scrapped || asset.assignment ? null : <ScrapForm asset={asset} />}
       {editing ? <FixedAssetFormModal asset={asset} onClose={() => setEditing(false)} /> : null}
     </div>
   )

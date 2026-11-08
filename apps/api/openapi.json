@@ -115765,6 +115765,43 @@
                                 "cancelled"
                               ]
                             },
+                            "supplier": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "company",
+                                    "individual"
+                                  ]
+                                },
+                                "taxOffice": {
+                                  "description": "Vergi dairesi; şahıs tedarikçide boş (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "taxNumber": {
+                                  "description": "VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "taxOffice",
+                                "taxNumber"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -115776,6 +115813,7 @@
                             "id",
                             "number",
                             "status",
+                            "supplier",
                             "version"
                           ],
                           "additionalProperties": false,
@@ -115872,6 +115910,12 @@
                               "id": {
                                 "type": "string"
                               },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)"
+                              },
                               "receiptDate": {
                                 "type": "string",
                                 "description": "Kabul günü `YYYY-MM-DD`"
@@ -115931,6 +115975,18 @@
                                         "service"
                                       ]
                                     },
+                                    "orderedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kalemin sipariş miktarı"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                    },
                                     "acceptedQuantity": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
@@ -115948,6 +116004,12 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
                                     },
                                     "stockItemId": {
                                       "description": "Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)",
@@ -115967,9 +116029,12 @@
                                     "orderItemId",
                                     "name",
                                     "unit",
+                                    "orderedQuantity",
+                                    "unitPriceCents",
                                     "acceptedQuantity",
                                     "rejectedQuantity",
                                     "rejectReason",
+                                    "netCents",
                                     "stockItemId",
                                     "stockItemName"
                                   ],
@@ -116025,6 +116090,7 @@
                             },
                             "required": [
                               "id",
+                              "sequence",
                               "receiptDate",
                               "warehouseId",
                               "warehouseName",
@@ -116325,6 +116391,43 @@
                                 "cancelled"
                               ]
                             },
+                            "supplier": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "company",
+                                    "individual"
+                                  ]
+                                },
+                                "taxOffice": {
+                                  "description": "Vergi dairesi; şahıs tedarikçide boş (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "taxNumber": {
+                                  "description": "VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "taxOffice",
+                                "taxNumber"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -116336,6 +116439,7 @@
                             "id",
                             "number",
                             "status",
+                            "supplier",
                             "version"
                           ],
                           "additionalProperties": false,
@@ -116432,6 +116536,12 @@
                               "id": {
                                 "type": "string"
                               },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)"
+                              },
                               "receiptDate": {
                                 "type": "string",
                                 "description": "Kabul günü `YYYY-MM-DD`"
@@ -116491,6 +116601,18 @@
                                         "service"
                                       ]
                                     },
+                                    "orderedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kalemin sipariş miktarı"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                    },
                                     "acceptedQuantity": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
@@ -116508,6 +116630,12 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
                                     },
                                     "stockItemId": {
                                       "description": "Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)",
@@ -116527,9 +116655,12 @@
                                     "orderItemId",
                                     "name",
                                     "unit",
+                                    "orderedQuantity",
+                                    "unitPriceCents",
                                     "acceptedQuantity",
                                     "rejectedQuantity",
                                     "rejectReason",
+                                    "netCents",
                                     "stockItemId",
                                     "stockItemName"
                                   ],
@@ -116585,6 +116716,7 @@
                             },
                             "required": [
                               "id",
+                              "sequence",
                               "receiptDate",
                               "warehouseId",
                               "warehouseName",
@@ -116820,6 +116952,43 @@
                                 "cancelled"
                               ]
                             },
+                            "supplier": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "company",
+                                    "individual"
+                                  ]
+                                },
+                                "taxOffice": {
+                                  "description": "Vergi dairesi; şahıs tedarikçide boş (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "taxNumber": {
+                                  "description": "VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "taxOffice",
+                                "taxNumber"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -116831,6 +117000,7 @@
                             "id",
                             "number",
                             "status",
+                            "supplier",
                             "version"
                           ],
                           "additionalProperties": false,
@@ -116927,6 +117097,12 @@
                               "id": {
                                 "type": "string"
                               },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)"
+                              },
                               "receiptDate": {
                                 "type": "string",
                                 "description": "Kabul günü `YYYY-MM-DD`"
@@ -116986,6 +117162,18 @@
                                         "service"
                                       ]
                                     },
+                                    "orderedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kalemin sipariş miktarı"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                    },
                                     "acceptedQuantity": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
@@ -117003,6 +117191,12 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
                                     },
                                     "stockItemId": {
                                       "description": "Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)",
@@ -117022,9 +117216,12 @@
                                     "orderItemId",
                                     "name",
                                     "unit",
+                                    "orderedQuantity",
+                                    "unitPriceCents",
                                     "acceptedQuantity",
                                     "rejectedQuantity",
                                     "rejectReason",
+                                    "netCents",
                                     "stockItemId",
                                     "stockItemName"
                                   ],
@@ -117080,6 +117277,7 @@
                             },
                             "required": [
                               "id",
+                              "sequence",
                               "receiptDate",
                               "warehouseId",
                               "warehouseName",
@@ -126905,6 +127103,83 @@
                               "null"
                             ]
                           },
+                          "assignment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "assigneeType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "staff",
+                                      "location"
+                                    ]
+                                  },
+                                  "membershipId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "staffName": {
+                                    "description": "Teslim alan personelin adı (yalnız yönetici)",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "staffActive": {
+                                    "description": "Personel pasifleştirildiyse `false`",
+                                    "type": [
+                                      "boolean",
+                                      "null"
+                                    ]
+                                  },
+                                  "campusId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "campusName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "location": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "assignedDate": {
+                                    "type": "string",
+                                    "description": "Zimmet günü (YYYY-MM-DD)"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "assigneeType",
+                                  "membershipId",
+                                  "staffName",
+                                  "staffActive",
+                                  "campusId",
+                                  "campusName",
+                                  "location",
+                                  "assignedDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -126927,6 +127202,7 @@
                           "receiptItemId",
                           "status",
                           "scrapDate",
+                          "assignment",
                           "version"
                         ],
                         "additionalProperties": false
@@ -127259,6 +127535,83 @@
                             "null"
                           ]
                         },
+                        "assignment": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "assigneeType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "location"
+                                  ]
+                                },
+                                "membershipId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffName": {
+                                  "description": "Teslim alan personelin adı (yalnız yönetici)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffActive": {
+                                  "description": "Personel pasifleştirildiyse `false`",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "campusId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "campusName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "location": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "assignedDate": {
+                                  "type": "string",
+                                  "description": "Zimmet günü (YYYY-MM-DD)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "assigneeType",
+                                "membershipId",
+                                "staffName",
+                                "staffActive",
+                                "campusId",
+                                "campusName",
+                                "location",
+                                "assignedDate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -127357,6 +127710,7 @@
                         "receiptItemId",
                         "status",
                         "scrapDate",
+                        "assignment",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -127789,6 +128143,83 @@
                             "null"
                           ]
                         },
+                        "assignment": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "assigneeType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "location"
+                                  ]
+                                },
+                                "membershipId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffName": {
+                                  "description": "Teslim alan personelin adı (yalnız yönetici)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffActive": {
+                                  "description": "Personel pasifleştirildiyse `false`",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "campusId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "campusName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "location": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "assignedDate": {
+                                  "type": "string",
+                                  "description": "Zimmet günü (YYYY-MM-DD)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "assigneeType",
+                                "membershipId",
+                                "staffName",
+                                "staffActive",
+                                "campusId",
+                                "campusName",
+                                "location",
+                                "assignedDate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -127887,6 +128318,7 @@
                         "receiptItemId",
                         "status",
                         "scrapDate",
+                        "assignment",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -128218,6 +128650,83 @@
                             "null"
                           ]
                         },
+                        "assignment": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "assigneeType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "location"
+                                  ]
+                                },
+                                "membershipId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffName": {
+                                  "description": "Teslim alan personelin adı (yalnız yönetici)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffActive": {
+                                  "description": "Personel pasifleştirildiyse `false`",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "campusId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "campusName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "location": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "assignedDate": {
+                                  "type": "string",
+                                  "description": "Zimmet günü (YYYY-MM-DD)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "assigneeType",
+                                "membershipId",
+                                "staffName",
+                                "staffActive",
+                                "campusId",
+                                "campusName",
+                                "location",
+                                "assignedDate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -128316,6 +128825,7 @@
                         "receiptItemId",
                         "status",
                         "scrapDate",
+                        "assignment",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -128582,6 +129092,83 @@
                             "null"
                           ]
                         },
+                        "assignment": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "assigneeType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "location"
+                                  ]
+                                },
+                                "membershipId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffName": {
+                                  "description": "Teslim alan personelin adı (yalnız yönetici)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffActive": {
+                                  "description": "Personel pasifleştirildiyse `false`",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "campusId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "campusName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "location": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "assignedDate": {
+                                  "type": "string",
+                                  "description": "Zimmet günü (YYYY-MM-DD)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "assigneeType",
+                                "membershipId",
+                                "staffName",
+                                "staffActive",
+                                "campusId",
+                                "campusName",
+                                "location",
+                                "assignedDate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -128680,6 +129267,7 @@
                         "receiptItemId",
                         "status",
                         "scrapDate",
+                        "assignment",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -128691,6 +129279,1597 @@
                   },
                   "required": [
                     "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-assignments": {
+      "get": {
+        "operationId": "listFixedAssetAssignments",
+        "summary": "Demirbaş zimmetlerini listele",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Açık zimmetler önce, yeni zimmet önce. `assetId` demirbaşın zimmet geçmişini, `membershipId` personelin zimmetlerini (ilişik kesmede açık zimmetler, K-214), `state` açık ya da iade edilmişleri süzer; `q` etiket, demirbaş adı, personel adı ve konumda arar (DOM-FIN-086). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "assetId",
+            "required": false,
+            "description": "Demirbaşın zimmet geçmişi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "membershipId",
+            "required": false,
+            "description": "Personelin zimmetleri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "returned"
+              ]
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "`open` iade edilmemiş, `returned` iade edilmiş"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Etiket, demirbaş adı, personel adı ve konumda arama, Türkçe harf duyarsız"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "assetId": {
+                            "type": "string"
+                          },
+                          "assetTagNumber": {
+                            "type": "string"
+                          },
+                          "assetName": {
+                            "type": "string"
+                          },
+                          "assetCategory": {
+                            "type": "string",
+                            "enum": [
+                              "furniture",
+                              "it",
+                              "audiovisual",
+                              "office",
+                              "laboratory",
+                              "sports",
+                              "kitchen",
+                              "appliance",
+                              "vehicle",
+                              "other"
+                            ]
+                          },
+                          "assigneeType": {
+                            "type": "string",
+                            "enum": [
+                              "staff",
+                              "location"
+                            ],
+                            "description": "`staff` personel, `location` konum (K-210)"
+                          },
+                          "membershipId": {
+                            "description": "Personel zimmetinde kurum üyeliği",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "staffName": {
+                            "description": "Teslim alan personelin adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "staffRole": {
+                            "description": "Personelin bugünkü rolü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "staffActive": {
+                            "description": "Personel pasifleştirildiyse `false`; konum zimmetinde boş",
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "campusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "campusName": {
+                            "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "description": "Konum zimmetinde oda ya da yer",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "assignedDate": {
+                            "type": "string",
+                            "description": "Zimmet günü (YYYY-MM-DD)"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "assignedAt": {
+                            "type": "string"
+                          },
+                          "returnDate": {
+                            "description": "İade günü; açık zimmette boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "returnCondition": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "intact",
+                                  "damaged"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "returnNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "returnedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (iade)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "assetId",
+                          "assetTagNumber",
+                          "assetName",
+                          "assetCategory",
+                          "assigneeType",
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "staffActive",
+                          "campusId",
+                          "campusName",
+                          "location",
+                          "assignedDate",
+                          "note",
+                          "assignedAt",
+                          "returnDate",
+                          "returnCondition",
+                          "returnNote",
+                          "returnedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-assignments/{assignmentId}": {
+      "get": {
+        "operationId": "getFixedAssetAssignment",
+        "summary": "Zimmet ayrıntısı",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Zimmet tutanağının verisi: demirbaş, teslim alan (personel ya da konum), zimmet ve iade bilgisi. Olmayan ya da başka kurumun zimmeti 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "assetId": {
+                          "type": "string"
+                        },
+                        "assetTagNumber": {
+                          "type": "string"
+                        },
+                        "assetName": {
+                          "type": "string"
+                        },
+                        "assetCategory": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ]
+                        },
+                        "assigneeType": {
+                          "type": "string",
+                          "enum": [
+                            "staff",
+                            "location"
+                          ],
+                          "description": "`staff` personel, `location` konum (K-210)"
+                        },
+                        "membershipId": {
+                          "description": "Personel zimmetinde kurum üyeliği",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffName": {
+                          "description": "Teslim alan personelin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffRole": {
+                          "description": "Personelin bugünkü rolü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffActive": {
+                          "description": "Personel pasifleştirildiyse `false`; konum zimmetinde boş",
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Konum zimmetinde oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "assignedDate": {
+                          "type": "string",
+                          "description": "Zimmet günü (YYYY-MM-DD)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "assignedAt": {
+                          "type": "string"
+                        },
+                        "returnDate": {
+                          "description": "İade günü; açık zimmette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnCondition": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "intact",
+                                "damaged"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "returnNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iade)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "assetId",
+                        "assetTagNumber",
+                        "assetName",
+                        "assetCategory",
+                        "assigneeType",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "assignedDate",
+                        "note",
+                        "assignedAt",
+                        "returnDate",
+                        "returnCondition",
+                        "returnNote",
+                        "returnedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-assets/{assetId}/assignments": {
+      "post": {
+        "operationId": "assignFixedAsset",
+        "summary": "Demirbaşı zimmetle",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Personele (`assigneeType: staff`, kurumun etkin yönetici, öğretmen ya da ön büro üyeliği) ya da konuma (`assigneeType: location`, isteğe bağlı kampüs ve oda) zimmet, zimmet günü ve not (K-210). Açık zimmet varken 409 `fixed_asset_already_assigned` (devir önce iadedir, K-211); hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`; gelecek gün 422 `fixed_asset_date_in_future`; alım gününden önce 422 `fixed_asset_assignment_before_acquisition`; son iade gününden önce 422 `fixed_asset_assignment_before_return`; olmayan üyelik 422 `fixed_asset_assignee_not_found`, öğrenci ya da veli 422 `fixed_asset_assignee_not_staff`, pasif personel 422 `fixed_asset_assignee_inactive`; olmayan kampüs 422 `fixed_asset_campus_not_found`. Başka kurumun demirbaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "assigneeType": {
+                        "type": "string",
+                        "enum": [
+                          "staff"
+                        ]
+                      },
+                      "membershipId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Teslim alan personelin kurum üyeliği"
+                      },
+                      "assignedDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Zimmet (teslim) günü; bugünden sonra olamaz"
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 500 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "assigneeType",
+                      "membershipId",
+                      "assignedDate"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "assigneeType": {
+                        "type": "string",
+                        "enum": [
+                          "location"
+                        ]
+                      },
+                      "campusId": {
+                        "default": null,
+                        "description": "Kampüs (branches kaydı); tek kampüslü kurumda boş",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120,
+                        "description": "Oda ya da yer, serbest metin"
+                      },
+                      "assignedDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Zimmet (teslim) günü; bugünden sonra olamaz"
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 500 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "assigneeType",
+                      "location",
+                      "assignedDate"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assetId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "assetId": {
+                          "type": "string"
+                        },
+                        "assetTagNumber": {
+                          "type": "string"
+                        },
+                        "assetName": {
+                          "type": "string"
+                        },
+                        "assetCategory": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ]
+                        },
+                        "assigneeType": {
+                          "type": "string",
+                          "enum": [
+                            "staff",
+                            "location"
+                          ],
+                          "description": "`staff` personel, `location` konum (K-210)"
+                        },
+                        "membershipId": {
+                          "description": "Personel zimmetinde kurum üyeliği",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffName": {
+                          "description": "Teslim alan personelin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffRole": {
+                          "description": "Personelin bugünkü rolü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffActive": {
+                          "description": "Personel pasifleştirildiyse `false`; konum zimmetinde boş",
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Konum zimmetinde oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "assignedDate": {
+                          "type": "string",
+                          "description": "Zimmet günü (YYYY-MM-DD)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "assignedAt": {
+                          "type": "string"
+                        },
+                        "returnDate": {
+                          "description": "İade günü; açık zimmette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnCondition": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "intact",
+                                "damaged"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "returnNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iade)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "assetId",
+                        "assetTagNumber",
+                        "assetName",
+                        "assetCategory",
+                        "assigneeType",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "assignedDate",
+                        "note",
+                        "assignedAt",
+                        "returnDate",
+                        "returnCondition",
+                        "returnNote",
+                        "returnedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-assignments/{assignmentId}/return": {
+      "post": {
+        "operationId": "returnFixedAssetAssignment",
+        "summary": "Zimmeti iade al",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "İade günü, durum (`intact` sağlam, `damaged` hasarlı) ve not; hasarlı iadede not en az 5 karakter (K-212). Zimmet kaydı silinmez; demirbaşın durumu kendiliğinden değişmez. Zaten iade edilmiş 422 `fixed_asset_assignment_returned`, gelecek gün 422 `fixed_asset_date_in_future`, zimmet gününden önce 422 `fixed_asset_return_before_assignment`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "returnDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İade günü; zimmet gününden önce, bugünden sonra olamaz"
+                  },
+                  "condition": {
+                    "type": "string",
+                    "enum": [
+                      "intact",
+                      "damaged"
+                    ],
+                    "description": "`intact` sağlam, `damaged` hasarlı"
+                  },
+                  "note": {
+                    "description": "Durum notu; hasarlı iadede en az 5 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "returnDate",
+                  "condition"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "assetId": {
+                          "type": "string"
+                        },
+                        "assetTagNumber": {
+                          "type": "string"
+                        },
+                        "assetName": {
+                          "type": "string"
+                        },
+                        "assetCategory": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ]
+                        },
+                        "assigneeType": {
+                          "type": "string",
+                          "enum": [
+                            "staff",
+                            "location"
+                          ],
+                          "description": "`staff` personel, `location` konum (K-210)"
+                        },
+                        "membershipId": {
+                          "description": "Personel zimmetinde kurum üyeliği",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffName": {
+                          "description": "Teslim alan personelin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffRole": {
+                          "description": "Personelin bugünkü rolü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffActive": {
+                          "description": "Personel pasifleştirildiyse `false`; konum zimmetinde boş",
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Konum zimmetinde oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "assignedDate": {
+                          "type": "string",
+                          "description": "Zimmet günü (YYYY-MM-DD)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "assignedAt": {
+                          "type": "string"
+                        },
+                        "returnDate": {
+                          "description": "İade günü; açık zimmette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnCondition": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "intact",
+                                "damaged"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "returnNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iade)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "assetId",
+                        "assetTagNumber",
+                        "assetName",
+                        "assetCategory",
+                        "assigneeType",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "assignedDate",
+                        "note",
+                        "assignedAt",
+                        "returnDate",
+                        "returnCondition",
+                        "returnNote",
+                        "returnedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-assignees": {
+      "get": {
+        "operationId": "listFixedAssetAssignees",
+        "summary": "Zimmet alabilecek personel ve açık zimmet sayısı",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Kurumun yönetici, öğretmen ve ön büro üyelikleri, ada göre; her satırda açık zimmet sayısı. Pasifleştirilmiş (ayrılan) personel de listelenir; `status=passive&holding=true` ilişik kesmede iade bekleyen zimmetleri olan personeli verir (K-214). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "holding",
+            "required": false,
+            "description": "`true` yalnız açık zimmeti olan personel"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                          },
+                          "openAssignmentCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Üzerindeki açık zimmet sayısı"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "openAssignmentCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
                   ],
                   "additionalProperties": false
                 }

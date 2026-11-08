@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import {
   assertBankTransactionIgnored,
   assertBankTransactionOpen,
+  assertNoPossibleDuplicate,
   bankIgnoreSchema,
   bankMatchDirectory,
   bankMatchSchema,
@@ -33,6 +34,7 @@ import {
   listBankTransactions,
   markBankTransactionIgnored,
   markBankTransactionMatched,
+  matchedTwinCount,
   referencesInUse,
   restoreBankTransaction,
   type BankTransactionQuery,
@@ -492,7 +494,8 @@ async function viewOf(tx: Database, ctx: ServiceContext, id: string) {
  * Öneriyi ya da seçilen taksiti onaylar (DOM-FIN-069): tahsilat hareketin tamamıyla, banka
  * havalesi yöntemiyle, hareketin hesabına ve gününe yazılır; önce seçilen taksit, artanı en eski
  * vade, açık taksitleri aşanı iade alacağı (DOM-FIN-030, K-110). Kapalı gün 422 (DOM-FIN-036).
- * Hareket aynı transaction'da `matched` olur; ikinci onay 409. 201.
+ * Hareket aynı transaction'da `matched` olur; ikinci onay 409. Aynı hesap, gün ve tutarda aynı
+ * öğrenciye eşleşmiş başka hareket varsa `confirmDuplicate` olmadan 409 (K-121). 201.
  */
 export async function matchBankTransactionCommand(
   ctx: ServiceContext,
@@ -522,7 +525,18 @@ export async function matchBankTransactionCommand(
   const { request, view } = recordPaymentOperation(ctx, payment, {
     load: async (tx) => {
       const row = await lockedTransaction(tx, ctx, transactionId, expectedVersion)
-      return () => assertBankTransactionOpen(row.status)
+      // Kurum kilidi altında: eşzamanlı ikinci onay birincinin eşleşmesini görür (K-121).
+      const twins = await matchedTwinCount(tx, ctx.institutionId, {
+        id: row.id,
+        bankAccountId: row.bankAccountId,
+        bookingDate: row.bookingDate,
+        amountCents: row.amountCents,
+        studentId: body.studentId,
+      })
+      return () => {
+        assertBankTransactionOpen(row.status)
+        assertNoPossibleDuplicate(twins, body.confirmDuplicate === true)
+      }
     },
     after: async (tx, stored) => {
       const marked = await markBankTransactionMatched(tx, ctx.institutionId, {

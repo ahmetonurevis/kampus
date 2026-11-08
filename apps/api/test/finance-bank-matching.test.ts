@@ -626,6 +626,94 @@ describe('banka hareketi eşleştirme uçları', () => {
     assert.equal((await transactions(t.id))[0]?.status, 'unmatched')
   })
 
+  test('K-120: aynı ekstre CSV sonra MT940 yüklenince referanslı hareketler atlanır', async () => {
+    const t = await institution()
+    await imported(t)
+    const mt940 = [
+      ':20:STMT',
+      `:25:${IBAN}`,
+      ':61:2610011001C10000,00NTRFNONREF//EFT-001',
+      `:86:?20HAVALE TC ${TC}?21EKIM TAKSIT AYSE YILMAZ`,
+      ':61:2610031003C15000,00NTRFNONREF//EFT-003',
+      ':86:?20NEHIR BAS OKUL ODEMESI',
+    ].join('\n')
+    const again = await upload(t.adminCookie, t, { text: mt940 })
+    assert.equal(again.statusCode, 201, again.body)
+    assert.deepEqual([again.json().data.readyCount, again.json().data.skippedCount], [0, 2])
+    assert.equal((await transactions(t.id)).length, 3)
+  })
+
+  test('K-121: aynı hesap, gün, tutar ve öğrenciye ikinci onay 409 olası mükerrer; açık onayla tahsil edilir', async () => {
+    const t = await institution()
+    // Referanssız havale önce CSV, sonra gönderen adı eklenmiş MT940 olarak yüklendi: iki hareket.
+    const csv = `Tarih;Açıklama;Tutar;Referans\n01.10.2026;HAVALE TC ${TC} EKIM;10.000,00;`
+    const mt940 = [
+      ':20:STMT',
+      `:25:${IBAN}`,
+      ':61:2610011001C10000,00NTRFNONREF',
+      `:86:?20HAVALE TC ${TC} EKIM?21AYSE YILMAZ`,
+    ].join('\n')
+    assert.equal((await upload(t.adminCookie, t, { text: csv })).statusCode, 201)
+    assert.equal((await upload(t.adminCookie, t, { text: mt940 })).statusCode, 201)
+    const [first, second] = await transactions(t.id)
+    assert.ok(first && second)
+    assert.equal((await match(t.adminCookie, first.id, first.version)).statusCode, 201)
+    // İlk taksit kapandığı için öneri sonraki taksite kayar; taksit denetimi mükerreri yakalamaz.
+    const suggested = await send('GET', `${LIST}/${second.id}/suggestions`, t.adminCookie)
+    const [top] = suggested.json().data.suggestions
+    assert.deepEqual([top.studentId, top.invoiceId], ['s1', 'test-inv-s1-2'])
+    const body = { studentId: 's1', invoiceId: 'test-inv-s1-2' }
+    const refused = await match(t.adminCookie, second.id, second.version, body)
+    assertError(refused, 409, 'bank_match_possible_duplicate')
+    assert.equal((await paymentRows(t.id)).length, 1)
+    const [, unchanged] = await transactions(t.id)
+    assert.deepEqual([unchanged?.status, unchanged?.version], ['unmatched', second.version])
+    assertError(
+      await match(t.adminCookie, second.id, second.version, { ...body, confirmDuplicate: 'evet' }),
+      400,
+    )
+    const confirmed = await match(t.adminCookie, second.id, second.version, {
+      ...body,
+      confirmDuplicate: true,
+    })
+    assert.equal(confirmed.statusCode, 201, confirmed.body)
+    assert.equal((await paymentRows(t.id)).length, 2)
+  })
+
+  test('K-121: aynı gün aynı tutarda başka öğrenciye ya da iptal edilmiş eşleşmeden sonra onay uyarısız', async () => {
+    const t = await institution()
+    const text = [
+      'Tarih;Açıklama;Tutar;Referans',
+      `01.10.2026;HAVALE TC ${TC};10.000,00;`,
+      '01.10.2026;NEHIR BAS;10.000,00;',
+      `01.10.2026;TC ${TC} IKINCI;10.000,00;`,
+    ].join('\n')
+    assert.equal((await upload(t.adminCookie, t, { text })).statusCode, 201)
+    const [deniz, nehir, twin] = (await transactions(t.id)).sort(
+      (a, b) => a.sourceLine - b.sourceLine,
+    )
+    assert.ok(deniz && nehir && twin)
+    const done = await match(t.adminCookie, deniz.id, deniz.version)
+    assert.equal(done.statusCode, 201, done.body)
+    const other = await match(t.adminCookie, nehir.id, nehir.version, {
+      studentId: 's25',
+      invoiceId: 'test-inv-s25-1',
+    })
+    assert.equal(other.statusCode, 201, other.body)
+    // İptal edilen tahsilatın hareketi yeniden açılır; ikiz artık eşleşmiş sayılmaz.
+    const { payment } = done.json().data
+    const reversed = await send(
+      'POST',
+      `/api/v1/payments/${String(payment.id)}/reverse`,
+      t.adminCookie,
+      { reason: 'Mükerrer denemesi' },
+      { ...ifMatch(payment.version), ...key() },
+    )
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const again = await match(t.adminCookie, twin.id, twin.version)
+    assert.equal(again.statusCode, 201, again.body)
+  })
+
   test('K-111: tahsilat iptali eşleşmeyi geri açar; hareket yeniden eşleşir', async () => {
     const t = await institution()
     const [first] = await imported(t)

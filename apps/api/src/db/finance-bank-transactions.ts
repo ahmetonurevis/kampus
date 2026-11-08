@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, isNull, lte, ne, sql } from 'drizzle-orm'
 
 import type { BankTransactionStatus } from '@kampus/school-core/lib/finance-bank-matching.ts'
 import type { BankStatementFormat } from '@kampus/school-core/lib/finance-bank-statement.ts'
@@ -333,6 +333,42 @@ export async function reopenBankTransactionOfPayment(
     )
     .returning({ id: bankTransactions.id })
   return row ?? null
+}
+
+/**
+ * Olası mükerrer ikizleri (K-121): aynı hesaba aynı gün aynı tutarda gelen, bu hareket dışında ve
+ * aynı öğrenciye iptal edilmemiş tahsilatla eşleşmiş hareket sayısı. Onay kurum kilidi altında
+ * çağırır; eşzamanlı iki onaydan ikincisi birincinin eşleşmesini görür.
+ */
+export async function matchedTwinCount(
+  db: Database,
+  institutionId: string,
+  input: {
+    id: string
+    bankAccountId: string
+    bookingDate: string
+    amountCents: number
+    studentId: string
+  },
+): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(bankTransactions)
+    .innerJoin(payments, PAYMENT_JOIN)
+    .where(
+      and(
+        eq(bankTransactions.institutionId, institutionId),
+        eq(bankTransactions.bankAccountId, input.bankAccountId),
+        eq(bankTransactions.bookingDate, input.bookingDate),
+        eq(bankTransactions.amountCents, input.amountCents),
+        eq(bankTransactions.status, 'matched'),
+        ne(bankTransactions.id, input.id),
+        isNull(bankTransactions.archivedAt),
+        eq(payments.studentId, input.studentId),
+        isNull(payments.reversedAt),
+      ),
+    )
+  return row?.n ?? 0
 }
 
 /** Verilen referanslardan iptal edilmemiş bir tahsilatta kullanılanlar (DOM-FIN-031). */

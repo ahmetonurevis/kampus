@@ -10,6 +10,7 @@ import {
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import {
+  BANK_MATCH_DUPLICATE_CODE,
   useBankSuggestions,
   useIgnoreBankTransaction,
   useMatchBankTransaction,
@@ -54,6 +55,8 @@ export function BankMatchPanel({
   const learner = useEnrollmentLearner()
   const [studentId, setStudentId] = useState<string | undefined>(undefined)
   const [ignoring, setIgnoring] = useState(false)
+  // Olası mükerrer uyarısı (K-121): sunucunun mesajı; seçim değişince kalkar.
+  const [duplicate, setDuplicate] = useState<{ message: string; invoiceId: string } | null>(null)
   const suggestions = useBankSuggestions(transaction.id, studentId)
   const matcher = useMatchBankTransaction()
   const open = transaction.status === 'unmatched'
@@ -65,17 +68,25 @@ export function BankMatchPanel({
   const chosenInvoice = useWatch({ control: form.control, name: 'invoiceId' })
   const list = suggestions.data?.data.suggestions ?? []
 
-  const onMatch = form.handleSubmit(async (values) => {
-    const outcome = await matcher.submit({
-      transactionId: transaction.id,
-      version: transaction.version,
-      ...values,
-    })
+  const warned = duplicate !== null && duplicate.invoiceId === chosenInvoice
+  const onMatch = form.handleSubmit(async ({ studentId: student, invoiceId }) => {
+    const outcome = await matcher.submit(
+      {
+        transactionId: transaction.id,
+        version: transaction.version,
+        studentId: student,
+        invoiceId,
+        confirmDuplicate: warned,
+      },
+      { silent: (error) => error.code === BANK_MATCH_DUPLICATE_CODE },
+    )
     if (outcome.status === 'success') {
       const { payment } = outcome.data.data
       notify.success(`Tahsilat kaydedildi: ${receiptNumberLabel(payment)}.`)
       onClose()
-    } else if (outcome.status === 'failed' && outcome.error.status === 409) onClose()
+    } else if (outcome.status === 'failed' && outcome.error.code === BANK_MATCH_DUPLICATE_CODE)
+      setDuplicate({ message: outcome.error.message, invoiceId })
+    else if (outcome.status === 'failed' && outcome.error.status === 409) onClose()
   })
 
   function choose(suggestion: BankMatchSuggestion) {
@@ -103,7 +114,7 @@ export function BankMatchPanel({
               disabled={busy || chosenInvoice === ''}
               aria-busy={busy || undefined}
             >
-              Onayla ve tahsil et
+              {warned ? 'Ayrı ödeme, yine de tahsil et' : 'Onayla ve tahsil et'}
             </Button>
           </>
         ) : (
@@ -137,6 +148,11 @@ export function BankMatchPanel({
           <p role="alert" className="rounded-md border border-warning p-3 text-sm">
             Bu referansla kayıtlı bir tahsilat var; havale elle girilmiş olabilir. Mükerrer tahsilat
             açılmaz, hareketi yoksayın.
+          </p>
+        ) : null}
+        {warned ? (
+          <p role="alert" className="rounded-md border border-warning p-3 text-sm">
+            {duplicate.message}
           </p>
         ) : null}
         {transaction.status === 'matched' && transaction.payment ? (

@@ -5,6 +5,7 @@ import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import {
   assertBankTransactionIgnored,
   assertBankTransactionOpen,
+  assertNoPossibleDuplicate,
   bankIgnoreSchema,
   bankMatchDirectory,
   bankMatchSchema,
@@ -209,5 +210,27 @@ describe('K-109, K-111: durum geçişi, referans ve gövdeler', () => {
     )
     assert.equal(bankIgnoreSchema.safeParse({ ignoreReason: 'ab' }).success, false)
     assert.equal(bankIgnoreSchema.safeParse({ ignoreReason: 'Kira geliri' }).success, true)
+  })
+})
+
+describe('K-121: onayda olası mükerrer', () => {
+  test('aynı hesap, gün, tutar ve öğrenciye eşleşmiş başka hareket varsa açık onay ister', () => {
+    assertNoPossibleDuplicate(0, false)
+    assertNoPossibleDuplicate(1, true)
+    assert.throws(
+      () => assertNoPossibleDuplicate(1, false),
+      (error: unknown) =>
+        error instanceof DomainError &&
+        error.code === 'bank_match_possible_duplicate' &&
+        error.kind === 'conflict' &&
+        error.message.includes('mükerrer'),
+    )
+  })
+
+  test('onay gövdesi açık mükerrer onayını isteğe bağlı mantıksal değer olarak alır', () => {
+    const body = { studentId: 's1', invoiceId: 'i1' }
+    assert.deepEqual(bankMatchSchema.parse(body), body)
+    assert.equal(bankMatchSchema.parse({ ...body, confirmDuplicate: true }).confirmDuplicate, true)
+    assert.equal(bankMatchSchema.safeParse({ ...body, confirmDuplicate: 'evet' }).success, false)
   })
 })

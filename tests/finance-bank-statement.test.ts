@@ -281,3 +281,41 @@ describe('K-107: mükerrer anahtarı ve aktarım planı', () => {
     )
   })
 })
+
+describe('K-120: biçimler arası mükerrer izi', () => {
+  const mt940 = (lines: string[]) =>
+    [':20:STMT', ':25:TR330006100519786457841326', ...lines, '-'].join('\n')
+  const keyOf = (raw: string) => [...bankTransactionKeys(ACCOUNT, parse(raw).lines).values()]
+
+  test('banka referansı varsa iz açıklamadan bağımsızdır: aynı hareket CSV ve MT940’ta aynı izi alır', () => {
+    const csv = [
+      'Tarih;Açıklama;Gönderen;Tutar;Dekont No',
+      '01.10.2026;EFT TAKSIT;AYSE YILMAZ;24.500,00;EFT-2026-0001',
+    ].join('\n')
+    const swift = mt940([
+      ':61:2610011001C24500,00NTRFNONREF//EFT20260001',
+      ':86:?20EFT AYSE YILMAZ?21DENIZ YILMAZ TAKSIT',
+    ])
+    assert.deepEqual(keyOf(swift), keyOf(csv))
+    // Gönderen sütunu eşlenmeden yüklense de iz aynıdır.
+    assert.deepEqual(keyOf(csv), keyOf(csv.replace('Gönderen', 'Not')))
+    // Başka tutar ya da gün başka harekettir.
+    assert.notDeepEqual(keyOf(csv.replace('24.500,00', '24.000,00')), keyOf(csv))
+  })
+
+  test('referans yoksa ya da kısaysa iz normalleştirilmiş açıklamadır: harf, noktalama ve boşluk farkı izi değiştirmez', () => {
+    const csv = [
+      'Tarih;Açıklama;Tutar;Referans',
+      '01.10.2026;EFT. Ayşe YILMAZ / Deniz Yılmaz - TAKSİT;24.500,00;',
+    ].join('\n')
+    const swift = mt940([
+      ':61:2610011001C24500,00NTRFNONREF',
+      ':86:?20EFT AYSE YILMAZ?21DENIZ YILMAZ TAKSIT',
+    ])
+    assert.deepEqual(keyOf(swift), keyOf(csv))
+    // "R4" gibi kısa referans hareketi tek başına tanımlamaz; açıklama izde kalır.
+    const short = (description: string) =>
+      keyOf(`Tarih;Açıklama;Tutar;Referans\n01.10.2026;${description};100,00;R4`)
+    assert.notDeepEqual(short('HAVALE DENIZ'), short('HAVALE NEHIR'))
+  })
+})

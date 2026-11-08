@@ -490,10 +490,32 @@ export function foldStatementText(value: string): string {
 }
 
 /**
- * Hareketin mükerrer anahtarı (K-107): hesap + gün + tutar + yön + katlanmış açıklama + referans.
+ * İz için açıklama: katlanır (Türkçe harf ASCII'ye, büyük harf küçüğe), harf ve rakam dışı her şey
+ * tek boşluğa iner. CSV açıklaması ile MT940 `:86:` alanı aynı metni farklı noktalama ve ayraçla
+ * verir ("EFT. AYSE/DENIZ" ve "EFT AYSE DENIZ").
+ */
+export function normalizeStatementText(value: string): string {
+  return foldStatementText(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/** Hareketi tek başına tanımlayan banka referansı: en az 6 harf/rakam ve en az bir rakam (K-120). */
+const STRONG_REFERENCE_MIN = 6
+function strongReference(reference: string): string | null {
+  const compact = normalizeStatementText(reference).replace(/ /g, '')
+  return compact.length >= STRONG_REFERENCE_MIN && /\d/.test(compact) ? compact : null
+}
+
+/**
+ * Hareketin mükerrer anahtarı (K-107, K-120): hesap + gün + tutar ve
+ * - banka referansı hareketi tanımlıyorsa (`strongReference`) yalnız referans: aynı ekstre CSV ve
+ *   MT940 olarak ya da farklı sütun eşlemesiyle yüklense de iz aynıdır;
+ * - yoksa normalleştirilmiş açıklama ve gönderen ile kısa referans.
  * Aynı dosyada aynı anahtarlı birden çok hareket (aynı gün aynı açıklamayla iki havale) sıra
  * numarasıyla ayrılır; aynı dosya yeniden yüklenince sıra aynı kalır, ikinci yükleme yazmaz. API
- * anahtarın sha256 özetini saklar.
+ * anahtarın sha256 özetini saklar. Açıklaması biçimden biçime gerçekten farklı referanssız hareket
+ * ikinci kez yazılabilir; onaydaki olası mükerrer denetimi (K-121) çift tahsilatı durdurur.
  */
 export function bankTransactionKeys(
   bankAccountId: string,
@@ -503,12 +525,17 @@ export function bankTransactionKeys(
   const keys = new Map<number, string>()
   for (const line of lines) {
     if (!line.movement || line.direction !== 'credit' || line.issues.length > 0) continue
+    const reference = strongReference(line.reference)
     const base = [
       bankAccountId,
       line.bookingDate ?? '',
       String(line.amountCents ?? ''),
-      foldStatementText(`${line.description} ${line.counterparty}`),
-      foldStatementText(line.reference),
+      ...(reference !== null
+        ? [`ref:${reference}`]
+        : [
+            normalizeStatementText(`${line.description} ${line.counterparty}`),
+            normalizeStatementText(line.reference),
+          ]),
     ].join('|')
     const occurrence = (seen.get(base) ?? 0) + 1
     seen.set(base, occurrence)

@@ -99,10 +99,15 @@ const IDENTITY_REASONS: ReadonlySet<BankMatchReason> = new Set([
 
 // --- Gövde şemaları ---------------------------------------------------------------------------
 
-/** Onay: hareket bu öğrencinin bu taksitine (önce o, artanı en eski vadeye) tahsil edilir. */
+/**
+ * Onay: hareket bu öğrencinin bu taksitine (önce o, artanı en eski vadeye) tahsil edilir.
+ * `confirmDuplicate`: olası mükerrer uyarısından (K-121) sonra yetkilinin ayrı ödeme olduğunu açıkça
+ * onayladığı ikinci gönderim.
+ */
 export const bankMatchSchema = z.strictObject({
   studentId: requiredText,
   invoiceId: requiredText,
+  confirmDuplicate: z.boolean().optional(),
 })
 export type BankMatchInput = z.input<typeof bankMatchSchema>
 
@@ -128,6 +133,23 @@ export function assertBankTransactionOpen(status: BankTransactionStatus): void {
       : 'Bu hareket yoksayılmış; önce geri alın.',
     { kind: 'conflict' },
   )
+}
+
+export const BANK_MATCH_DUPLICATE_MESSAGE =
+  'Bu hesaba aynı gün aynı tutarda gelen başka bir hareket aynı kişiye zaten tahsil edildi; hareket mükerrer olabilir. Ayrı bir ödemeyse açıkça onaylayın.'
+
+/**
+ * Olası mükerrer (K-121): aynı hesaba aynı gün aynı tutarda gelen başka bir hareket aynı öğrenciye
+ * eşleşmişse (`twins`) onay yetkilinin açık onayını ister; 409 `bank_match_possible_duplicate`.
+ * Aynı havale iki biçimde (CSV ve MT940) aktarılıp iki hareket olduğunda çift tahsilatı durdurur.
+ * Denetim taksite değil öğrenciye bakar: ilk onay taksiti kapattığı için ikiz hareketin önerisi
+ * sonraki taksite kayar.
+ */
+export function assertNoPossibleDuplicate(twins: number, confirmed: boolean): void {
+  if (twins === 0 || confirmed) return
+  throw new DomainError('bank_match_possible_duplicate', BANK_MATCH_DUPLICATE_MESSAGE, {
+    kind: 'conflict',
+  })
 }
 
 /** Yoksayılan hareket geri alınır; eşleşme yalnız tahsilat iptaliyle açılır (K-111). */

@@ -5,14 +5,26 @@ import { SUPPLIER_CATEGORIES, SUPPLIER_TYPES } from '@kampus/school-core/lib/fin
 
 import { dataResponse } from './common.schemas.ts'
 
-/** Satın alma raporu yanıtı (DOM-FIN-075; ON-227). Vergi numarası ve iletişim bilgisi yoktur. */
+/**
+ * Satın alma raporu yanıtı (DOM-FIN-075; ON-227, ON-336). Vergi numarası ve iletişim bilgisi
+ * yoktur. Teslim alınan KDV hariç; faturalanan, ödenen ve açık KDV dahildir (K-195).
+ */
 
 const cents = (description: string) => z.number().int().describe(description)
+const invoiced = {
+  invoicedGrossCents: cents('Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı'),
+  paidCents: cents('Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler'),
+  openCents: cents('Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen'),
+}
 const amounts = {
   orderCount: z.number().int().describe('İptal edilmemiş sipariş sayısı'),
-  netCents: cents('KDV hariç tutar, kuruş'),
-  vatCents: cents('KDV, kuruş; kalemde yuvarlanır (K-138)'),
-  grossCents: cents('KDV dahil tutar, kuruş'),
+  netCents: cents('Sipariş tutarı, KDV hariç, kuruş'),
+  vatCents: cents('Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)'),
+  grossCents: cents('Sipariş tutarı, KDV dahil, kuruş'),
+  receivedNetCents: cents(
+    'Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)',
+  ),
+  ...invoiced,
 }
 const share = {
   ...amounts,
@@ -63,8 +75,20 @@ export const purchaseReportResponse = dataResponse(
       supplierCount: z.number().int().describe('Siparişi olan tedarikçi sayısı'),
     }),
     cancelled: z
-      .object({ orderCount: z.number().int(), grossCents: cents('İptal edilen KDV dahil tutar') })
-      .describe('Kapsamda iptal edilen siparişler; toplamlara girmez'),
+      .object({
+        orderCount: z.number().int(),
+        grossCents: cents('İptal edilen KDV dahil tutar'),
+        invoicedGrossCents: cents('İptal edilen siparişlere bağlı etkin faturalar, KDV dahil'),
+        paidCents: cents('Bu faturalara iptal edilmemiş ödemeler, KDV dahil'),
+      })
+      .describe(
+        'Kapsamda iptal edilen siparişler; faturaları ve ödemeleriyle toplamlara girmez (K-198)',
+      ),
+    unlinkedInvoices: z
+      .object({ invoiceCount: z.number().int(), ...invoiced })
+      .describe(
+        'Siparişe bağlı olmayan etkin faturalar: fatura tarihi kapsamın günlerinde (bütçe döneminde dönemin günleri); toplamlara ve kırılımlara girmez (K-197)',
+      ),
     leadTime: z.object({
       orderCount: z.number().int(),
       averageDays: z.number().nullable().describe('Ortalama takvim günü, bir ondalık'),

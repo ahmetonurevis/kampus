@@ -20,6 +20,7 @@ import {
   type StockMovementType,
   type StockWarehouseRef,
 } from '@kampus/school-core/lib/finance-inventory.ts'
+import { criticalStockRows } from '@kampus/school-core/lib/finance-stock-alerts.ts'
 
 import type { Database } from '../db/client.ts'
 import {
@@ -29,6 +30,7 @@ import {
   insertStockMovements,
   insertStockWarehouse,
   listStockMovements,
+  loadLastReceiptPrices,
   loadPairMovements,
   loadReceiptOrders,
   loadReceiptStockMovements,
@@ -143,6 +145,79 @@ export async function listStockItemsFor(ctx: ServiceContext, query: StockItemLis
         (query.critical !== true || (row.isActive && row.isBelowMinimum)),
     )
   return pageOf(rows, query)
+}
+
+export interface CriticalStockQuery extends Page {
+  q?: string | undefined
+  category?: StockCategory | undefined
+}
+
+/**
+ * Kritik stok listesi (DOM-FIN-079, K-200): etkin kartlardan kurum toplamı kritik seviyeye eşit ya
+ * da altında olanlar, aciliyet sırasında; depo kırılımı, öneri miktarı (K-201) ve son alış fiyatı
+ * (K-202). Arama kod ve adda, kategori süzgeci kartta.
+ */
+export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalStockQuery) {
+  const [items, warehouses, balances] = await Promise.all([
+    loadStockItems(ctx.db, ctx.institutionId),
+    loadStockWarehouses(ctx.db, ctx.institutionId),
+    loadStockBalances(ctx.db, ctx.institutionId),
+  ])
+  const search = query.q === undefined ? undefined : foldSearch(query.q)
+  const filtered = items.filter(
+    (item) =>
+      matches(search, item.code, item.name) &&
+      (query.category === undefined || item.category === query.category),
+  )
+  const { items: page, total } = pageOf(
+    criticalStockRows({ items: filtered, warehouses, balances }),
+    query,
+  )
+  const shownWarehouses = new Set(page.flatMap((row) => row.warehouses.map((w) => w.warehouseId)))
+  const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]))
+  const [campuses, prices] = await Promise.all([
+    campusRecords(
+      ctx.db,
+      ctx.institutionId,
+      warehouses.filter((warehouse) => shownWarehouses.has(warehouse.id)).map((w) => w.campusId),
+    ),
+    loadLastReceiptPrices(
+      ctx.db,
+      ctx.institutionId,
+      page.map((row) => row.item.id),
+    ),
+  ])
+  return {
+    items: page.map((row) => {
+      const price = prices.get(row.item.id)
+      return {
+        id: row.item.id,
+        code: row.item.code,
+        name: row.item.name,
+        category: row.item.category,
+        unit: row.item.unit,
+        minQuantity: row.minQuantity,
+        quantity: row.quantity,
+        shortage: row.shortage,
+        suggestedQuantity: row.suggestedQuantity,
+        lastUnitPriceCents: price?.unitPriceCents ?? null,
+        lastReceiptDate: price?.receiptDate ?? null,
+        lastOrderNumber: price?.orderNumber ?? null,
+        warehouses: row.warehouses.map((balance) => {
+          const warehouse = warehouseById.get(balance.warehouseId)
+          return {
+            warehouseId: balance.warehouseId,
+            warehouseName: warehouse?.name ?? '',
+            campusName:
+              warehouse === undefined ? null : (campuses.get(warehouse.campusId)?.name ?? null),
+            isActive: warehouse?.isActive ?? false,
+            quantity: balance.quantity,
+          }
+        }),
+      }
+    }),
+    total,
+  }
 }
 
 async function itemDetail(db: Database, ctx: ServiceContext, id: string) {

@@ -34,6 +34,7 @@ const ASSET: FixedAssetDetail = {
   receiptItemId: null,
   status: 'in_use',
   scrapDate: null,
+  assignment: null,
   version: 1,
   receipt: null,
   scrappedAt: null,

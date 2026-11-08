@@ -31,6 +31,7 @@ import {
   supplierSchema,
   type SupplierDocumentStatus,
 } from '@kampus/school-core/lib/finance-suppliers.ts'
+import type { StockPurchaseDraft } from '@kampus/school-core/lib/finance-stock-alerts.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 const fieldOf =
@@ -225,6 +226,24 @@ export function requestDefaults(request?: PurchaseRequestDetail): RequestFormVal
           price: amountInputValue(item.estimatedUnitPriceCents),
         }))
       : [{ ...EMPTY_ITEM }],
+  }
+}
+
+/**
+ * Kritik stoktan talep önerisi (DOM-FIN-079, K-203): kalemler ve gerekçe öneriden, birim, dönem,
+ * gider kalemi ve tedarikçi boş; fiyatı bilinmeyen kalemin fiyatı boş kalır, kullanıcı girer.
+ */
+export function requestDefaultsFromDraft(draft: StockPurchaseDraft): RequestFormValues {
+  return {
+    ...requestDefaults(),
+    justification: draft.justification,
+    items: draft.items.map((item) => ({
+      name: item.name,
+      quantity: String(item.quantity),
+      unit: item.unit,
+      price:
+        item.estimatedUnitPriceCents === null ? '' : amountInputValue(item.estimatedUnitPriceCents),
+    })),
   }
 }
 

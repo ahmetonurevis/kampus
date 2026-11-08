@@ -92,8 +92,10 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
   }
 
   /** Kurum, onaylı talep, seçili teklif ve taslak sipariş; `sent` ise gönderildi işaretli. */
-  async function institution(overrides: Partial<InstitutionOverrides> & { sent?: boolean } = {}) {
-    const { sent = true, ...institutionOverrides } = overrides
+  async function institution(
+    overrides: Partial<InstitutionOverrides> & { sent?: boolean; individual?: boolean } = {},
+  ) {
+    const { sent = true, individual = false, ...institutionOverrides } = overrides
     clientIp = `10.74.${String((tenantCount += 1))}.1`
     const created = await createInstitution(app, institutionOverrides)
     const admin = await signInAs(app, created.admin)
@@ -118,13 +120,24 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       itemId: expense.id,
       amountCents: 1_000_000,
     })
-    const supplier = await post('/suppliers', {
-      name: 'Beta Teknoloji Ltd.',
-      type: 'company',
-      taxNumber: '1111111114',
-      taxOffice: 'Kadıköy',
-      categories: ['it'],
-    })
+    const supplier = await post(
+      '/suppliers',
+      individual
+        ? {
+            name: 'Ayla Örnek',
+            type: 'individual',
+            taxNumber: '10000000146',
+            taxOffice: 'Üsküdar',
+            categories: ['it'],
+          }
+        : {
+            name: 'Beta Teknoloji Ltd.',
+            type: 'company',
+            taxNumber: '1111111114',
+            taxOffice: 'Kadıköy',
+            categories: ['it'],
+          },
+    )
     const request = await approvedRequest(admin, { center, period, expense })
     const [keyboard, mouse] = (request.items as Json[]).map((item) => item.id)
     const board = ok(
@@ -350,7 +363,15 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       ],
     )
     assert.equal(first.receivedNetCents, 6 * 19_000)
+    // Tutanak PDF'i için tedarikçi kopyası (ON-337, K-215): şirkette vergi dairesi ve VKN.
+    assert.deepEqual(order.supplier, {
+      name: 'Beta Teknoloji Ltd.',
+      type: 'company',
+      taxOffice: 'Kadıköy',
+      taxNumber: '1111111114',
+    })
     const receipt = (first.receipts as Json[])[0] as Json
+    assert.equal(receipt.sequence, 1)
     assert.equal(receipt.receivedBy, 'Hasan Usta')
     assert.equal(receipt.inspectionNote, 'Kutular hasarlı geldi')
     assert.equal(receipt.netCents, 114_000)
@@ -360,9 +381,12 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
         orderItemId: t.keyboard,
         name: 'Klavye',
         unit: 'piece',
+        orderedQuantity: 10,
+        unitPriceCents: 19_000,
         acceptedQuantity: 6,
         rejectedQuantity: 2,
         rejectReason: 'Tuşları kırık',
+        netCents: 114_000,
         stockItemId: null,
         stockItemName: null,
       },
@@ -395,6 +419,15 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       201,
     )
     assert.equal((second.order as Json).status, 'completed')
+    // Tutanak numarası kayıt sırasıdır; aynı saatte kaydedilenlerde kimlikle sıralanır (K-216).
+    assert.deepEqual((second.receipts as Json[]).map((item) => item.sequence).toSorted(), [1, 2])
+    const mouseLine = (second.receipts as Json[])
+      .flatMap((item) => item.lines as Json[])
+      .find((line) => line.orderItemId === t.mouse)
+    assert.deepEqual(
+      [mouseLine?.orderedQuantity, mouseLine?.unitPriceCents, mouseLine?.netCents],
+      [3, 12_000, 36_000],
+    )
     assert.equal(second.receivedNetCents, ORDER_NET)
     assert.deepEqual(second.actions, { receive: false })
     assertError(
@@ -412,6 +445,21 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, t.id), eq(auditLog.action, 'purchase_order.receive')))
     assert.equal(statusAudit.length, 2, 'durum iki kez değişti')
+  })
+
+  test('DOM-FIN-074, K-215: şahıs tedarikçinin TCKN’si ve vergi dairesi tutanak verisinde yer almaz', async () => {
+    const t = await institution({ individual: true })
+    const board = ok(
+      await receive(t.admin, t, receiptBody([{ orderItemId: t.mouse, acceptedQuantity: 3 }])),
+      201,
+    )
+    assert.deepEqual((board.order as Json).supplier, {
+      name: 'Ayla Örnek',
+      type: 'individual',
+      taxOffice: null,
+      taxNumber: null,
+    })
+    assert.ok(!JSON.stringify(ok(await get(receiptsUrl(t), t.admin))).includes('10000000146'))
   })
 
   test('DOM-FIN-074: kalanı aşan, geçersiz ya da kurala aykırı kabul 400/422 ve hiçbir kayıt değişmez', async () => {
@@ -536,6 +584,15 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       201,
     )
     assert.equal((second.order as Json).status, 'completed')
+    // Tutanak numarası kayıt sırasıdır; aynı saatte kaydedilenlerde kimlikle sıralanır (K-216).
+    assert.deepEqual((second.receipts as Json[]).map((item) => item.sequence).toSorted(), [1, 2])
+    const mouseLine = (second.receipts as Json[])
+      .flatMap((item) => item.lines as Json[])
+      .find((line) => line.orderItemId === t.mouse)
+    assert.deepEqual(
+      [mouseLine?.orderedQuantity, mouseLine?.unitPriceCents, mouseLine?.netCents],
+      [3, 12_000, 36_000],
+    )
     const withItem = (board: Json, itemId: string) =>
       (board.receipts as Json[]).find((receipt) =>
         (receipt.lines as Json[]).some((line) => line.orderItemId === itemId),
@@ -707,7 +764,7 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     assert.equal(((await actuals(a)).row as Json).actualCents, 0)
   })
 
-  test('DOM-FIN-078, K-184: stok kartı seçilen kalem kabulde depoya girer; kabul iptali girişi geri alır, kullanılmış giriş iptali reddeder', async () => {
+  test('DOM-FIN-078, K-184: stok kartı seçilen kalem kabulde depoya girer; kabul iptali girişi geri alır, kullanılmış giriş iptali reddeder; son alış fiyatı kritik listede (DOM-FIN-079, K-202)', async () => {
     const t = await institution()
     const branches = createSeed(FIXED_NOW).branches
     await insertMissingRecords(
@@ -724,6 +781,7 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       name: 'Klavye',
       category: 'it',
       unit: 'piece',
+      minQuantity: 10,
     })
     const boxed = await post('/stock-items', {
       code: 'KLV-KOLI',
@@ -777,6 +835,21 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       ['receipt', 6, '2026-10-06', t.order.number],
     )
     assert.deepEqual(received.actions, { cancel: false })
+    // K-202: kritik listede son alış fiyatı sipariş birim fiyatıdır (KDV hariç).
+    const criticalRow = async () =>
+      (ok(await get(`${FINANCE}/stock-items/critical`, t.admin)) as unknown as Json[]).find(
+        (row) => row.id === keyboardCard.id,
+      )
+    const priced = await criticalRow()
+    assert.deepEqual(
+      [
+        priced?.quantity,
+        priced?.lastUnitPriceCents,
+        priced?.lastReceiptDate,
+        priced?.lastOrderNumber,
+      ],
+      [6, 19_000, '2026-10-06', t.order.number],
+    )
     assertError(
       await call(
         'POST',
@@ -816,6 +889,8 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     ok(await cancel(t.admin, t, receipt))
     const card = ok(await get(`${FINANCE}/stock-items/${String(keyboardCard.id)}`, t.admin))
     assert.equal(card.quantity, 0)
+    // İptal edilen kabulün fiyatı son alış fiyatı sayılmaz.
+    assert.equal((await criticalRow())?.lastUnitPriceCents, null)
     const [stored] = (await stockRows()).filter((row) => row.type === 'receipt')
     assert.equal(stored?.cancelReason, 'Hatalı kayıt')
   })

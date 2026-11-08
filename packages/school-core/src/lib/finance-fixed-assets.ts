@@ -8,8 +8,9 @@ import { DomainError } from './errors.ts'
  * tek kayıttır: kurum içinde tekil etiket numarası (boş bırakılırsa `DB-<yıl>-<sıra>` verilir, elle
  * de girilir; K-185), ad, sabit kategori, kampüs ve serbest metin konum, KDV hariç alım değeri
  * (kuruş), alım günü, isteğe bağlı tedarikçi (DOM-FIN-070) ve mal kabul kalemi (DOM-FIN-074) bağı,
- * durum. Kayıt silinmez; hurdaya ayırma gerekçe ve gün ister, geri alınmaz (K-188). Zimmet (ON-236),
- * sayım (ON-237) ve amortisman (ON-238) bu kuralın dışındadır. Fonksiyonlar saftır; bugün `today`
+ * durum. Kayıt silinmez; hurdaya ayırma gerekçe ve gün ister, geri alınmaz (K-188). Zimmet
+ * `lib/finance-fixed-asset-assignments.ts`'tedir (DOM-FIN-086); sayım (ON-237) ve amortisman (ON-238)
+ * bu kuralın dışındadır. Fonksiyonlar saftır; bugün `today`
  * (Europe/Istanbul günü) parametresiyle gelir.
  */
 
@@ -278,14 +279,25 @@ export function planFixedAsset(draft: FixedAssetDraft, checks: FixedAssetChecks)
   return { ...draft, supplierId: ref.supplierId }
 }
 
-/** Hurdaya ayırma (K-188): geri alınmaz; gün alım gününden önce ve bugünden sonra olamaz. */
+/**
+ * Hurdaya ayırma (K-188): geri alınmaz; gün alım gününden önce ve bugünden sonra olamaz. Zimmet
+ * (DOM-FIN-086, K-213): açık zimmeti olan demirbaş hurdaya ayrılmaz, önce iade alınır; gün son
+ * iade gününden önce olamaz. `assignments` verilmezse zimmet denetlenmez.
+ */
 export function planFixedAssetScrap(
   asset: { status: FixedAssetStatus; acquisitionDate: string },
   input: { scrapDate: string },
   today: string,
+  assignments?: { hasOpenAssignment: boolean; lastReturnDate: string | null },
 ): void {
   if (asset.status === 'scrapped')
     throw ruleError('fixed_asset_scrapped', 'Demirbaş zaten hurdaya ayrılmış.', 'status')
+  if (assignments?.hasOpenAssignment === true)
+    throw ruleError(
+      'fixed_asset_assigned',
+      'Zimmetli demirbaş hurdaya ayrılamaz. Önce zimmeti iade alın.',
+      'status',
+    )
   if (input.scrapDate > today)
     throw ruleError(
       'fixed_asset_date_in_future',
@@ -296,6 +308,13 @@ export function planFixedAssetScrap(
     throw ruleError(
       'fixed_asset_scrap_before_acquisition',
       'Hurdaya ayırma günü alım gününden önce olamaz.',
+      'scrapDate',
+    )
+  const lastReturnDate = assignments?.lastReturnDate ?? null
+  if (lastReturnDate !== null && input.scrapDate < lastReturnDate)
+    throw ruleError(
+      'fixed_asset_scrap_before_return',
+      'Hurdaya ayırma günü son zimmet iadesinden önce olamaz.',
       'scrapDate',
     )
 }

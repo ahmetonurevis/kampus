@@ -1468,11 +1468,43 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: demirbaş zimmeti (ON-236; DOM-FIN-086).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/fixed-asset-assignments', 'listOf(a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/fixed-asset-assignments/:assignmentId',
+          'get(bUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/fixed-assets/:assetId/assignments',
+          'assign(a.admin, bAsset, ROOM)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/fixed-asset-assignments/:assignmentId/return',
+          '`${bUrl}/return`',
+        ],
+        ['liste', 'GET /api/v1/finance/fixed-asset-assignees', 'assigneesOf(a.admin)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-fixed-asset-assignments.test.ts',
+        'başka kurumun demirbaşı ve zimmeti 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
   // Onur: stok kartı, depo ve hareket (ON-228, ON-229; DOM-FIN-077, DOM-FIN-078).
   ...Object.fromEntries(
     (
       [
         ['liste', 'GET /api/v1/finance/stock-items', 'listOf(ITEMS)'],
+        ['liste', 'GET /api/v1/finance/stock-items/critical', 'listOf(CRITICAL)'],
         ['gövde', 'POST /api/v1/finance/stock-items', 'institutionId: b.id'],
         ['kayıt', 'GET /api/v1/finance/stock-items/:itemId', 'get(bItemUrl, a.admin)'],
         ['kayıt', 'PATCH /api/v1/finance/stock-items/:itemId', 'patchB(bItemUrl, b.paper.version)'],

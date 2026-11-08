@@ -614,8 +614,15 @@
     {
       "idx": 87,
       "version": "7",
-      "when": 1794168150330,
-      "tag": "0087_create_material_sets",
+      "when": 1794166942837,
+      "tag": "0087_create_fixed_asset_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794171517093,
+      "tag": "0088_create_material_sets",
       "breakpoints": true
     }
   ]

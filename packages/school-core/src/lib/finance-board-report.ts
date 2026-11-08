@@ -47,8 +47,8 @@ import { WITHDRAWAL_REASONS, type WithdrawalReason } from './withdrawals.ts'
  *   aday hunisi `enrollmentFunnel` (DOM-KAY-040), kayıt olayları `enrollmentEvents` (DOM-KAY-026).
  * - Kişiyi belli edebilecek küçük kırılım hücreleri bastırılır (K-77, `suppressSmallGroups`).
  *
- * Bütçe–gerçekleşen, maliyet merkezi ve gelir/nakit tahmini (K24 diğer görevleri) bu rapora girmez;
- * o modüller birleşince ayrı bölüm olarak eklenir.
+ * Bütçe–gerçekleşen, kampüs konsolide ve öğrenci başı maliyet ile gelir/nakit tahmini bölümleri
+ * (ON-329) ayrı dosyadadır (`finance-board-report-sections.ts`); servis o hesapların sonucunu ekler.
  */
 
 /** Kırılım hücresinde bundan az kişi varsa hücre gizlenir (K-77; OG-766 gelince ona bağlanır). */
@@ -83,6 +83,10 @@ export const boardReportQuerySchema = z
       .describe('Dil okulunda yılın dönemi; dönem aralığı rapor dönemi olur'),
     from: daySchema.optional().describe('Elle dönem başlangıcı (YYYY-MM-DD)'),
     to: daySchema.optional().describe('Elle dönem bitişi (YYYY-MM-DD)'),
+    budgetPeriodId: z
+      .uuid('Bütçe dönemi geçersiz.')
+      .optional()
+      .describe('Bütçe ve maliyet bölümlerinin bütçe dönemi; verilmezse rapor dönemine uyan dönem'),
   })
   .refine((query) => (query.from === undefined) === (query.to === undefined), {
     message: 'Dönemin başlangıcını ve bitişini birlikte seçin.',

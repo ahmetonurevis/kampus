@@ -3231,7 +3231,7 @@ export interface paths {
         put?: never;
         /**
          * Fondan atamayı iptal et
-         * @description Gerekçeyle (5–500 karakter); tutar fon bakiyesine geri döner, burs ataması kalır (K-97). İptal edilmiş atama 409 `scholarship_fund_allocation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         * @description Gerekçeyle (5–500 karakter); tutar fon bakiyesine geri döner, burs ataması kalır (K-97). Kapalı fonda 422 `scholarship_fund_closed`. İptal edilmiş atama 409 `scholarship_fund_allocation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.
          */
         post: operations["cancelScholarshipFundAllocation"];
         delete?: never;
@@ -3463,7 +3463,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrencinin ayrılışını onayla
-         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["withdrawStudent"];
         delete?: never;
@@ -4425,7 +4425,7 @@ export interface paths {
         };
         /**
          * Yönetim kurulu raporu: dönemlik finans ve kayıt özeti
-         * @description Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.
+         * @description Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Bütçe bölümleri (ON-329): `budgetPeriodId` bütçe dönemini seçer; verilmezse rapor dönemiyle en çok gün örtüşen açık ya da kapalı dönem, yoksa taslak dönem alınır (`budgetPeriod.selection`), uyan yoksa `budgetPeriod`, `budget` ve `costs` `null` gelir. `budget` dönemin bütçe–gerçekleşen özetidir (DOM-FIN-066, tahakkuk esası): gelir ve gider toplamı, gerçekleşme oranı ve en çok sapan beş kalem; gider gerçekleşeni kaynağı yoksa `expenseData` `none`, gider gerçekleşeni `null`. `costs` kampüs konsolide özet ve öğrenci başı maliyettir (DOM-FIN-065); 1–4 kişilik kampüsün sayısı ve tutarları `null`, `suppressed: true` gelir, toplamdan geri hesaplanmasın diye en küçük görünür kampüs de gizlenir, gerekirse kırılımın tamamı (K-116); kurum toplamı gizlenmez. `forecast` bugün itibarıyla gelecek eğitim yılının gelir tahmini ve 12 aylık nakit akışıdır (DOM-FIN-063). Kurumda olmayan bütçe dönemi 422 `board_report_budget_period_not_found`. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.
          */
         get: operations["getFinanceBoardReport"];
         put?: never;
@@ -36712,14 +36712,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -36868,14 +36870,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37037,14 +37041,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37204,14 +37210,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37372,14 +37380,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37540,14 +37550,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37701,14 +37713,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -46712,6 +46726,8 @@ export interface operations {
                 from?: string;
                 /** @description Elle dönem bitişi (YYYY-MM-DD) */
                 to?: string;
+                /** @description Bütçe ve maliyet bölümlerinin bütçe dönemi; verilmezse rapor dönemine uyan dönem */
+                budgetPeriodId?: string;
             };
             header?: never;
             path?: never;
@@ -46866,6 +46882,177 @@ export interface operations {
                                 }[];
                                 conversionRate: number | null;
                             } | null;
+                            /** @description Kurumun arşivlenmemiş bütçe dönemleri (seçim için), yeniden eskiye */
+                            budgetPeriods: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description Bütçe ve maliyet bölümlerinin dönemi; uyan dönem yoksa `null` */
+                            budgetPeriod: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                                /**
+                                 * @description `chosen`: `budgetPeriodId` ile seçildi; `matched`: rapor dönemine göre bulundu
+                                 * @enum {string}
+                                 */
+                                selection: "chosen" | "matched";
+                            } | null;
+                            /** @description Bütçe–gerçekleşen özeti (DOM-FIN-066, tahakkuk esası); bütçe dönemi yoksa `null` */
+                            budget: {
+                                /** @enum {string} */
+                                basis: "accrual" | "cash";
+                                /** @description Hareketlerin sayıldığı son gün; başlamadıysa `null` */
+                                asOfDate: string | null;
+                                /**
+                                 * @description `none`: gider gerçekleşeni kaynağı yok (veri yok)
+                                 * @enum {string}
+                                 */
+                                expenseData: "none" | "available";
+                                income: {
+                                    /** @description Dönem planı */
+                                    plannedCents: number;
+                                    /** @description Bugüne kadarki ayların planı; dağılımsız satır varken dönem bitmediyse `null` */
+                                    plannedToDateCents: number | null;
+                                    /** @description Gerçekleşen; hesaplanmıyorsa (veri yok) `null` */
+                                    actualCents: number | null;
+                                    /** @description Gerçekleşen − dönem planı */
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ dönem planı, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                    /** @description Kaleme eşlenmemiş gelir */
+                                    unmatchedCents: number | null;
+                                };
+                                expense: {
+                                    /** @description Dönem planı */
+                                    plannedCents: number;
+                                    /** @description Bugüne kadarki ayların planı; dağılımsız satır varken dönem bitmediyse `null` */
+                                    plannedToDateCents: number | null;
+                                    /** @description Gerçekleşen; hesaplanmıyorsa (veri yok) `null` */
+                                    actualCents: number | null;
+                                    /** @description Gerçekleşen − dönem planı */
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ dönem planı, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                };
+                                net: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                };
+                                /** @description En çok sapan kalemler (merkezler toplanır), en çok 5 */
+                                topVariances: {
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @enum {string} */
+                                    itemKind: "income" | "expense";
+                                    plannedCents: number;
+                                    plannedToDateCents: number | null;
+                                    actualCents: number;
+                                    /** @description Gerçekleşen − karşılaştırma planı */
+                                    varianceCents: number;
+                                    /** @description On binde bir; payda sıfırsa `null` */
+                                    realizationBasisPoints: number | null;
+                                    /**
+                                     * @description `to_date`: bugüne kadarki plan; `period`: dönem planı
+                                     * @enum {string}
+                                     */
+                                    comparedTo: "to_date" | "period";
+                                }[];
+                            } | null;
+                            /** @description Kampüs konsolide özet ve öğrenci başı maliyet (DOM-FIN-065); bütçe dönemi yoksa `null` */
+                            costs: {
+                                from: string;
+                                to: string;
+                                minGroupSize: number;
+                                /** @description Kampüs satırları; kişi sayısı kurul raporunun küçük grup kuralıyla gizlenir */
+                                campuses: {
+                                    campusId: string | null;
+                                    name: string;
+                                    /** @description Gizli hücrede `null` */
+                                    studentCount: number | null;
+                                    /** @description Gizli hücrede `null` */
+                                    accruedCents: number | null;
+                                    /** @description Gizli hücrede `null` */
+                                    netCollectedCents: number | null;
+                                    /** @description Gizli hücrede `null` */
+                                    budgetExpenseCents: number | null;
+                                    /** @description Gizli, 5 kişiden az ya da öğrencisiz `null` */
+                                    accruedPerStudentCents: number | null;
+                                    /** @description Öğrenci başı maliyet; gizli, 5 kişiden az ya da öğrencisiz `null` */
+                                    budgetExpensePerStudentCents: number | null;
+                                    /** @description Küçük grup (K-116): 1–4 kişilik kampüs, toplamdan geri hesaplanmasın diye ikincil gizlenen ya da tamamı gizli kırılım; sayı ve tutarlar `null` */
+                                    suppressed: boolean;
+                                }[];
+                                /** @description Kurum geneli toplam; gizlenmez */
+                                totals: {
+                                    studentCount: number;
+                                    accruedCents: number;
+                                    /** @description Tahsilat − iptal − iade */
+                                    netCollectedCents: number;
+                                    /** @description Bütçe gideri (ortak gider payı dahil) */
+                                    budgetExpenseCents: number;
+                                    /** @description 5 kişiden az ya da öğrencisiz `null` */
+                                    accruedPerStudentCents: number | null;
+                                    /** @description Öğrenci başı maliyet; 5 kişiden az ya da öğrencisiz `null` */
+                                    budgetExpensePerStudentCents: number | null;
+                                    /** @description Küçük grup: öğrenci başı değer gizli (K-102) */
+                                    suppressed: boolean;
+                                };
+                            } | null;
+                            /** @description Gelecek yıl gelir tahmini ve 12 aylık nakit akışı (DOM-FIN-063), bugün itibarıyla */
+                            forecast: {
+                                today: string;
+                                revenue: {
+                                    /** @description Tahmin yılı: bugünün eğitim yılından sonraki yıl */
+                                    year: number;
+                                    committedCents: number;
+                                    newEnrollmentCents: number;
+                                    renewalCents: number;
+                                    /** @description Huni beklentisi; huni yoksa `null` */
+                                    pipelineNetCents: number | null;
+                                    /** @enum {string} */
+                                    pipelineStatus: "included" | "crm_disabled" | "past_year";
+                                    expectedTotalCents: number;
+                                    discountCents: number;
+                                    scholarshipCents: number;
+                                    tariffYear: number | null;
+                                };
+                                cashFlow: {
+                                    from: string;
+                                    to: string;
+                                    months: {
+                                        /** @description `YYYY-MM` */
+                                        month: string;
+                                        /** @description Beklenen tahsilat + gecikmişten geç tahsil */
+                                        expectedInCents: number;
+                                        refundCents: number;
+                                        /** @description Gider verisi yoksa `null` */
+                                        expenseCents: number | null;
+                                        netCents: number;
+                                        cumulativeNetCents: number;
+                                    }[];
+                                    totals: {
+                                        scheduledCents: number;
+                                        expectedInCents: number;
+                                        atRiskCents: number;
+                                        refundCents: number;
+                                        expenseCents: number | null;
+                                        netCents: number;
+                                    };
+                                    overdueOpenCents: number;
+                                    pendingRefundCents: number;
+                                    onTimeRateBasisPoints: number;
+                                    /** @enum {string} */
+                                    expenseSource: "manual" | "none";
+                                };
+                            };
                         };
                     };
                 };

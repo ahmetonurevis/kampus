@@ -4496,6 +4496,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/bank-statement-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Banka ekstresini aktar
+         * @description Seçilen kurum banka hesabının (`bankAccountId`, DOM-FIN-032) hareket dökümünü yükler (IST-115, DOM-FIN-069). `fileBase64`: CSV, Excel (.xlsx, ilk sayfa) ya da MT940 dosyasının base64'ü, en çok 5 MB; tür içerikten anlaşılır, dosya saklanmaz. CSV başlık satırı ilk 30 satırda aranır; yaygın banka başlıkları (tarih/işlem tarihi, açıklama, tutar ya da alacak/borç, bakiye, referans/dekont no, gönderen) tanınır, `columns` ile alan → başlık adı elle eşlenir. En çok 5.000 satır. Yalnız gelen (alacak) hareket yazılır; giden hareket (`outgoing`) ve tarihi ya da tutarı boş satır (`ignored`) yazılmaz (K-106). Aynı hesapta daha önce aktarılmış hareket atlanır (`skipped`, K-107): ikinci yükleme mükerrer kayıt açmaz. `dryRun: true` önizlemedir: 200 ve satır bazında durum, açıklama maskeli; hiçbir şey yazmaz. Onay 201; hatalı satır varsa 422 `bank_statement_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir hareket yazılmaz. Arşivli ya da başka kurumun hesabı 422 `bank_account_invalid`; MT940 hesabı seçilen hesap değilse 422 `bank_statement_account_mismatch`. Başlık bulunamazsa 422 `bank_statement_header_missing`. Aktarım tahsilat oluşturmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         */
+        post: operations["importBankStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/bank-transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Banka hareketlerini listele
+         * @description Aktarılmış gelen hareketler, en yeni işlem günü önce. `status`, `bankAccountId`, `dateFrom`/`dateTo` (işlem günü, dahil) ve `q` (açıklama, gönderen, referans; Türkçe harf duyarsız) ile süzülür; sayfalıdır, `pageSize` en çok 100, bilinmeyen parametre 400. Eşleşmemiş harekette en iyi öneri (`suggestion`) ve referansı başka tahsilatta kullanılmışsa `referenceInUse` döner. Açıklamada 11+ haneli rakam dizileri maskelidir (K-112). Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         */
+        get: operations["listBankTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/bank-transactions/{transactionId}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eşleştirme önerileri
+         * @description Hareket için en çok 5 öneri, puana göre sıralı (K-108): T.C. kimlik no (tamamı ya da son haneleri), öğrenci numarası, sözleşme kimliği, öğrenci ve veli adı ile tutarın açık taksite uyumu. Öğrenci başına tek öneri: tutarı eşit ilk açık taksit, yoksa en eski vadeli açık taksit. Güven `high` yalnız kimlik sinyali olan, puanı 70+ ve ikinci adaydan 15+ önde olan ilk öneridir; kimlik sinyali yoksa tutarı eşit açık taksitler `low` önerilir. `amountFit`: `exact`, `multiple` (birden çok taksite eşit), `partial`, `over`; `creditCents` iade alacağı olacak kısımdır (DOM-FIN-030). `studentId` verilirse yalnız o öğrencinin önerisi döner. Eşleşmiş ya da yoksayılmış harekette liste boştur. Kimlik numarası yanıtta yoktur. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         */
+        get: operations["listBankMatchSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/bank-transactions/{transactionId}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eşleşmeyi onayla ve tahsilat oluştur
+         * @description Öneriyi ya da seçilen taksiti onaylar (DOM-FIN-069): tahsilat hareketin tamamıyla, `Banka havalesi` yöntemiyle, hareketin hesabına ve işlem gününe yazılır; referans hareketin banka referansıdır, yoksa `EKSTRE-…` (K-109). Dağılım tahsilat kuralıdır: önce `invoiceId`, artanı en eski vade, açık taksitleri aşanı iade alacağı (DOM-FIN-030, K-110). Hareket aynı işlemde `matched` olur; ikinci onay 409 `bank_transaction_not_open` ve tek tahsilat (DOM-FIN-031). İşlem günü kapatılmışsa 422 `finance_day_closed` (DOM-FIN-036); referans başka tahsilatta kullanılmışsa 409 `payment_reference_used`; taksit öğrencinin değilse 404, ödenmişse 409 `invoice_already_paid`; hesap arşivlenmişse 422 `bank_account_invalid`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunlu: aynı anahtar ikinci tahsilat açmaz. Başarı 201: hareket ve tahsilat. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         */
+        post: operations["matchBankTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/bank-transactions/{transactionId}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hareketi yoksay
+         * @description Öğrenci tahsilatı olmayan gelen hareketi (kira, iade, başka gelir) gerekçeyle (`ignoreReason`, 3–200 karakter) yoksayar; tahsilat yazılmaz. Yalnız eşleşmemiş hareket: aksi 409 `bank_transaction_not_open`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         */
+        post: operations["ignoreBankTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/bank-transactions/{transactionId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yoksaymayı geri al
+         * @description Yoksayılan hareket yeniden eşleşmemiş olur; yalnız yoksayılan hareket: aksi 409 `bank_transaction_not_ignored`. Eşleşmiş hareket tahsilat iptaliyle (`POST /payments/:paymentId/reverse`, yönetici) geri açılır (K-111). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         */
+        post: operations["restoreBankTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -11573,6 +11693,149 @@ export interface components {
             /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
             byCounselor: components["schemas"]["EnrollmentFunnelCounselorRowInput"][];
         };
+        BankStatementImportRowInput: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` daha önce aktarılmış, `outgoing` giden hareket (yazılmaz), `ignored` hareket değil (devir, toplam), `invalid` hatalı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "outgoing" | "ignored" | "invalid";
+            /** @description İşlem günü, `YYYY-MM-DD` */
+            bookingDate: string | null;
+            /** @description Mutlak tutar, kuruş */
+            amountCents: number | null;
+            direction: ("credit" | "debit") | null;
+            /** @description Açıklama ve gönderen; uzun rakam dizileri maskeli */
+            description: string;
+            reference: string;
+            issues: {
+                field: ("date" | "description" | "amount" | "credit" | "debit" | "balance" | "reference" | "counterparty") | null;
+                code: string;
+                message: string;
+            }[];
+        };
+        BankStatementImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @enum {string} */
+            format: "csv" | "mt940";
+            /** @description CSV başlık satırının hücreleri (sütun eşleme için) */
+            headers: string[];
+            /** @description Alan → kullanılan başlık adı */
+            columns: {
+                [key: string]: string;
+            };
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) gelen hareket */
+            readyCount: number;
+            /** @description Daha önce aktarıldığı için atlanan */
+            skippedCount: number;
+            /** @description Giden hareket; yazılmaz */
+            outgoingCount: number;
+            /** @description Hareket olmayan satır */
+            ignoredCount: number;
+            invalidCount: number;
+            /** @description Yazılacak gelen hareketlerin toplamı, kuruş */
+            totalCents: number;
+            /** @description Yalnız önizlemede dolu */
+            rows: components["schemas"]["BankStatementImportRowInput"][];
+        };
+        BankMatchSuggestionInput: {
+            studentId: string;
+            studentName: string;
+            invoiceId: string;
+            installment: number;
+            /** @description Vade, `YYYY-MM-DD` */
+            dueDate: string;
+            /** @description Önerilen taksitin kalanı, kuruş */
+            openCents: number;
+            /** @description Öğrencinin bütün açık taksitlerinin kalanı */
+            studentOpenCents: number;
+            /** @description Açık taksitleri aşan, iade alacağı olacak kısım */
+            creditCents: number;
+            /** @enum {string} */
+            amountFit: "exact" | "multiple" | "partial" | "over";
+            score: number;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /** @description Gerekçe kodları; değer taşımaz */
+            reasons: ("national_id" | "national_id_suffix" | "student_number" | "contract" | "student_name" | "guardian_name" | "surname" | "amount_exact" | "amount_multiple" | "amount_partial" | "amount_over")[];
+        };
+        BankTransactionInput: {
+            id: string;
+            bankAccountId: string;
+            /** @description Banka adı ve IBAN son dört hanesi */
+            bankAccountLabel: string;
+            /** @description İşlem günü, `YYYY-MM-DD` */
+            bookingDate: string;
+            /** @description Gelen tutar, kuruş */
+            amountCents: number;
+            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            description: string;
+            counterparty: string | null;
+            /** @description Banka referansı */
+            reference: string | null;
+            balanceCents: number | null;
+            /** @enum {string} */
+            sourceFormat: "csv" | "mt940";
+            /** @enum {string} */
+            status: "unmatched" | "matched" | "ignored";
+            paymentId: string | null;
+            /** @description Eşleşen tahsilatın dekontu ve öğrencisi */
+            payment: {
+                receiptYear: number;
+                receiptNumber: number;
+                studentId: string;
+                studentName: string | null;
+            } | null;
+            /** @description Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış */
+            referenceInUse: boolean;
+            matchedAt: string | null;
+            ignoredAt: string | null;
+            ignoreReason: string | null;
+            importedAt: string;
+            /** @description `If-Match` için hareket sürümü */
+            version: number;
+        };
+        BankTransactionListItemInput: {
+            id: string;
+            bankAccountId: string;
+            /** @description Banka adı ve IBAN son dört hanesi */
+            bankAccountLabel: string;
+            /** @description İşlem günü, `YYYY-MM-DD` */
+            bookingDate: string;
+            /** @description Gelen tutar, kuruş */
+            amountCents: number;
+            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            description: string;
+            counterparty: string | null;
+            /** @description Banka referansı */
+            reference: string | null;
+            balanceCents: number | null;
+            /** @enum {string} */
+            sourceFormat: "csv" | "mt940";
+            /** @enum {string} */
+            status: "unmatched" | "matched" | "ignored";
+            paymentId: string | null;
+            /** @description Eşleşen tahsilatın dekontu ve öğrencisi */
+            payment: {
+                receiptYear: number;
+                receiptNumber: number;
+                studentId: string;
+                studentName: string | null;
+            } | null;
+            /** @description Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış */
+            referenceInUse: boolean;
+            matchedAt: string | null;
+            ignoredAt: string | null;
+            ignoreReason: string | null;
+            importedAt: string;
+            /** @description `If-Match` için hareket sürümü */
+            version: number;
+            /** @description Eşleşmemiş harekette en iyi öneri; yoksa boş */
+            suggestion: components["schemas"]["BankMatchSuggestionInput"] | null;
+        };
         InstallmentImportRowInput: {
             /** @description Dosyadaki satır (başlık 1. satırdır) */
             line: number;
@@ -15938,6 +16201,149 @@ export interface components {
             bySource: components["schemas"]["EnrollmentFunnelSourceRow"][];
             /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
             byCounselor: components["schemas"]["EnrollmentFunnelCounselorRow"][];
+        };
+        BankStatementImportRow: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` daha önce aktarılmış, `outgoing` giden hareket (yazılmaz), `ignored` hareket değil (devir, toplam), `invalid` hatalı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "outgoing" | "ignored" | "invalid";
+            /** @description İşlem günü, `YYYY-MM-DD` */
+            bookingDate: string | null;
+            /** @description Mutlak tutar, kuruş */
+            amountCents: number | null;
+            direction: ("credit" | "debit") | null;
+            /** @description Açıklama ve gönderen; uzun rakam dizileri maskeli */
+            description: string;
+            reference: string;
+            issues: {
+                field: ("date" | "description" | "amount" | "credit" | "debit" | "balance" | "reference" | "counterparty") | null;
+                code: string;
+                message: string;
+            }[];
+        };
+        BankStatementImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @enum {string} */
+            format: "csv" | "mt940";
+            /** @description CSV başlık satırının hücreleri (sütun eşleme için) */
+            headers: string[];
+            /** @description Alan → kullanılan başlık adı */
+            columns: {
+                [key: string]: string;
+            };
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) gelen hareket */
+            readyCount: number;
+            /** @description Daha önce aktarıldığı için atlanan */
+            skippedCount: number;
+            /** @description Giden hareket; yazılmaz */
+            outgoingCount: number;
+            /** @description Hareket olmayan satır */
+            ignoredCount: number;
+            invalidCount: number;
+            /** @description Yazılacak gelen hareketlerin toplamı, kuruş */
+            totalCents: number;
+            /** @description Yalnız önizlemede dolu */
+            rows: components["schemas"]["BankStatementImportRow"][];
+        };
+        BankMatchSuggestion: {
+            studentId: string;
+            studentName: string;
+            invoiceId: string;
+            installment: number;
+            /** @description Vade, `YYYY-MM-DD` */
+            dueDate: string;
+            /** @description Önerilen taksitin kalanı, kuruş */
+            openCents: number;
+            /** @description Öğrencinin bütün açık taksitlerinin kalanı */
+            studentOpenCents: number;
+            /** @description Açık taksitleri aşan, iade alacağı olacak kısım */
+            creditCents: number;
+            /** @enum {string} */
+            amountFit: "exact" | "multiple" | "partial" | "over";
+            score: number;
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /** @description Gerekçe kodları; değer taşımaz */
+            reasons: ("national_id" | "national_id_suffix" | "student_number" | "contract" | "student_name" | "guardian_name" | "surname" | "amount_exact" | "amount_multiple" | "amount_partial" | "amount_over")[];
+        };
+        BankTransaction: {
+            id: string;
+            bankAccountId: string;
+            /** @description Banka adı ve IBAN son dört hanesi */
+            bankAccountLabel: string;
+            /** @description İşlem günü, `YYYY-MM-DD` */
+            bookingDate: string;
+            /** @description Gelen tutar, kuruş */
+            amountCents: number;
+            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            description: string;
+            counterparty: string | null;
+            /** @description Banka referansı */
+            reference: string | null;
+            balanceCents: number | null;
+            /** @enum {string} */
+            sourceFormat: "csv" | "mt940";
+            /** @enum {string} */
+            status: "unmatched" | "matched" | "ignored";
+            paymentId: string | null;
+            /** @description Eşleşen tahsilatın dekontu ve öğrencisi */
+            payment: {
+                receiptYear: number;
+                receiptNumber: number;
+                studentId: string;
+                studentName: string | null;
+            } | null;
+            /** @description Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış */
+            referenceInUse: boolean;
+            matchedAt: string | null;
+            ignoredAt: string | null;
+            ignoreReason: string | null;
+            importedAt: string;
+            /** @description `If-Match` için hareket sürümü */
+            version: number;
+        };
+        BankTransactionListItem: {
+            id: string;
+            bankAccountId: string;
+            /** @description Banka adı ve IBAN son dört hanesi */
+            bankAccountLabel: string;
+            /** @description İşlem günü, `YYYY-MM-DD` */
+            bookingDate: string;
+            /** @description Gelen tutar, kuruş */
+            amountCents: number;
+            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            description: string;
+            counterparty: string | null;
+            /** @description Banka referansı */
+            reference: string | null;
+            balanceCents: number | null;
+            /** @enum {string} */
+            sourceFormat: "csv" | "mt940";
+            /** @enum {string} */
+            status: "unmatched" | "matched" | "ignored";
+            paymentId: string | null;
+            /** @description Eşleşen tahsilatın dekontu ve öğrencisi */
+            payment: {
+                receiptYear: number;
+                receiptNumber: number;
+                studentId: string;
+                studentName: string | null;
+            } | null;
+            /** @description Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış */
+            referenceInUse: boolean;
+            matchedAt: string | null;
+            ignoredAt: string | null;
+            ignoreReason: string | null;
+            importedAt: string;
+            /** @description `If-Match` için hareket sürümü */
+            version: number;
+            /** @description Eşleşmemiş harekette en iyi öneri; yoksa boş */
+            suggestion: components["schemas"]["BankMatchSuggestion"] | null;
         };
         InstallmentImportRow: {
             /** @description Dosyadaki satır (başlık 1. satırdır) */
@@ -46953,6 +47359,701 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importBankStatement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                    bankAccountId: string;
+                    columns?: {
+                        date?: string;
+                        description?: string;
+                        amount?: string;
+                        credit?: string;
+                        debit?: string;
+                        balance?: string;
+                        reference?: string;
+                        counterparty?: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BankStatementImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BankStatementImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBankTransactions: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız bu durumdaki hareketler */
+                status?: "unmatched" | "matched" | "ignored";
+                /** @description Yalnız bu hesabın */
+                bankAccountId?: string;
+                /** @description İşlem günü başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description İşlem günü bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+                /** @description Açıklama, gönderen ve referansta arar */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BankTransactionListItem"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBankMatchSuggestions: {
+        parameters: {
+            query?: {
+                /** @description Yalnız bu öğrencinin açık taksiti önerilir (yetkili başka öğrenci seçti) */
+                studentId?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Banka hareketi kimliği */
+                transactionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            transaction: components["schemas"]["BankTransaction"];
+                            suggestions: components["schemas"]["BankMatchSuggestion"][];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    matchBankTransaction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Banka hareketi kimliği */
+                transactionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    invoiceId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            transaction: components["schemas"]["BankTransaction"];
+                            payment: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                /** @description Tahsilat tutarı (kuruş) */
+                                amountCents: number;
+                                /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                                creditCents: number;
+                                /** @enum {string} */
+                                method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                /** @description Banka veya POS işlem referansı */
+                                reference: string | null;
+                                /** @description Ödeme anı (ISO 8601 UTC) */
+                                paidAt: string;
+                                /** @description Dekont yılı */
+                                receiptYear: number;
+                                /** @description Kurum ve yıl içinde ardışık dekont numarası */
+                                receiptNumber: number;
+                                /** @description İptal anı; iptal edilmediyse boş */
+                                reversedAt: string | null;
+                                /** @description İptal gerekçesi; yalnız personele döner */
+                                reversalReason: string | null;
+                                /** @description Tahsilatın yapıldığı hesabın kısa adı */
+                                bankAccountLabel: string | null;
+                                /** @description MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner */
+                                mebbisRecordedAt: string | null;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                                allocations: {
+                                    invoiceId: string;
+                                    /** @description Taksite dağıtılan tutar (kuruş) */
+                                    amountCents: number;
+                                }[];
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ignoreBankTransaction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Banka hareketi kimliği */
+                transactionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ignoreReason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BankTransaction"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restoreBankTransaction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Banka hareketi kimliği */
+                transactionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BankTransaction"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

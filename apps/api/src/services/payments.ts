@@ -39,6 +39,7 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
+import { reopenBankTransactionOfPayment } from '../db/finance-bank-transactions.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -52,6 +53,7 @@ import {
   type CommandResponse,
   type IdempotencyRequest,
   type LoadScope,
+  type OperationRequest,
 } from './operation-runner.ts'
 import { earnReferralRewardOnPayment, revertReferralRewardOnReversal } from './finance-referrals.ts'
 import { readScope } from './read-scope.ts'
@@ -145,94 +147,123 @@ async function audit(
   })
 }
 
+/**
+ * Tahsilatla aynı transaction'da çalışan ek adım (banka hareketi eşleştirme, DOM-FIN-069): `load`
+ * kurum kilidi altında tahsilat denetimlerinden önce okur ve core işleminin içinde çalışacak
+ * denetimi döndürür (`DomainError` orada HTTP hatasına çevrilir); `after` tahsilat yazıldıktan sonra
+ * yazar. Biri başarısızsa tahsilat da yazılmaz.
+ */
+export interface PaymentStep {
+  load: (tx: Database) => Promise<() => void>
+  after: (tx: Database, payment: StoredPayment) => Promise<void>
+}
+
+/**
+ * Tahsilat işlem isteği (DOM-FIN-030, -031, -032, -036); `recordPaymentCommand` ve banka hareketi
+ * onayı aynı kuralı çalıştırır. `view` yazılan tahsilatın yanıt görünümüdür.
+ */
+export function recordPaymentOperation(
+  ctx: ServiceContext,
+  input: unknown,
+  step?: PaymentStep,
+): { request: OperationRequest<PaymentPlan>; view: () => PaymentView } {
+  const data = recordPaymentSchema.parse(input)
+  const reference = data.reference ?? null
+  const id = randomUUID()
+  let stored: StoredPayment | undefined
+  const request: OperationRequest<PaymentPlan> = {
+    action: 'payment.invoices',
+    collections: SPEC.collections,
+    stores: FINANCE_TABLE_STORES,
+    // Core yalnız bu öğrencinin taksitlerini dağıtır ve burslu sözleşmesine bakar (DOM-FIN-030).
+    loadScope: {
+      invoices: studentFinanceScope(data.studentId),
+      contracts: studentFinanceScope(data.studentId),
+    },
+    entity: { type: 'payments', id },
+    load: async (tx) => {
+      const check = step === undefined ? null : await step.load(tx)
+      const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
+      const allocated = await allocatedByInvoice(tx, ctx.institutionId, data.studentId)
+      const { cashPaymentsEnabled: cashEnabled } = await loadPaymentSettings(tx, ctx.institutionId)
+      const referenceInUse =
+        reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
+      const accounts = await listBankAccounts(tx, ctx.institutionId)
+      const bankAccountIds = accounts.map((account) => account.id)
+      // Kurum kilidi altında: kapanışla aynı anda güne tahsilat yazılamaz (DOM-FIN-036).
+      const dayClosed = await isFinanceDayClosed(
+        tx,
+        ctx.institutionId,
+        data.paidDate ?? dayKey(ctx.now),
+      )
+      return {
+        scalars,
+        run: (state, { now }) => {
+          requireAuthorized(actor, 'invoice.pay', { studentId: data.studentId }, state, {
+            now,
+            institutionType,
+          })
+          check?.()
+          assertPaymentDayOpen(dayClosed)
+          return planPayment(state, data, {
+            allocated,
+            cashEnabled,
+            referenceInUse,
+            bankAccountIds,
+            now,
+            institutionType,
+          })
+        },
+      }
+    },
+    after: async (tx, plan) => {
+      await insertPayment(tx, ctx.institutionId, {
+        id,
+        plan,
+        receiptYear: Number(dayKey(ctx.now).slice(0, 4)),
+        recordedByUserId: ctx.actor.userId,
+        now: ctx.now,
+      })
+      await audit(tx, ctx, 'payment.record', { type: 'payments', id }, [
+        'amountCents',
+        'method',
+        'reference',
+        'bankAccountId',
+        'paidAt',
+        'allocations',
+      ])
+      stored = (await findPayment(tx, ctx.institutionId, id)) ?? undefined
+      if (stored === undefined) throw new Error('payment was not written')
+      await notify(tx, ctx, {
+        type: 'payment_received',
+        recipients: { studentIds: [plan.studentId] },
+        data: { paymentId: id },
+        dedupeKey: id,
+      })
+      await earnReferralRewardOnPayment(tx, ctx, plan.studentId)
+      await step?.after(tx, stored)
+    },
+  }
+  return {
+    request,
+    view: () => {
+      if (stored === undefined) throw new Error('payment was not written')
+      return paymentView(stored, true)
+    },
+  }
+}
+
 /** Tahsilat kaydeder, açık taksitlere dağıtır; denetimler kurum kilidi altındadır (DOM-FIN-030, -031). 201. */
 export function recordPaymentCommand(
   ctx: ServiceContext,
   input: unknown,
   options: CommandOptions,
 ): Promise<CommandResponse> {
-  const data = recordPaymentSchema.parse(input)
-  const reference = data.reference ?? null
-  const id = randomUUID()
-  let stored: StoredPayment | undefined
+  const { request, view } = recordPaymentOperation(ctx, input)
   return runCommand<PaymentPlan>(
     ctx,
-    {
-      action: 'payment.invoices',
-      collections: SPEC.collections,
-      stores: FINANCE_TABLE_STORES,
-      // Core yalnız bu öğrencinin taksitlerini dağıtır ve burslu sözleşmesine bakar (DOM-FIN-030).
-      loadScope: {
-        invoices: studentFinanceScope(data.studentId),
-        contracts: studentFinanceScope(data.studentId),
-      },
-      entity: { type: 'payments', id },
-      load: async (tx) => {
-        const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
-        const allocated = await allocatedByInvoice(tx, ctx.institutionId, data.studentId)
-        const { cashPaymentsEnabled: cashEnabled } = await loadPaymentSettings(
-          tx,
-          ctx.institutionId,
-        )
-        const referenceInUse =
-          reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
-        const accounts = await listBankAccounts(tx, ctx.institutionId)
-        const bankAccountIds = accounts.map((account) => account.id)
-        // Kurum kilidi altında: kapanışla aynı anda güne tahsilat yazılamaz (DOM-FIN-036).
-        const dayClosed = await isFinanceDayClosed(
-          tx,
-          ctx.institutionId,
-          data.paidDate ?? dayKey(ctx.now),
-        )
-        return {
-          scalars,
-          run: (state, { now }) => {
-            requireAuthorized(actor, 'invoice.pay', { studentId: data.studentId }, state, {
-              now,
-              institutionType,
-            })
-            assertPaymentDayOpen(dayClosed)
-            return planPayment(state, data, {
-              allocated,
-              cashEnabled,
-              referenceInUse,
-              bankAccountIds,
-              now,
-              institutionType,
-            })
-          },
-        }
-      },
-      after: async (tx, plan) => {
-        await insertPayment(tx, ctx.institutionId, {
-          id,
-          plan,
-          receiptYear: Number(dayKey(ctx.now).slice(0, 4)),
-          recordedByUserId: ctx.actor.userId,
-          now: ctx.now,
-        })
-        await audit(tx, ctx, 'payment.record', { type: 'payments', id }, [
-          'amountCents',
-          'method',
-          'reference',
-          'bankAccountId',
-          'paidAt',
-          'allocations',
-        ])
-        stored = (await findPayment(tx, ctx.institutionId, id)) ?? undefined
-        await notify(tx, ctx, {
-          type: 'payment_received',
-          recipients: { studentIds: [plan.studentId] },
-          data: { paymentId: id },
-          dedupeKey: id,
-        })
-        await earnReferralRewardOnPayment(tx, ctx, plan.studentId)
-      },
-    },
-    () => {
-      if (stored === undefined) throw new Error('payment was not written')
-      return { statusCode: 201, body: { data: paymentView(stored, true) } }
-    },
+    request,
+    () => ({ statusCode: 201, body: { data: view() } }),
     options.idempotency,
   )
 }
@@ -298,6 +329,24 @@ export async function reversePaymentCommand(
           'reversedAt',
           'reversalReason',
         ])
+        // Banka hareketinden oluşan tahsilatın hareketi yeniden eşleşmemiş olur (DOM-FIN-069, K-111).
+        const reopened = await reopenBankTransactionOfPayment(
+          tx,
+          ctx.institutionId,
+          paymentId,
+          ctx.now,
+        )
+        if (reopened !== null)
+          await audit(
+            tx,
+            ctx,
+            'bank_transaction.reopen',
+            {
+              type: 'bank_transactions',
+              id: reopened.id,
+            },
+            ['status', 'paymentId'],
+          )
         const payment = await findPayment(tx, ctx.institutionId, paymentId)
         if (payment === null) throw new NotFoundError()
         view = paymentView(payment, true)

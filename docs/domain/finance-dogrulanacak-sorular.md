@@ -252,6 +252,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Anonim bağışta ad gizli alan olarak saklanır ve yalnız yönetici görür; bağışçıya rapor için velinin rızası kesin kayıtta ya da burs atamasında alınır, rızası olmayan öğrenci bağışçı raporuna girmez.
 - **Cevap:** bekleniyor
 
+#### H-27 · Banka ekstresindeki üçüncü kişi verisi
+
+- **Kural:** `DOM-FIN-069`; ON-099, IST-115.
+- **Soru:** Banka ekstresinin açıklama ve gönderen alanlarında ödeme yapan kişinin adı, IBAN'ı ve bazen T.C. kimlik numarası bulunur; bunlar kurumun tahsilat kaydı için işlenebilir mi (KVKK md. 5/2-c sözleşmenin ifası, md. 5/2-ç hukuki yükümlülük)? Eşleşen ve eşleşmeyen (kurumla ilgisi olmayan) hareketin açıklaması ne kadar süre saklanmalı?
+- **Bugünkü varsayım:** Yalnız gelen hareket saklanır; açıklama loglanmaz, ekranda uzun rakam dizileri maskelidir; hareket tahsilat kaydı gibi saklanır, ayrı imha süresi yoktur.
+- **Kodda:** `bank_transactions.statement_description`, `counterparty_name` (migration 0077); `maskStatementText`.
+- **Cevap değişirse:** Eşleşmeyen ya da yoksayılan hareketin açıklaması süre dolunca imha işiyle silinir; açıklama içe aktarımda maskeli saklanır (K-112).
+- **Cevap:** bekleniyor
+
 ## Mali müşavire
 
 #### M-01 · Eğitim hizmetinde fatura ve e-Arşiv zorunluluğu
@@ -444,6 +453,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Muhasebe aktarımına `kind=scholarship_fund` satırları (bağış girişi, atama, iptal) eklenir; banka kanalı bağış banka hesabına bağlanır.
 - **Cevap:** bekleniyor
 
+#### M-23 · Banka hareketinden oluşan tahsilatın günü ve eşleşmeyen havale
+
+- **Kural:** `DOM-FIN-069`; ON-099, IST-115.
+- **Soru:** Banka ekstresinden onaylanan tahsilatın kayıt günü işlem günü mü, valör günü mü olmalı? Gün kapatıldıktan sonra ekstrede görünen havale hangi güne yazılmalı? Açık taksitleri aşan fazla ödeme iade alacağı mı, avans mı izlenmeli? Eşleşmeyen gelen havale (kimin ödediği bilinmeyen) muhasebede hangi hesapta beklemeli?
+- **Bugünkü varsayım:** Tahsilat işlem gününe yazılır; o gün kapatılmışsa onay reddedilir, yönetici günü yeniden açar (`DOM-FIN-036`). Fazla ödeme iade alacağıdır (`DOM-FIN-030`). Eşleşmeyen hareket yalnız eşleştirme listesinde bekler, muhasebe aktarımına girmez.
+- **Kodda:** `lib/finance-bank-matching.ts`, `services/finance-bank-matching.ts` (`matchBankTransactionCommand`).
+- **Cevap değişirse:** Valör günü seçilirse ekstreden valör sütunu da okunur; kapalı güne düşen havale onay gününe yazılır; eşleşmeyen havale muhasebe aktarımına "tanımsız tahsilat" satırı olarak eklenir.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -506,6 +524,14 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-92   | 2026-11-08 | `DOM-FIN-067` | Fiyat ve indirim değişimi varsayılan olarak mevcut sözleşmeleri değiştirmez; seçenekle bütün öğrenciye uygulanır.                                                                                                                                                                    | `applyToExistingContracts` varsayılanı.                                                                    |
 | K-93   | 2026-11-08 | `DOM-FIN-067` | İndirim ve burs tek oran üzerinde puanla değişir, sonuç %0–%100'e sıkışır; fiyat değişimi oranı değiştirmez. Sınırlar: en çok 4 senaryo, öğrenci −%100…+%200 ya da ±10.000, fiyat −%50…+%200, indirim ±100 puan.                                                                     | İndirim türü (kardeş, burs) bazında ayrı oran; sabitler `SCENARIO_*`.                                      |
 | K-94   | 2026-11-08 | `DOM-FIN-067` | Nakit etkisinde gelir farkı eğitim yılının (Eylül–Ağustos) bu aydan sonraki aylarına eşit yayılır ve vadesinde tahsil oranıyla beklenir; geçmiş yılda yazılmaz.                                                                                                                      | Fark tarifenin ödeme koşullarına (taksit ayları) göre yayılır.                                             |
+| K-105  | 2026-11-08 | `DOM-FIN-069` | Eşleştirmeyi yönetici yapar (muhasebe rolü açılınca `BANK_MATCH_ROLES`'e girer); ön büro görmez. Tahsilat yazdığı için `invoice.pay` yetkisi kilit altında yeniden denetlenir.                                                                                                       | Rol listesi `BANK_MATCH_ROLES` değişir.                                                                    |
+| K-106  | 2026-11-08 | `DOM-FIN-069` | Yalnız gelen (alacak) hareket saklanır; giden hareket, sıfır tutar ve tarihi ya da tutarı boş satır (devir, toplam) aktarılmaz, önizlemede sayılır.                                                                                                                                  | Giden hareket de saklanır (`bank_transactions` yön kolonu, migration).                                     |
+| K-107  | 2026-11-08 | `DOM-FIN-069` | Mükerrer izi hesap + işlem günü + tutar + katlanmış açıklama + referanstır; aynı dosyada aynı izli hareketler sıra numarasıyla ayrılır. Bakiye ize girmez.                                                                                                                           | `bankTransactionKeys` anahtarına bakiye ya da valör eklenir.                                               |
+| K-108  | 2026-11-08 | `DOM-FIN-069` | Puan: kimlik no 60 (son 6+ hane 45, 4–5 hane 25; 20xx yıl sayılmaz), öğrenci no 50, sözleşme 50, öğrenci adı 40, veli adı 30, soyadı 10; tutar eşit 30, çoklu 20. Yüksek güven: kimlik sinyali, 70+ puan, ikinciden 15+ fark.                                                        | `BANK_MATCH_POINTS`, eşikler (`lib/finance-bank-matching.ts`).                                             |
+| K-109  | 2026-11-08 | `DOM-FIN-069` | Tahsilat günü ekstredeki işlem günüdür (valör değil); yöntem Banka havalesi, hesap içe aktarımda seçilen hesap, referans banka referansı, yoksa `EKSTRE-<iz>`.                                                                                                                       | Valör günü ya da onay günü kullanılır (`matchBankTransactionCommand`).                                     |
+| K-110  | 2026-11-08 | `DOM-FIN-069` | Hareket bölünmez: tutarın tamamı tek öğrenciye tahsil edilir; seçilen taksit, artanı en eski vade, aşan iade alacağı. Kardeşlerin ortak havalesi bölünmez.                                                                                                                           | Bölme ekranı ve çoklu tahsilat (ayrı görev).                                                               |
+| K-111  | 2026-11-08 | `DOM-FIN-069` | Yoksayma gerekçelidir (3–200 karakter) ve geri alınır; onaylanmış eşleşme yalnız tahsilat iptaliyle (yönetici) geri açılır, ayrı "eşleşmeyi kaldır" yoktur.                                                                                                                          | Eşleşmeyi kaldırma ucu tahsilat iptalini kendisi çağırır.                                                  |
+| K-112  | 2026-11-08 | `DOM-FIN-069` | Açıklama ham saklanır, yanıtta 11+ haneli rakam dizileri son dört hane dışında maskelenir; hareket silinmez, saklama süresi tahsilat kaydıyla aynı varsayılır (H-27).                                                                                                                | İçe aktarımda maskeli saklanır ya da süre dolunca açıklama silinir.                                        |
 
 ## Kararlaştırılanlar
 

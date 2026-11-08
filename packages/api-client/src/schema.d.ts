@@ -4252,6 +4252,26 @@ export interface paths {
         patch: operations["updateBudgetLine"];
         trace?: never;
     };
+    "/api/v1/finance/board-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yönetim kurulu raporu: dönemlik finans ve kayıt özeti
+         * @description Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.
+         */
+        get: operations["getFinanceBoardReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/budget-periods/{periodId}/actuals": {
         parameters: {
             query?: never;
@@ -44462,6 +44482,249 @@ export interface operations {
                             monthlyCents: number[] | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceBoardReport: {
+        parameters: {
+            query: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                year: number;
+                /** @description Dil okulunda yılın dönemi; dönem aralığı rapor dönemi olur */
+                termId?: string;
+                /** @description Elle dönem başlangıcı (YYYY-MM-DD) */
+                from?: string;
+                /** @description Elle dönem bitişi (YYYY-MM-DD) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            period: {
+                                /** @enum {string} */
+                                kind: "year" | "term" | "custom";
+                                year: number;
+                                from: string;
+                                /** @description Rapor bitişi; süren dönemde bugün */
+                                to: string;
+                                /** @description Seçilen bitiş günü */
+                                endDate: string;
+                                /** @description Seçilen bitiş geçtiyse `true` */
+                                complete: boolean;
+                                termId: string | null;
+                                termName: string | null;
+                            };
+                            today: string;
+                            /** @enum {string} */
+                            institutionType: "school" | "language_school";
+                            /** @description Küçük grup bastırma eşiği (kişi) */
+                            minGroupSize: number;
+                            /** @description Seçilen eğitim yılının dönemleri (dil okulu dönem seçimi için) */
+                            terms: {
+                                id: string;
+                                name: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            finance: {
+                                /** @description Yıl sonu mutabakatının dönem toplamı (DOM-FIN-056) */
+                                totals: {
+                                    /** @description Dönem başı bakiye: açık borç − alacak */
+                                    openingCents: number;
+                                    /** @description Vadesi dönemde olan taksitler (tahakkuk) */
+                                    accruedCents: number;
+                                    /** @description Ayrılışta hak edilmeyen tahakkuk */
+                                    withdrawalAdjustmentCents: number;
+                                    /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                    collectedCents: number;
+                                    /** @description Ödeme günü dönemde olan açılış aktarımı (DOM-FIN-014) */
+                                    openingImportCents: number;
+                                    /** @description İptal günü dönemde olan tahsilatlar */
+                                    reversedCents: number;
+                                    /** @description Ödeme günü dönemde olan iadeler */
+                                    refundedCents: number;
+                                    /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı */
+                                    scholarshipCents: number;
+                                    /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı */
+                                    discountCents: number;
+                                    /** @description Dönem sonu bakiye: açık borç − alacak */
+                                    closingCents: number;
+                                    expectedClosingCents: number;
+                                    differenceCents: number;
+                                    /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                    openDebtCents: number;
+                                    creditCents: number;
+                                };
+                                /** @description Mutabakatta tutmayan kişi sayısı */
+                                mismatchCount: number;
+                                methods: {
+                                    rows: {
+                                        /** @enum {string} */
+                                        method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                        /** @description Gizli hücrede `null` */
+                                        studentCount: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        collectedCents: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        reversedCents: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        netCents: number | null;
+                                        suppressed: boolean;
+                                    }[];
+                                    collectedCents: number;
+                                    reversedCents: number;
+                                    netCents: number;
+                                };
+                                aging: {
+                                    /** @description Yaşlandırma günü: raporun alındığı gün */
+                                    asOf: string;
+                                    overdueCents: number;
+                                    studentCount: number;
+                                    rows: {
+                                        /** @enum {string} */
+                                        bucket: "days_1_30" | "days_31_60" | "days_61_90" | "days_91_plus";
+                                        /** @description Gizli hücrede `null` */
+                                        studentCount: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        amountCents: number | null;
+                                        suppressed: boolean;
+                                    }[];
+                                };
+                                /** @description Paket saat raporu toplamı (DOM-FIN-058); yalnız dil okulunda */
+                                packages: {
+                                    saleCount: number;
+                                    soldHours: number;
+                                    usedHours: number;
+                                    refundedHours: number;
+                                    expiredHours: number;
+                                    soldCents: number;
+                                    /** @description Kullanılan saatin payı: tanınan gelir */
+                                    recognizedCents: number;
+                                    returnedCents: number;
+                                    openingDeferredCents: number;
+                                    /** @description Dönem sonu ertelenmiş gelir */
+                                    closingDeferredCents: number;
+                                } | null;
+                            };
+                            enrollment: {
+                                startCount: number;
+                                endCount: number;
+                                newCount: number;
+                                withdrawnCount: number;
+                                graduatedCount: number;
+                                reasons: {
+                                    /** @enum {string} */
+                                    reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
+                                    /** @description Gizli hücrede `null` */
+                                    count: number | null;
+                                    suppressed: boolean;
+                                }[];
+                                /** @description Yenileme modülü kapalıysa `null` */
+                                renewal: {
+                                    targetYear: number;
+                                    eligibleCount: number;
+                                    renewedCount: number;
+                                    /** @description Yüzde, bir ondalık */
+                                    rate: number | null;
+                                } | null;
+                            };
+                            /** @description Dönemde açılan adayların hunisi (DOM-KAY-040); `crm` kapalıysa `null` */
+                            funnel: {
+                                prospects: number;
+                                steps: {
+                                    /** @enum {string} */
+                                    step: "prospect" | "meeting" | "trial" | "enrolled";
+                                    count: number;
+                                    rate: number | null;
+                                }[];
+                                conversionRate: number | null;
+                            } | null;
                         };
                     };
                 };

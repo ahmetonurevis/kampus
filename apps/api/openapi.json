@@ -94001,6 +94001,841 @@
         }
       }
     },
+    "/api/v1/finance/board-report": {
+      "get": {
+        "operationId": "getFinanceBoardReport",
+        "summary": "Yönetim kurulu raporu: dönemlik finans ve kayıt özeti",
+        "tags": [
+          "finance-board-report"
+        ],
+        "description": "Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "description": "Eğitim yılının başlangıç yılı (2026 → 2026–2027)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "description": "Dil okulunda yılın dönemi; dönem aralığı rapor dönemi olur"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Elle dönem başlangıcı (YYYY-MM-DD)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Elle dönem bitişi (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "period": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "year",
+                                "term",
+                                "custom"
+                              ]
+                            },
+                            "year": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "from": {
+                              "type": "string"
+                            },
+                            "to": {
+                              "type": "string",
+                              "description": "Rapor bitişi; süren dönemde bugün"
+                            },
+                            "endDate": {
+                              "type": "string",
+                              "description": "Seçilen bitiş günü"
+                            },
+                            "complete": {
+                              "type": "boolean",
+                              "description": "Seçilen bitiş geçtiyse `true`"
+                            },
+                            "termId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "termName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "year",
+                            "from",
+                            "to",
+                            "endDate",
+                            "complete",
+                            "termId",
+                            "termName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "today": {
+                          "type": "string"
+                        },
+                        "institutionType": {
+                          "type": "string",
+                          "enum": [
+                            "school",
+                            "language_school"
+                          ]
+                        },
+                        "minGroupSize": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Küçük grup bastırma eşiği (kişi)"
+                        },
+                        "terms": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Seçilen eğitim yılının dönemleri (dil okulu dönem seçimi için)"
+                        },
+                        "finance": {
+                          "type": "object",
+                          "properties": {
+                            "totals": {
+                              "type": "object",
+                              "properties": {
+                                "openingCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Dönem başı bakiye: açık borç − alacak"
+                                },
+                                "accruedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Vadesi dönemde olan taksitler (tahakkuk)"
+                                },
+                                "withdrawalAdjustmentCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılışta hak edilmeyen tahakkuk"
+                                },
+                                "collectedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ödeme günü dönemde olan tahsilatlar (brüt)"
+                                },
+                                "openingImportCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ödeme günü dönemde olan açılış aktarımı (DOM-FIN-014)"
+                                },
+                                "reversedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "İptal günü dönemde olan tahsilatlar"
+                                },
+                                "refundedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ödeme günü dönemde olan iadeler"
+                                },
+                                "scholarshipCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı"
+                                },
+                                "discountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı"
+                                },
+                                "closingCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Dönem sonu bakiye: açık borç − alacak"
+                                },
+                                "expectedClosingCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "differenceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "openDebtCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Dönem sonunda vadesi gelmiş açık taksit tutarı"
+                                },
+                                "creditCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "openingCents",
+                                "accruedCents",
+                                "withdrawalAdjustmentCents",
+                                "collectedCents",
+                                "openingImportCents",
+                                "reversedCents",
+                                "refundedCents",
+                                "scholarshipCents",
+                                "discountCents",
+                                "closingCents",
+                                "expectedClosingCents",
+                                "differenceCents",
+                                "openDebtCents",
+                                "creditCents"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Yıl sonu mutabakatının dönem toplamı (DOM-FIN-056)"
+                            },
+                            "mismatchCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Mutabakatta tutmayan kişi sayısı"
+                            },
+                            "methods": {
+                              "type": "object",
+                              "properties": {
+                                "rows": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "method": {
+                                        "type": "string",
+                                        "enum": [
+                                          "Banka havalesi",
+                                          "Nakit",
+                                          "Kredi kartı",
+                                          "Senet"
+                                        ]
+                                      },
+                                      "studentCount": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "collectedCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "reversedCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "netCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "suppressed": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "method",
+                                      "studentCount",
+                                      "collectedCents",
+                                      "reversedCents",
+                                      "netCents",
+                                      "suppressed"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "collectedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "reversedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "netCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "rows",
+                                "collectedCents",
+                                "reversedCents",
+                                "netCents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "aging": {
+                              "type": "object",
+                              "properties": {
+                                "asOf": {
+                                  "type": "string",
+                                  "description": "Yaşlandırma günü: raporun alındığı gün"
+                                },
+                                "overdueCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "studentCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "rows": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "bucket": {
+                                        "type": "string",
+                                        "enum": [
+                                          "days_1_30",
+                                          "days_31_60",
+                                          "days_61_90",
+                                          "days_91_plus"
+                                        ]
+                                      },
+                                      "studentCount": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "amountCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "suppressed": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "bucket",
+                                      "studentCount",
+                                      "amountCents",
+                                      "suppressed"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "asOf",
+                                "overdueCents",
+                                "studentCount",
+                                "rows"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "packages": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "saleCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "soldHours": {
+                                      "type": "number"
+                                    },
+                                    "usedHours": {
+                                      "type": "number"
+                                    },
+                                    "refundedHours": {
+                                      "type": "number"
+                                    },
+                                    "expiredHours": {
+                                      "type": "number"
+                                    },
+                                    "soldCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "recognizedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kullanılan saatin payı: tanınan gelir"
+                                    },
+                                    "returnedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "openingDeferredCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "closingDeferredCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dönem sonu ertelenmiş gelir"
+                                    }
+                                  },
+                                  "required": [
+                                    "saleCount",
+                                    "soldHours",
+                                    "usedHours",
+                                    "refundedHours",
+                                    "expiredHours",
+                                    "soldCents",
+                                    "recognizedCents",
+                                    "returnedCents",
+                                    "openingDeferredCents",
+                                    "closingDeferredCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Paket saat raporu toplamı (DOM-FIN-058); yalnız dil okulunda"
+                            }
+                          },
+                          "required": [
+                            "totals",
+                            "mismatchCount",
+                            "methods",
+                            "aging",
+                            "packages"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "enrollment": {
+                          "type": "object",
+                          "properties": {
+                            "startCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "endCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "newCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "withdrawnCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "graduatedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "reasons": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "transfer",
+                                      "relocation",
+                                      "documented",
+                                      "financial",
+                                      "dissatisfaction",
+                                      "other"
+                                    ]
+                                  },
+                                  "count": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Gizli hücrede `null`"
+                                  },
+                                  "suppressed": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "reason",
+                                  "count",
+                                  "suppressed"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "renewal": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "targetYear": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "eligibleCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "renewedCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "rate": {
+                                      "description": "Yüzde, bir ondalık",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "targetYear",
+                                    "eligibleCount",
+                                    "renewedCount",
+                                    "rate"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Yenileme modülü kapalıysa `null`"
+                            }
+                          },
+                          "required": [
+                            "startCount",
+                            "endCount",
+                            "newCount",
+                            "withdrawnCount",
+                            "graduatedCount",
+                            "reasons",
+                            "renewal"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "funnel": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "prospects": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "steps": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "step": {
+                                        "type": "string",
+                                        "enum": [
+                                          "prospect",
+                                          "meeting",
+                                          "trial",
+                                          "enrolled"
+                                        ]
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "rate": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "step",
+                                      "count",
+                                      "rate"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "conversionRate": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "prospects",
+                                "steps",
+                                "conversionRate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Dönemde açılan adayların hunisi (DOM-KAY-040); `crm` kapalıysa `null`"
+                        }
+                      },
+                      "required": [
+                        "period",
+                        "today",
+                        "institutionType",
+                        "minGroupSize",
+                        "terms",
+                        "finance",
+                        "enrollment",
+                        "funnel"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/budget-periods/{periodId}/actuals": {
       "get": {
         "operationId": "getBudgetActuals",

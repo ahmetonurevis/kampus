@@ -1542,6 +1542,41 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: materyal seti dağıtımı (ON-232; DOM-FIN-080).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/material-sets', 'listOf()'],
+        ['gövde', 'POST /api/v1/finance/material-sets', 'stockItemId: b.book.id, quantity: 1'],
+        ['kayıt', 'GET /api/v1/finance/material-sets/:setId', 'get(bSetUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/material-sets/:setId', "call('PATCH', bSetUrl, a.admin"],
+        ['kayıt', 'GET /api/v1/finance/material-sets/:setId/students', '`${bSetUrl}/students`'],
+        ['kayıt', 'POST /api/v1/finance/material-sets/:setId/deliveries', 'key(), b.set.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/material-recipients',
+          '`${RECIPIENTS}?studentId=${outsider}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/material-deliveries/:deliveryId/cancel',
+          'cancel(a.admin, bDelivery)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/material-deliveries/:deliveryId/signature',
+          'sign(a.admin, bDelivery)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-material-sets.test.ts',
+        'başka kurumun seti ve teslimi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -145,21 +145,25 @@ export async function insertReceipt(
     lines: readonly Omit<StoredReceiptLine, 'id'>[]
     now: Date
   },
-): Promise<void> {
+): Promise<Map<string, string>> {
   const { now, lines, ...fields } = input
   await tx
     .insert(purchaseReceipts)
     .values({ ...fields, institutionId, createdAt: now, updatedAt: now })
-  await tx.insert(purchaseReceiptItems).values(
-    lines.map((line) => ({
-      ...line,
-      institutionId,
-      id: randomUUID(),
-      receiptId: input.id,
-      createdAt: now,
-      updatedAt: now,
-    })),
-  )
+  const rows = lines.map((line) => ({
+    orderItemId: line.orderItemId,
+    acceptedQuantity: line.acceptedQuantity,
+    rejectedQuantity: line.rejectedQuantity,
+    rejectReason: line.rejectReason,
+    institutionId,
+    id: randomUUID(),
+    receiptId: input.id,
+    createdAt: now,
+    updatedAt: now,
+  }))
+  await tx.insert(purchaseReceiptItems).values(rows)
+  // Sipariş kalemi → kabul kalemi kimliği (mal kabul stok girişi kaleme bağlanır, K-184).
+  return new Map(rows.map((row) => [row.orderItemId, row.id]))
 }
 
 /** Kabulü iptal eder; sürüm tutmazsa ya da zaten iptal edildiyse `false` (409). */

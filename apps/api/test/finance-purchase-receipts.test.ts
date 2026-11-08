@@ -4,10 +4,14 @@ import { after, before, describe, test } from 'node:test'
 
 import { and, eq } from 'drizzle-orm'
 
+import { createSeed } from '@kampus/school-core/data/seed.ts'
+
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { stockMovements } from '../src/db/schema/finance-inventory.ts'
 import { purchaseOrders } from '../src/db/schema/finance-purchase-orders.ts'
 import {
   purchaseReceiptItems,
@@ -350,6 +354,7 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     assert.equal(receipt.receivedBy, 'Hasan Usta')
     assert.equal(receipt.inspectionNote, 'Kutular hasarlı geldi')
     assert.equal(receipt.netCents, 114_000)
+    assert.equal(receipt.warehouseId, null)
     assert.deepEqual(receipt.lines, [
       {
         orderItemId: t.keyboard,
@@ -358,6 +363,8 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
         acceptedQuantity: 6,
         rejectedQuantity: 2,
         rejectReason: 'Tuşları kırık',
+        stockItemId: null,
+        stockItemName: null,
       },
     ])
     assert.deepEqual(ok(await get(receiptsUrl(t), t.admin)), first)
@@ -698,5 +705,118 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     )
     assert.deepEqual(await rows(b.id), before)
     assert.equal(((await actuals(a)).row as Json).actualCents, 0)
+  })
+
+  test('DOM-FIN-078, K-184: stok kartı seçilen kalem kabulde depoya girer; kabul iptali girişi geri alır, kullanılmış giriş iptali reddeder', async () => {
+    const t = await institution()
+    const branches = createSeed(FIXED_NOW).branches
+    await insertMissingRecords(
+      db,
+      t.id,
+      branches.map((data) => ({ collection: 'branches' as const, id: data.id, data })),
+      FIXED_NOW,
+    )
+    const post = async (url: string, body: Json, headers: Record<string, string> = {}) =>
+      ok(await call('POST', `${FINANCE}${url}`, t.admin, body, headers), 201)
+    const warehouse = await post('/stock-warehouses', { name: 'BT deposu', campusId: 'b1' })
+    const keyboardCard = await post('/stock-items', {
+      code: 'KLV',
+      name: 'Klavye',
+      category: 'it',
+      unit: 'piece',
+    })
+    const boxed = await post('/stock-items', {
+      code: 'KLV-KOLI',
+      name: 'Klavye kolisi',
+      category: 'it',
+      unit: 'box',
+    })
+    const stockRows = () =>
+      db.select().from(stockMovements).where(eq(stockMovements.institutionId, t.id))
+    const linked = (stockItemId: unknown, extra: Json = {}) =>
+      receiptBody(
+        [
+          {
+            orderItemId: t.keyboard,
+            acceptedQuantity: 6,
+            rejectedQuantity: 1,
+            rejectReason: 'Kırık',
+            stockItemId,
+          },
+          { orderItemId: t.mouse, acceptedQuantity: 3 },
+        ],
+        { warehouseId: warehouse.id, ...extra },
+      )
+
+    const before = await rows(t.id)
+    assertError(await receive(t.admin, t, linked(boxed.id)), 422, 'stock_unit_mismatch')
+    assertError(
+      await receive(t.admin, t, linked(keyboardCard.id, { warehouseId: null })),
+      400,
+      'validation_failed',
+    )
+    assertError(await receive(t.admin, t, linked(randomUUID())), 422, 'stock_item_not_found')
+    assert.deepEqual(await rows(t.id), before)
+    assert.equal((await stockRows()).length, 0)
+
+    const board = ok(await receive(t.admin, t, linked(keyboardCard.id)), 201)
+    const receipt = (board.receipts as Json[])[0] as Json
+    assert.equal(receipt.warehouseName, 'BT deposu')
+    assert.deepEqual(
+      (receipt.lines as Json[]).map((line) => [line.name, line.stockItemName]),
+      [
+        ['Klavye', 'Klavye'],
+        ['Fare', null],
+      ],
+    )
+    const movements = ok(await get(`${FINANCE}/stock-movements`, t.admin)) as unknown as Json[]
+    assert.equal(movements.length, 1)
+    const received = movements[0] as Json
+    assert.deepEqual(
+      [received.type, received.quantity, received.movementDate, received.orderNumber],
+      ['receipt', 6, '2026-10-06', t.order.number],
+    )
+    assert.deepEqual(received.actions, { cancel: false })
+    assertError(
+      await call(
+        'POST',
+        `${FINANCE}/stock-movements/${String(received.id)}/cancel`,
+        t.admin,
+        { reason: 'Yanlış giriş' },
+        ifMatch(received.version),
+      ),
+      422,
+      'stock_movement_from_receipt',
+    )
+
+    const issued = await post(
+      '/stock-issues',
+      {
+        itemId: keyboardCard.id,
+        warehouseId: warehouse.id,
+        quantity: 5,
+        movementDate: '2026-10-06',
+        reason: 'usage',
+      },
+      key(),
+    )
+    const blocked = await rows(t.id)
+    assertError(await cancel(t.admin, t, receipt), 422, 'stock_cancel_negative')
+    assert.deepEqual(await rows(t.id), blocked)
+
+    ok(
+      await call(
+        'POST',
+        `${FINANCE}/stock-movements/${String(issued.id)}/cancel`,
+        t.admin,
+        { reason: 'Yanlış çıkış' },
+        ifMatch(issued.version),
+      ),
+    )
+    ok(await cancel(t.admin, t, receipt))
+    const card = ok(await get(`${FINANCE}/stock-items/${String(keyboardCard.id)}`, t.admin))
+    assert.equal(card.quantity, 0)
+    const [stored] = (await stockRows()).filter((row) => row.type === 'receipt')
+    assert.equal(stored?.cancelReason, 'Hatalı kayıt')
   })
 })

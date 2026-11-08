@@ -8,6 +8,7 @@ import {
   type PurchaseReceipt,
   type PurchaseReceiptBoard,
 } from '@kampus/react-shared/use-finance-purchase-receipts.ts'
+import { useStockItems, useStockWarehouses } from '@kampus/react-shared/use-finance-inventory.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { PURCHASE_UNIT_LABELS } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -17,6 +18,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
@@ -44,6 +46,7 @@ type Dialog = { kind: 'receive' } | { kind: 'cancel'; receipt: PurchaseReceipt }
  * Siparişin mal kabulü (DOM-FIN-074; ON-226): kalem başına sipariş, kabul, ret ve kalan miktar,
  * KDV hariç gerçekleşen tutar, kabul formu ve kabul geçmişi. Kabulü yönetici ve ön büro kaydeder,
  * iptal yalnız yöneticidedir (K-153). Taslak siparişte gösterilmez: önce gönderildi işaretlenir.
+ * Kaleme stok kartı seçilirse kabul edilen miktar seçilen depoya girer (DOM-FIN-078, K-184).
  */
 export function FinancePurchaseReceiptsPanel({ orderId }: { orderId: string }) {
   const query = usePurchaseReceiptBoard(orderId)
@@ -140,6 +143,9 @@ function History({
                 {line.rejectedQuantity > 0
                   ? `, ${String(line.rejectedQuantity)} ret (${line.rejectReason ?? ''})`
                   : ''}
+                {line.stockItemName && receipt.warehouseName
+                  ? ` · ${receipt.warehouseName} deposunda ${line.stockItemName} stoğuna girdi`
+                  : ''}
               </li>
             ))}
           </ul>
@@ -181,6 +187,9 @@ function ReceiveModal({ board, onClose }: { board: PurchaseReceiptBoard; onClose
   })
   const items = new Map(board.items.map((item) => [item.id, item]))
   const lines = defaults.lines
+  // Stok bağı isteğe bağlıdır: etkin depolar ve birimi kalemle aynı etkin stok kartları.
+  const warehouses = useStockWarehouses({ page: 1, pageSize: 100, status: 'active' })
+  const stockItems = useStockItems({ page: 1, pageSize: 100, status: 'active' })
   const busy = create.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const onSubmit = form.handleSubmit(async (values) => {
@@ -249,6 +258,32 @@ function ReceiveModal({ board, onClose }: { board: PurchaseReceiptBoard; onClose
             )}
           </FormField>
         </div>
+        <div className="col-span-full">
+          <FormField
+            id="mal-kabul-depo"
+            label="Stok deposu (isteğe bağlı)"
+            error={errors.warehouseId}
+            description="Kaleme stok kartı seçilirse kabul edilen miktar bu depoya girer."
+          >
+            {(control) => (
+              <NativeSelect
+                {...control}
+                {...form.register('warehouseId')}
+                className="w-full"
+                disabled={busy}
+              >
+                <NativeSelectOption value="">Stoğa girmesin</NativeSelectOption>
+                {(warehouses.data?.data ?? []).map((warehouse) => (
+                  <NativeSelectOption key={warehouse.id} value={warehouse.id}>
+                    {warehouse.campusName
+                      ? `${warehouse.name} · ${warehouse.campusName}`
+                      : warehouse.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+        </div>
         <fieldset className="col-span-full grid gap-4">
           <legend className="mb-2 text-sm font-medium">Teslim alınan miktarlar</legend>
           {lines.map((line, index) => {
@@ -257,7 +292,7 @@ function ReceiveModal({ board, onClose }: { board: PurchaseReceiptBoard; onClose
             return (
               <div
                 key={line.orderItemId}
-                className="grid grid-cols-[1.5fr_1fr_1fr_2fr] items-start gap-3 max-[650px]:grid-cols-1"
+                className="grid grid-cols-[1.5fr_1fr_1fr_2fr_2fr] items-start gap-3 max-[650px]:grid-cols-1"
               >
                 <p className="pt-7 text-sm max-[650px]:pt-0">
                   <span className="font-medium">{name}</span>
@@ -304,6 +339,29 @@ function ReceiveModal({ board, onClose }: { board: PurchaseReceiptBoard; onClose
                       {...form.register(`lines.${index}.rejectReason`)}
                       disabled={busy}
                     />
+                  )}
+                </FormField>
+                <FormField
+                  id={`mal-kabul-${String(index)}-stok`}
+                  label={`${name} stok kartı`}
+                  error={errors.lines?.[index]?.stockItemId}
+                >
+                  {(control) => (
+                    <NativeSelect
+                      {...control}
+                      {...form.register(`lines.${index}.stockItemId`)}
+                      className="w-full"
+                      disabled={busy}
+                    >
+                      <NativeSelectOption value="">Stok kartı yok</NativeSelectOption>
+                      {(stockItems.data?.data ?? [])
+                        .filter((stock) => stock.unit === item?.unit)
+                        .map((stock) => (
+                          <NativeSelectOption key={stock.id} value={stock.id}>
+                            {`${stock.code} · ${stock.name}`}
+                          </NativeSelectOption>
+                        ))}
+                    </NativeSelect>
                   )}
                 </FormField>
               </div>

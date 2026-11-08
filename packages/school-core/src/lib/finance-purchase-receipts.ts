@@ -67,6 +67,8 @@ export const purchaseReceiptLineSchema = z
     acceptedQuantity: quantity,
     rejectedQuantity: quantity.default(0),
     rejectReason: optionalText(RECEIPT_REJECT_REASON_MAX),
+    /** İsteğe bağlı stok kartı: kabul edilen miktar seçilen depoya giriş yazar (DOM-FIN-078, K-184). */
+    stockItemId: z.uuid('Stok kartı geçersiz.').nullable().default(null),
   })
   .superRefine((line, ctx) => {
     if (line.acceptedQuantity + line.rejectedQuantity === 0)
@@ -104,6 +106,8 @@ export const createPurchaseReceiptSchema = z
         `En fazla ${String(RECEIPT_RECEIVED_BY_MAX)} karakter girebilirsiniz.`,
       ),
     inspectionNote: optionalText(RECEIPT_NOTE_MAX),
+    /** Stok kartı seçilen kalemlerin girdiği depo (DOM-FIN-078, K-184); kart yoksa boş. */
+    warehouseId: z.uuid('Depo geçersiz.').nullable().default(null),
     lines: z
       .array(purchaseReceiptLineSchema, 'Teslim alınan kalemleri girin.')
       .min(1, 'En az bir kalem için miktar girin.')
@@ -120,6 +124,12 @@ export const createPurchaseReceiptSchema = z
         })
       seen.add(line.orderItemId)
     })
+    if (value.warehouseId === null && value.lines.some((line) => line.stockItemId !== null))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['warehouseId'],
+        message: 'Stok girişi için depoyu seçin.',
+      })
   })
 export type CreatePurchaseReceiptInput = z.input<typeof createPurchaseReceiptSchema>
 export type PurchaseReceiptData = z.output<typeof createPurchaseReceiptSchema>

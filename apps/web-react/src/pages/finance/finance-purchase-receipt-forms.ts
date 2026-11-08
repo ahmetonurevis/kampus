@@ -1,7 +1,8 @@
 // Mal kabul formu (DOM-FIN-074; ON-226). Alan kuralları core şemasından: kabul günü, teslim alan,
 // muayene notu ve kalanı olan her sipariş kalemi için kabul ve ret miktarı. Formda miktar metindir,
 // boş sıfır sayılır; gövdeye yalnız miktar girilen kalemler gider. Kalanı aşma sunucuda kurum kilidi
-// altında yeniden denetlenir (K-150).
+// altında yeniden denetlenir (K-150). Kaleme stok kartı seçilirse kabul edilen miktar seçilen depoya
+// girer (DOM-FIN-078, K-184); kart boşsa kalem yalnız kabul edilir.
 import { z } from 'zod'
 import type {
   CreatePurchaseReceiptBody,
@@ -29,6 +30,7 @@ const lineSchema = z.object({
     .string()
     .trim()
     .max(RECEIPT_REJECT_REASON_MAX, `En fazla ${String(RECEIPT_REJECT_REASON_MAX)} karakter.`),
+  stockItemId: z.string(),
 })
 
 export const receiptFormSchema = z
@@ -46,6 +48,7 @@ export const receiptFormSchema = z
       .string()
       .trim()
       .max(RECEIPT_NOTE_MAX, `En fazla ${String(RECEIPT_NOTE_MAX)} karakter girebilirsiniz.`),
+    warehouseId: z.string(),
     lines: z.array(lineSchema),
   })
   .superRefine((values, ctx) => {
@@ -68,6 +71,12 @@ export const receiptFormSchema = z
           message: 'Reddedilen miktar için nedeni en az 3 karakterle yazın.',
         })
     })
+    if (values.warehouseId === '' && values.lines.some((line) => line.stockItemId !== ''))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['warehouseId'],
+        message: 'Stok girişi için depoyu seçin.',
+      })
     if (!entered)
       ctx.addIssue({
         code: 'custom',
@@ -86,6 +95,7 @@ export function receiptDefaults(
     receiptDate: today,
     receivedBy: '',
     inspectionNote: '',
+    warehouseId: '',
     lines: board.items
       .filter((item) => item.remainingQuantity > 0)
       .map((item) => ({
@@ -94,6 +104,7 @@ export function receiptDefaults(
         accepted: '',
         rejected: '',
         rejectReason: '',
+        stockItemId: '',
       })),
   }
 }
@@ -116,6 +127,7 @@ export function receiptBody(values: ReceiptFormValues): {
         acceptedQuantity: accepted,
         rejectedQuantity: rejected,
         rejectReason: rejected > 0 && reason !== '' ? reason : null,
+        stockItemId: line.stockItemId === '' ? null : line.stockItemId,
       },
     ]
   })
@@ -125,6 +137,7 @@ export function receiptBody(values: ReceiptFormValues): {
       receiptDate: values.receiptDate,
       receivedBy: values.receivedBy.trim(),
       inspectionNote: note === '' ? null : note,
+      warehouseId: values.warehouseId === '' ? null : values.warehouseId,
       lines,
     },
     formIndexes,
@@ -135,17 +148,25 @@ type ReceiptField =
   | 'receiptDate'
   | 'receivedBy'
   | 'inspectionNote'
-  | `lines.${number}.${'accepted' | 'rejected' | 'rejectReason'}`
+  | 'warehouseId'
+  | `lines.${number}.${'accepted' | 'rejected' | 'rejectReason' | 'stockItemId'}`
 
 /** Sunucu alan yolu (`lines.0.acceptedQuantity`) form alanına çevrilir; bilinmeyen yol `undefined`. */
 export function receiptFormField(
   name: string,
   formIndexes: readonly number[],
 ): ReceiptField | undefined {
-  if (name === 'receiptDate' || name === 'receivedBy' || name === 'inspectionNote') return name
-  const line = /^lines\.(\d+)\.(acceptedQuantity|rejectedQuantity|rejectReason|orderItemId)$/.exec(
-    name,
+  if (
+    name === 'receiptDate' ||
+    name === 'receivedBy' ||
+    name === 'inspectionNote' ||
+    name === 'warehouseId'
   )
+    return name
+  const line =
+    /^lines\.(\d+)\.(acceptedQuantity|rejectedQuantity|rejectReason|orderItemId|stockItemId)$/.exec(
+      name,
+    )
   const index = line === null ? undefined : formIndexes[Number(line[1])]
   if (line === null || index === undefined) return undefined
   const field =
@@ -153,6 +174,8 @@ export function receiptFormField(
       ? 'rejected'
       : line[2] === 'rejectReason'
         ? 'rejectReason'
-        : 'accepted'
+        : line[2] === 'stockItemId'
+          ? 'stockItemId'
+          : 'accepted'
   return `lines.${index}.${field}`
 }

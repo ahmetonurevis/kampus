@@ -3,11 +3,13 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { INVENTORY_KEY } from './use-finance-inventory.ts'
 import { PROCUREMENT_CHANGED_MESSAGE, PROCUREMENT_KEY } from './use-finance-procurement.ts'
 
 // Mal kabul kancaları (`/finance/purchase-orders/:orderId/receipts`; DOM-FIN-074, ON-226). Komutlar
 // `exclusive`: alan hatası formda, yolsuz hata tek toast. Her yazma satın alma anahtarının tamamını
-// tazeler: kabul sipariş durumunu, sipariş listesini ve talebin bütçe kalanını değiştirir.
+// tazeler: kabul sipariş durumunu, sipariş listesini ve talebin bütçe kalanını değiştirir; stok kartı
+// seçilen kabul ve kabul iptali stok miktarını da değiştirir (K-184).
 
 export type CreatePurchaseReceiptBody = NonNullable<
   operations['createPurchaseReceipt']['requestBody']
@@ -44,7 +46,7 @@ export function useCreatePurchaseReceipt() {
         },
         body: input.body,
       }),
-    invalidates: [PROCUREMENT_KEY],
+    invalidates: [PROCUREMENT_KEY, INVENTORY_KEY],
     exclusive: true,
   })
 }
@@ -67,7 +69,7 @@ export function useCancelPurchaseReceipt() {
         },
         body: { reason: input.reason },
       }),
-    invalidates: [PROCUREMENT_KEY],
+    invalidates: [PROCUREMENT_KEY, INVENTORY_KEY],
     version: (input) => input.version,
     messages: { version_conflict: PROCUREMENT_CHANGED_MESSAGE },
     exclusive: true,

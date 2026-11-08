@@ -79,6 +79,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // DOM-FIN-076).
   'POST /api/v1/finance/supplier-invoices',
   'POST /api/v1/finance/supplier-payments',
+  // Stok girişi, çıkışı ve transferi miktarı değiştirir; çift tıklama iki hareket açmaz
+  // (routes/finance-inventory.ts; DOM-FIN-078).
+  'POST /api/v1/finance/stock-entries',
+  'POST /api/v1/finance/stock-issues',
+  'POST /api/v1/finance/stock-transfers',
 ]
 // Onur: kayıt ve finans sonu
 

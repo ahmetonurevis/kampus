@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  BUDGET_EXCEEDED_WARNING,
+  BUDGET_LINE_MISSING_WARNING,
+  confirmPurchaseBudget,
   planPurchaseRequest,
   planPurchaseRequestApprove,
   planPurchaseRequestCancel,
@@ -9,6 +12,8 @@ import {
   planPurchaseRequestSubmit,
   planPurchaseRequestUpdate,
   purchaseBudgetInfo,
+  purchaseBudgetWarning,
+  purchaseBudgetWarningMessage,
   purchaseRequestActions,
   purchaseRequestNumber,
   purchaseRequestSchema,
@@ -177,7 +182,7 @@ test('DOM-FIN-071: iptal taslak ya da gönderilmişte, gerekçeyle; onaylanmış
   assert.throws(() => planPurchaseRequestCancel(draft(), {}, FRONT), ZodError)
 })
 
-test('DOM-FIN-071: bütçe kalanı plan eksi onaylanmış taleplerdir; aşım yalnız bilgidir (K-131)', () => {
+test('DOM-FIN-071, ON-245: kalan plan eksi gönderilmiş ve onaylanmış taleplerdir; aşım tutarı hesaplanır (K-145)', () => {
   assert.deepEqual(
     purchaseBudgetInfo(
       { plannedCents: 100_000, approvedCents: 60_000, pendingCents: 10_000 },
@@ -187,18 +192,92 @@ test('DOM-FIN-071: bütçe kalanı plan eksi onaylanmış taleplerdir; aşım ya
       plannedCents: 100_000,
       approvedCents: 60_000,
       pendingCents: 10_000,
-      remainingCents: 40_000,
+      committedCents: 70_000,
+      remainingCents: 30_000,
       exceedsRemaining: true,
+      overrunCents: 20_000,
     },
   )
-  assert.equal(
-    purchaseBudgetInfo({ plannedCents: 100_000, approvedCents: 0, pendingCents: 0 }, 100_000)
-      .exceedsRemaining,
-    false,
+  const exact = purchaseBudgetInfo(
+    { plannedCents: 100_000, approvedCents: 40_000, pendingCents: 0 },
+    60_000,
   )
-  const noLine = purchaseBudgetInfo({ plannedCents: null, approvedCents: 0, pendingCents: 0 }, 1)
+  assert.equal(exact.exceedsRemaining, false, 'kalana eşit talep aşmaz')
+  assert.equal(exact.overrunCents, 0)
+  const negative = purchaseBudgetInfo(
+    { plannedCents: 100_000, approvedCents: 90_000, pendingCents: 30_000 },
+    5_000,
+  )
+  assert.equal(negative.remainingCents, -20_000)
+  assert.equal(negative.overrunCents, 25_000, 'eksi kalanda aşım talebin tamamı artı açıktır')
+  const zeroPlan = purchaseBudgetInfo({ plannedCents: 0, approvedCents: 0, pendingCents: 0 }, 1)
+  assert.equal(zeroPlan.overrunCents, 1)
+  const noLine = purchaseBudgetInfo({ plannedCents: null, approvedCents: 0, pendingCents: 5 }, 1)
   assert.equal(noLine.remainingCents, null)
+  assert.equal(noLine.committedCents, 5)
   assert.equal(noLine.exceedsRemaining, false)
+  assert.equal(noLine.overrunCents, 0)
+})
+
+test('DOM-FIN-071, ON-245: aşan ya da bütçesiz talep açık onay olmadan 409 uyarı alır; onayla geçer (K-146)', () => {
+  const within = purchaseBudgetInfo(
+    { plannedCents: 100_000, approvedCents: 0, pendingCents: 0 },
+    100_000,
+  )
+  assert.equal(purchaseBudgetWarning(within), null)
+  assert.equal(purchaseBudgetWarningMessage(within), null)
+  assert.equal(confirmPurchaseBudget(within, undefined), null)
+  assert.equal(confirmPurchaseBudget(within, true), null)
+
+  const over = purchaseBudgetInfo(
+    { plannedCents: 100_000, approvedCents: 50_000, pendingCents: 30_000 },
+    123_456,
+  )
+  assert.equal(purchaseBudgetWarning(over), 'over')
+  assert.throws(
+    () => confirmPurchaseBudget(over, undefined),
+    isDomainError(BUDGET_EXCEEDED_WARNING, 'conflict'),
+  )
+  assert.throws(
+    () => confirmPurchaseBudget(over, false),
+    isDomainError(BUDGET_EXCEEDED_WARNING, 'conflict'),
+  )
+  assert.match(purchaseBudgetWarningMessage(over) ?? '', /1\.034,56 ₺ aşıyor .*kalan 200,00 ₺/)
+  assert.equal(confirmPurchaseBudget(over, true), 'over')
+
+  const unplanned = purchaseBudgetInfo({ plannedCents: null, approvedCents: 0, pendingCents: 0 }, 1)
+  assert.equal(purchaseBudgetWarning(unplanned), 'unplanned')
+  assert.throws(
+    () => confirmPurchaseBudget(unplanned, undefined),
+    isDomainError(BUDGET_LINE_MISSING_WARNING, 'conflict'),
+  )
+  assert.match(purchaseBudgetWarningMessage(unplanned) ?? '', /bütçesiz/)
+  assert.equal(confirmPurchaseBudget(unplanned, true), 'unplanned')
+})
+
+test('DOM-FIN-071, ON-245: gönderim ve onay gövdesi yalnız boolean confirmOverBudget alır; kapalı dönemde gönderim 422', () => {
+  assert.deepEqual(planPurchaseRequestSubmit(draft(), REFS, FRONT), {})
+  assert.deepEqual(planPurchaseRequestSubmit(draft(), REFS, FRONT, { confirmOverBudget: true }), {
+    confirmOverBudget: true,
+  })
+  assert.throws(
+    () => planPurchaseRequestSubmit(draft(), REFS, FRONT, { confirmOverBudget: 'evet' }),
+    ZodError,
+  )
+  assert.throws(() => planPurchaseRequestSubmit(draft(), REFS, FRONT, { other: true }), ZodError)
+  assert.throws(
+    () => planPurchaseRequestSubmit(draft(), { ...REFS, period: { status: 'closed' } }, FRONT),
+    isDomainError('purchase_request_period_closed'),
+  )
+  const submitted = draft({ status: 'submitted' })
+  assert.deepEqual(planPurchaseRequestApprove(submitted, { confirmOverBudget: true }, REFS), {
+    confirmOverBudget: true,
+    note: null,
+  })
+  assert.throws(
+    () => planPurchaseRequestApprove(submitted, { confirmOverBudget: 1 }, REFS),
+    ZodError,
+  )
 })
 
 test('DOM-FIN-071: rol ve duruma göre ekran işlemleri', () => {

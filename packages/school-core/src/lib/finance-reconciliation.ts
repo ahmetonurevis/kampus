@@ -12,7 +12,7 @@ import { DomainError } from './errors.ts'
 import { assertFinancePeriod, type FinancePeriod, type StudentDirectory } from './finance-export.ts'
 import { dayKey } from './format.ts'
 import { isOpeningImport } from './payments.ts'
-import type { WithdrawalBreakdown } from './withdrawals.ts'
+import type { WithdrawalBreakdown, WithdrawalContractLine } from './withdrawals.ts'
 
 /**
  * Yıl sonu mutabakatı (ON-085, IST-111; docs/domain/finans.md DOM-FIN-056). Yalnız raporlamadır: yıl
@@ -94,7 +94,10 @@ export interface ReconciliationWithdrawal {
   refundCents: number
   debtCents: number
   refundPaidDate: string | null
-  breakdown: Pick<WithdrawalBreakdown, 'paidCents' | 'creditCents' | 'extras' | 'debtInvoiceId'>
+  breakdown: Pick<WithdrawalBreakdown, 'paidCents' | 'creditCents' | 'extras' | 'debtInvoiceId'> & {
+    /** Hesaba giren sözleşmeler (K-06); eski kayıtta yoktur, yalnız `contractId` sayılır. */
+    contracts?: readonly Pick<WithdrawalContractLine, 'contractId'>[]
+  }
 }
 
 export const RECONCILIATION_MISMATCH_REASONS = ['unrecorded_payment', 'other'] as const
@@ -179,14 +182,18 @@ const sumOf = <T>(items: readonly T[], read: (item: T) => number) =>
  * kalan kısmı (iptal edilen taksite alınan ve dağıtılmayan para). Ayrılış hesabı bunu iade ya da kalan
  * borçla netleştirir (`quoteWithdrawal`), bu yüzden ayrılıştan sonra alacak sayılmaz. Borç taksiti
  * ayrılıştan sonra ödense de sayılmaz; kimliği eski kayıtta yoktur, en büyük taksit numaralı olandır.
+ * Hesaba giren bütün sözleşmelerin (K-06) ödenmiş taksitleri sayılır; ödenen tutar hepsini kapsar.
  */
 function settledCredit(
   withdrawal: ReconciliationWithdrawal,
   invoices: readonly Invoice[],
-  contract: Contract | undefined,
+  contracts: readonly (Contract | undefined)[],
 ): number {
   const { breakdown } = withdrawal
-  const listed = contract?.invoiceIds ? new Set(contract.invoiceIds) : null
+  // Taksit listesi olmayan eski sözleşme öğrencinin bütün taksitlerini kapsar.
+  const listed = contracts.every((contract) => contract?.invoiceIds)
+    ? new Set(contracts.flatMap((contract) => contract?.invoiceIds ?? []))
+    : null
   const ofContract = invoices.filter((invoice) => (listed ? listed.has(invoice.id) : true))
   const lastInstallment = ofContract.reduce<Invoice | undefined>(
     (last, invoice) =>
@@ -276,7 +283,9 @@ export function financeReconciliation(input: {
       settled: settledCredit(
         withdrawal,
         invoicesOf.get(withdrawal.studentId) ?? [],
-        contractById.get(withdrawal.contractId),
+        (
+          withdrawal.breakdown.contracts?.map((line) => line.contractId) ?? [withdrawal.contractId]
+        ).map((id) => contractById.get(id)),
       ),
     })
 

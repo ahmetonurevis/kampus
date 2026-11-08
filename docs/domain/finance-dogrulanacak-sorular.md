@@ -372,6 +372,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
 - **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
 
+#### M-15 · Gelir tahmininin dönem ve tanıma esası
+
+- **Kural:** `DOM-FIN-063`; IST-104, IST-105, K24.
+- **Soru:** Yeni eğitim yılının gelir tahmini hangi esasla raporlanmalı: eğitim yılı (Eylül–Ağustos) mı, mali yıl (Ocak–Aralık) mı? Kesin gelir sözleşme ve taksit netinden mi (indirim ve burs düşülmüş), yoksa brüt liste fiyatı ve ayrı indirim gideri olarak mı gösterilmeli? Tahmin tutarı KDV dahil mi, hariç mi okunmalı?
+- **Bugünkü varsayım:** Tahmin eğitim yılı esaslıdır; kesin gelir yılın iptal edilmemiş taksit toplamıdır (net, KDV dahil tutar olarak saklanan ücret); indirim ve burs bilgi kalemidir. Tahmin muhasebe kaydı değildir, gelir tanımaz (paket gelir tanıma M-12'dedir).
+- **Kodda:** `lib/finance-forecast.ts` (`revenueForecast`), `GET /api/v1/finance/forecasts/revenue`.
+- **Cevap değişirse:** Dönem seçeneğine mali yıl eklenir; KDV hariç tutar kalem bazındaki orandan (IST-104) hesaplanarak ayrı sütun olur.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -392,6 +401,13 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-56   | 2026-11-08 | `DOM-FIN-061` | Onaylanmamış sözleşme listesine ek protokol de girer; ayrılan ya da mezun öğrencinin bekleyen sözleşmesi girmez.                                                                                                                                                                     | `unapprovedContracts` süzgeci.                                                                             |
 | K-57   | 2026-11-08 | `DOM-FIN-061` | Kayıt değişikliği yalnız var olan olaylardır (kesin kayıt, yenileme, dönem geçişi, mezuniyet, ayrılış). Yenileme dışı sınıf/şube değişikliği ve dondurma kaydı tutulmadığı için görünmez; veliden gelen ayrılış talebi kaydı da yoktur, yalnız onaylanmış ayrılış ve iadesi izlenir. | Sınıf değişikliği olayı (Oğuzhan alanı, öğrenci düzenleme) ve dondurma (ON-067) gelince olay türü eklenir. |
 | K-58   | 2026-11-08 | `DOM-FIN-061` | Görünüm yönetici ve ön büroya açıktır, ön büro da tutarları görür; her bölüm en çok 20 satır gösterir, tamamı mevcut listelerdedir.                                                                                                                                                  | Rol dizisi (`routes/finance-opening-watch.ts`), `OPENING_WATCH_ROW_LIMIT`.                                 |
+| K-65   | 2026-11-08 | `DOM-FIN-063` | Huni dönüşüm oranı son 24 ayda açılıp kapanmış adaylardan hesaplanır; açık adaylardan da yalnız son 24 ayda açılanlar sayılır.                                                                                                                                                       | Pencere değişir ya da kurum ayarı olur (`FORECAST_HISTORY_MONTHS`).                                        |
+| K-66   | 2026-11-08 | `DOM-FIN-063` | Örneklemi boş adımın adayları beklentiye girmez, sayısı ayrıca verilir; az örneklemli adımda da adımın kendi oranı kullanılır.                                                                                                                                                       | Örneklemi 10'dan az adımda kurum geneli oran kullanılır, işaretlenir.                                      |
+| K-67   | 2026-11-08 | `DOM-FIN-063` | Vadesinde tahsil vadeden sonraki 30 gün içinde tam ödemedir; örneklem son 12 ayda vadesi gelen taksitlerdir, kısmi ödeme sayılmaz.                                                                                                                                                   | Sabitler (`COLLECTION_*`) değişir; kısmi ödeme dağılım günüyle sayılır.                                    |
+| K-68   | 2026-11-08 | `DOM-FIN-063` | Bugün gecikmiş açık tutarın geç tahsil beklentisi tamamen ilk aya yazılır.                                                                                                                                                                                                           | Geç tahsil geçmiş gecikme süresine göre aylara yayılır.                                                    |
+| K-69   | 2026-11-08 | `DOM-FIN-063` | Bütçe yokken gider tek, saklanmayan elle aylık tutardır; girilmezse gider boştur ve "gider verisi yok" yazar.                                                                                                                                                                        | Bütçe kalemleri (`DOM-FIN-062`, ON-241) ay ay okunur.                                                      |
+| K-70   | 2026-11-08 | `DOM-FIN-063` | Yenilemesini yapmamış öğrencinin olasılıklı geliri tahmine girmez; yalnız yapılmış yenileme kesin gelirdedir.                                                                                                                                                                        | Geçen yılın yenileme oranıyla "yenileme beklentisi" kalemi eklenir.                                        |
+| K-71   | 2026-11-08 | `DOM-FIN-063` | Tahmini yönetici görür; CSV tarayıcıda yanıttan üretilir, kişi verisi taşımadığı için taze oturum ve denetim istemez.                                                                                                                                                                | CSV sunucuda `Accept: text/csv` ile, taze oturumlu ve denetimli olur.                                      |
 
 ## Kararlaştırılanlar
 

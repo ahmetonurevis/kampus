@@ -88488,6 +88488,817 @@
         }
       }
     },
+    "/api/v1/finance/forecasts/revenue": {
+      "get": {
+        "operationId": "getFinanceRevenueForecast",
+        "summary": "Gelir tahmini",
+        "tags": [
+          "finance-forecasts"
+        ],
+        "description": "Seçilen eğitim yılının gelir tahmini (ON-246; IST-104, IST-117; DOM-FIN-063). `year` verilmezse kurumun kayıt yılı. Kesin gelir yılın iptal edilmemiş taksitlerinin toplamıdır (yeni kayıt ve yenileme ayrı). `contracts` yılın yürürlükteki sözleşmelerindeki liste fiyatı, indirim ve bursu bilgi olarak verir. Huni beklentisi son 24 ayda açılmış açık adayların ulaştıkları adıma göre, son 24 ayda kapanmış adaylardan hesaplanan dönüşüm oranı ile tarife fiyatı (yoksa önceki yılın tarifesi, o da yoksa sözleşme ortalaması) çarpımıdır; indirim ve burs aynı sözleşmelerin oranıyla düşülür. Huni geçmiş yılda ve `crm` modülü kapalıyken `null`dır. Varsayımlar `assumptions` alanındadır. Tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Bilinmeyen parametre 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "year",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "year": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "enrollmentYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesin kaydın yazıldığı eğitim yılı (kurum ayarı)"
+                        },
+                        "today": {
+                          "type": "string",
+                          "description": "`YYYY-MM-DD`, Europe/Istanbul"
+                        },
+                        "committed": {
+                          "type": "object",
+                          "properties": {
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "newEnrollmentCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "renewalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "students": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "newStudents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "renewalStudents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "totalCents",
+                            "newEnrollmentCents",
+                            "renewalCents",
+                            "students",
+                            "newStudents",
+                            "renewalStudents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kesin gelir: yılın iptal edilmemiş taksitleri"
+                        },
+                        "contracts": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "listCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "discountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "scholarshipCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "listCents",
+                            "discountCents",
+                            "scholarshipCents",
+                            "netCents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yılın yürürlükteki sözleşmeleri: liste fiyatı, indirim ve burs (bilgi)"
+                        },
+                        "pipeline": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "prospects": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "steps": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "step": {
+                                        "type": "string",
+                                        "enum": [
+                                          "prospect",
+                                          "meeting",
+                                          "trial"
+                                        ]
+                                      },
+                                      "prospects": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu adımda bekleyen açık aday"
+                                      },
+                                      "sampleSize": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991,
+                                        "description": "Örneklemde bu adıma ulaşan kapanmış aday"
+                                      },
+                                      "rateBasisPoints": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 10000
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Adımdan kesin kayda dönüşüm oranı (on binde bir); örneklem boşsa `null`"
+                                      },
+                                      "grossCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "discountCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "netCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "step",
+                                      "prospects",
+                                      "sampleSize",
+                                      "rateBasisPoints",
+                                      "grossCents",
+                                      "discountCents",
+                                      "netCents"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "grossCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "discountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "netCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "unpricedProspects": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "unratedProspects": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "prospects",
+                                "steps",
+                                "grossCents",
+                                "discountCents",
+                                "netCents",
+                                "unpricedProspects",
+                                "unratedProspects"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Huni beklentisi; geçmiş yılda ve `crm` kapalıyken `null`"
+                        },
+                        "expectedTotalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "assumptions": {
+                          "type": "object",
+                          "properties": {
+                            "pipelineStatus": {
+                              "type": "string",
+                              "enum": [
+                                "included",
+                                "crm_disabled",
+                                "past_year"
+                              ]
+                            },
+                            "historyFrom": {
+                              "type": "string",
+                              "description": "`YYYY-MM-DD`, Europe/Istanbul"
+                            },
+                            "historyTo": {
+                              "type": "string",
+                              "description": "`YYYY-MM-DD`, Europe/Istanbul"
+                            },
+                            "historyClosedProspects": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "tariffYear": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "tariffCarriedOver": {
+                              "type": "boolean"
+                            },
+                            "discountReferenceYear": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "discountRateBasisPoints": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "contractAverageCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "priceSources": {
+                              "type": "object",
+                              "properties": {
+                                "tariffLevel": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tariffAverage": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "contractAverage": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "none": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "tariffLevel",
+                                "tariffAverage",
+                                "contractAverage",
+                                "none"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "pipelineStatus",
+                            "historyFrom",
+                            "historyTo",
+                            "historyClosedProspects",
+                            "tariffYear",
+                            "tariffCarriedOver",
+                            "discountReferenceYear",
+                            "discountRateBasisPoints",
+                            "contractAverageCents",
+                            "priceSources"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "year",
+                        "enrollmentYear",
+                        "today",
+                        "committed",
+                        "contracts",
+                        "pipeline",
+                        "expectedTotalCents",
+                        "assumptions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/forecasts/cash-flow": {
+      "get": {
+        "operationId": "getFinanceCashFlowForecast",
+        "summary": "Nakit akışı tahmini",
+        "tags": [
+          "finance-forecasts"
+        ],
+        "description": "Bu aydan başlayarak `months` ay (1–24, varsayılan 12) için aylık nakit akışı tahmini (ON-247; IST-105; DOM-FIN-063). Ay Europe/Istanbul ayıdır. Planlanan tahsilat vadesi bugün ya da sonra olan taksitlerin kalan tutarıdır; beklenen tahsilat son 12 ayın vadesinde (30 gün içinde) tahsil oranıyla düzeltilir, fark tahsil riskidir. Bugün gecikmiş açık tutar geç tahsil oranıyla ilk aya yazılır. Ödenmemiş ayrılış iadesi vadesinin ayına (geçmişse ilk aya) çıkış olarak yazılır. Gider planı yoktur: `monthlyExpenseCents` verilirse her aya aynı gider yazılır, verilmezse `expenseCents` `null` ve `assumptions.expenseSource` `none`dır. Örneklem boşsa oran varsayılandır (`default`). Tutarlar kuruş, oranlar on binde bir. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 12,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 24
+            },
+            "in": "query",
+            "name": "months",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000000000
+            },
+            "in": "query",
+            "name": "monthlyExpenseCents",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "today": {
+                          "type": "string",
+                          "description": "`YYYY-MM-DD`, Europe/Istanbul"
+                        },
+                        "from": {
+                          "type": "string",
+                          "description": "`YYYY-MM`, Europe/Istanbul"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "`YYYY-MM`, Europe/Istanbul"
+                        },
+                        "months": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "month": {
+                                "type": "string",
+                                "description": "`YYYY-MM`, Europe/Istanbul"
+                              },
+                              "scheduledCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Vadesi bugün ya da sonra olan kalan taksit tutarı"
+                              },
+                              "expectedCollectionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Planlanan × vadesinde tahsil oranı"
+                              },
+                              "atRiskCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Planlanan eksi beklenen"
+                              },
+                              "overdueRecoveryCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gecikmiş alacaktan beklenen (yalnız ilk ay)"
+                              },
+                              "refundCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenmemiş ayrılış iadesi"
+                              },
+                              "expenseCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Elle girilen gider; verilmediyse `null`"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "cumulativeNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "month",
+                              "scheduledCents",
+                              "expectedCollectionCents",
+                              "atRiskCents",
+                              "overdueRecoveryCents",
+                              "refundCents",
+                              "expenseCents",
+                              "netCents",
+                              "cumulativeNetCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "scheduledCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Vadesi bugün ya da sonra olan kalan taksit tutarı"
+                            },
+                            "expectedCollectionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Planlanan × vadesinde tahsil oranı"
+                            },
+                            "atRiskCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Planlanan eksi beklenen"
+                            },
+                            "overdueRecoveryCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gecikmiş alacaktan beklenen (yalnız ilk ay)"
+                            },
+                            "refundCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödenmemiş ayrılış iadesi"
+                            },
+                            "expenseCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Elle girilen gider; verilmediyse `null`"
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "scheduledCents",
+                            "expectedCollectionCents",
+                            "atRiskCents",
+                            "overdueRecoveryCents",
+                            "refundCents",
+                            "expenseCents",
+                            "netCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "overdueOpenCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "beyondHorizonCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "pendingRefundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "assumptions": {
+                          "type": "object",
+                          "properties": {
+                            "historyFrom": {
+                              "type": "string",
+                              "description": "`YYYY-MM-DD`, Europe/Istanbul"
+                            },
+                            "historyTo": {
+                              "type": "string",
+                              "description": "`YYYY-MM-DD`, Europe/Istanbul"
+                            },
+                            "historyInvoices": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "historyAmountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "graceDays": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "onTimeRateBasisPoints": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "onTimeRateSource": {
+                              "type": "string",
+                              "enum": [
+                                "history",
+                                "default"
+                              ]
+                            },
+                            "lateRecoveryRateBasisPoints": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "lateRecoveryRateSource": {
+                              "type": "string",
+                              "enum": [
+                                "history",
+                                "default"
+                              ]
+                            },
+                            "expenseSource": {
+                              "type": "string",
+                              "enum": [
+                                "manual",
+                                "none"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "historyFrom",
+                            "historyTo",
+                            "historyInvoices",
+                            "historyAmountCents",
+                            "graceDays",
+                            "onTimeRateBasisPoints",
+                            "onTimeRateSource",
+                            "lateRecoveryRateBasisPoints",
+                            "lateRecoveryRateSource",
+                            "expenseSource"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "today",
+                        "from",
+                        "to",
+                        "months",
+                        "totals",
+                        "overdueOpenCents",
+                        "beyondHorizonCents",
+                        "pendingRefundCents",
+                        "assumptions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/opening-watch": {
       "get": {
         "operationId": "getFinanceOpeningWatch",

@@ -1921,3 +1921,50 @@ async function setCashPayments(client: ApiClient, enabled: boolean) {
   })
   expect(result.status(), await result.text()).toBe(200)
 }
+
+test.describe('Finans: gelir ve nakit akışı tahmini', () => {
+  test('DOM-FIN-063 ON-246 ON-247: yönetici tahmini görür, gider girer, CSV indirir; ön büroda yok', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s22'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tahmin`)
+
+    const revenue = page.getByRole('region', { name: 'Gelir tahmini' })
+    await expect(revenue.getByLabel('Gelir tahmini özeti')).toContainText('Kesin gelir')
+    await expect(revenue.getByRole('cell', { name: 'Beklenen toplam' })).toBeVisible()
+    const revenueFile = page.waitForEvent('download')
+    await revenue.getByRole('button', { name: 'CSV indir' }).click()
+    const revenueCsv = await revenueFile
+    expect(revenueCsv.suggestedFilename()).toMatch(/^gelir-tahmini-\d{4}\.csv$/)
+    expect(await readFile(await revenueCsv.path(), 'utf8')).toContain('"Beklenen toplam"')
+
+    const cash = page.getByRole('region', { name: 'Nakit akışı tahmini' })
+    const summary = cash.getByLabel('Nakit akışı özeti')
+    await expect(summary).toContainText('Gider verisi yok')
+    const expense = cash.getByLabel('Aylık gider tahmini (₺, isteğe bağlı)')
+    await expense.fill('abc')
+    await cash.getByRole('button', { name: 'Uygula' }).click()
+    await expect(cash.getByRole('alert')).toHaveText('Geçerli bir tutar girin (ör. 250.000,00).')
+    await expense.fill('1.000,00')
+    await cash.getByRole('button', { name: 'Uygula' }).click()
+    await expect(summary).toContainText('Gider 12.000,00')
+    await expect(cash.getByRole('alert')).toHaveCount(0)
+
+    const cashFile = page.waitForEvent('download')
+    await cash.getByRole('button', { name: 'CSV indir' }).click()
+    const cashCsv = await cashFile
+    expect(cashCsv.suggestedFilename()).toMatch(/^nakit-akisi-\d{4}-\d{2}\.csv$/)
+    const body = await readFile(await cashCsv.path(), 'utf8')
+    expect(body.charCodeAt(0)).toBe(0xfeff)
+    expect(body).toContain(';1000,00;')
+    await expectNoHorizontalOverflow(page)
+
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=tahmin`)
+    await expect(page.getByRole('table', { name: TABLE })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Gelir tahmini' })).toHaveCount(0)
+  })
+})

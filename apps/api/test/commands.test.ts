@@ -60,6 +60,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/contracts/{contractId}/cancel-amendment',
   // e-Özel işareti ücret satırında tahsilatın MEBBİS işaretini yazar (routes/finance-e-ozel.ts; IST-085).
   'POST /api/v1/finance/e-ozel/items/{kind}/{sourceId}/record',
+  // Toplu fatura taksitleri tek belgeye bağlar (routes/finance-corporate.ts; IST-089, DOM-FIN-060).
+  'POST /api/v1/finance/corporate-invoices',
 ]
 // Onur: kayıt ve finans sonu
 

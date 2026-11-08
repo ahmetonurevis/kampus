@@ -9,7 +9,8 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // Banka hareketi eşleştirme (IST-115, ON-099; DOM-FIN-069). Ayrıştırma, puanlama, kısmi/fazla ödeme,
 // kapalı gün ve eşzamanlılık dalları birim, API ve PG testlerindedir (`tests/finance-bank-*.test.ts`,
 // `apps/api/test/finance-bank-matching.test.ts`, `apps/api/test/finance/pg-bank-matching.test.ts`);
-// burada yönetici ekstreyi yükler, öneriyi onaylayınca tahsilat oluşur, ilgisiz hareketi yoksayar.
+// burada yönetici ekstreyi yükler, öneriyi onaylayınca tahsilat oluşur, ilgisiz hareketi yoksayar;
+// ekstreden onaylanmış havale elle yeniden girilince tahsilat formu olası mükerrer uyarısı verir (K-121).
 // Kurum: Deniz Yılmaz (s1, velisi Ayşe Yılmaz), 4–8. taksitleri açık, 24.500 ₺.
 
 const URL = '/yonetici/finans?gorunum=banka'
@@ -27,7 +28,7 @@ function daysAgo(days: number) {
   return `${day ?? ''}.${month ?? ''}.${year ?? ''}`
 }
 
-async function bankAccount(client: ApiClient) {
+async function bankAccount(client: ApiClient): Promise<string> {
   const result = await client.post(
     '/api/v1/bank-accounts',
     {
@@ -38,7 +39,11 @@ async function bankAccount(client: ApiClient) {
     { 'idempotency-key': randomUUID() },
   )
   expect(result.status, JSON.stringify(result.body)).toBe(201)
+  return (result.body as { data: { id: string } }).data.id
 }
+
+/** `GG.AA.YYYY` → tarih alanının `YYYY-AA-GG` değeri. */
+const isoDay = (day: string) => day.split('.').reverse().join('-')
 
 const statement = () => ({
   name: 'ekstre.csv',
@@ -117,6 +122,68 @@ test.describe('DOM-FIN-069: banka eşleştirme ekranı', () => {
     await expect(section(page).getByRole('row').filter({ hasText: 'DENIZ YILMAZ' })).toContainText(
       'Eşleşti',
     )
+  })
+
+  test('DOM-FIN-069, K-121: ekstreden onaylanmış havale elle yeniden girilince form olası mükerrer uyarır; açık onayla kaydedilir (ON-332)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s1'] })
+    const client = await api(school.user('yonetici'))
+    const bankAccountId = await bankAccount(client)
+    const imported = await client.post(
+      '/api/v1/finance/bank-statement-imports',
+      {
+        fileBase64: statement().buffer.toString('base64'),
+        bankAccountId,
+        dryRun: false,
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(imported.status, JSON.stringify(imported.body)).toBe(201)
+    const listed = await client.get('/api/v1/finance/bank-transactions?pageSize=100')
+    const eft = (
+      listed.body as { data: { id: string; version: number; amountCents: number }[] }
+    ).data.find((row) => row.amountCents === 2_450_000)
+    expect(eft).toBeDefined()
+    // 4. taksit ekstreden onaylanır; aynı havale dekonttan 5. taksite elle girilmek istenir.
+    const matched = await client.post(
+      `/api/v1/finance/bank-transactions/${eft?.id ?? ''}/match`,
+      { studentId: 's1', invoiceId: 'inv-s1-3' },
+      { 'idempotency-key': randomUUID(), 'if-match': `"${String(eft?.version)}"` },
+    )
+    expect(matched.status, JSON.stringify(matched.body)).toBe(201)
+    const count = async () =>
+      (
+        (await client.get('/api/v1/payments?studentId=s1&pageSize=100')).body as {
+          meta: { total: number }
+        }
+      ).meta.total
+    const paidBefore = await count()
+
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/finans?tahsilat=inv-s1-4')
+    const dialog = page.getByRole('dialog', { name: 'Tahsilat kaydet' })
+    await expect(dialog).toContainText('Deniz Yılmaz · 5. taksit')
+    await dialog.getByLabel('Ödeme yöntemi').selectOption('Banka havalesi')
+    await dialog.getByLabel('İşlem referansı').fill('DEKONT-E2E-1')
+    await dialog.getByLabel('Ödeme tarihi').fill(isoDay(daysAgo(3)))
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(dialog.getByRole('alert')).toContainText('ekstresinden onaylanmış')
+    expect(await count()).toBe(paidBefore)
+
+    // Tutar değişince uyarı kalkar; aynı tutara dönünce yeniden gönderim açık onaydır.
+    const amount = dialog.getByLabel('Tutar (₺)')
+    const original = await amount.inputValue()
+    await amount.fill('100')
+    await expect(dialog.getByRole('button', { name: 'Tahsilatı kaydet' })).toBeVisible()
+    await amount.fill(original)
+    await dialog.getByRole('button', { name: 'Ayrı ödeme, yine de kaydet' }).click()
+    await expect(toast(page, 'Tahsilat kaydedildi.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+    expect(await count()).toBe(paidBefore + 1)
   })
 
   test('DOM-FIN-069, K-105: ön büro sekmeyi görmez; dar ekranda taşma yok', async ({

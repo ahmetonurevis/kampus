@@ -414,6 +414,34 @@ export async function possibleDuplicateCount(
   return (twins?.n ?? 0) + (manual?.n ?? 0)
 }
 
+/**
+ * Elle girilen banka havalesinin ekstre ikizleri (K-121, ters yön; ON-332): aynı öğrenciye aynı
+ * işlem gününde (`bookingDate`, ekstreden onaylanan tahsilatın günü) aynı tutarda eşleşmiş ve
+ * tahsilatı iptal edilmemiş hareket sayısı. Hesaba bakılmaz; elle girişte hesap farklı seçilebilir.
+ */
+export async function statementPaymentCount(
+  db: Database,
+  institutionId: string,
+  input: { studentId: string; amountCents: number; bookingDate: string },
+): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(bankTransactions)
+    .innerJoin(payments, PAYMENT_JOIN)
+    .where(
+      and(
+        eq(bankTransactions.institutionId, institutionId),
+        eq(bankTransactions.bookingDate, input.bookingDate),
+        eq(bankTransactions.status, 'matched'),
+        isNull(bankTransactions.archivedAt),
+        eq(payments.studentId, input.studentId),
+        eq(payments.amountCents, input.amountCents),
+        isNull(payments.reversedAt),
+      ),
+    )
+  return row?.n ?? 0
+}
+
 /** Verilen referanslardan iptal edilmemiş bir tahsilatta kullanılanlar (DOM-FIN-031). */
 export async function referencesInUse(
   db: Database,

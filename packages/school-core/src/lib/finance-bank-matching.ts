@@ -154,6 +154,23 @@ export function assertNoPossibleDuplicate(twins: number, confirmed: boolean): vo
   })
 }
 
+export const BANK_PAYMENT_DUPLICATE_MESSAGE =
+  'Bu kişiye aynı gün aynı tutarda banka ekstresinden onaylanmış bir havale tahsilatı var; tahsilat mükerrer olabilir. Ayrı bir ödemeyse açıkça onaylayın.'
+
+/**
+ * Ters yön (K-121, ON-332): elle girilen banka havalesi tahsilatında aynı öğrenciye aynı gün
+ * (hareketin işlem günü) aynı tutarda ekstreden onaylanmış etkin tahsilat varsa (`twins`) giriş
+ * yetkilinin açık onayını ister; 409 `bank_match_possible_duplicate`. Önce ekstreden onaylanıp sonra
+ * aynı havalenin dekonttan elle girilmesiyle oluşan çift tahsilatı durdurur. Hesaba ve taksite
+ * bakılmaz; nakit, kart ve senet denetlenmez.
+ */
+export function assertNoStatementDuplicate(twins: number, confirmed: boolean): void {
+  if (twins === 0 || confirmed) return
+  throw new DomainError('bank_match_possible_duplicate', BANK_PAYMENT_DUPLICATE_MESSAGE, {
+    kind: 'conflict',
+  })
+}
+
 /** Yoksayılan hareket geri alınır; eşleşme yalnız tahsilat iptaliyle açılır (K-111). */
 export function assertBankTransactionIgnored(status: BankTransactionStatus): void {
   if (status === 'ignored') return

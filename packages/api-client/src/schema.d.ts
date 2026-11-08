@@ -4812,6 +4812,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/purchase-requests/{requestId}/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teklif karşılaştırma tablosu
+         * @description Talebin kalemleri, silinmemiş teklifleri (en çok 10; sayfalanmaz) ve kalem × tedarikçi tutarları. Tutar ve KDV kalemden hesaplanır (K-138); satırda ve toplamda en düşük KDV dahil tutar yalnız geçerliliği geçmemiş teklifler arasında işaretlenir (K-137). Talebin siparişleri ve kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.
+         */
+        get: operations["getPurchaseQuoteBoard"];
+        put?: never;
+        /**
+         * Teklif gir
+         * @description Onaylı talebe tedarikçi teklifi: etkin tedarikçi, teslim süresi (0–365 gün), bugünden önce olmayan geçerlilik günü, isteğe bağlı not ve talebin bütün kalemleri için KDV hariç birim fiyat ve KDV oranı (%0, %1, %10, %20; K-135). Eksik kalem 422 `purchase_quote_item_missing`, talepte olmayan kalem 422 `purchase_quote_item_unknown`, aynı tedarikçinin ikinci teklifi 409 `purchase_quote_supplier_exists`, onuncu tekliften sonra 422 `purchase_quote_limit`. Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.
+         */
+        post: operations["createPurchaseQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/quotes/{quoteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Teklifi sil
+         * @description Teklifi arşivler; seçili teklif silinirse seçim de düşer. Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. `If-Match` (teklif sürümü) zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.
+         */
+        delete: operations["removePurchaseQuote"];
+        options?: never;
+        head?: never;
+        /**
+         * Teklifi düzelt
+         * @description Kısmi düzeltme; fiyatlar bütün olarak yazılır, tedarikçi değişmez. Seçili teklif düzeltilirse seçim düşer (K-137). Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. `If-Match` (teklif sürümü) zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.
+         */
+        patch: operations["updatePurchaseQuote"];
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/quotes/{quoteId}/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Teklifi seç
+         * @description Geçerli teklifi seçer; talepteki önceki seçim düşer. En düşük KDV dahil toplamlı geçerli teklif seçilmezse en az 10 karakter gerekçe zorunlu: 422 `purchase_quote_reason_required` (K-137). Süresi geçmiş teklif 422 `purchase_quote_expired`, seçili teklif 422 `purchase_quote_already_selected`. Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. `If-Match` (teklif sürümü) zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-136). Modül `finance`.
+         */
+        post: operations["selectPurchaseQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma siparişlerini listele
+         * @description Yeni numara önce; durum, tedarikçi ve taleple süzülür, `q` numarada ya da tedarikçi adında arar. Tutarlar kalemlerden hesaplanır (K-138). Roller: `yonetici`, `onburo` (K-141). Modül `finance`.
+         */
+        get: operations["listPurchaseOrders"];
+        put?: never;
+        /**
+         * Seçili tekliften sipariş aç
+         * @description Onaylı talebin seçili ve geçerliliği geçmemiş teklifinden taslak sipariş açar; tedarikçi ve kalemler bu anın kopyasıdır. Numara `SA-<yıl>-<sıra>`, yıl Europe/Istanbul (K-139). Talepte etkin sipariş varsa 409 `purchase_order_exists` (K-140); teklif yok 422 `purchase_order_quote_not_found`, seçili değil 422 `purchase_order_quote_not_selected`, süresi geçti 422 `purchase_quote_expired`, tedarikçi pasif 422 `purchase_order_supplier_inactive`. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-141). Modül `finance`.
+         */
+        post: operations["createPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma siparişi ayrıntısı
+         * @description Tedarikçi kopyası (şahıs TCKN'si ön büroya maskeli), kalemler, KDV dökümü, toplam, beklenen teslim günü, iz ve kullanıcının yapabileceği işlemler; sipariş PDF'i bu yanıttan üretilir. Olmayan ya da başka kurumun siparişi 404. Roller: `yonetici`, `onburo` (K-141). Modül `finance`.
+         */
+        get: operations["getPurchaseOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders/{orderId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Siparişi gönderildi işaretle
+         * @description Taslak siparişi gönderildi işaretler; PDF tedarikçiye kurum dışından iletilir, e-posta gönderilmez (K-142). Taslak olmayan sipariş 422 `purchase_order_not_draft`. Beklenen teslim günü gönderim gününden hesaplanır. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (K-141). Modül `finance`.
+         */
+        post: operations["sendPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Siparişi iptal et
+         * @description Taslak ya da gönderilmiş siparişi gerekçeyle iptal eder; numara boşta kalır, talep yeniden teklif ve seçime açılır (K-140). Teslim alınmaya başlanan sipariş 422 `purchase_order_not_cancellable`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-141). Modül `finance`.
+         */
+        post: operations["cancelPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -50524,6 +50676,1797 @@ export interface operations {
                                 cancel: boolean;
                                 decide: boolean;
                             };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseQuoteBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            request: {
+                                id: string;
+                                /** @description Talep numarası, ör. `ST-0001` */
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            };
+                            /** @description Talep kalemleri (karşılaştırma satırları) */
+                            items: {
+                                id: string;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                            }[];
+                            /** @description Silinmemiş teklifler, giriş sırasıyla */
+                            quotes: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                    isActive: boolean;
+                                };
+                                /** @description Teslim süresi, gün */
+                                deliveryDays: number;
+                                /** @description Son geçerlilik günü `YYYY-MM-DD` */
+                                validUntil: string;
+                                note: string | null;
+                                /** @description Geçerlilik günü geçti mi (Europe/Istanbul) */
+                                expired: boolean;
+                                /** @description Geçerli teklifler arasında en düşük KDV dahil toplam mı */
+                                lowest: boolean;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                selected: boolean;
+                                selectedAt: string | null;
+                                selectedByName: string | null;
+                                selectionReason: string | null;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                                lines: {
+                                    requestItemId: string;
+                                    /** @description KDV hariç birim fiyat, kuruş */
+                                    unitPriceCents: number;
+                                    /**
+                                     * @description KDV oranı, yüzde (K-138)
+                                     * @enum {number}
+                                     */
+                                    vatRate: 0 | 1 | 10 | 20;
+                                    /** @description KDV hariç tutar, kuruş */
+                                    netCents: number;
+                                    /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                    vatCents: number;
+                                    /** @description KDV dahil tutar, kuruş */
+                                    grossCents: number;
+                                    /** @description Satırda en düşük KDV dahil tutar mı */
+                                    lowest: boolean;
+                                }[];
+                                /** @description Oturumdaki kullanıcının bu teklifte yapabileceği işlemler */
+                                actions: {
+                                    edit: boolean;
+                                    remove: boolean;
+                                    select: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            lowestGrossCents: number | null;
+                            /** @description Talebin siparişleri (iptal edilenler dahil), yeni önce */
+                            orders: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            }[];
+                            /** @description Yeni teklif girişi ve seçili tekliften sipariş açma */
+                            actions: {
+                                add: boolean;
+                                order: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPurchaseQuote: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    supplierId: string;
+                    deliveryDays: number;
+                    validUntil: string;
+                    note?: string | null;
+                    items: {
+                        /** Format: uuid */
+                        requestItemId: string;
+                        unitPriceCents: number;
+                        /** @enum {number} */
+                        vatRate: 0 | 1 | 10 | 20;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            request: {
+                                id: string;
+                                /** @description Talep numarası, ör. `ST-0001` */
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            };
+                            /** @description Talep kalemleri (karşılaştırma satırları) */
+                            items: {
+                                id: string;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                            }[];
+                            /** @description Silinmemiş teklifler, giriş sırasıyla */
+                            quotes: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                    isActive: boolean;
+                                };
+                                /** @description Teslim süresi, gün */
+                                deliveryDays: number;
+                                /** @description Son geçerlilik günü `YYYY-MM-DD` */
+                                validUntil: string;
+                                note: string | null;
+                                /** @description Geçerlilik günü geçti mi (Europe/Istanbul) */
+                                expired: boolean;
+                                /** @description Geçerli teklifler arasında en düşük KDV dahil toplam mı */
+                                lowest: boolean;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                selected: boolean;
+                                selectedAt: string | null;
+                                selectedByName: string | null;
+                                selectionReason: string | null;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                                lines: {
+                                    requestItemId: string;
+                                    /** @description KDV hariç birim fiyat, kuruş */
+                                    unitPriceCents: number;
+                                    /**
+                                     * @description KDV oranı, yüzde (K-138)
+                                     * @enum {number}
+                                     */
+                                    vatRate: 0 | 1 | 10 | 20;
+                                    /** @description KDV hariç tutar, kuruş */
+                                    netCents: number;
+                                    /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                    vatCents: number;
+                                    /** @description KDV dahil tutar, kuruş */
+                                    grossCents: number;
+                                    /** @description Satırda en düşük KDV dahil tutar mı */
+                                    lowest: boolean;
+                                }[];
+                                /** @description Oturumdaki kullanıcının bu teklifte yapabileceği işlemler */
+                                actions: {
+                                    edit: boolean;
+                                    remove: boolean;
+                                    select: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            lowestGrossCents: number | null;
+                            /** @description Talebin siparişleri (iptal edilenler dahil), yeni önce */
+                            orders: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            }[];
+                            /** @description Yeni teklif girişi ve seçili tekliften sipariş açma */
+                            actions: {
+                                add: boolean;
+                                order: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removePurchaseQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            request: {
+                                id: string;
+                                /** @description Talep numarası, ör. `ST-0001` */
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            };
+                            /** @description Talep kalemleri (karşılaştırma satırları) */
+                            items: {
+                                id: string;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                            }[];
+                            /** @description Silinmemiş teklifler, giriş sırasıyla */
+                            quotes: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                    isActive: boolean;
+                                };
+                                /** @description Teslim süresi, gün */
+                                deliveryDays: number;
+                                /** @description Son geçerlilik günü `YYYY-MM-DD` */
+                                validUntil: string;
+                                note: string | null;
+                                /** @description Geçerlilik günü geçti mi (Europe/Istanbul) */
+                                expired: boolean;
+                                /** @description Geçerli teklifler arasında en düşük KDV dahil toplam mı */
+                                lowest: boolean;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                selected: boolean;
+                                selectedAt: string | null;
+                                selectedByName: string | null;
+                                selectionReason: string | null;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                                lines: {
+                                    requestItemId: string;
+                                    /** @description KDV hariç birim fiyat, kuruş */
+                                    unitPriceCents: number;
+                                    /**
+                                     * @description KDV oranı, yüzde (K-138)
+                                     * @enum {number}
+                                     */
+                                    vatRate: 0 | 1 | 10 | 20;
+                                    /** @description KDV hariç tutar, kuruş */
+                                    netCents: number;
+                                    /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                    vatCents: number;
+                                    /** @description KDV dahil tutar, kuruş */
+                                    grossCents: number;
+                                    /** @description Satırda en düşük KDV dahil tutar mı */
+                                    lowest: boolean;
+                                }[];
+                                /** @description Oturumdaki kullanıcının bu teklifte yapabileceği işlemler */
+                                actions: {
+                                    edit: boolean;
+                                    remove: boolean;
+                                    select: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            lowestGrossCents: number | null;
+                            /** @description Talebin siparişleri (iptal edilenler dahil), yeni önce */
+                            orders: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            }[];
+                            /** @description Yeni teklif girişi ve seçili tekliften sipariş açma */
+                            actions: {
+                                add: boolean;
+                                order: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePurchaseQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    deliveryDays?: number;
+                    validUntil?: string;
+                    note?: string | null;
+                    items?: {
+                        /** Format: uuid */
+                        requestItemId: string;
+                        unitPriceCents: number;
+                        /** @enum {number} */
+                        vatRate: 0 | 1 | 10 | 20;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            request: {
+                                id: string;
+                                /** @description Talep numarası, ör. `ST-0001` */
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            };
+                            /** @description Talep kalemleri (karşılaştırma satırları) */
+                            items: {
+                                id: string;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                            }[];
+                            /** @description Silinmemiş teklifler, giriş sırasıyla */
+                            quotes: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                    isActive: boolean;
+                                };
+                                /** @description Teslim süresi, gün */
+                                deliveryDays: number;
+                                /** @description Son geçerlilik günü `YYYY-MM-DD` */
+                                validUntil: string;
+                                note: string | null;
+                                /** @description Geçerlilik günü geçti mi (Europe/Istanbul) */
+                                expired: boolean;
+                                /** @description Geçerli teklifler arasında en düşük KDV dahil toplam mı */
+                                lowest: boolean;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                selected: boolean;
+                                selectedAt: string | null;
+                                selectedByName: string | null;
+                                selectionReason: string | null;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                                lines: {
+                                    requestItemId: string;
+                                    /** @description KDV hariç birim fiyat, kuruş */
+                                    unitPriceCents: number;
+                                    /**
+                                     * @description KDV oranı, yüzde (K-138)
+                                     * @enum {number}
+                                     */
+                                    vatRate: 0 | 1 | 10 | 20;
+                                    /** @description KDV hariç tutar, kuruş */
+                                    netCents: number;
+                                    /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                    vatCents: number;
+                                    /** @description KDV dahil tutar, kuruş */
+                                    grossCents: number;
+                                    /** @description Satırda en düşük KDV dahil tutar mı */
+                                    lowest: boolean;
+                                }[];
+                                /** @description Oturumdaki kullanıcının bu teklifte yapabileceği işlemler */
+                                actions: {
+                                    edit: boolean;
+                                    remove: boolean;
+                                    select: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            lowestGrossCents: number | null;
+                            /** @description Talebin siparişleri (iptal edilenler dahil), yeni önce */
+                            orders: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            }[];
+                            /** @description Yeni teklif girişi ve seçili tekliften sipariş açma */
+                            actions: {
+                                add: boolean;
+                                order: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    selectPurchaseQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default null */
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            request: {
+                                id: string;
+                                /** @description Talep numarası, ör. `ST-0001` */
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            };
+                            /** @description Talep kalemleri (karşılaştırma satırları) */
+                            items: {
+                                id: string;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                            }[];
+                            /** @description Silinmemiş teklifler, giriş sırasıyla */
+                            quotes: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                    isActive: boolean;
+                                };
+                                /** @description Teslim süresi, gün */
+                                deliveryDays: number;
+                                /** @description Son geçerlilik günü `YYYY-MM-DD` */
+                                validUntil: string;
+                                note: string | null;
+                                /** @description Geçerlilik günü geçti mi (Europe/Istanbul) */
+                                expired: boolean;
+                                /** @description Geçerli teklifler arasında en düşük KDV dahil toplam mı */
+                                lowest: boolean;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                selected: boolean;
+                                selectedAt: string | null;
+                                selectedByName: string | null;
+                                selectionReason: string | null;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                                lines: {
+                                    requestItemId: string;
+                                    /** @description KDV hariç birim fiyat, kuruş */
+                                    unitPriceCents: number;
+                                    /**
+                                     * @description KDV oranı, yüzde (K-138)
+                                     * @enum {number}
+                                     */
+                                    vatRate: 0 | 1 | 10 | 20;
+                                    /** @description KDV hariç tutar, kuruş */
+                                    netCents: number;
+                                    /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                    vatCents: number;
+                                    /** @description KDV dahil tutar, kuruş */
+                                    grossCents: number;
+                                    /** @description Satırda en düşük KDV dahil tutar mı */
+                                    lowest: boolean;
+                                }[];
+                                /** @description Oturumdaki kullanıcının bu teklifte yapabileceği işlemler */
+                                actions: {
+                                    edit: boolean;
+                                    remove: boolean;
+                                    select: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            lowestGrossCents: number | null;
+                            /** @description Talebin siparişleri (iptal edilenler dahil), yeni önce */
+                            orders: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            }[];
+                            /** @description Yeni teklif girişi ve seçili tekliften sipariş açma */
+                            actions: {
+                                add: boolean;
+                                order: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPurchaseOrders: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Sipariş numarasında (`SA-2026-0001`) ya da tedarikçi adında arama */
+                q?: string;
+                /** @description Durum */
+                status?: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                /** @description Tedarikçi */
+                supplierId?: string;
+                /** @description Satın alma talebi */
+                requestId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Sipariş numarası `SA-<yıl>-<sıra>` (K-139) */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            /** @description Siparişin talebi */
+                            request: {
+                                id: string;
+                                number: string;
+                            };
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            itemCount: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş */
+                            grossCents: number;
+                            deliveryDays: number;
+                            /** @description Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır */
+                            expectedDeliveryDate: string;
+                            createdAt: string;
+                            sentAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Oturumdaki kullanıcının bu siparişte yapabileceği işlemler */
+                            actions: {
+                                send: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    quoteId: string;
+                    /** @default null */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Sipariş numarası `SA-<yıl>-<sıra>` (K-139) */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            /** @description Siparişin talebi */
+                            request: {
+                                id: string;
+                                number: string;
+                            };
+                            supplier: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                /** @description VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141) */
+                                taxNumber: string;
+                                taxOffice: string;
+                            };
+                            itemCount: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş */
+                            grossCents: number;
+                            deliveryDays: number;
+                            /** @description Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır */
+                            expectedDeliveryDate: string;
+                            createdAt: string;
+                            sentAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Oturumdaki kullanıcının bu siparişte yapabileceği işlemler */
+                            actions: {
+                                send: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            quoteId: string;
+                            note: string | null;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /**
+                                 * @description KDV oranı, yüzde (K-138)
+                                 * @enum {number}
+                                 */
+                                vatRate: 0 | 1 | 10 | 20;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                            }[];
+                            createdByName: string | null;
+                            sentByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Sipariş numarası `SA-<yıl>-<sıra>` (K-139) */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            /** @description Siparişin talebi */
+                            request: {
+                                id: string;
+                                number: string;
+                            };
+                            supplier: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                /** @description VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141) */
+                                taxNumber: string;
+                                taxOffice: string;
+                            };
+                            itemCount: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş */
+                            grossCents: number;
+                            deliveryDays: number;
+                            /** @description Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır */
+                            expectedDeliveryDate: string;
+                            createdAt: string;
+                            sentAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Oturumdaki kullanıcının bu siparişte yapabileceği işlemler */
+                            actions: {
+                                send: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            quoteId: string;
+                            note: string | null;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /**
+                                 * @description KDV oranı, yüzde (K-138)
+                                 * @enum {number}
+                                 */
+                                vatRate: 0 | 1 | 10 | 20;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                            }[];
+                            createdByName: string | null;
+                            sentByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sendPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Sipariş numarası `SA-<yıl>-<sıra>` (K-139) */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            /** @description Siparişin talebi */
+                            request: {
+                                id: string;
+                                number: string;
+                            };
+                            supplier: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                /** @description VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141) */
+                                taxNumber: string;
+                                taxOffice: string;
+                            };
+                            itemCount: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş */
+                            grossCents: number;
+                            deliveryDays: number;
+                            /** @description Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır */
+                            expectedDeliveryDate: string;
+                            createdAt: string;
+                            sentAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Oturumdaki kullanıcının bu siparişte yapabileceği işlemler */
+                            actions: {
+                                send: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            quoteId: string;
+                            note: string | null;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /**
+                                 * @description KDV oranı, yüzde (K-138)
+                                 * @enum {number}
+                                 */
+                                vatRate: 0 | 1 | 10 | 20;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                            }[];
+                            createdByName: string | null;
+                            sentByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Sipariş numarası `SA-<yıl>-<sıra>` (K-139) */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            /** @description Siparişin talebi */
+                            request: {
+                                id: string;
+                                number: string;
+                            };
+                            supplier: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                /** @description VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141) */
+                                taxNumber: string;
+                                taxOffice: string;
+                            };
+                            itemCount: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş */
+                            grossCents: number;
+                            deliveryDays: number;
+                            /** @description Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır */
+                            expectedDeliveryDate: string;
+                            createdAt: string;
+                            sentAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Oturumdaki kullanıcının bu siparişte yapabileceği işlemler */
+                            actions: {
+                                send: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            quoteId: string;
+                            note: string | null;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /**
+                                 * @description KDV oranı, yüzde (K-138)
+                                 * @enum {number}
+                                 */
+                                vatRate: 0 | 1 | 10 | 20;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                            }[];
+                            createdByName: string | null;
+                            sentByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
                         };
                     };
                 };

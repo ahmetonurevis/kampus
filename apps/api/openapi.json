@@ -109238,6 +109238,4733 @@
         }
       }
     },
+    "/api/v1/finance/purchase-requests/{requestId}/quotes": {
+      "get": {
+        "operationId": "getPurchaseQuoteBoard",
+        "summary": "Teklif karşılaştırma tablosu",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Talebin kalemleri, silinmemiş teklifleri (en çok 10; sayfalanmaz) ve kalem × tedarikçi tutarları. Tutar ve KDV kalemden hesaplanır (K-138); satırda ve toplamda en düşük KDV dahil tutar yalnız geçerliliği geçmemiş teklifler arasında işaretlenir (K-137). Talebin siparişleri ve kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string",
+                              "description": "Talep numarası, ör. `ST-0001`"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "submitted",
+                                "approved",
+                                "rejected",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "quantity",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talep kalemleri (karşılaştırma satırları)"
+                        },
+                        "quotes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "supplier": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "isActive": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "isActive"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "deliveryDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim süresi, gün"
+                              },
+                              "validUntil": {
+                                "type": "string",
+                                "description": "Son geçerlilik günü `YYYY-MM-DD`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expired": {
+                                "type": "boolean",
+                                "description": "Geçerlilik günü geçti mi (Europe/Istanbul)"
+                              },
+                              "lowest": {
+                                "type": "boolean",
+                                "description": "Geçerli teklifler arasında en düşük KDV dahil toplam mı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "selected": {
+                                "type": "boolean"
+                              },
+                              "selectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "requestItemId": {
+                                      "type": "string"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç birim fiyat, kuruş"
+                                    },
+                                    "vatRate": {
+                                      "type": "number",
+                                      "enum": [
+                                        0,
+                                        1,
+                                        10,
+                                        20
+                                      ],
+                                      "description": "KDV oranı, yüzde (K-138)"
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç tutar, kuruş"
+                                    },
+                                    "vatCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                                    },
+                                    "grossCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV dahil tutar, kuruş"
+                                    },
+                                    "lowest": {
+                                      "type": "boolean",
+                                      "description": "Satırda en düşük KDV dahil tutar mı"
+                                    }
+                                  },
+                                  "required": [
+                                    "requestItemId",
+                                    "unitPriceCents",
+                                    "vatRate",
+                                    "netCents",
+                                    "vatCents",
+                                    "grossCents",
+                                    "lowest"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "edit": {
+                                    "type": "boolean"
+                                  },
+                                  "remove": {
+                                    "type": "boolean"
+                                  },
+                                  "select": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "edit",
+                                  "remove",
+                                  "select"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcının bu teklifte yapabileceği işlemler"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplier",
+                              "deliveryDays",
+                              "validUntil",
+                              "note",
+                              "expired",
+                              "lowest",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "selected",
+                              "selectedAt",
+                              "selectedByName",
+                              "selectionReason",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt",
+                              "lines",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Silinmemiş teklifler, giriş sırasıyla"
+                        },
+                        "lowestGrossCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli tekliflerin en düşük KDV dahil toplamı"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "sent",
+                                  "partially_received",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin siparişleri (iptal edilenler dahil), yeni önce"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "add": {
+                              "type": "boolean"
+                            },
+                            "order": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "add",
+                            "order"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yeni teklif girişi ve seçili tekliften sipariş açma"
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "items",
+                        "quotes",
+                        "lowestGrossCents",
+                        "orders",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPurchaseQuote",
+        "summary": "Teklif gir",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Onaylı talebe tedarikçi teklifi: etkin tedarikçi, teslim süresi (0–365 gün), bugünden önce olmayan geçerlilik günü, isteğe bağlı not ve talebin bütün kalemleri için KDV hariç birim fiyat ve KDV oranı (%0, %1, %10, %20; K-135). Eksik kalem 422 `purchase_quote_item_missing`, talepte olmayan kalem 422 `purchase_quote_item_unknown`, aynı tedarikçinin ikinci teklifi 409 `purchase_quote_supplier_exists`, onuncu tekliften sonra 422 `purchase_quote_limit`. Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "supplierId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "deliveryDays": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 365
+                  },
+                  "validUntil": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "requestItemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "unitPriceCents": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100000000000
+                        },
+                        "vatRate": {
+                          "type": "number",
+                          "enum": [
+                            0,
+                            1,
+                            10,
+                            20
+                          ]
+                        }
+                      },
+                      "required": [
+                        "requestItemId",
+                        "unitPriceCents",
+                        "vatRate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "supplierId",
+                  "deliveryDays",
+                  "validUntil",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string",
+                              "description": "Talep numarası, ör. `ST-0001`"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "submitted",
+                                "approved",
+                                "rejected",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "quantity",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talep kalemleri (karşılaştırma satırları)"
+                        },
+                        "quotes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "supplier": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "isActive": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "isActive"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "deliveryDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim süresi, gün"
+                              },
+                              "validUntil": {
+                                "type": "string",
+                                "description": "Son geçerlilik günü `YYYY-MM-DD`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expired": {
+                                "type": "boolean",
+                                "description": "Geçerlilik günü geçti mi (Europe/Istanbul)"
+                              },
+                              "lowest": {
+                                "type": "boolean",
+                                "description": "Geçerli teklifler arasında en düşük KDV dahil toplam mı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "selected": {
+                                "type": "boolean"
+                              },
+                              "selectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "requestItemId": {
+                                      "type": "string"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç birim fiyat, kuruş"
+                                    },
+                                    "vatRate": {
+                                      "type": "number",
+                                      "enum": [
+                                        0,
+                                        1,
+                                        10,
+                                        20
+                                      ],
+                                      "description": "KDV oranı, yüzde (K-138)"
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç tutar, kuruş"
+                                    },
+                                    "vatCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                                    },
+                                    "grossCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV dahil tutar, kuruş"
+                                    },
+                                    "lowest": {
+                                      "type": "boolean",
+                                      "description": "Satırda en düşük KDV dahil tutar mı"
+                                    }
+                                  },
+                                  "required": [
+                                    "requestItemId",
+                                    "unitPriceCents",
+                                    "vatRate",
+                                    "netCents",
+                                    "vatCents",
+                                    "grossCents",
+                                    "lowest"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "edit": {
+                                    "type": "boolean"
+                                  },
+                                  "remove": {
+                                    "type": "boolean"
+                                  },
+                                  "select": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "edit",
+                                  "remove",
+                                  "select"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcının bu teklifte yapabileceği işlemler"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplier",
+                              "deliveryDays",
+                              "validUntil",
+                              "note",
+                              "expired",
+                              "lowest",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "selected",
+                              "selectedAt",
+                              "selectedByName",
+                              "selectionReason",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt",
+                              "lines",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Silinmemiş teklifler, giriş sırasıyla"
+                        },
+                        "lowestGrossCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli tekliflerin en düşük KDV dahil toplamı"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "sent",
+                                  "partially_received",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin siparişleri (iptal edilenler dahil), yeni önce"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "add": {
+                              "type": "boolean"
+                            },
+                            "order": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "add",
+                            "order"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yeni teklif girişi ve seçili tekliften sipariş açma"
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "items",
+                        "quotes",
+                        "lowestGrossCents",
+                        "orders",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-requests/{requestId}/quotes/{quoteId}": {
+      "patch": {
+        "operationId": "updatePurchaseQuote",
+        "summary": "Teklifi düzelt",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Kısmi düzeltme; fiyatlar bütün olarak yazılır, tedarikçi değişmez. Seçili teklif düzeltilirse seçim düşer (K-137). Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. `If-Match` (teklif sürümü) zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deliveryDays": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 365
+                  },
+                  "validUntil": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "requestItemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "unitPriceCents": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100000000000
+                        },
+                        "vatRate": {
+                          "type": "number",
+                          "enum": [
+                            0,
+                            1,
+                            10,
+                            20
+                          ]
+                        }
+                      },
+                      "required": [
+                        "requestItemId",
+                        "unitPriceCents",
+                        "vatRate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string",
+                              "description": "Talep numarası, ör. `ST-0001`"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "submitted",
+                                "approved",
+                                "rejected",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "quantity",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talep kalemleri (karşılaştırma satırları)"
+                        },
+                        "quotes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "supplier": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "isActive": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "isActive"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "deliveryDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim süresi, gün"
+                              },
+                              "validUntil": {
+                                "type": "string",
+                                "description": "Son geçerlilik günü `YYYY-MM-DD`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expired": {
+                                "type": "boolean",
+                                "description": "Geçerlilik günü geçti mi (Europe/Istanbul)"
+                              },
+                              "lowest": {
+                                "type": "boolean",
+                                "description": "Geçerli teklifler arasında en düşük KDV dahil toplam mı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "selected": {
+                                "type": "boolean"
+                              },
+                              "selectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "requestItemId": {
+                                      "type": "string"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç birim fiyat, kuruş"
+                                    },
+                                    "vatRate": {
+                                      "type": "number",
+                                      "enum": [
+                                        0,
+                                        1,
+                                        10,
+                                        20
+                                      ],
+                                      "description": "KDV oranı, yüzde (K-138)"
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç tutar, kuruş"
+                                    },
+                                    "vatCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                                    },
+                                    "grossCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV dahil tutar, kuruş"
+                                    },
+                                    "lowest": {
+                                      "type": "boolean",
+                                      "description": "Satırda en düşük KDV dahil tutar mı"
+                                    }
+                                  },
+                                  "required": [
+                                    "requestItemId",
+                                    "unitPriceCents",
+                                    "vatRate",
+                                    "netCents",
+                                    "vatCents",
+                                    "grossCents",
+                                    "lowest"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "edit": {
+                                    "type": "boolean"
+                                  },
+                                  "remove": {
+                                    "type": "boolean"
+                                  },
+                                  "select": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "edit",
+                                  "remove",
+                                  "select"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcının bu teklifte yapabileceği işlemler"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplier",
+                              "deliveryDays",
+                              "validUntil",
+                              "note",
+                              "expired",
+                              "lowest",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "selected",
+                              "selectedAt",
+                              "selectedByName",
+                              "selectionReason",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt",
+                              "lines",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Silinmemiş teklifler, giriş sırasıyla"
+                        },
+                        "lowestGrossCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli tekliflerin en düşük KDV dahil toplamı"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "sent",
+                                  "partially_received",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin siparişleri (iptal edilenler dahil), yeni önce"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "add": {
+                              "type": "boolean"
+                            },
+                            "order": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "add",
+                            "order"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yeni teklif girişi ve seçili tekliften sipariş açma"
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "items",
+                        "quotes",
+                        "lowestGrossCents",
+                        "orders",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removePurchaseQuote",
+        "summary": "Teklifi sil",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Teklifi arşivler; seçili teklif silinirse seçim de düşer. Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. `If-Match` (teklif sürümü) zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi girdiği teklifi değiştirir (K-136). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string",
+                              "description": "Talep numarası, ör. `ST-0001`"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "submitted",
+                                "approved",
+                                "rejected",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "quantity",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talep kalemleri (karşılaştırma satırları)"
+                        },
+                        "quotes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "supplier": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "isActive": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "isActive"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "deliveryDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim süresi, gün"
+                              },
+                              "validUntil": {
+                                "type": "string",
+                                "description": "Son geçerlilik günü `YYYY-MM-DD`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expired": {
+                                "type": "boolean",
+                                "description": "Geçerlilik günü geçti mi (Europe/Istanbul)"
+                              },
+                              "lowest": {
+                                "type": "boolean",
+                                "description": "Geçerli teklifler arasında en düşük KDV dahil toplam mı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "selected": {
+                                "type": "boolean"
+                              },
+                              "selectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "requestItemId": {
+                                      "type": "string"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç birim fiyat, kuruş"
+                                    },
+                                    "vatRate": {
+                                      "type": "number",
+                                      "enum": [
+                                        0,
+                                        1,
+                                        10,
+                                        20
+                                      ],
+                                      "description": "KDV oranı, yüzde (K-138)"
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç tutar, kuruş"
+                                    },
+                                    "vatCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                                    },
+                                    "grossCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV dahil tutar, kuruş"
+                                    },
+                                    "lowest": {
+                                      "type": "boolean",
+                                      "description": "Satırda en düşük KDV dahil tutar mı"
+                                    }
+                                  },
+                                  "required": [
+                                    "requestItemId",
+                                    "unitPriceCents",
+                                    "vatRate",
+                                    "netCents",
+                                    "vatCents",
+                                    "grossCents",
+                                    "lowest"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "edit": {
+                                    "type": "boolean"
+                                  },
+                                  "remove": {
+                                    "type": "boolean"
+                                  },
+                                  "select": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "edit",
+                                  "remove",
+                                  "select"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcının bu teklifte yapabileceği işlemler"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplier",
+                              "deliveryDays",
+                              "validUntil",
+                              "note",
+                              "expired",
+                              "lowest",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "selected",
+                              "selectedAt",
+                              "selectedByName",
+                              "selectionReason",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt",
+                              "lines",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Silinmemiş teklifler, giriş sırasıyla"
+                        },
+                        "lowestGrossCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli tekliflerin en düşük KDV dahil toplamı"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "sent",
+                                  "partially_received",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin siparişleri (iptal edilenler dahil), yeni önce"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "add": {
+                              "type": "boolean"
+                            },
+                            "order": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "add",
+                            "order"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yeni teklif girişi ve seçili tekliften sipariş açma"
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "items",
+                        "quotes",
+                        "lowestGrossCents",
+                        "orders",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-requests/{requestId}/quotes/{quoteId}/select": {
+      "post": {
+        "operationId": "selectPurchaseQuote",
+        "summary": "Teklifi seç",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Geçerli teklifi seçer; talepteki önceki seçim düşer. En düşük KDV dahil toplamlı geçerli teklif seçilmezse en az 10 karakter gerekçe zorunlu: 422 `purchase_quote_reason_required` (K-137). Süresi geçmiş teklif 422 `purchase_quote_expired`, seçili teklif 422 `purchase_quote_already_selected`. Talep onaylı değilse 422 `purchase_quote_request_not_approved`, talebin etkin siparişi varsa 422 `purchase_quote_locked`. `If-Match` (teklif sürümü) zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-136). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string",
+                              "description": "Talep numarası, ör. `ST-0001`"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "submitted",
+                                "approved",
+                                "rejected",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "quantity",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talep kalemleri (karşılaştırma satırları)"
+                        },
+                        "quotes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "supplier": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "isActive": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "isActive"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "deliveryDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim süresi, gün"
+                              },
+                              "validUntil": {
+                                "type": "string",
+                                "description": "Son geçerlilik günü `YYYY-MM-DD`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expired": {
+                                "type": "boolean",
+                                "description": "Geçerlilik günü geçti mi (Europe/Istanbul)"
+                              },
+                              "lowest": {
+                                "type": "boolean",
+                                "description": "Geçerli teklifler arasında en düşük KDV dahil toplam mı"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "selected": {
+                                "type": "boolean"
+                              },
+                              "selectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "selectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "requestItemId": {
+                                      "type": "string"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç birim fiyat, kuruş"
+                                    },
+                                    "vatRate": {
+                                      "type": "number",
+                                      "enum": [
+                                        0,
+                                        1,
+                                        10,
+                                        20
+                                      ],
+                                      "description": "KDV oranı, yüzde (K-138)"
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV hariç tutar, kuruş"
+                                    },
+                                    "vatCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                                    },
+                                    "grossCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "KDV dahil tutar, kuruş"
+                                    },
+                                    "lowest": {
+                                      "type": "boolean",
+                                      "description": "Satırda en düşük KDV dahil tutar mı"
+                                    }
+                                  },
+                                  "required": [
+                                    "requestItemId",
+                                    "unitPriceCents",
+                                    "vatRate",
+                                    "netCents",
+                                    "vatCents",
+                                    "grossCents",
+                                    "lowest"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "edit": {
+                                    "type": "boolean"
+                                  },
+                                  "remove": {
+                                    "type": "boolean"
+                                  },
+                                  "select": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "edit",
+                                  "remove",
+                                  "select"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcının bu teklifte yapabileceği işlemler"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplier",
+                              "deliveryDays",
+                              "validUntil",
+                              "note",
+                              "expired",
+                              "lowest",
+                              "netCents",
+                              "vatCents",
+                              "grossCents",
+                              "selected",
+                              "selectedAt",
+                              "selectedByName",
+                              "selectionReason",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt",
+                              "lines",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Silinmemiş teklifler, giriş sırasıyla"
+                        },
+                        "lowestGrossCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli tekliflerin en düşük KDV dahil toplamı"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "sent",
+                                  "partially_received",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talebin siparişleri (iptal edilenler dahil), yeni önce"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "add": {
+                              "type": "boolean"
+                            },
+                            "order": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "add",
+                            "order"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Yeni teklif girişi ve seçili tekliften sipariş açma"
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "items",
+                        "quotes",
+                        "lowestGrossCents",
+                        "orders",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders": {
+      "get": {
+        "operationId": "listPurchaseOrders",
+        "summary": "Satın alma siparişlerini listele",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Yeni numara önce; durum, tedarikçi ve taleple süzülür, `q` numarada ya da tedarikçi adında arar. Tutarlar kalemlerden hesaplanır (K-138). Roller: `yonetici`, `onburo` (K-141). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Sipariş numarasında (`SA-2026-0001`) ya da tedarikçi adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "sent",
+                "partially_received",
+                "completed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "supplierId",
+            "required": false,
+            "description": "Tedarikçi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "requestId",
+            "required": false,
+            "description": "Satın alma talebi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string",
+                            "description": "Sipariş numarası `SA-<yıl>-<sıra>` (K-139)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "sent",
+                              "partially_received",
+                              "completed",
+                              "cancelled"
+                            ]
+                          },
+                          "request": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Siparişin talebi"
+                          },
+                          "supplier": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "itemCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "netCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV hariç tutar, kuruş"
+                          },
+                          "vatCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                          },
+                          "grossCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV dahil tutar, kuruş"
+                          },
+                          "deliveryDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "expectedDeliveryDate": {
+                            "type": "string",
+                            "description": "Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "sentAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actions": {
+                            "type": "object",
+                            "properties": {
+                              "send": {
+                                "type": "boolean"
+                              },
+                              "cancel": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "send",
+                              "cancel"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Oturumdaki kullanıcının bu siparişte yapabileceği işlemler"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "status",
+                          "request",
+                          "supplier",
+                          "itemCount",
+                          "netCents",
+                          "vatCents",
+                          "grossCents",
+                          "deliveryDays",
+                          "expectedDeliveryDate",
+                          "createdAt",
+                          "sentAt",
+                          "cancelledAt",
+                          "actions",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPurchaseOrder",
+        "summary": "Seçili tekliften sipariş aç",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Onaylı talebin seçili ve geçerliliği geçmemiş teklifinden taslak sipariş açar; tedarikçi ve kalemler bu anın kopyasıdır. Numara `SA-<yıl>-<sıra>`, yıl Europe/Istanbul (K-139). Talepte etkin sipariş varsa 409 `purchase_order_exists` (K-140); teklif yok 422 `purchase_order_quote_not_found`, seçili değil 422 `purchase_order_quote_not_selected`, süresi geçti 422 `purchase_quote_expired`, tedarikçi pasif 422 `purchase_order_supplier_inactive`. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-141). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quoteId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "note": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "quoteId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Sipariş numarası `SA-<yıl>-<sıra>` (K-139)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "partially_received",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Siparişin talebi"
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "company",
+                                "individual"
+                              ]
+                            },
+                            "taxNumber": {
+                              "type": "string",
+                              "description": "VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141)"
+                            },
+                            "taxOffice": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type",
+                            "taxNumber",
+                            "taxOffice"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "itemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV dahil tutar, kuruş"
+                        },
+                        "deliveryDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "expectedDeliveryDate": {
+                          "type": "string",
+                          "description": "Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "sentAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "send": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "send",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu siparişte yapabileceği işlemler"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "quoteId": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "vatRate": {
+                                "type": "number",
+                                "enum": [
+                                  0,
+                                  1,
+                                  10,
+                                  20
+                                ],
+                                "description": "KDV oranı, yüzde (K-138)"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "quantity",
+                              "unit",
+                              "unitPriceCents",
+                              "vatRate",
+                              "netCents",
+                              "vatCents",
+                              "grossCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sentByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "request",
+                        "supplier",
+                        "itemCount",
+                        "netCents",
+                        "vatCents",
+                        "grossCents",
+                        "deliveryDays",
+                        "expectedDeliveryDate",
+                        "createdAt",
+                        "sentAt",
+                        "cancelledAt",
+                        "actions",
+                        "version",
+                        "quoteId",
+                        "note",
+                        "items",
+                        "createdByName",
+                        "sentByName",
+                        "cancelledByName",
+                        "cancelReason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders/{orderId}": {
+      "get": {
+        "operationId": "getPurchaseOrder",
+        "summary": "Satın alma siparişi ayrıntısı",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Tedarikçi kopyası (şahıs TCKN'si ön büroya maskeli), kalemler, KDV dökümü, toplam, beklenen teslim günü, iz ve kullanıcının yapabileceği işlemler; sipariş PDF'i bu yanıttan üretilir. Olmayan ya da başka kurumun siparişi 404. Roller: `yonetici`, `onburo` (K-141). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Sipariş numarası `SA-<yıl>-<sıra>` (K-139)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "partially_received",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Siparişin talebi"
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "company",
+                                "individual"
+                              ]
+                            },
+                            "taxNumber": {
+                              "type": "string",
+                              "description": "VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141)"
+                            },
+                            "taxOffice": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type",
+                            "taxNumber",
+                            "taxOffice"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "itemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV dahil tutar, kuruş"
+                        },
+                        "deliveryDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "expectedDeliveryDate": {
+                          "type": "string",
+                          "description": "Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "sentAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "send": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "send",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu siparişte yapabileceği işlemler"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "quoteId": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "vatRate": {
+                                "type": "number",
+                                "enum": [
+                                  0,
+                                  1,
+                                  10,
+                                  20
+                                ],
+                                "description": "KDV oranı, yüzde (K-138)"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "quantity",
+                              "unit",
+                              "unitPriceCents",
+                              "vatRate",
+                              "netCents",
+                              "vatCents",
+                              "grossCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sentByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "request",
+                        "supplier",
+                        "itemCount",
+                        "netCents",
+                        "vatCents",
+                        "grossCents",
+                        "deliveryDays",
+                        "expectedDeliveryDate",
+                        "createdAt",
+                        "sentAt",
+                        "cancelledAt",
+                        "actions",
+                        "version",
+                        "quoteId",
+                        "note",
+                        "items",
+                        "createdByName",
+                        "sentByName",
+                        "cancelledByName",
+                        "cancelReason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders/{orderId}/send": {
+      "post": {
+        "operationId": "sendPurchaseOrder",
+        "summary": "Siparişi gönderildi işaretle",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Taslak siparişi gönderildi işaretler; PDF tedarikçiye kurum dışından iletilir, e-posta gönderilmez (K-142). Taslak olmayan sipariş 422 `purchase_order_not_draft`. Beklenen teslim günü gönderim gününden hesaplanır. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (K-141). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Sipariş numarası `SA-<yıl>-<sıra>` (K-139)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "partially_received",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Siparişin talebi"
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "company",
+                                "individual"
+                              ]
+                            },
+                            "taxNumber": {
+                              "type": "string",
+                              "description": "VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141)"
+                            },
+                            "taxOffice": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type",
+                            "taxNumber",
+                            "taxOffice"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "itemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV dahil tutar, kuruş"
+                        },
+                        "deliveryDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "expectedDeliveryDate": {
+                          "type": "string",
+                          "description": "Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "sentAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "send": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "send",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu siparişte yapabileceği işlemler"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "quoteId": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "vatRate": {
+                                "type": "number",
+                                "enum": [
+                                  0,
+                                  1,
+                                  10,
+                                  20
+                                ],
+                                "description": "KDV oranı, yüzde (K-138)"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "quantity",
+                              "unit",
+                              "unitPriceCents",
+                              "vatRate",
+                              "netCents",
+                              "vatCents",
+                              "grossCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sentByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "request",
+                        "supplier",
+                        "itemCount",
+                        "netCents",
+                        "vatCents",
+                        "grossCents",
+                        "deliveryDays",
+                        "expectedDeliveryDate",
+                        "createdAt",
+                        "sentAt",
+                        "cancelledAt",
+                        "actions",
+                        "version",
+                        "quoteId",
+                        "note",
+                        "items",
+                        "createdByName",
+                        "sentByName",
+                        "cancelledByName",
+                        "cancelReason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders/{orderId}/cancel": {
+      "post": {
+        "operationId": "cancelPurchaseOrder",
+        "summary": "Siparişi iptal et",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Taslak ya da gönderilmiş siparişi gerekçeyle iptal eder; numara boşta kalır, talep yeniden teklif ve seçime açılır (K-140). Teslim alınmaya başlanan sipariş 422 `purchase_order_not_cancellable`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-141). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Sipariş numarası `SA-<yıl>-<sıra>` (K-139)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "partially_received",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Siparişin talebi"
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "company",
+                                "individual"
+                              ]
+                            },
+                            "taxNumber": {
+                              "type": "string",
+                              "description": "VKN ya da TCKN; şahıs TCKN’si ön büroya maskeli (K-141)"
+                            },
+                            "taxOffice": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type",
+                            "taxNumber",
+                            "taxOffice"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "itemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV dahil tutar, kuruş"
+                        },
+                        "deliveryDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "expectedDeliveryDate": {
+                          "type": "string",
+                          "description": "Gönderim (yoksa açılış) günü artı teslim süresi, `YYYY-MM-DD`; hesaplanır"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "sentAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "send": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "send",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu siparişte yapabileceği işlemler"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "quoteId": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "vatRate": {
+                                "type": "number",
+                                "enum": [
+                                  0,
+                                  1,
+                                  10,
+                                  20
+                                ],
+                                "description": "KDV oranı, yüzde (K-138)"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç tutar, kuruş"
+                              },
+                              "vatCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV, kuruş; kalemde yarım kuruş yukarı yuvarlanır (K-138)"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "quantity",
+                              "unit",
+                              "unitPriceCents",
+                              "vatRate",
+                              "netCents",
+                              "vatCents",
+                              "grossCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sentByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "request",
+                        "supplier",
+                        "itemCount",
+                        "netCents",
+                        "vatCents",
+                        "grossCents",
+                        "deliveryDays",
+                        "expectedDeliveryDate",
+                        "createdAt",
+                        "sentAt",
+                        "cancelledAt",
+                        "actions",
+                        "version",
+                        "quoteId",
+                        "note",
+                        "items",
+                        "createdByName",
+                        "sentByName",
+                        "cancelledByName",
+                        "cancelReason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

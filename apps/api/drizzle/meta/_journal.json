@@ -561,6 +561,13 @@
       "when": 1794118515115,
       "tag": "0079_create_suppliers_purchase_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1794120768396,
+      "tag": "0080_create_purchase_quotes_orders",
+      "breakpoints": true
     }
   ]
 }

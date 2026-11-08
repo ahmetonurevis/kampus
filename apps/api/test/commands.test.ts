@@ -71,6 +71,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Banka ekstresi toplu aktarımı ve eşleşme onayı tahsilat yazar (IST-115, DOM-FIN-069).
   'POST /api/v1/finance/bank-statement-imports',
   'POST /api/v1/finance/bank-transactions/{transactionId}/match',
+  // Satın alma siparişi numaralı belge açar (routes/finance-purchase-orders.ts; DOM-FIN-073).
+  'POST /api/v1/finance/purchase-orders',
 ]
 // Onur: kayıt ve finans sonu
 

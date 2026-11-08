@@ -1327,6 +1327,54 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: satın alma teklifi ve siparişi (ON-224, ON-225; DOM-FIN-072, DOM-FIN-073).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/purchase-requests/:requestId/quotes',
+          'get(bQuotes, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/purchase-requests/:requestId/quotes',
+          "call('POST', bQuotes, a.admin",
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/purchase-requests/:requestId/quotes/:quoteId',
+          "call('PATCH', bQuote, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/purchase-requests/:requestId/quotes/:quoteId',
+          "call('DELETE', bQuote, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/purchase-requests/:requestId/quotes/:quoteId/select',
+          '`${bQuote}/select`, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/purchase-orders', 'get(ORDERS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/purchase-orders', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/purchase-orders/:orderId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/purchase-orders/:orderId/send', '`${bUrl}/send`, a.admin'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/purchase-orders/:orderId/cancel',
+          '`${bUrl}/cancel`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-purchase-orders.test.ts',
+        'başka kurumun teklifi ve siparişi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

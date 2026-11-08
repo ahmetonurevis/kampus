@@ -1444,6 +1444,26 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: demirbaş kaydı (ON-235; DOM-FIN-085).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/fixed-assets', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/fixed-assets/receipt-items', 'get(RECEIPT_ITEMS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/fixed-assets', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/fixed-assets/:assetId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/fixed-assets/:assetId', "call('PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/fixed-assets/:assetId/scrap', '`${bUrl}/scrap`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-fixed-assets.test.ts',
+        'başka kurumun demirbaşı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

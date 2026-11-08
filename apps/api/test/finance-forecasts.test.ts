@@ -33,6 +33,7 @@ const SEED = createSeed(FIXED_NOW)
 const [FIRST, SECOND] = SEED.students.filter((item) => item.classId === 'c1')
 const REVENUE = '/api/v1/finance/forecasts/revenue'
 const CASH_FLOW = '/api/v1/finance/forecasts/cash-flow'
+const SCENARIOS = '/api/v1/finance/forecasts/scenarios'
 
 const invoice = (id: string, studentId: string, amount: number, dueDay: string) => ({
   id,
@@ -184,10 +185,19 @@ describe('gelir ve nakit akışı tahmini (DOM-FIN-063)', () => {
 
   const get = (url: string, cookie: string | null) =>
     app.inject({ method: 'GET', url, headers: cookie === null ? {} : { cookie } })
+  const compare = (cookie: string | null, payload: Record<string, unknown>) =>
+    app.inject({
+      method: 'POST',
+      url: SCENARIOS,
+      headers: cookie === null ? {} : { cookie },
+      payload,
+    })
+  const ONE = { scenarios: [{}] }
 
   test('DOM-FIN-063: oturumsuz 401; yönetici dışı roller 403; finance kapalıyken 403 module_disabled', async () => {
     assert.equal((await get(REVENUE, null)).statusCode, 401)
     assert.equal((await get(CASH_FLOW, null)).statusCode, 401)
+    assert.equal((await compare(null, ONE)).statusCode, 401)
     const a = await institution()
     for (const role of ['onburo', 'ogretmen'] as const) {
       const cookie = await signInAs(app, await createMember(app, a.id, role))
@@ -196,6 +206,9 @@ describe('gelir ve nakit akışı tahmini (DOM-FIN-063)', () => {
         assert.equal(response.statusCode, 403, `${role} ${url}: ${response.body}`)
         assert.equal(response.json().data, undefined)
       }
+      const scenario = await compare(cookie, ONE)
+      assert.equal(scenario.statusCode, 403, `${role} ${SCENARIOS}: ${scenario.body}`)
+      assert.equal(scenario.json().data, undefined)
     }
     const closed = await institution({ enabledModules: { finance: false } })
     for (const url of [REVENUE, CASH_FLOW]) {
@@ -203,6 +216,9 @@ describe('gelir ve nakit akışı tahmini (DOM-FIN-063)', () => {
       assert.equal(response.statusCode, 403)
       assert.equal(response.json().code, 'module_disabled')
     }
+    const scenario = await compare(closed.cookie, ONE)
+    assert.equal(scenario.statusCode, 403)
+    assert.equal(scenario.json().code, 'module_disabled')
   })
 
   test('DOM-FIN-063: bilinmeyen parametre, sorgudaki institutionId ve sınır dışı değer 400', async () => {
@@ -360,6 +376,111 @@ describe('gelir ve nakit akışı tahmini (DOM-FIN-063)', () => {
     assert.equal(withExpense.beyondHorizonCents, 8_000_000)
   })
 
+  test('DOM-FIN-067 senaryo: boş, fazla, sınır dışı ve bilinmeyen alan 400', async () => {
+    const a = await institution()
+    for (const payload of [
+      {},
+      { scenarios: [] },
+      { scenarios: [{}, {}, {}, {}, {}] },
+      { scenarios: [{ priceChangeBasisPoints: 20_001 }] },
+      { scenarios: [{ newStudents: { unit: 'percent', value: -10_001 } }] },
+      { scenarios: [{ renewalStudents: { unit: 'count', value: 2.5 } }] },
+      { scenarios: [{ discountChangeBasisPoints: -10_001 }] },
+      { scenarios: [{ name: 'Kötümser' }] },
+      { ...ONE, cashFlowMonths: 25 },
+      { ...ONE, year: 1999 },
+      { ...ONE, institutionId: 'x' },
+    ]) {
+      const response = await compare(a.cookie, payload)
+      assert.equal(response.statusCode, 400, `${JSON.stringify(payload)}: ${response.body}`)
+      assert.equal(response.json().code, 'validation_failed')
+    }
+  })
+
+  test('DOM-FIN-067 senaryo: temel ile öğrenci, fiyat ve indirim senaryoları; kayıt değişmez', async () => {
+    const a = await institution()
+    const before = (await get(REVENUE, a.cookie)).json().data
+    assert.equal(before.pipeline.expectedEnrollments, 0.5)
+    const response = await compare(a.cookie, {
+      scenarios: [
+        { newStudents: { unit: 'percent', value: 10_000 } },
+        { priceChangeBasisPoints: 1000 },
+        { priceChangeBasisPoints: 1000, applyToExistingContracts: true },
+        {
+          renewalStudents: { unit: 'count', value: -1 },
+          discountChangeBasisPoints: 200,
+        },
+      ],
+    })
+    assert.equal(response.statusCode, 200, response.body)
+    const { data } = response.json()
+    assert.equal(data.year, 2026)
+    assert.deepEqual(data.baseline.newEnrollment, {
+      students: 1.5,
+      contractedStudents: 1,
+      netCents: 13_722_000,
+      unpricedStudents: 0,
+    })
+    assert.equal(data.baseline.expectedTotalCents, before.expectedTotalCents)
+    assert.equal(data.baseline.differenceCents, 0)
+    const [doubled, onlyNew, all, mixed] = data.scenarios
+    assert.equal(doubled.newEnrollment.netCents, 9_000_000 + 18_888_000)
+    assert.equal(doubled.differenceCents, 14_166_000)
+    assert.deepEqual(doubled.parameters, {
+      newStudents: { unit: 'percent', value: 10_000 },
+      renewalStudents: { unit: 'percent', value: 0 },
+      priceChangeBasisPoints: 0,
+      discountChangeBasisPoints: 0,
+      applyToExistingContracts: false,
+    })
+    assert.equal(onlyNew.expectedTotalCents, 22_194_200)
+    assert.equal(onlyNew.renewal.netCents, 8_000_000)
+    assert.equal(all.expectedTotalCents, 23_894_200)
+    assert.equal(mixed.renewal.netCents, 0)
+    assert.equal(mixed.discountRateBasisPoints, 756)
+    assert.equal(mixed.newEnrollment.netCents, 9_000_000 + 4_622_000)
+    assert.deepEqual(data.assumptions, {
+      pipelineStatus: 'included',
+      discountRateBasisPoints: 556,
+      fallbackGrossCents: 9_000_000,
+      tariffYear: 2026,
+      tariffCarriedOver: false,
+    })
+    assert.equal(data.cashFlow, null)
+    assert.doesNotMatch(response.body, /Aday fc-|05559990001|fc-x1/)
+    // Senaryo kayıt değiştirmez.
+    assert.deepEqual((await get(REVENUE, a.cookie)).json().data, before)
+  })
+
+  test('DOM-FIN-067 senaryo: nakit akışı etkisi yılın kalan aylarına yayılır', async () => {
+    const a = await institution()
+    const response = await compare(a.cookie, {
+      year: 2026,
+      cashFlowMonths: 3,
+      scenarios: [{ renewalStudents: { unit: 'count', value: 1 } }],
+    })
+    assert.equal(response.statusCode, 200, response.body)
+    const { cashFlow } = response.json().data
+    assert.equal(cashFlow.from, '2026-10')
+    assert.equal(cashFlow.to, '2026-12')
+    assert.equal(cashFlow.spreadFrom, '2026-10')
+    assert.equal(cashFlow.spreadTo, '2027-08')
+    assert.equal(cashFlow.spreadMonths, 11)
+    assert.deepEqual(
+      cashFlow.baseline.map((month: { netCents: number }) => month.netCents),
+      [0, 4_500_000, 8_000_000],
+    )
+    // +1 yenileme = 8.000.000; 11 aya 727.272, son ay 727.280; örneklem boş, oran %100.
+    const [scenario] = cashFlow.scenarios
+    assert.deepEqual(
+      scenario.months.map((month: { changeCents: number }) => month.changeCents),
+      [727_272, 727_272, 727_272],
+    )
+    assert.equal(scenario.totalChangeCents, 727_272 * 3)
+    assert.equal(scenario.beyondHorizonChangeCents, 727_272 * 7 + 727_280)
+    assert.equal(scenario.months[2].cumulativeNetCents, 12_500_000 + 727_272 * 3)
+  })
+
   test('DOM-FIN-063: başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok', async () => {
     const b = await institution()
     await insertWithdrawal(db, b.id, {
@@ -386,5 +507,10 @@ describe('gelir ve nakit akışı tahmini (DOM-FIN-063)', () => {
     assert.equal(cash.overdueOpenCents, 4_500_000)
     const own = (await get(CASH_FLOW, b.cookie)).json().data
     assert.equal(own.pendingRefundCents, 500_000)
+    // Senaryo da yalnız kendi kurumunun tahminine dayanır.
+    const scenario = (await compare(a.cookie, { ...ONE, cashFlowMonths: 1 })).json().data
+    assert.equal(scenario.baseline.expectedTotalCents, 17_000_000)
+    assert.equal(scenario.baseline.newEnrollment.students, 1)
+    assert.equal(scenario.cashFlow.baseline[0].netCents, 0)
   })
 })

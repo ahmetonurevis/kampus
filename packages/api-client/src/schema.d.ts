@@ -4152,6 +4152,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/forecasts/scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gelir senaryolarını karşılaştır
+         * @description Gelir tahmininin (`GET /finance/forecasts/revenue`) üzerine en çok 4 senaryo uygular ve temel ile karşılaştırır (ON-248; K24; DOM-FIN-067). **Hiçbir şey yazmaz**, senaryo saklanmaz (salt okur görüntü; `Idempotency-Key` gerekmez). Her senaryoda yeni kayıt ve yenileme öğrenci değişimi (`unit` `percent`: on binde bir, −10.000…20.000; `count`: ±10.000), fiyat değişimi (`priceChangeBasisPoints`, −5.000…20.000), indirim ve burs oranı değişimi (`discountChangeBasisPoints`, ±10.000; sonuç %0–%100) ve `applyToExistingContracts` (varsayılan `false`: fiyat ve indirim değişimi mevcut sözleşmeleri değiştirmez, yalnız huni ve eklenen öğrenciye uygulanır). Verilmeyen alan sıfır değişimdir. Yeni kayıt segmenti kesin yeni kayıt + huni beklentisi, yenileme segmenti yapılmış yenilemelerdir; azalma önce huniden düşer. `year` verilmezse kurumun kayıt yılı. `cashFlowMonths` (1–24) verilirse temel nakit akışı (gidersiz) ile her senaryonun aylık neti döner: gelir farkı eğitim yılının bu aydan sonraki aylarına eşit yayılır ve vadesinde tahsil oranıyla beklenir. Tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        post: operations["compareFinanceScenarios"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/opening-watch": {
         parameters: {
             query?: never;
@@ -43634,6 +43654,8 @@ export interface operations {
                                 netCents: number;
                                 unpricedProspects: number;
                                 unratedProspects: number;
+                                /** @description Beklentiye giren adaylardan beklenen kesin kayıt (oranların toplamı; kesirli) */
+                                expectedEnrollments: number;
                             } | null;
                             expectedTotalCents: number;
                             assumptions: {
@@ -43819,6 +43841,243 @@ export interface operations {
             };
             /** @description Default Response */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    compareFinanceScenarios: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    year?: number;
+                    scenarios: {
+                        /**
+                         * @default {
+                         *       "unit": "percent",
+                         *       "value": 0
+                         *     }
+                         */
+                        newStudents?: {
+                            /** @enum {string} */
+                            unit: "percent";
+                            value: number;
+                        } | {
+                            /** @enum {string} */
+                            unit: "count";
+                            value: number;
+                        };
+                        /**
+                         * @default {
+                         *       "unit": "percent",
+                         *       "value": 0
+                         *     }
+                         */
+                        renewalStudents?: {
+                            /** @enum {string} */
+                            unit: "percent";
+                            value: number;
+                        } | {
+                            /** @enum {string} */
+                            unit: "count";
+                            value: number;
+                        };
+                        /** @default 0 */
+                        priceChangeBasisPoints?: number;
+                        /** @default 0 */
+                        discountChangeBasisPoints?: number;
+                        /** @default false */
+                        applyToExistingContracts?: boolean;
+                    }[];
+                    cashFlowMonths?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            enrollmentYear: number;
+                            /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                            today: string;
+                            baseline: {
+                                /** @description Yeni kayıt: kesin yeni kayıt + huni beklentisi */
+                                newEnrollment: {
+                                    /** @description Öğrenci; iki ondalık */
+                                    students: number;
+                                    /** @description Bunlardan sözleşmesi olan öğrenci */
+                                    contractedStudents: number;
+                                    netCents: number;
+                                    /** @description Birim fiyatı bulunamadığı için gelire girmeyen öğrenci */
+                                    unpricedStudents: number;
+                                };
+                                /** @description Yenileme: yapılmış yenilemeler */
+                                renewal: {
+                                    /** @description Öğrenci; iki ondalık */
+                                    students: number;
+                                    /** @description Bunlardan sözleşmesi olan öğrenci */
+                                    contractedStudents: number;
+                                    netCents: number;
+                                    /** @description Birim fiyatı bulunamadığı için gelire girmeyen öğrenci */
+                                    unpricedStudents: number;
+                                };
+                                /** @description Sözleşmesiz öğrenciye uygulanan indirim ve burs oranı */
+                                discountRateBasisPoints: number;
+                                expectedTotalCents: number;
+                                /** @description Senaryo eksi temel */
+                                differenceCents: number;
+                                /** @description Farkın temele oranı (on binde bir); temel sıfırsa `null` */
+                                differenceBasisPoints: number | null;
+                            };
+                            scenarios: {
+                                /** @description Yeni kayıt: kesin yeni kayıt + huni beklentisi */
+                                newEnrollment: {
+                                    /** @description Öğrenci; iki ondalık */
+                                    students: number;
+                                    /** @description Bunlardan sözleşmesi olan öğrenci */
+                                    contractedStudents: number;
+                                    netCents: number;
+                                    /** @description Birim fiyatı bulunamadığı için gelire girmeyen öğrenci */
+                                    unpricedStudents: number;
+                                };
+                                /** @description Yenileme: yapılmış yenilemeler */
+                                renewal: {
+                                    /** @description Öğrenci; iki ondalık */
+                                    students: number;
+                                    /** @description Bunlardan sözleşmesi olan öğrenci */
+                                    contractedStudents: number;
+                                    netCents: number;
+                                    /** @description Birim fiyatı bulunamadığı için gelire girmeyen öğrenci */
+                                    unpricedStudents: number;
+                                };
+                                /** @description Sözleşmesiz öğrenciye uygulanan indirim ve burs oranı */
+                                discountRateBasisPoints: number;
+                                expectedTotalCents: number;
+                                /** @description Senaryo eksi temel */
+                                differenceCents: number;
+                                /** @description Farkın temele oranı (on binde bir); temel sıfırsa `null` */
+                                differenceBasisPoints: number | null;
+                                /** @description Varsayılanları doldurulmuş senaryo parametreleri */
+                                parameters: {
+                                    newStudents: {
+                                        /** @enum {string} */
+                                        unit: "percent" | "count";
+                                        value: number;
+                                    };
+                                    renewalStudents: {
+                                        /** @enum {string} */
+                                        unit: "percent" | "count";
+                                        value: number;
+                                    };
+                                    priceChangeBasisPoints: number;
+                                    discountChangeBasisPoints: number;
+                                    applyToExistingContracts: boolean;
+                                };
+                            }[];
+                            assumptions: {
+                                /** @enum {string} */
+                                pipelineStatus: "included" | "crm_disabled" | "past_year";
+                                discountRateBasisPoints: number;
+                                /** @description Öğrencisiz segmentte eklenen öğrencinin brüt fiyatı (sözleşme liste ortalaması) */
+                                fallbackGrossCents: number | null;
+                                tariffYear: number | null;
+                                tariffCarriedOver: boolean;
+                            };
+                            /** @description `cashFlowMonths` verilmediyse `null` */
+                            cashFlow: {
+                                /** @description `YYYY-MM`, Europe/Istanbul */
+                                from: string;
+                                /** @description `YYYY-MM`, Europe/Istanbul */
+                                to: string;
+                                spreadFrom: string | null;
+                                spreadTo: string | null;
+                                spreadMonths: number;
+                                onTimeRateBasisPoints: number;
+                                baseline: {
+                                    /** @description `YYYY-MM`, Europe/Istanbul */
+                                    month: string;
+                                    netCents: number;
+                                    cumulativeNetCents: number;
+                                }[];
+                                scenarios: {
+                                    months: {
+                                        /** @description `YYYY-MM`, Europe/Istanbul */
+                                        month: string;
+                                        changeCents: number;
+                                        netCents: number;
+                                        cumulativeNetCents: number;
+                                    }[];
+                                    totalChangeCents: number;
+                                    beyondHorizonChangeCents: number;
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

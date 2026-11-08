@@ -230,6 +230,11 @@ export interface RevenueForecast {
     unpricedProspects: number
     /** Adımının örneklemi boş olduğu için beklentiye girmeyen aday sayısı. */
     unratedProspects: number
+    /**
+     * Beklentiye giren adaylardan beklenen kesin kayıt sayısı (oranların toplamı; kesirli, dört
+     * ondalık). Senaryo analizi (DOM-FIN-067) öğrenci başına huni netini bundan bulur.
+     */
+    expectedEnrollments: number
   } | null
   expectedTotalCents: number
   assumptions: {
@@ -400,6 +405,7 @@ export function revenueForecast(input: RevenueForecastInput): RevenueForecast {
     const open = windowed.filter(isOpen)
     let unpriced = 0
     let unrated = 0
+    let expectedBasisPoints = 0
     const steps = funnelSteps(input.institutionType)
       .filter(isPipelineStep)
       .map((step): PipelineStepForecast => {
@@ -423,6 +429,7 @@ export function revenueForecast(input: RevenueForecastInput): RevenueForecast {
             unrated += 1
             continue
           }
+          expectedBasisPoints += rate
           const gross = applyBasisPoints(price.cents, rate)
           grossCents += gross
           discountCents += applyBasisPoints(gross, discountRate)
@@ -445,6 +452,7 @@ export function revenueForecast(input: RevenueForecastInput): RevenueForecast {
       netCents: sumOf(steps.map((step) => step.netCents)),
       unpricedProspects: unpriced,
       unratedProspects: unrated,
+      expectedEnrollments: expectedBasisPoints / BASIS,
     }
   }
 

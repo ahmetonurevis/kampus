@@ -1127,6 +1127,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
     'CASH_FLOW',
   ),
+  // Onur: gelir senaryo analizi (ON-248; DOM-FIN-067).
+  'POST /api/v1/finance/forecasts/scenarios': liste(
+    'finance-forecasts.test.ts',
+    'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
+    'SCENARIOS',
+  ),
   // Onur: bütçe ve maliyet merkezi (ON-241, ON-242; DOM-FIN-062).
   ...Object.fromEntries(
     (

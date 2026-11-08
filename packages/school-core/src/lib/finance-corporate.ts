@@ -244,7 +244,11 @@ export function planEmployeeEnd(link: CorporateLink, input: unknown): { endsOn: 
   return { endsOn }
 }
 
-const linkCovers = (link: CorporateLink, day: string) =>
+/**
+ * Bağ verilen günü kapsar mı (iki uç dahil; gün Europe/Istanbul `YYYY-MM-DD`). Başlangıcı ya da
+ * bitişi ileri tarihli olabilir: bağın bugün etkinliği `endsOn === null` ile değil bununla bilinir.
+ */
+export const linkCovers = (link: Pick<CorporateLink, 'startsOn' | 'endsOn'>, day: string) =>
   link.startsOn <= day && (link.endsOn === null || day <= link.endsOn)
 
 // --- Toplu fatura --------------------------------------------------------------------------------

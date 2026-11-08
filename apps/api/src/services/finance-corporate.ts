@@ -13,6 +13,7 @@ import {
   corporateLineStatus,
   corporateReportTotals,
   linkCorporateEmployeeSchema,
+  linkCovers,
   planCorporateInvoice,
   planCorporateInvoiceCancel,
   planEmployeeEnd,
@@ -30,6 +31,7 @@ import {
   archiveCorporateCustomer,
   cancelCorporateInvoice,
   countActiveEmployees,
+  countOpenEmployees,
   endCustomerLink,
   findCorporateCustomer,
   findCorporateInvoice,
@@ -111,13 +113,13 @@ function checkedPeriod(period: FinancePeriod): FinancePeriod {
 export const listCorporateCustomersFor = (
   ctx: ServiceContext,
   query: { page: number; pageSize: number; q?: string | undefined },
-) => listCorporateCustomers(ctx.db, ctx.institutionId, query)
+) => listCorporateCustomers(ctx.db, ctx.institutionId, query, dayKey(ctx.now))
 
 export async function getCorporateCustomerFor(ctx: ServiceContext, id: string) {
   const customer = await customerOf(ctx.db, ctx, id)
   return {
     ...customer,
-    activeEmployeeCount: await countActiveEmployees(ctx.db, ctx.institutionId, id),
+    activeEmployeeCount: await countActiveEmployees(ctx.db, ctx.institutionId, id, dayKey(ctx.now)),
   }
 }
 
@@ -126,7 +128,7 @@ async function customerBody(tx: Database, ctx: ServiceContext, id: string) {
   return {
     data: {
       ...customer,
-      activeEmployeeCount: await countActiveEmployees(tx, ctx.institutionId, id),
+      activeEmployeeCount: await countActiveEmployees(tx, ctx.institutionId, id, dayKey(ctx.now)),
     },
   }
 }
@@ -231,8 +233,8 @@ export function archiveCorporateCustomerCommand(
       load: async (tx) => {
         const current = await customerOf(tx, ctx, id)
         if (current.version !== expectedVersion) throw new ConflictError()
-        const active = await countActiveEmployees(tx, ctx.institutionId, id)
-        return { run: () => assertCustomerArchivable(active) }
+        const open = await countOpenEmployees(tx, ctx.institutionId, id, dayKey(ctx.now))
+        return { run: () => assertCustomerArchivable(open) }
       },
       after: async (tx) => {
         const saved = await archiveCorporateCustomer(tx, ctx.institutionId, {
@@ -257,7 +259,13 @@ export async function listCorporateEmployeesFor(
   query: { page: number; pageSize: number; status?: 'active' | 'ended' | undefined },
 ) {
   await customerOf(ctx.db, ctx, customerId)
-  const { items, total } = await listCustomerLinks(ctx.db, ctx.institutionId, customerId, query)
+  const { items, total } = await listCustomerLinks(
+    ctx.db,
+    ctx.institutionId,
+    customerId,
+    query,
+    dayKey(ctx.now),
+  )
   const names = await studentNames(
     ctx.db,
     ctx.institutionId,
@@ -592,16 +600,26 @@ export function cancelCorporateInvoiceCommand(
 // --- Katılım özeti -------------------------------------------------------------------------------
 
 /**
- * Şirkete bugün etkin bağlı kursiyerlerin kur kayıtları (DOM-DIL-093, K-49): yalnız devam saatleri,
- * oran, devam şartı ve onaylı kur sonucu. Gerekçe, puan ve özür bilgisi okunsa da satıra girmez.
+ * Şirkete bugün etkin bağlı kursiyerlerin kur kayıtları (DOM-FIN-060, DOM-DIL-093, K-49): yalnız devam
+ * saatleri, oran, devam şartı ve onaylı kur sonucu. Bağ bugünü kapsamalıdır (başlangıcı ya da bitişi
+ * ileri tarihli olabilir); kur kaydı bağın içinde başlamalıdır (ilk katılma günü; grup birleştirmesi
+ * başlangıcı değiştirmez) ki bağdan önceki, kursiyerin kendi ödediği kur işverene gitmesin.
+ * Gerekçe, puan ve özür bilgisi okunsa da satıra girmez.
  */
 async function attendanceReport(ctx: ServiceContext, customerId: string) {
   const customer = await customerOf(ctx.db, ctx, customerId)
-  const links = (await loadCustomerLinks(ctx.db, ctx.institutionId, customerId)).filter(
-    (link) => link.endsOn === null,
+  const today = dayKey(ctx.now)
+  const links = (await loadCustomerLinks(ctx.db, ctx.institutionId, customerId)).filter((link) =>
+    linkCovers(link, today),
   )
+  const linkOf = new Map(links.map((link) => [link.studentId, link]))
   const studentIds = links.map((link) => link.studentId)
-  const enrollments = await loadEnrollmentsOfStudents(ctx.db, ctx.institutionId, studentIds)
+  const enrollments = (
+    await loadEnrollmentsOfStudents(ctx.db, ctx.institutionId, studentIds)
+  ).filter((row) => {
+    const link = linkOf.get(row.studentId)
+    return link !== undefined && linkCovers(link, dayKey(row.startedAt))
+  })
   const enrollmentIds = enrollments.map((row) => row.enrollmentId)
   const [attendance, decisions, names] = await Promise.all([
     listLessonHourAttendances(ctx.db, ctx.institutionId, enrollmentIds),

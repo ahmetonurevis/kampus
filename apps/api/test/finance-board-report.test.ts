@@ -253,8 +253,13 @@ describe('yönetim kurulu raporu', () => {
     assert.equal(data.finance.totals.accruedCents, NET / 2)
     assert.equal(data.finance.totals.collectedCents, 1_000_000)
 
-    // Tek kişilik yöntem hücresi gizli; toplam görünür (K-77).
+    // Tek kişilik yöntem hücresi gizli; toplam görünür (K-77). İkincil gizlenecek dolu hücre
+    // olmadığından kırılımın tamamı gizlidir, toplam hücreyi belli etmez.
     assert.equal(data.finance.methods.collectedCents, 1_000_000)
+    assert.ok(
+      data.finance.methods.rows.every((row: { suppressed: boolean }) => row.suppressed),
+      'yöntem kırılımı tamamen gizli',
+    )
     const transfer = data.finance.methods.rows.find(
       (row: { method: string }) => row.method === 'Banka havalesi',
     )
@@ -278,7 +283,7 @@ describe('yönetim kurulu raporu', () => {
     assert.equal(data.finance.aging.overdueCents, totals.overdueCents)
     assert.equal(data.finance.aging.overdueCents, NET / 2 - 1_000_000)
     assert.equal(data.finance.aging.studentCount, 1)
-    assert.equal(data.finance.aging.rows[0].suppressed, true)
+    assert.ok(data.finance.aging.rows.every((row: { suppressed: boolean }) => row.suppressed))
     assert.equal(data.finance.packages, null)
 
     assert.deepEqual(
@@ -295,6 +300,7 @@ describe('yönetim kurulu raporu', () => {
       data.enrollment.reasons.find((row: { reason: string }) => row.reason === 'relocation'),
       { reason: 'relocation', count: null, suppressed: true },
     )
+    assert.ok(data.enrollment.reasons.every((row: { suppressed: boolean }) => row.suppressed))
     assert.deepEqual(data.enrollment.renewal, {
       targetYear: 2027,
       eligibleCount: 2,

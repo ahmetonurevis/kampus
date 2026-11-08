@@ -356,28 +356,28 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ### K23 · Satın alma, stok ve demirbaş
 
-| ID     | Görev                                                                                 | Boyut | Durum    | Dal / commit | Not                                       |
-| ------ | ------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ----------------------------------------- |
-| ON-221 | Tedarikçi kaydı: vergi numarası, iletişim, kategori, belgeler                         | M     | bekliyor |              | bağımlılık: K2 tedarikçi cari             |
-| ON-222 | Satın alma talebi: birim talebi, gerekçe, bütçe kalemi                                | S     | bekliyor |              | bağımlılık: K24 bütçe kalemleri           |
-| ON-223 | Talep onay akışı: tutar eşiğine göre kademeli onay                                    | S     | bekliyor |              | bağımlılık: K27 iş akışı motoru           |
-| ON-224 | Teklif toplama ve karşılaştırma: tedarikçi teklifleri, karşılaştırma tablosu          | M     | bekliyor |              | bağımlılık: tedarikçi kaydı               |
-| ON-225 | Satın alma siparişi: sipariş PDF'i, tedarikçiye e-posta                               | S     | bekliyor |              | bağımlılık: IST-132                       |
-| ON-226 | Mal kabul: kısmi kabul, muayene notu                                                  | S     | bekliyor |              | bağımlılık: satın alma siparişi           |
-| ON-227 | Satın alma raporu: harcama kategorisi ve tedarikçi bazında                            | S     | bekliyor |              | bağımlılık: K24                           |
-| ON-228 | Stok kartı ve depo: ürün, birim, kampüs deposu                                        | S     | bekliyor |              | bağımlılık: IST-010                       |
-| ON-229 | Stok hareketi: giriş, çıkış, depolar arası transfer                                   | S     | bekliyor |              | bağımlılık: stok kartı                    |
-| ON-230 | Asgari stok uyarısı: eşik altına inince bildirim ve talep önerisi                     | M     | bekliyor |              | bağımlılık: IST-065                       |
-| ON-231 | Stok sayımı ve fark raporu: mobil barkodla sayım                                      | S     | bekliyor |              | bağımlılık: mobil kamera                  |
-| ON-232 | Kitap ve materyal seti dağıtımı: öğrenciye set teslimi ve imza kaydı                  | S     | bekliyor |              | bağımlılık: K2 ücret kalemi               |
-| ON-233 | Sarf malzeme talebi: öğretmen kırtasiye ve laboratuvar malzemesi talebi               | M     | bekliyor |              | bağımlılık: satın alma talebi             |
-| ON-234 | Laboratuvar kimyasal envanteri: tehlike sınıfı, son kullanma, güvenlik bilgi formu    | M     | bekliyor |              | doğrulanmalı (kimyasal güvenlik mevzuatı) |
-| ON-235 | Demirbaş kaydı: etiket numarası, konum, değer, alım tarihi                            | M     | bekliyor |              | bağımlılık: IST-010                       |
-| ON-236 | Demirbaş zimmeti: personele ve odaya zimmet, zimmet tutanağı PDF'i                    | M     | bekliyor |              | bağımlılık: K20 personel kartı            |
-| ON-237 | Demirbaş sayımı: karekodlu etiket ve mobil sayım                                      | S     | bekliyor |              | bağımlılık: mobil kamera                  |
-| ON-238 | Amortisman ön hesabı: yalnız yönetim raporu, defter kaydı yok (IST-142)               | M     | bekliyor |              | doğrulanmalı                              |
-| ON-239 | Bakım ve arıza talebi: arıza bildirimi, iş emri, durum takibi                         | S     | bekliyor |              | bağımlılık: IST-065                       |
-| ON-240 | Periyodik bakım planı: asansör, yangın söndürücü, jeneratör ve oyun alanı denetimleri | M     | bekliyor |              | doğrulanmalı (yasal periyotlar)           |
+| ID     | Görev                                                                                 | Boyut | Durum       | Dal / commit         | Not                                                                                           |
+| ------ | ------------------------------------------------------------------------------------- | ----- | ----------- | -------------------- | --------------------------------------------------------------------------------------------- |
+| ON-221 | Tedarikçi kaydı: vergi numarası, iletişim, kategori, belgeler                         | M     | çalışılıyor | onur/tedarikci-talep | bağımlılık: K2 tedarikçi cari; ON-222 ile aynı dal; dosyalar finance-* önekli; migration 0079 |
+| ON-222 | Satın alma talebi: birim talebi, gerekçe, bütçe kalemi                                | S     | çalışılıyor | onur/tedarikci-talep | bağımlılık: K24 bütçe kalemleri; ON-221 ile aynı dal; onay akışı ON-223 (K27)                 |
+| ON-223 | Talep onay akışı: tutar eşiğine göre kademeli onay                                    | S     | bekliyor    |                      | bağımlılık: K27 iş akışı motoru                                                               |
+| ON-224 | Teklif toplama ve karşılaştırma: tedarikçi teklifleri, karşılaştırma tablosu          | M     | bekliyor    |                      | bağımlılık: tedarikçi kaydı                                                                   |
+| ON-225 | Satın alma siparişi: sipariş PDF'i, tedarikçiye e-posta                               | S     | bekliyor    |                      | bağımlılık: IST-132                                                                           |
+| ON-226 | Mal kabul: kısmi kabul, muayene notu                                                  | S     | bekliyor    |                      | bağımlılık: satın alma siparişi                                                               |
+| ON-227 | Satın alma raporu: harcama kategorisi ve tedarikçi bazında                            | S     | bekliyor    |                      | bağımlılık: K24                                                                               |
+| ON-228 | Stok kartı ve depo: ürün, birim, kampüs deposu                                        | S     | bekliyor    |                      | bağımlılık: IST-010                                                                           |
+| ON-229 | Stok hareketi: giriş, çıkış, depolar arası transfer                                   | S     | bekliyor    |                      | bağımlılık: stok kartı                                                                        |
+| ON-230 | Asgari stok uyarısı: eşik altına inince bildirim ve talep önerisi                     | M     | bekliyor    |                      | bağımlılık: IST-065                                                                           |
+| ON-231 | Stok sayımı ve fark raporu: mobil barkodla sayım                                      | S     | bekliyor    |                      | bağımlılık: mobil kamera                                                                      |
+| ON-232 | Kitap ve materyal seti dağıtımı: öğrenciye set teslimi ve imza kaydı                  | S     | bekliyor    |                      | bağımlılık: K2 ücret kalemi                                                                   |
+| ON-233 | Sarf malzeme talebi: öğretmen kırtasiye ve laboratuvar malzemesi talebi               | M     | bekliyor    |                      | bağımlılık: satın alma talebi                                                                 |
+| ON-234 | Laboratuvar kimyasal envanteri: tehlike sınıfı, son kullanma, güvenlik bilgi formu    | M     | bekliyor    |                      | doğrulanmalı (kimyasal güvenlik mevzuatı)                                                     |
+| ON-235 | Demirbaş kaydı: etiket numarası, konum, değer, alım tarihi                            | M     | bekliyor    |                      | bağımlılık: IST-010                                                                           |
+| ON-236 | Demirbaş zimmeti: personele ve odaya zimmet, zimmet tutanağı PDF'i                    | M     | bekliyor    |                      | bağımlılık: K20 personel kartı                                                                |
+| ON-237 | Demirbaş sayımı: karekodlu etiket ve mobil sayım                                      | S     | bekliyor    |                      | bağımlılık: mobil kamera                                                                      |
+| ON-238 | Amortisman ön hesabı: yalnız yönetim raporu, defter kaydı yok (IST-142)               | M     | bekliyor    |                      | doğrulanmalı                                                                                  |
+| ON-239 | Bakım ve arıza talebi: arıza bildirimi, iş emri, durum takibi                         | S     | bekliyor    |                      | bağımlılık: IST-065                                                                           |
+| ON-240 | Periyodik bakım planı: asansör, yangın söndürücü, jeneratör ve oyun alanı denetimleri | M     | bekliyor    |                      | doğrulanmalı (yasal periyotlar)                                                               |
 
 ### K24 · Bütçe, maliyet merkezi ve konsolide rapor
 

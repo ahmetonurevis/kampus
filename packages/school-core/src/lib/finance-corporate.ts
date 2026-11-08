@@ -33,8 +33,8 @@ export const CORPORATE_CANCEL_REASON_MAX = 500
 
 const digitsOf = (value: string) => [...value].map(Number)
 
-/** 10 haneli vergi kimlik numarasının (VKN) kontrol hanesi. */
-function isValidVkn(value: string): boolean {
+/** 10 haneli vergi kimlik numarasının (VKN) kontrol hanesi (DOM-FIN-060, DOM-FIN-070). */
+export function isValidVkn(value: string): boolean {
   if (!/^\d{10}$/.test(value)) return false
   const digits = digitsOf(value)
   let sum = 0
@@ -48,7 +48,7 @@ function isValidVkn(value: string): boolean {
 }
 
 /** 11 haneli T.C. kimlik numarasının (şahıs şirketi) iki kontrol hanesi. */
-function isValidTckn(value: string): boolean {
+export function isValidTckn(value: string): boolean {
   if (!/^[1-9]\d{10}$/.test(value)) return false
   const d = digitsOf(value)
   const at = (index: number) => d[index] ?? 0

@@ -363,13 +363,14 @@ export async function updatePurchaseRequest(
 }
 
 /**
- * Bütçe kalanının girdileri (DOM-FIN-071, K-131): dönem × merkez × kalem satırının planı ve aynı
- * üçlüdeki onaylanmış ve kararı bekleyen taleplerin toplamı; hesaplanan talep hariç tutulur.
+ * Bütçe kalanının girdileri (DOM-FIN-071, ON-245, K-145): dönem × merkez × kalem satırının planı ve
+ * aynı üçlüdeki onaylanmış ve kararı bekleyen taleplerin toplamı; hesaplanan talep (`exceptId`)
+ * hariç tutulur. Gönderim ve onayda kurum kilidi altında okunur.
  */
 export async function loadPurchaseBudgetFigures(
   db: Database,
   institutionId: string,
-  key: { periodId: string; costCenterId: string; budgetItemId: string; exceptId: string },
+  key: { periodId: string; costCenterId: string; budgetItemId: string; exceptId: string | null },
 ): Promise<PurchaseBudgetFigures> {
   const [line] = await db
     .select({ amountCents: budgetLines.amountCents })
@@ -402,7 +403,7 @@ export async function loadPurchaseBudgetFigures(
         eq(purchaseRequests.costCenterId, key.costCenterId),
         eq(purchaseRequests.budgetItemId, key.budgetItemId),
         inArray(purchaseRequests.status, ['submitted', 'approved']),
-        sql`${purchaseRequests.id} <> ${key.exceptId}`,
+        key.exceptId === null ? undefined : sql`${purchaseRequests.id} <> ${key.exceptId}`,
       ),
     )
     .groupBy(purchaseRequests.status)

@@ -223,8 +223,10 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
       plannedCents: 1_000_000,
       approvedCents: 0,
       pendingCents: 0,
+      committedCents: 0,
       remainingCents: 1_000_000,
       exceedsRemaining: false,
+      overrunCents: 0,
     })
     assert.deepEqual(first.actions, { edit: true, submit: true, cancel: true, decide: false })
     assert.deepEqual(first.supplier, { id: t.supplier.id, name: 'Örnek Bilişim A.Ş.' })
@@ -358,7 +360,7 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
     assertError(await act(t.admin, submitted, 'submit'), 422, 'purchase_request_not_draft')
   })
 
-  test('DOM-FIN-071: onay ve ret; onaylanan talep aynı satırın kalanından düşülür, aşım yalnız bilgidir (K-131)', async () => {
+  test('DOM-FIN-071: onay ve ret; onaylanan talep aynı satırın kalanından düşülür (K-145)', async () => {
     const t = await ready()
     const first = ok(await act(t.admin, await create(t.admin, body(t)), 'submit'))
     const approved = ok(await act(t.admin, first, 'approve', { note: 'Uygun' }))
@@ -369,13 +371,17 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
     const big = body(t, {
       items: [{ name: 'Sunucu', quantity: 1, unit: 'piece', estimatedUnitPriceCents: 700_000 }],
     })
-    const second = ok(await act(t.admin, await create(t.admin, big), 'submit'))
+    const second = ok(
+      await act(t.admin, await create(t.admin, big), 'submit', { confirmOverBudget: true }),
+    )
     assert.deepEqual(second.budget, {
       plannedCents: 1_000_000,
       approvedCents: 400_000,
       pendingCents: 0,
+      committedCents: 400_000,
       remainingCents: 600_000,
       exceedsRemaining: true,
+      overrunCents: 100_000,
     })
     const third = await create(t.admin, body(t))
     assert.equal((third.budget as Json).pendingCents, 700_000)
@@ -413,6 +419,188 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
       t.admin,
     ).then((response) => response.json())) as { meta: { total: number } }
     assert.equal(byCenter.meta.total, 1)
+  })
+
+  /** Talebin denetim satırlarındaki alan adları (`changes.fields`). */
+  const auditFields = async (institutionId: string, action: string, request: Json) =>
+    (
+      await db
+        .select({ changes: auditLog.changes })
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.institutionId, institutionId),
+            eq(auditLog.action, action),
+            eq(auditLog.entityId, String(request.id)),
+          ),
+        )
+    ).map((row) => row.changes?.fields)
+  const piece = (cents: number) => ({
+    items: [{ name: 'Sunucu', quantity: 1, unit: 'piece', estimatedUnitPriceCents: cents }],
+  })
+
+  test('DOM-FIN-071, ON-245: kalanı aşan talep gönderimde 409 budget_exceeded_warning alır, kayıt değişmez; confirmOverBudget ile gider (K-146)', async () => {
+    const t = await ready()
+    const within = ok(await act(t.admin, await create(t.admin, body(t, piece(700_000))), 'submit'))
+    assert.equal(within.status, 'submitted')
+    const draft = await create(t.admin, body(t, piece(400_000)))
+    assert.equal((draft.budget as Json).exceedsRemaining, true, 'taslak açılır, aşım bilgidir')
+    assert.equal((draft.budget as Json).overrunCents, 100_000)
+    const before = await rowsOf(t.id)
+
+    const warned = await act(t.admin, draft, 'submit')
+    assertError(warned, 409, 'budget_exceeded_warning')
+    assert.match(warned.json().message as string, /1\.000,00 ₺ aşıyor .*kalan 3\.000,00 ₺/)
+    assertError(await act(t.admin, draft, 'submit', { confirmOverBudget: false }), 409)
+    assertError(await act(t.admin, draft, 'submit', { confirmOverBudget: 'evet' }), 400)
+    assert.deepEqual(await rowsOf(t.id), before)
+    assert.deepEqual(await auditFields(t.id, 'purchase_request.submit', within), [
+      ['status', 'submittedAt', 'submittedByUserId'],
+    ])
+    assert.deepEqual(await auditFields(t.id, 'purchase_request.submit', draft), [])
+
+    const confirmed = ok(await act(t.admin, draft, 'submit', { confirmOverBudget: true }))
+    assert.equal(confirmed.status, 'submitted')
+    assert.deepEqual(confirmed.budget, {
+      plannedCents: 1_000_000,
+      approvedCents: 0,
+      pendingCents: 700_000,
+      committedCents: 700_000,
+      remainingCents: 300_000,
+      exceedsRemaining: true,
+      overrunCents: 100_000,
+    })
+    assert.deepEqual(await auditFields(t.id, 'purchase_request.submit', draft), [
+      ['status', 'submittedAt', 'submittedByUserId', 'confirmOverBudget'],
+    ])
+  })
+
+  test('DOM-FIN-071, ON-245: bütçe satırı olmayan talep 409 budget_line_missing_warning; ön büro açıkça onaylayarak gönderir (K-146)', async () => {
+    const t = await ready()
+    const front = await member(t.id, 'onburo')
+    const request = await create(front, body(t, { costCenterId: t.otherCenter.id }))
+    const warned = await act(front, request, 'submit', {})
+    assertError(warned, 409, 'budget_line_missing_warning')
+    assert.match(warned.json().message as string, /bütçesiz/)
+    assert.equal((await rowsOf(t.id))[0]?.status, 'draft')
+    const submitted = ok(await act(front, request, 'submit', { confirmOverBudget: true }))
+    assert.equal(submitted.status, 'submitted')
+    assert.equal((submitted.budget as Json).plannedCents, null)
+  })
+
+  test('DOM-FIN-071, ON-245: onayda bekleyen öteki talepler de taahhüttür; aşan onay 409 ve confirmOverBudget ister (K-145, K-146)', async () => {
+    const t = await ready()
+    const first = ok(await act(t.admin, await create(t.admin, body(t, piece(600_000))), 'submit'))
+    const second = ok(
+      await act(t.admin, await create(t.admin, body(t, piece(600_000))), 'submit', {
+        confirmOverBudget: true,
+      }),
+    )
+    const detail = ok(await get(`${REQUESTS}/${String(first.id)}`, t.admin))
+    assert.equal((detail.budget as Json).remainingCents, 400_000)
+    assert.equal((detail.budget as Json).overrunCents, 200_000)
+    assertError(
+      await act(t.admin, first, 'approve', { note: 'Uygun' }),
+      409,
+      'budget_exceeded_warning',
+    )
+    assert.equal((await rowsOf(t.id)).find((row) => row.id === first.id)?.status, 'submitted')
+    const approved = ok(
+      await act(t.admin, first, 'approve', { note: 'Uygun', confirmOverBudget: true }),
+    )
+    assert.equal(approved.status, 'approved')
+    assert.equal(approved.decisionNote, 'Uygun')
+    assert.deepEqual(await auditFields(t.id, 'purchase_request.approve', first), [
+      ['status', 'decidedAt', 'decidedByUserId', 'decisionNote', 'confirmOverBudget'],
+    ])
+    const rejected = ok(await act(t.admin, second, 'reject', { reason: 'Bütçe yetersiz' }))
+    assert.equal(rejected.status, 'rejected', 'ret bütçe uyarısı istemez')
+    const third = ok(await act(t.admin, await create(t.admin, body(t, piece(400_000))), 'submit'))
+    const approvedThird = ok(await act(t.admin, third, 'approve', {}))
+    assert.equal(approvedThird.status, 'approved', 'reddedilen talep taahhüt değildir')
+    assert.deepEqual(await auditFields(t.id, 'purchase_request.approve', third), [
+      ['status', 'decidedAt', 'decidedByUserId', 'decisionNote'],
+    ])
+  })
+
+  test('DOM-FIN-071, ON-245: kapalı bütçe döneminde talep gönderilemez (422 önce, uyarı sonra)', async () => {
+    const t = await ready()
+    const request = await create(t.admin, body(t, piece(2_000_000)))
+    const period = ok(await get(`${BUDGET}/budget-periods/${String(t.period.id)}`, t.admin))
+    ok(
+      await call(
+        'POST',
+        `${BUDGET}/budget-periods/${String(t.period.id)}/close`,
+        t.admin,
+        undefined,
+        ifMatch(period.version),
+      ),
+    )
+    assertError(await act(t.admin, request, 'submit'), 422, 'purchase_request_period_closed')
+    assertError(
+      await act(t.admin, request, 'submit', { confirmOverBudget: true }),
+      422,
+      'purchase_request_period_closed',
+    )
+    assert.equal((await rowsOf(t.id))[0]?.status, 'draft')
+  })
+
+  test('DOM-FIN-071, ON-245: form bütçe durumu satırın planını ve taahhüdünü verir; taslak ve iptal sayılmaz; başka kurum sızmaz (K-148)', async () => {
+    const t = await ready()
+    const front = await member(t.id, 'onburo')
+    const url = (overrides: Record<string, unknown> = {}) =>
+      `${REQUESTS}/budget-status?${new URLSearchParams({
+        periodId: String(t.period.id),
+        costCenterId: String(t.center.id),
+        budgetItemId: String(t.expense.id),
+        ...overrides,
+      } as Record<string, string>).toString()}`
+    assertError(await get(url(), null), 401)
+    const teacher = await member(t.id, 'ogretmen')
+    assertError(await get(url(), teacher), 403)
+    ok(await act(t.admin, await create(t.admin, body(t, piece(300_000))), 'submit'))
+    const approved = ok(
+      await act(t.admin, await create(t.admin, body(t, piece(200_000))), 'submit'),
+    )
+    ok(await act(t.admin, approved, 'approve', {}))
+    await create(t.admin, body(t, piece(50_000)))
+    const cancelled = ok(
+      await act(t.admin, await create(t.admin, body(t, piece(90_000))), 'submit'),
+    )
+    ok(await act(t.admin, cancelled, 'cancel', { reason: 'Gerek kalmadı' }))
+    assert.deepEqual(ok(await get(url(), front)), {
+      plannedCents: 1_000_000,
+      approvedCents: 200_000,
+      pendingCents: 300_000,
+      committedCents: 500_000,
+      remainingCents: 500_000,
+    })
+    assert.deepEqual(ok(await get(url({ costCenterId: t.otherCenter.id }), front)), {
+      plannedCents: null,
+      approvedCents: 0,
+      pendingCents: 0,
+      committedCents: 0,
+      remainingCents: null,
+    })
+    const b = await ready()
+    ok(await act(b.admin, await create(b.admin, body(b, piece(100_000))), 'submit'))
+    assert.deepEqual(
+      ok(
+        await get(
+          url({ periodId: b.period.id, costCenterId: b.center.id, budgetItemId: b.expense.id }),
+          t.admin,
+        ),
+      ),
+      {
+        plannedCents: null,
+        approvedCents: 0,
+        pendingCents: 0,
+        committedCents: 0,
+        remainingCents: null,
+      },
+    )
+    assertError(await get(url({ periodId: 'donem' }), t.admin), 400)
+    assertError(await get(`${url()}&institutionId=${b.id}`, t.admin), 400)
   })
 
   test('DOM-FIN-071: iptal gerekçe ister; iptal edilen talep onaylanamaz', async () => {

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import {
+  confirmPurchaseBudget,
   itemTotalCents,
   planPurchaseRequest,
   planPurchaseRequestApprove,
@@ -11,6 +12,7 @@ import {
   purchaseBudgetInfo,
   purchaseRequestActions,
   purchaseRequestNumber,
+  type PurchaseBudgetWarning,
   type PurchaseRequestRefs,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 
@@ -40,8 +42,9 @@ import { auditWork } from './task-work.ts'
  * Satın alma talebi (DOM-FIN-071; ON-222). Kural core `lib/finance-purchase-requests.ts`'tedir;
  * servis kurum kilidi altında talebi ve bağlı kayıtları (merkez, dönem, gider kalemi, tedarikçi)
  * yükler, core'a karar verdirir, aynı transaction'da yazar ve denetim kaydı bırakır. Bütçe kalanı
- * okumada hesaplanır, saklanmaz (K-131). Onaylanan talep sipariş ya da gider gerçekleşenine
- * (DOM-FIN-066) bugün bağlanmaz. Rol ve modül denetimi rotadadır.
+ * okumada hesaplanır, saklanmaz (K-145). Gönderim ve onayda kalan kurum kilidi altında yeniden
+ * hesaplanır; aşım ya da bütçesiz talep açık onay ister (ON-245, K-146). Onaylanan talep sipariş ya
+ * da gider gerçekleşenine (DOM-FIN-066) bugün bağlanmaz. Rol ve modül denetimi rotadadır.
  */
 
 const ENTITY = 'purchase_requests'
@@ -208,6 +211,28 @@ export async function purchaseRequestOptionsFor(ctx: ServiceContext) {
   }
 }
 
+/**
+ * Talep formunun bütçe durumu (ON-245, K-148): seçilen dönem × merkez × kalem satırının planı ve
+ * taahhüdü. Bilinmeyen ya da başka kurumun kimliği plansız ve taahhütsüz döner (sızıntı yok).
+ */
+export async function purchaseBudgetStatusFor(
+  ctx: ServiceContext,
+  key: { periodId: string; costCenterId: string; budgetItemId: string },
+) {
+  const figures = await loadPurchaseBudgetFigures(ctx.db, ctx.institutionId, {
+    ...key,
+    exceptId: null,
+  })
+  const info = purchaseBudgetInfo(figures, 0)
+  return {
+    plannedCents: info.plannedCents,
+    approvedCents: info.approvedCents,
+    pendingCents: info.pendingCents,
+    committedCents: info.committedCents,
+    remainingCents: info.remainingCents,
+  }
+}
+
 /** Yeni taslak (DOM-FIN-071); kurum içi sıra numarası kilit altında verilir. 201. */
 export function createPurchaseRequestCommand(
   ctx: ServiceContext,
@@ -298,7 +323,16 @@ export function updatePurchaseRequestCommand(
 
 type Transition = 'submit' | 'approve' | 'reject' | 'cancel'
 
-/** Durum geçişi: gönder, onayla, reddet, iptal et (DOM-FIN-071). */
+type TransitionPlan = {
+  changes: PurchaseRequestUpdate
+  /** Açık onayla geçilen bütçe uyarısı; denetim kaydına `confirmOverBudget` olarak düşer (K-146). */
+  budgetWarning: PurchaseBudgetWarning | null
+}
+
+/**
+ * Durum geçişi: gönder, onayla, reddet, iptal et (DOM-FIN-071). Gönderim ve onayda bütçe kalanı
+ * kurum kilidi altında yüklenir: eşzamanlı iki talep aynı kalanı birlikte tüketemez (ON-245).
+ */
 export function transitionPurchaseRequestCommand(
   ctx: ServiceContext,
   id: string,
@@ -320,41 +354,73 @@ export function transitionPurchaseRequestCommand(
         const current = await requestOf(tx, ctx, id)
         if (current.version !== expectedVersion) throw new ConflictError()
         const refs = await refsFor(tx, ctx, current)
+        const budget =
+          transition === 'submit' || transition === 'approve'
+            ? purchaseBudgetInfo(
+                await loadPurchaseBudgetFigures(tx, ctx.institutionId, {
+                  periodId: current.periodId,
+                  costCenterId: current.costCenterId,
+                  budgetItemId: current.budgetItemId,
+                  exceptId: id,
+                }),
+                current.totalCents,
+              )
+            : null
+        const checkBudget = (confirmed: boolean | undefined) =>
+          budget === null ? null : confirmPurchaseBudget(budget, confirmed)
         return {
-          run: (): PurchaseRequestUpdate => {
+          run: (): TransitionPlan => {
             switch (transition) {
-              case 'submit':
-                planPurchaseRequestSubmit(current, refs, ctx.actor)
+              case 'submit': {
+                const { confirmOverBudget } = planPurchaseRequestSubmit(
+                  current,
+                  refs,
+                  ctx.actor,
+                  input,
+                )
                 return {
-                  status: 'submitted',
-                  submittedAt: ctx.now,
-                  submittedByUserId: ctx.actor.userId,
+                  budgetWarning: checkBudget(confirmOverBudget),
+                  changes: {
+                    status: 'submitted',
+                    submittedAt: ctx.now,
+                    submittedByUserId: ctx.actor.userId,
+                  },
                 }
+              }
               case 'approve': {
-                const { note } = planPurchaseRequestApprove(current, input, refs)
+                const { note, confirmOverBudget } = planPurchaseRequestApprove(current, input, refs)
                 return {
-                  status: 'approved',
-                  decidedAt: ctx.now,
-                  decidedByUserId: ctx.actor.userId,
-                  decisionNote: note,
+                  budgetWarning: checkBudget(confirmOverBudget),
+                  changes: {
+                    status: 'approved',
+                    decidedAt: ctx.now,
+                    decidedByUserId: ctx.actor.userId,
+                    decisionNote: note,
+                  },
                 }
               }
               case 'reject': {
                 const { reason } = planPurchaseRequestReject(current, input)
                 return {
-                  status: 'rejected',
-                  decidedAt: ctx.now,
-                  decidedByUserId: ctx.actor.userId,
-                  decisionNote: reason,
+                  budgetWarning: null,
+                  changes: {
+                    status: 'rejected',
+                    decidedAt: ctx.now,
+                    decidedByUserId: ctx.actor.userId,
+                    decisionNote: reason,
+                  },
                 }
               }
               case 'cancel': {
                 const { reason } = planPurchaseRequestCancel(current, input, ctx.actor)
                 return {
-                  status: 'cancelled',
-                  cancelledAt: ctx.now,
-                  cancelledByUserId: ctx.actor.userId,
-                  cancelReason: reason,
+                  budgetWarning: null,
+                  changes: {
+                    status: 'cancelled',
+                    cancelledAt: ctx.now,
+                    cancelledByUserId: ctx.actor.userId,
+                    cancelReason: reason,
+                  },
                 }
               }
               default:
@@ -363,7 +429,7 @@ export function transitionPurchaseRequestCommand(
           },
         }
       },
-      after: async (tx, changes) => {
+      after: async (tx, { changes, budgetWarning }) => {
         const saved = await updatePurchaseRequest(tx, ctx.institutionId, {
           id,
           expectedVersion,
@@ -371,7 +437,10 @@ export function transitionPurchaseRequestCommand(
           now: ctx.now,
         })
         if (!saved) throw new ConflictError()
-        await auditWork(tx, ctx, action, entity, Object.keys(changes))
+        await auditWork(tx, ctx, action, entity, [
+          ...Object.keys(changes),
+          ...(budgetWarning === null ? [] : ['confirmOverBudget']),
+        ])
         body = await requestBody(tx, ctx, id)
       },
     },

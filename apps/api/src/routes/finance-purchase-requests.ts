@@ -8,6 +8,7 @@ import {
   PURCHASE_REQUEST_ROLES,
   purchaseRequestSchema,
   rejectPurchaseRequestSchema,
+  submitPurchaseRequestSchema,
   updatePurchaseRequestSchema,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 
@@ -17,6 +18,7 @@ import {
   createPurchaseRequestCommand,
   getPurchaseRequestFor,
   listPurchaseRequestsFor,
+  purchaseBudgetStatusFor,
   purchaseRequestOptionsFor,
   transitionPurchaseRequestCommand,
   updatePurchaseRequestCommand,
@@ -25,6 +27,8 @@ import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
+  purchaseBudgetStatusQuery,
+  purchaseBudgetStatusResponse,
   purchaseRequestListQuery,
   purchaseRequestListResponse,
   purchaseRequestOptionsResponse,
@@ -36,13 +40,17 @@ import {
  * Satın alma talebi uçları (docs/domain/finans.md DOM-FIN-071; ON-222). Modül `finance`. Açma,
  * düzeltme, gönderme ve iptal yönetici ile ön büro (ön büro yalnız kendi talebi, 403
  * `purchase_request_not_owner`; K-128); onay ve ret yalnız yönetici (K-129). Kademeli onay
- * ON-223'tedir. Sıra: 401 → 403 modül → 403 rol → `If-Match` → 400 → işlem.
+ * ON-223'tedir. Gönderim ve onayda kalanı aşan ya da bütçe satırı olmayan talep 409 uyarı alır,
+ * `confirmOverBudget: true` ile geçer (ON-245, K-146). Sıra: 401 → 403 modül → 403 rol →
+ * `If-Match` → 400 → işlem.
  */
 
 const STAFF =
   'Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.'
 const MANAGER = 'Rol: `yonetici` (K-129). Modül `finance`.'
 const IF_MATCH = '`If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`.'
+const BUDGET_WARNING =
+  'Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir.'
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   if (result.replayed) reply.header('idempotent-replayed', 'true')
@@ -59,17 +67,15 @@ const TRANSITIONS = {
   submit: {
     operationId: 'submitPurchaseRequest',
     summary: 'Satın alma talebini gönder',
-    description:
-      'Taslak talebi onaya gönderir. Bütçe dönemi açık olmalıdır: 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Yanıt bütçe kalanını bilgi olarak taşır, aşım engellenmez (K-131, ON-245).',
+    description: `Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 \`purchase_request_period_closed\`, taslak dönem 422 \`purchase_request_period_not_open\`; merkez, kalem ya da tedarikçi pasifleşmişse 422. ${BUDGET_WARNING}`,
     roles: PURCHASE_REQUEST_ROLES,
-    body: null,
+    body: submitPurchaseRequestSchema.nullish(),
     who: STAFF,
   },
   approve: {
     operationId: 'approvePurchaseRequest',
     summary: 'Satın alma talebini onayla',
-    description:
-      'Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez.',
+    description: `Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 \`purchase_request_not_submitted\`, dönem açık değilse 422 \`purchase_request_period_not_open\`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. ${BUDGET_WARNING}`,
     roles: PURCHASE_REQUEST_DECISION_ROLES,
     body: approvePurchaseRequestSchema,
     who: MANAGER,
@@ -143,6 +149,24 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
     async (request) => ({ data: await purchaseRequestOptionsFor(contextOf(request)) }),
   )
 
+  typed.get(
+    '/api/v1/finance/purchase-requests/budget-status',
+    {
+      preValidation: guarded(PURCHASE_REQUEST_ROLES),
+      schema: {
+        operationId: 'getPurchaseBudgetStatus',
+        tags,
+        summary: 'Satın alma talebi formunun bütçe durumu',
+        description: `Seçilen bütçe dönemi × talep eden birim × gider kalemi satırının planı, onaylanmış ve kararı bekleyen taleplerin toplamı (taahhüt) ve kalan (plan eksi taahhüt; K-145). Talep formunda tahmini toplamın kalanı aşıp aşmadığını göstermek içindir; ön büro yalnız bu satırı görür, bütçenin geri kalanını görmez (K-148, K-60). Satır yoksa plan ve kalan boş; bilinmeyen ya da başka kurumun kimliği de böyle döner. ${STAFF}`,
+        querystring: purchaseBudgetStatusQuery,
+        response: { 200: purchaseBudgetStatusResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await purchaseBudgetStatusFor(contextOf(request), request.query),
+    }),
+  )
+
   typed.post(
     '/api/v1/finance/purchase-requests',
     {
@@ -177,7 +201,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
         operationId: 'getPurchaseRequest',
         tags,
         summary: 'Satın alma talebi ayrıntısı',
-        description: `Kalemler, bütçe kalanı bilgisi (plan, onaylanmış ve bekleyen talepler, kalan; K-131), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. ${STAFF}`,
+        description: `Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. ${STAFF}`,
         params: purchaseRequestParams,
         response: { 200: purchaseRequestResponse, ...commandErrors },
       },
@@ -222,11 +246,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
     typed.post(
       `/api/v1/finance/purchase-requests/:requestId/${verb}`,
       {
-        preValidation: [
-          ...guarded(spec.roles),
-          requireIfMatch(),
-          ...(spec.body === null ? [] : [captureInput()]),
-        ],
+        preValidation: [...guarded(spec.roles), requireIfMatch(), captureInput()],
         schema: {
           operationId: spec.operationId,
           tags,
@@ -234,7 +254,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
           description: `${spec.description} ${IF_MATCH} ${spec.who}`,
           headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
           params: purchaseRequestParams,
-          ...(spec.body === null ? {} : { body: spec.body }),
+          body: spec.body,
           response: { 200: purchaseRequestResponse, ...commandErrors },
         },
       },
@@ -244,7 +264,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
           contextOf(request),
           request.params.requestId,
           verb,
-          spec.body === null ? {} : request.commandInput,
+          request.commandInput,
           expected(opts.expectedVersion),
           opts.idempotency,
         )

@@ -8,7 +8,8 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // Tedarikçi ve satın alma talebi ekranları (ON-221, ON-222; DOM-FIN-070, DOM-FIN-071). Kural dalları
 // birim ve API testlerindedir (`tests/finance-suppliers.test.ts`,
 // `tests/finance-purchase-requests.test.ts`, `apps/api/test/finance-*.test.ts`); burada yönetici
-// tedarikçi ekler ve talebi açıp onaylar, ön büro talep açar ama onaylayamaz.
+// tedarikçi ekler ve talebi açıp onaylar, ön büro talep açar ama onaylayamaz; bütçeyi aşan talep
+// gönderimde ve onayda uyarıdan sonra açık onayla geçer (ON-245).
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
@@ -62,7 +63,11 @@ async function seedBudget(school: Tenant) {
   }
 }
 
-async function fillRequest(page: Page, item: string) {
+async function fillRequest(
+  page: Page,
+  item: string,
+  { quantity = '4', price = '500,00', total = '2.000,00 ₺' } = {},
+) {
   await page.getByRole('button', { name: 'Yeni talep' }).click()
   const form = page.getByRole('dialog', { name: 'Yeni satın alma talebi' })
   await form.getByLabel('Talep eden birim').selectOption({ label: 'BT · Bilgi İşlem' })
@@ -70,9 +75,9 @@ async function fillRequest(page: Page, item: string) {
   await form.getByLabel('Gider kalemi').selectOption({ label: 'G-200 · Malzeme' })
   await form.getByLabel('Gerekçe').fill('Bilgisayar laboratuvarı için yedek parça')
   await form.getByLabel('1. kalem adı').fill(item)
-  await form.getByLabel('Miktar').fill('4')
-  await form.getByLabel('Tahmini birim fiyat (₺)').fill('500,00')
-  await expect(form.getByText('2.000,00 ₺')).toBeVisible()
+  await form.getByLabel('Miktar').fill(quantity)
+  await form.getByLabel('Tahmini birim fiyat (₺)').fill(price)
+  await expect(form.getByText(`Tahmini toplam: ${total}`)).toBeVisible()
   return form
 }
 
@@ -135,6 +140,47 @@ test.describe('DOM-FIN-070, DOM-FIN-071: tedarikçi ve satın alma talebi ekran�
     await expect(
       requests.getByRole('row', { name: /ST-0001/ }).getByText('Onaylandı', { exact: true }),
     ).toBeVisible()
+  })
+
+  test('DOM-FIN-071, ON-245: bütçeyi aşan talep formda işaretlenir; gönderim ve onay uyarıdan sonra açık onayla geçer', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [] })
+    await seedBudget(school)
+    const page = await loginAs(school.user('yonetici'))
+
+    await page.goto(`${ADMIN}?gorunum=satin-alma`)
+    const form = await fillRequest(page, 'Sunucu', {
+      quantity: '3',
+      price: '4.000,00',
+      total: '12.000,00 ₺',
+    })
+    const formBudget = form.getByRole('region', { name: 'Bütçe durumu' })
+    await expect(formBudget.getByText('Bu talep bütçe kalanını 2.000,00 ₺ aşıyor.')).toBeVisible()
+    await form.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(form).toBeHidden()
+
+    const panel = page.getByRole('dialog', { name: 'Satın alma talebi' })
+    await expect(panel.getByRole('heading', { name: 'ST-0001' })).toBeVisible()
+    await panel.getByRole('button', { name: 'Onaya gönder' }).click()
+    await expect(panel.getByRole('alert')).toContainText('2.000,00 ₺ aşıyor')
+    await expect(panel.getByText('Taslak', { exact: true })).toBeVisible()
+    await panel.getByRole('button', { name: 'Aşımı onaylayarak gönder' }).click()
+    await expect(panel.getByText('Gönderildi', { exact: true }).first()).toBeVisible()
+
+    await panel.getByRole('button', { name: 'Onayla' }).click()
+    const decision = page.getByRole('dialog', { name: 'Talebi onayla' })
+    const decisionBudget = decision.getByRole('region', { name: 'Bütçe durumu' })
+    await expect(decisionBudget.getByText('Aşım', { exact: true })).toBeVisible()
+    await expect(
+      decisionBudget.getByText('Bu talep bütçe kalanını 2.000,00 ₺ aşıyor.'),
+    ).toBeVisible()
+    await decision.getByRole('button', { name: 'Onayla' }).click()
+    await expect(decision.getByRole('alert')).toContainText('açıkça onaylayın')
+    await decision.getByRole('button', { name: 'Aşımı onaylayarak onayla' }).click()
+    await expect(decision).toBeHidden()
+    await expect(panel.getByText('Onaylandı', { exact: true }).first()).toBeVisible()
   })
 
   test('DOM-FIN-071: ön büro talep açar ve gönderir, onaylayamaz; tedarikçiyi salt okur; dar ekranda taşma yok', async ({

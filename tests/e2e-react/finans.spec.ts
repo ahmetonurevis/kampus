@@ -2137,4 +2137,128 @@ test.describe('Finans: stok', () => {
     await expect(movements).toContainText('+20 paket')
     await expect(movements.getByRole('button', { name: /hareketini iptal et/ })).toHaveCount(0)
   })
+
+  test('DOM-FIN-079: kritik stok görünümü ve panoda uyarı; seçilen ürünlerden talep önerisi taslak talep açar', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici'], students: [] })
+    // Bütçe, depo, iki kritik kart (biri tükenmiş) ve kritik olmayan bir kart API'den kurulur.
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const created = async (url: string, body: unknown, headers: Record<string, string> = {}) => {
+        const result = await client.post(url, body, headers)
+        expect(result.status, JSON.stringify(result.body)).toBe(201)
+        return (result.body as { data: { id: string; version: number } }).data
+      }
+      const center = await created('/api/v1/finance/cost-centers', {
+        code: 'IDR',
+        name: 'İdari işler',
+        type: 'unit',
+      })
+      const budgetItem = await created('/api/v1/finance/budget-items', {
+        code: 'G-300',
+        name: 'Sarf malzemesi',
+        kind: 'expense',
+      })
+      const period = await created('/api/v1/finance/budget-periods', {
+        name: 'Sarf bütçesi',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+      })
+      const opened = await client.post(
+        `/api/v1/finance/budget-periods/${period.id}/open`,
+        undefined,
+        { 'if-match': `"${String(period.version)}"` },
+      )
+      expect(opened.status, JSON.stringify(opened.body)).toBe(200)
+      await created(`/api/v1/finance/budget-periods/${period.id}/lines`, {
+        costCenterId: center.id,
+        itemId: budgetItem.id,
+        amountCents: 1_000_000,
+      })
+      const warehouse = await created('/api/v1/finance/stock-warehouses', {
+        name: 'Ana depo',
+        campusId: 'b1',
+      })
+      const card = (code: string, name: string, unit: string, minQuantity: number) =>
+        created('/api/v1/finance/stock-items', {
+          code,
+          name,
+          category: 'stationery',
+          unit,
+          minQuantity,
+        })
+      const paper = await card('KAG-A4', 'A4 kâğıt', 'pack', 10)
+      await card('TONER', 'Toner', 'piece', 2)
+      const pen = await card('KALEM', 'Kurşun kalem', 'piece', 5)
+      const enter = (itemId: string, quantity: number) =>
+        created(
+          '/api/v1/finance/stock-entries',
+          {
+            itemId,
+            warehouseId: warehouse.id,
+            quantity,
+            movementDate: '2026-01-05',
+            reason: 'opening',
+          },
+          { 'idempotency-key': randomUUID() },
+        )
+      await enter(paper.id, 3)
+      await enter(pen.id, 50)
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    // K-204: Genel Bakış'ta kritik ürün kartı, en acil olan önce.
+    await page.goto('/yonetici/dashboard')
+    const card = page.getByRole('region', { name: 'Kritik stok' })
+    await expect(card.getByText('2 ürün kritik seviyede ya da altında')).toBeVisible()
+    await expect(card.getByRole('listitem').first()).toContainText('TONER · Toner')
+    await card.getByRole('link', { name: 'Tümünü gör' }).click()
+
+    const table = page.getByRole('table', { name: 'Kritik stok' })
+    const toner = table.locator('tbody tr').filter({ hasText: 'TONER' })
+    const paperRow = table.locator('tbody tr').filter({ hasText: 'KAG-A4' })
+    // K-200, K-201: tükenen önce; öneri kritik seviyenin iki katına tamamlar.
+    await expect(table.locator('tbody tr').first()).toContainText('TONER')
+    await expect(toner).toContainText('0 / 2 adet')
+    await expect(toner).toContainText('Tükendi')
+    await expect(toner).toContainText('4 adet')
+    await expect(paperRow).toContainText('3 / 10 paket')
+    await expect(paperRow).toContainText('Ana depo 3')
+    await expect(paperRow).toContainText('17 paket')
+    await expect(table).not.toContainText('KALEM')
+
+    await page.getByRole('checkbox', { name: 'TONER · Toner talebe ekle' }).check()
+    await page.getByRole('checkbox', { name: 'KAG-A4 · A4 kâğıt talebe ekle' }).check()
+    await page.getByRole('button', { name: 'Talep öner (2)' }).click()
+    // K-203: form kalemleri ve gerekçeyle dolu açılır; birim, dönem ve gider kalemi seçilir.
+    const form = page.getByRole('dialog', { name: 'Yeni satın alma talebi' })
+    await expect(form.getByLabel('1. kalem adı')).toHaveValue('Toner (TONER)')
+    await expect(form.getByLabel('2. kalem adı')).toHaveValue('A4 kâğıt (KAG-A4)')
+    await expect(form.getByLabel('Gerekçe')).toHaveValue(
+      /^Kritik seviyedeki stok için talep önerisi/,
+    )
+    const quantities = form.getByLabel('Miktar')
+    await expect(quantities.nth(0)).toHaveValue('4')
+    await expect(quantities.nth(1)).toHaveValue('17')
+    await form.getByLabel('Talep eden birim').selectOption({ label: 'IDR · İdari işler' })
+    await form.getByLabel('Bütçe dönemi').selectOption({ index: 1 })
+    await form.getByLabel('Gider kalemi').selectOption({ label: 'G-300 · Sarf malzemesi' })
+    const prices = form.getByLabel('Tahmini birim fiyat (₺)')
+    await prices.nth(0).fill('900,00')
+    await prices.nth(1).fill('150,00')
+    await expect(form.getByText('Tahmini toplam: 6.150,00 ₺')).toBeVisible()
+    await form.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(form).toBeHidden()
+    await expect(page).toHaveURL(/gorunum=satin-alma/)
+    const panel = page.getByRole('dialog', { name: 'Satın alma talebi' })
+    await expect(panel.getByRole('heading', { name: 'ST-0001' })).toBeVisible()
+    await expect(panel.getByText('Taslak', { exact: true })).toBeVisible()
+    await expect(panel.getByText('Toner (TONER)')).toBeVisible()
+  })
 })

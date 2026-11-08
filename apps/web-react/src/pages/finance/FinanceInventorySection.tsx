@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import {
+  useCriticalStockItems,
   useStockItem,
   useStockItems,
   useStockMovements,
@@ -22,6 +23,7 @@ import {
   type StockCategory,
   type StockMovementType,
 } from '@kampus/school-core/lib/finance-inventory.ts'
+import { PURCHASE_REQUEST_ROLES } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 import { SUPPLIER_CATEGORY_LABELS } from '@kampus/school-core/lib/finance-suppliers.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -36,6 +38,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { FinanceCriticalStockPanel } from './FinanceCriticalStockPanel.tsx'
 import {
   CancelStockMovementModal,
   StockItemFormModal,
@@ -48,6 +51,7 @@ const NO_SORT: readonly string[] = []
 const SUB_PARAM = 'stok'
 const SUBVIEWS = [
   { value: 'items', label: 'Stok kartları', param: '' },
+  { value: 'critical', label: 'Kritik stok', param: 'kritik' },
   { value: 'movements', label: 'Hareketler', param: 'hareket' },
   { value: 'warehouses', label: 'Depolar', param: 'depo' },
 ] as const
@@ -95,10 +99,12 @@ type Dialog =
  * Stok (`?gorunum=stok`; DOM-FIN-077, DOM-FIN-078; ON-228, ON-229): stok kartları ve depo başına
  * miktar, hareketler, depolar. Yönetici kart ve depo açar, giriş ve transfer yazar, hareketi iptal
  * eder; ön büro okur ve çıkış yazar (K-180). Miktar hareketlerden türetilir; satın alınan ürün mal
- * kabulle girer (K-184).
+ * kabulle girer (K-184). "Kritik stok" görünümü kritik seviyedeki ürünleri ve talep önerisini
+ * gösterir (DOM-FIN-079); stok kartları listesi kritik ürün sayısını duyurur (K-204).
  */
 export function FinanceInventorySection({ role }: { role: string }) {
   const actions = stockActions(role)
+  const canRequest = PURCHASE_REQUEST_ROLES.some((allowed) => allowed === role)
   const [params, setParams] = useSearchParams()
   const sub: SubView =
     SUBVIEWS.find((view) => view.param !== '' && view.param === params.get(SUB_PARAM))?.value ??
@@ -107,6 +113,13 @@ export function FinanceInventorySection({ role }: { role: string }) {
   const close = () => setDialog(null)
   const openMovement = (movement: MovementKind, itemId?: string) =>
     setDialog({ kind: 'movement', movement, ...(itemId === undefined ? {} : { itemId }) })
+  const showSub = (next: SubView) => {
+    const nextParams = new URLSearchParams(params)
+    const param = SUBVIEWS.find((view) => view.value === next)?.param ?? ''
+    if (param === '') nextParams.delete(SUB_PARAM)
+    else nextParams.set(SUB_PARAM, param)
+    setParams(nextParams)
+  }
   return (
     <section
       aria-labelledby="stok"
@@ -144,18 +157,7 @@ export function FinanceInventorySection({ role }: { role: string }) {
         </div>
       </header>
       <div className="px-6">
-        <LineTabs
-          label="Stok görünümü"
-          value={sub}
-          options={SUBVIEWS}
-          onChange={(next) => {
-            const nextParams = new URLSearchParams(params)
-            const param = SUBVIEWS.find((view) => view.value === next)?.param ?? ''
-            if (param === '') nextParams.delete(SUB_PARAM)
-            else nextParams.set(SUB_PARAM, param)
-            setParams(nextParams)
-          }}
-        />
+        <LineTabs label="Stok görünümü" value={sub} options={SUBVIEWS} onChange={showSub} />
       </div>
       {sub === 'items' ? (
         <ItemsPanel
@@ -163,6 +165,15 @@ export function FinanceInventorySection({ role }: { role: string }) {
           canIssue={actions.issue}
           onCreate={() => setDialog({ kind: 'item' })}
           onIssue={(itemId) => openMovement('issue', itemId)}
+          onShowCritical={() => showSub('critical')}
+        />
+      ) : null}
+      {sub === 'critical' ? (
+        <FinanceCriticalStockPanel
+          canRequest={canRequest}
+          onRequestSaved={(requestId) =>
+            setParams(new URLSearchParams({ gorunum: 'satin-alma', talep: requestId }))
+          }
         />
       ) : null}
       {sub === 'movements' ? (
@@ -224,12 +235,17 @@ function ItemsPanel({
   canIssue,
   onCreate,
   onIssue,
+  onShowCritical,
 }: {
   canManage: boolean
   canIssue: boolean
   onCreate: () => void
   onIssue: (itemId: string) => void
+  onShowCritical: () => void
 }) {
+  // Kritik ürün duyurusu (K-204): yalnız sayı okunur.
+  const critical = useCriticalStockItems({ page: 1, pageSize: 1 })
+  const criticalCount = critical.data?.meta.total ?? 0
   const list = useListState('stok-kartlari', { urlPrefix: 'stok_' })
   const search = useDebouncedValue(list.state.query).trim()
   const status = text(list.state.filters.status)
@@ -295,6 +311,17 @@ function ItemsPanel({
   )
   return (
     <div className="grid gap-3 pt-3">
+      {criticalCount > 0 ? (
+        <div
+          role="status"
+          className="mx-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning px-4 py-3 text-sm"
+        >
+          <span>{`${String(criticalCount)} ürün kritik seviyede ya da altında.`}</span>
+          <Button size="sm" variant="secondary" onClick={onShowCritical}>
+            Kritik stoku göster
+          </Button>
+        </div>
+      ) : null}
       {canManage ? (
         <div className="flex justify-end px-6">
           <Button onClick={onCreate}>

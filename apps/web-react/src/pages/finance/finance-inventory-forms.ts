@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import type {
   CreateStockItemBody,
+  CriticalStockRow,
   CreateStockWarehouseBody,
   StockEntryBody,
   StockIssueBody,
@@ -24,8 +25,10 @@ import {
   STOCK_OTHER_NOTE_MIN,
   STOCK_UNITS,
   STOCK_WAREHOUSE_NAME_MAX,
+  STOCK_UNIT_LABELS,
   type StockMovementType,
 } from '@kampus/school-core/lib/finance-inventory.ts'
+import type { StockSuggestionLine } from '@kampus/school-core/lib/finance-stock-alerts.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 const COUNT = /^\d{1,7}$/
@@ -253,3 +256,32 @@ export const MOVEMENT_TYPE_VIEW: Readonly<
 /** İşaretli miktar metni: `+20 paket`, `−5 adet`. */
 export const signedQuantity = (type: StockMovementType, quantity: number, unitLabel: string) =>
   `${MOVEMENT_TYPE_VIEW[type].sign > 0 ? '+' : '−'}${String(quantity)} ${unitLabel}`
+
+// --- Kritik stok (DOM-FIN-079) -------------------------------------------------------------------
+
+/** Kritik satırın talep önerisine giden alanları (K-202, K-203). */
+export const suggestionLine = (row: CriticalStockRow): StockSuggestionLine => ({
+  code: row.code,
+  name: row.name,
+  unit: row.unit,
+  quantity: row.quantity,
+  minQuantity: row.minQuantity,
+  suggestedQuantity: row.suggestedQuantity,
+  lastUnitPriceCents: row.lastUnitPriceCents,
+})
+
+/** Depo kırılımı metni: "Ana depo 3 · Beşiktaş deposu 0 (pasif)"; depo yoksa tire. */
+export function warehouseBreakdown(row: Pick<CriticalStockRow, 'warehouses'>): string {
+  if (row.warehouses.length === 0) return '—'
+  return row.warehouses
+    .map(
+      (warehouse) =>
+        `${warehouse.warehouseName} ${String(warehouse.quantity)}${warehouse.isActive ? '' : ' (pasif)'}`,
+    )
+    .join(' · ')
+}
+
+/** Miktar ve birim: "2 / 10 paket" (toplam / kritik seviye). */
+export const criticalQuantityText = (
+  row: Pick<CriticalStockRow, 'quantity' | 'minQuantity' | 'unit'>,
+) => `${String(row.quantity)} / ${String(row.minQuantity)} ${STOCK_UNIT_LABELS[row.unit]}`

@@ -148,10 +148,13 @@ function FormBudgetStatus({
  */
 export function PurchaseRequestFormModal({
   request,
+  initial,
   onClose,
   onSaved,
 }: {
   request?: PurchaseRequestDetail
+  /** Yeni talebin ön doldurulmuş değerleri (kritik stok önerisi, DOM-FIN-079). */
+  initial?: RequestFormValues
   onClose: () => void
   onSaved?: (id: string) => void
 }) {
@@ -171,6 +174,7 @@ export function PurchaseRequestFormModal({
         <RequestForm
           title={title}
           request={request}
+          initial={initial}
           options={options.data.data}
           onClose={onClose}
           onSaved={onSaved}
@@ -187,12 +191,14 @@ type Options = NonNullable<ReturnType<typeof usePurchaseRequestOptions>['data']>
 function RequestForm({
   title,
   request,
+  initial,
   options,
   onClose,
   onSaved,
 }: {
   title: string
   request: PurchaseRequestDetail | undefined
+  initial: RequestFormValues | undefined
   options: Options
   onClose: () => void
   onSaved: ((id: string) => void) | undefined
@@ -201,7 +207,7 @@ function RequestForm({
   const update = useUpdatePurchaseRequest()
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestFormSchema),
-    defaultValues: requestDefaults(request),
+    defaultValues: initial ?? requestDefaults(request),
   })
   const items = useFieldArray({ control: form.control, name: 'items' })
   const watched = useWatch({ control: form.control, name: 'items' })

@@ -9,6 +9,11 @@ import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { PAYMENT_METHOD_LABELS } from '@kampus/school-core/lib/payments.ts'
 import { WITHDRAWAL_REASON_LABELS } from '@kampus/school-core/lib/withdrawals.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
+import {
+  ALL_BOARD_REPORT_SECTIONS,
+  writeBoardReportSections,
+  type BoardReportSections,
+} from './finance-board-report-sections.ts'
 import type { TemplateOptions } from './shared.ts'
 
 export const BOARD_REPORT_TITLE = 'Yönetim kurulu raporu'
@@ -74,13 +79,14 @@ const FUNNEL_COLUMNS = [
 
 /**
  * Raporu yazar. Bölümler: finans özeti (mutabakat toplamı), yöntem kırılımı, yaşlandırma, dil
- * okulunda paket geliri, kayıt özeti, ayrılış nedenleri, aday hunisi. Kayıtlı kişi kurum türüne göre
- * "öğrenci" ya da "kursiyer" yazılır (DOM-KAY-012).
+ * okulunda paket geliri, seçilen bütçe, maliyet ve tahmin bölümleri (ON-329), kayıt özeti, ayrılış
+ * nedenleri, aday hunisi. Kayıtlı kişi kurum türüne göre "öğrenci" ya da "kursiyer" yazılır
+ * (DOM-KAY-012).
  */
 export function financeBoardReportDocument(
   measurer: TextMeasurer,
   report: FinanceBoardReport,
-  options: TemplateOptions,
+  options: TemplateOptions & { sections?: BoardReportSections },
 ): PdfDocument {
   const { period, finance, enrollment, funnel, minGroupSize } = report
   const learner = learnerWords(report.institutionType)
@@ -182,6 +188,8 @@ export function financeBoardReportDocument(
       ['Dönem sonu ertelenmiş gelir', money(packages.closingDeferredCents)],
     ])
   }
+
+  writeBoardReportSections(doc, report, options.sections ?? ALL_BOARD_REPORT_SECTIONS, learner.noun)
 
   doc.section('Kayıt özeti')
   doc.table(

@@ -1,5 +1,6 @@
 import { createSeed } from '../../packages/school-core/src/data/seed.ts'
 import { money } from '../../packages/school-core/src/lib/format.ts'
+import { createApiClient, switchInstitutionApi, type ApiResult } from './support/api.ts'
 import { istanbulDay } from './support/enrollment-finance-smoke.ts'
 import { pdfText } from './support/finance-pdf-text.ts'
 import { expect, test } from './support/fixtures.ts'
@@ -70,6 +71,77 @@ test('DOM-FIN-064: yönetici dönem özetini görür ve kişi adı olmayan yöne
   await page.keyboard.press('Escape')
   await expect(preview).toBeHidden()
   await expect(section.getByRole('button', { name: 'Rapor PDF’i' })).toBeFocused()
+})
+
+const created = (result: ApiResult) => {
+  expect(result.status, JSON.stringify(result.body)).toBe(201)
+  return (result.body as { data: { id: string } }).data
+}
+
+test('DOM-FIN-064: yönetici bütçe dönemini seçer, bütçe ve tahmin bölümleri PDF’e girer (ON-329)', async ({
+  loginAs,
+  tenant,
+}) => {
+  const school = await tenant({ roles: [], students: ['s1'], records: records('e2e-brb') })
+  const api = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+  try {
+    expect((await switchInstitutionApi(api, school.institutionId)).ok).toBe(true)
+    const campus = created(
+      await api.post('/api/v1/finance/cost-centers', {
+        code: 'KAD',
+        name: 'Kadıköy merkezi',
+        type: 'campus',
+        campusId: 'b1',
+      }),
+    )
+    const income = created(
+      await api.post('/api/v1/finance/budget-items', {
+        code: 'G-100',
+        name: 'Öğrenim geliri',
+        kind: 'income',
+        feeKind: 'tuition',
+      }),
+    )
+    const period = created(
+      await api.post('/api/v1/finance/budget-periods', {
+        name: 'Kurul bütçesi',
+        startDate: istanbulDay(-60),
+        endDate: istanbulDay(300),
+      }),
+    )
+    created(
+      await api.post(`/api/v1/finance/budget-periods/${period.id}/lines`, {
+        costCenterId: campus.id,
+        itemId: income.id,
+        amountCents: 3_000_000,
+      }),
+    )
+  } finally {
+    await api.dispose()
+  }
+
+  const page = await loginAs(school.user('yonetici'))
+  await page.goto('/yonetici/finans?gorunum=kurul-raporu')
+  const section = page.getByRole('region', { name: 'Yönetim kurulu raporu' })
+  // Taslak dönem rapor dönemiyle örtüşür; başka dönem yoksa o alınır (K-113).
+  await expect(section).toContainText('Bütçe dönemi: Kurul bütçesi (Taslak)')
+  await expect(section).toContainText('rapor dönemine göre seçildi')
+  await section.getByLabel('Bütçe dönemi').selectOption({ label: 'Kurul bütçesi (Taslak)' })
+  await expect(section).not.toContainText('rapor dönemine göre seçildi')
+  await expect(section.getByLabel('Bütçe–gerçekleşen')).toBeChecked()
+  await section.getByLabel('Kampüs ve öğrenci başı maliyet').uncheck()
+  await expectNoHorizontalOverflow(page)
+
+  await section.getByRole('button', { name: 'Rapor PDF’i' }).click()
+  const preview = page.getByRole('dialog', { name: 'Yönetim kurulu raporu · Önizleme' })
+  const downloading = page.waitForEvent('download')
+  await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+  const text = await pdfText(await downloading)
+  expect(text).toContain('Bütçe–gerçekleşen')
+  expect(text).toContain('G-100 Öğrenim geliri')
+  expect(text).toContain('Gelir ve nakit akışı tahmini')
+  expect(text).not.toContain('Kampüs ve öğrenci başı maliyet')
+  expect(text).not.toContain('Deniz Yılmaz')
 })
 
 test('DOM-FIN-064: ön büro yönetim kurulu raporu sekmesini görmez, adres taksitlere düşer', async ({

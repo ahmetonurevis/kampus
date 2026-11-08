@@ -714,6 +714,86 @@ describe('banka hareketi eşleştirme uçları', () => {
     assert.equal(again.statusCode, 201, again.body)
   })
 
+  test('K-121: aynı gün aynı tutarda elle girilmiş banka havalesi tahsilatı varsa onay 409 olası mükerrer; açık onayla geçilir', async () => {
+    const t = await institution()
+    const manual = (body: Record<string, unknown>) =>
+      send(
+        'POST',
+        '/api/v1/payments',
+        t.adminCookie,
+        {
+          studentId: 's1',
+          amountCents: 1_000_000,
+          paidDate: '2026-10-01',
+          bankAccountId: t.accountId,
+          ...body,
+        },
+        key(),
+      )
+    // Kart ve iptal edilmiş havale mükerrer sayılmaz; etkin havale sayılır.
+    const cash = await manual({ method: 'Kredi kartı', reference: 'POS-1' })
+    assert.equal(cash.statusCode, 201, cash.body)
+    const cancelled = await manual({ method: 'Banka havalesi', reference: 'ELLE-IPTAL' })
+    assert.equal(cancelled.statusCode, 201, cancelled.body)
+    const reversed = await send(
+      'POST',
+      `/api/v1/payments/${String(cancelled.json().data.id)}/reverse`,
+      t.adminCookie,
+      { reason: 'Yanlış giriş' },
+      { ...ifMatch(cancelled.json().data.version), ...key() },
+    )
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const text = `Tarih;Açıklama;Tutar;Referans\n01.10.2026;HAVALE TC ${TC};10.000,00;`
+    assert.equal((await upload(t.adminCookie, t, { text })).statusCode, 201)
+    const [row] = await transactions(t.id)
+    assert.ok(row)
+    const body = { studentId: 's1', invoiceId: 'test-inv-s1-3' }
+    // Kart ve iptal edilmiş havaleye ek olarak etkin, referansı farklı elle havale girildi.
+    const probe = await manual({ method: 'Banka havalesi', reference: 'ELLE-1' })
+    assert.equal(probe.statusCode, 201, probe.body)
+    const refused = await match(t.adminCookie, row.id, row.version, body)
+    assertError(refused, 409, 'bank_match_possible_duplicate')
+    assert.equal((await paymentRows(t.id)).length, 3)
+    assert.equal((await transactions(t.id))[0]?.status, 'unmatched')
+    const confirmed = await match(t.adminCookie, row.id, row.version, {
+      ...body,
+      confirmDuplicate: true,
+    })
+    assert.equal(confirmed.statusCode, 201, confirmed.body)
+  })
+
+  test('K-121: elle girilmiş havale başka gün, başka tutar ya da kartlaysa onay uyarısız', async () => {
+    const t = await institution()
+    const manual = (body: Record<string, unknown>) =>
+      send(
+        'POST',
+        '/api/v1/payments',
+        t.adminCookie,
+        { studentId: 's1', bankAccountId: t.accountId, ...body },
+        key(),
+      )
+    for (const body of [
+      {
+        amountCents: 1_000_000,
+        paidDate: '2026-10-02',
+        method: 'Banka havalesi',
+        reference: 'E-2',
+      },
+      { amountCents: 999_900, paidDate: '2026-10-01', method: 'Banka havalesi', reference: 'E-3' },
+      { amountCents: 1_000_000, paidDate: '2026-10-01', method: 'Kredi kartı', reference: 'POS-2' },
+    ])
+      assert.equal((await manual(body)).statusCode, 201)
+    const text = `Tarih;Açıklama;Tutar;Referans\n01.10.2026;HAVALE TC ${TC};10.000,00;`
+    assert.equal((await upload(t.adminCookie, t, { text })).statusCode, 201)
+    const [row] = await transactions(t.id)
+    assert.ok(row)
+    const done = await match(t.adminCookie, row.id, row.version, {
+      studentId: 's1',
+      invoiceId: 'test-inv-s1-3',
+    })
+    assert.equal(done.statusCode, 201, done.body)
+  })
+
   test('K-111: tahsilat iptali eşleşmeyi geri açar; hareket yeniden eşleşir', async () => {
     const t = await institution()
     const [first] = await imported(t)

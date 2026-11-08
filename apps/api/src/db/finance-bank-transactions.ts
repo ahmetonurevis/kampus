@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, gte, inArray, isNull, lte, ne, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  ne,
+  notExists,
+  sql,
+} from 'drizzle-orm'
 
 import type { BankTransactionStatus } from '@kampus/school-core/lib/finance-bank-matching.ts'
 import type { BankStatementFormat } from '@kampus/school-core/lib/finance-bank-statement.ts'
@@ -6,7 +20,7 @@ import { bankAccountLabel } from '@kampus/school-core/lib/payments.ts'
 
 import type { Database } from './client.ts'
 import { bankTransactions } from './schema/finance-bank-transactions.ts'
-import { bankAccounts, payments } from './schema/payments.ts'
+import { bankAccounts, PAYMENT_METHOD_KEYS, payments } from './schema/payments.ts'
 import { records } from './schema/records.ts'
 import { studentIdentities } from './schema/student-identities.ts'
 import { foldSearch, foldSql } from './text-search.ts'
@@ -336,11 +350,13 @@ export async function reopenBankTransactionOfPayment(
 }
 
 /**
- * Olası mükerrer ikizleri (K-121): aynı hesaba aynı gün aynı tutarda gelen, bu hareket dışında ve
- * aynı öğrenciye iptal edilmemiş tahsilatla eşleşmiş hareket sayısı. Onay kurum kilidi altında
- * çağırır; eşzamanlı iki onaydan ikincisi birincinin eşleşmesini görür.
+ * Olası mükerrer sayısı (K-121): bu hareket dışında aynı öğrenciye
+ * - aynı hesaba aynı gün aynı tutarda gelip iptal edilmemiş tahsilatla eşleşmiş banka hareketi, ya da
+ * - aynı gün (`paidFrom`–`paidBefore`, Europe/Istanbul günü) aynı tutarda elle girilmiş, hiçbir
+ *   harekete bağlı olmayan etkin banka havalesi tahsilatı (havale önce elle girilmiş olabilir).
+ * Onay kurum kilidi altında çağırır; eşzamanlı iki onaydan ikincisi birincinin yazdığını görür.
  */
-export async function matchedTwinCount(
+export async function possibleDuplicateCount(
   db: Database,
   institutionId: string,
   input: {
@@ -349,9 +365,11 @@ export async function matchedTwinCount(
     bookingDate: string
     amountCents: number
     studentId: string
+    paidFrom: Date
+    paidBefore: Date
   },
 ): Promise<number> {
-  const [row] = await db
+  const [twins] = await db
     .select({ n: count() })
     .from(bankTransactions)
     .innerJoin(payments, PAYMENT_JOIN)
@@ -368,7 +386,32 @@ export async function matchedTwinCount(
         isNull(payments.reversedAt),
       ),
     )
-  return row?.n ?? 0
+  const [manual] = await db
+    .select({ n: count() })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.institutionId, institutionId),
+        eq(payments.studentId, input.studentId),
+        eq(payments.method, PAYMENT_METHOD_KEYS['Banka havalesi']),
+        eq(payments.amountCents, input.amountCents),
+        isNull(payments.reversedAt),
+        gte(payments.paidAt, input.paidFrom),
+        lt(payments.paidAt, input.paidBefore),
+        notExists(
+          db
+            .select({ id: bankTransactions.id })
+            .from(bankTransactions)
+            .where(
+              and(
+                eq(bankTransactions.institutionId, payments.institutionId),
+                eq(bankTransactions.paymentId, payments.id),
+              ),
+            ),
+        ),
+      ),
+    )
+  return (twins?.n ?? 0) + (manual?.n ?? 0)
 }
 
 /** Verilen referanslardan iptal edilmemiş bir tahsilatta kullanılanlar (DOM-FIN-031). */

@@ -136,12 +136,14 @@ export function assertBankTransactionOpen(status: BankTransactionStatus): void {
 }
 
 export const BANK_MATCH_DUPLICATE_MESSAGE =
-  'Bu hesaba aynı gün aynı tutarda gelen başka bir hareket aynı kişiye zaten tahsil edildi; hareket mükerrer olabilir. Ayrı bir ödemeyse açıkça onaylayın.'
+  'Bu kişiye aynı gün aynı tutarda kaydedilmiş bir banka havalesi tahsilatı var; hareket mükerrer olabilir. Ayrı bir ödemeyse açıkça onaylayın.'
 
 /**
  * Olası mükerrer (K-121): aynı hesaba aynı gün aynı tutarda gelen başka bir hareket aynı öğrenciye
- * eşleşmişse (`twins`) onay yetkilinin açık onayını ister; 409 `bank_match_possible_duplicate`.
- * Aynı havale iki biçimde (CSV ve MT940) aktarılıp iki hareket olduğunda çift tahsilatı durdurur.
+ * eşleşmişse ya da aynı gün aynı tutarda elle girilmiş banka havalesi tahsilatı varsa (`twins`)
+ * onay yetkilinin açık onayını ister; 409 `bank_match_possible_duplicate`. Aynı havale iki biçimde
+ * (CSV ve MT940) aktarılınca ya da önce elle girilip sonra ekstreden onaylanınca çift tahsilatı
+ * durdurur.
  * Denetim taksite değil öğrenciye bakar: ilk onay taksiti kapattığı için ikiz hareketin önerisi
  * sonraki taksite kayar.
  */

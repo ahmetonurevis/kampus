@@ -240,10 +240,21 @@ test('DOM-FIN-068: bakiye geçerli bağış eksi geçerli atamadır; döküm gü
       ['d3', 0, 400_000, null],
     ],
   )
-  // Yetkisiz rolde ad yok (K-98).
-  assert.equal(
-    scholarshipFundMovements([], allocations, null).every((row) => row.studentName === null),
-    true,
+  // Yetkisiz rolde öğrenciyi tanıtan alan yok: ad, öğrenci ve burs kimliği, gerekçe (K-98).
+  const masked = scholarshipFundMovements(
+    [],
+    [{ ...allocation('a3', '2026-09-08', 100_000, '2026-09-09T09:00:00.000Z'), cancelReason: 'x' }],
+    null,
+  )
+  assert.deepEqual(
+    masked.map((row) => [
+      row.studentName,
+      row.studentId,
+      row.awardId,
+      row.cancelReason,
+      row.academicYear,
+    ]),
+    [[null, null, null, null, 2026]],
   )
 
   const csv = scholarshipFundCsv({ name: 'Mezunlar Fonu' }, totals, movements).split('\r\n')

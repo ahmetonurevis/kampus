@@ -181,9 +181,10 @@ function FundDetail({ fundId, canManage }: { fundId: string; canManage: boolean 
                     {SCHOLARSHIP_FUND_MOVEMENT_LABELS[row.kind]} · {dayText(row.day)}
                   </span>
                   <span className="block text-muted-foreground">{movementDetail(row) || '—'}</span>
-                  {row.cancelledAt ? (
+                  {/* Gerekçe ad gizlenen rolde gelmez (K-98). */}
+                  {row.cancelledAt && row.cancelReason !== null ? (
                     <span className="block text-muted-foreground">
-                      İptal gerekçesi: {row.cancelReason ?? '—'}
+                      İptal gerekçesi: {row.cancelReason}
                     </span>
                   ) : null}
                 </span>

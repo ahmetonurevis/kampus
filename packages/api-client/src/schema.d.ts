@@ -36710,14 +36710,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -36866,14 +36868,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37035,14 +37039,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37202,14 +37208,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37370,14 +37378,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37538,14 +37548,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
@@ -37699,14 +37711,16 @@ export interface operations {
                                 channel: ("bank_transfer" | "cash" | "other") | null;
                                 /** @description Bağış notu */
                                 note: string | null;
-                                /** @description Karşılanan burs ataması */
+                                /** @description Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98) */
                                 awardId: string | null;
+                                /** @description Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98) */
                                 studentId: string | null;
                                 /** @description Yalnız `yonetici` rolünde dolu (K-98) */
                                 studentName: string | null;
                                 /** @description Bursun eğitim yılı */
                                 academicYear: number | null;
                                 cancelledAt: string | null;
+                                /** @description İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98) */
                                 cancelReason: string | null;
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;

@@ -340,7 +340,8 @@ export type ScholarshipFundMovement = {
 
 /**
  * Hareket dökümü: bağış ve atamalar gün, sonra giriş anı sırasıyla. `names` yalnız yetkili rolde
- * doludur; yoksa öğrenci adı boştur (K-98).
+ * doludur; yoksa atama satırında öğrenci adı, öğrenci ve burs kimliği ve iptal gerekçesi boştur
+ * (K-98). Bağış satırının notu ve gerekçesi öğrenciye bağlı olmadığı için kalır.
  */
 export function scholarshipFundMovements(
   donations: readonly StoredFundDonation[],
@@ -379,12 +380,14 @@ export function scholarshipFundMovements(
         balanceAfterCents: 0,
         channel: null,
         note: null,
-        awardId: row.awardId,
-        studentId: row.studentId,
+        // Ad gizlenen rolde öğrenciyi tanıtan her alan boştur: kimlik öğrenci listesinden, gerekçe
+        // serbest metinden adı açardı (K-98).
+        awardId: names === null ? null : row.awardId,
+        studentId: names === null ? null : row.studentId,
         studentName: names === null ? null : (names.get(row.studentId) ?? null),
         academicYear: row.academicYear,
         cancelledAt: row.cancelledAt,
-        cancelReason: row.cancelReason,
+        cancelReason: names === null ? null : row.cancelReason,
         version: row.version,
       },
     })),

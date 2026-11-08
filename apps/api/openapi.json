@@ -78014,13 +78014,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -78053,6 +78054,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -78379,13 +78381,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -78418,6 +78421,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -78793,13 +78797,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -78832,6 +78837,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -79195,13 +79201,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -79234,6 +79241,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -79611,13 +79619,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -79650,6 +79659,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -80027,13 +80037,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -80066,6 +80077,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -80412,13 +80424,14 @@
                                 ]
                               },
                               "awardId": {
-                                "description": "Karşılanan burs ataması",
+                                "description": "Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
                                 ]
                               },
                               "studentId": {
+                                "description": "Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"
@@ -80451,6 +80464,7 @@
                                 ]
                               },
                               "cancelReason": {
+                                "description": "İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)",
                                 "type": [
                                   "string",
                                   "null"

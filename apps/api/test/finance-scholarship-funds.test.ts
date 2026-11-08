@@ -361,6 +361,52 @@ describe('DOM-FIN-068: burs fonu uçları', () => {
     )
   })
 
+  test('DOM-FIN-068, K-98: ön büro raporunda öğrenciyi tanıtan alanlar boştur; tutar ve yıl kalır', async () => {
+    const t = await institution()
+    const fund = await createFund(t)
+    await ok(await donate(t.admin, fund.id), 201)
+    const allocated = await ok(await allocate(t.admin, fund.id, t.awardS1, 500_000), 201)
+    const allocation = (allocated.movements as Json[]).find(
+      (row) => row.kind === 'allocation',
+    ) as Json
+    await ok(
+      await call(
+        'POST',
+        `${FUNDS}/${String(fund.id)}/allocations/${String(allocation.id)}/cancel`,
+        t.admin,
+        { reason: 'Deniz Yılmaz bursu yanlış fondan karşılandı' },
+        { ...key(), ...ifMatch(allocation.version) },
+      ),
+    )
+    const pick = (row: Json) => [
+      row.kind,
+      row.studentId,
+      row.awardId,
+      row.studentName,
+      row.cancelReason,
+      row.academicYear,
+      row.amountCents,
+    ]
+    const adminRow = ((await report(t.admin, fund.id)).movements as Json[]).find(
+      (row) => row.kind === 'allocation',
+    ) as Json
+    assert.deepEqual(pick(adminRow), [
+      'allocation',
+      's1',
+      t.awardS1,
+      'Deniz Yılmaz',
+      'Deniz Yılmaz bursu yanlış fondan karşılandı',
+      2026,
+      500_000,
+    ])
+    const desk = await member(t.id, 'onburo')
+    const deskRow = ((await report(desk, fund.id)).movements as Json[]).find(
+      (row) => row.kind === 'allocation',
+    ) as Json
+    assert.deepEqual(pick(deskRow), ['allocation', null, null, null, null, 2026, 500_000])
+    assert.notEqual(deskRow.cancelledAt, null)
+  })
+
   test('DOM-FIN-068: atama iptali bakiyeyi geri verir; bağış iptali bakiyeyi eksiye düşüremez; iptal sürüm ve gerekçe ister (K-97)', async () => {
     const t = await institution()
     const fund = await createFund(t)

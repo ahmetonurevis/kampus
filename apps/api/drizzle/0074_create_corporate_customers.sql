@@ -136,7 +136,7 @@ COMMENT ON COLUMN "corporate_customer_employees"."created_at" IS 'Kayıt anı.';
 COMMENT ON COLUMN "corporate_customer_employees"."updated_at" IS 'Son değişiklik anı.';--> statement-breakpoint
 COMMENT ON COLUMN "corporate_customer_employees"."archived_at" IS 'Arşiv anı; bugün kullanılmaz, bağ bitişle kapanır.';--> statement-breakpoint
 COMMENT ON COLUMN "corporate_customer_employees"."version" IS 'İyimser kilit sürümü (If-Match).';--> statement-breakpoint
-COMMENT ON TABLE "corporate_invoices" IS 'Şirkete toplu fatura (DOM-FIN-060). Kurum içi toplu dökümdür, vergi belgesi değildir (M-13 doğrulanmalı). Şirket bilgisi, toplam ve satır sayısı kesildiği anın kopyası.';--> statement-breakpoint
+COMMENT ON TABLE "corporate_invoices" IS 'Şirkete toplu fatura (DOM-FIN-060). Kurum içi toplu dökümdür, vergi belgesi değildir (M-14 doğrulanmalı). Şirket bilgisi, toplam ve satır sayısı kesildiği anın kopyası.';--> statement-breakpoint
 COMMENT ON COLUMN "corporate_invoices"."institution_id" IS 'Kurum.';--> statement-breakpoint
 COMMENT ON COLUMN "corporate_invoices"."id" IS 'Toplu fatura kimliği.';--> statement-breakpoint
 COMMENT ON COLUMN "corporate_invoices"."customer_id" IS 'Faturalanan şirket (corporate_customers).';--> statement-breakpoint

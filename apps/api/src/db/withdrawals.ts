@@ -2,6 +2,7 @@ import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } f
 
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
 import type { ReconciliationWithdrawal } from '@kampus/school-core/lib/finance-reconciliation.ts'
+import type { StatementWithdrawal } from '@kampus/school-core/lib/finance-statement.ts'
 import type { ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
@@ -228,6 +229,33 @@ export async function refundsPaidInPeriod(
     ...row,
     maskedIban: refundIban === null ? null : `TR** **** ${refundIban.slice(-4)}`,
   }))
+}
+
+/**
+ * Ekstre için öğrencinin ayrılışları (IST-107, DOM-FIN-054): yalnız gün, iade ve mahsup edilen
+ * dağıtılmamış tutar; gerekçe, karar ve hesap bilgisi seçilmez.
+ */
+export async function withdrawalsForStatement(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<StatementWithdrawal[]> {
+  const rows = await db
+    .select({
+      id: studentWithdrawals.id,
+      withdrawalDate: studentWithdrawals.withdrawalDate,
+      refundCents: studentWithdrawals.refundCents,
+      refundPaidDate: studentWithdrawals.refundPaidDate,
+      breakdown: studentWithdrawals.breakdown,
+    })
+    .from(studentWithdrawals)
+    .where(
+      and(
+        eq(studentWithdrawals.institutionId, institutionId),
+        eq(studentWithdrawals.studentId, studentId),
+      ),
+    )
+  return rows.map(({ breakdown, ...row }) => ({ ...row, creditCents: breakdown.creditCents }))
 }
 
 /** Mutabakat için kurumun ayrılışları (ON-085); IBAN ve hesap sahibi seçilmez. */

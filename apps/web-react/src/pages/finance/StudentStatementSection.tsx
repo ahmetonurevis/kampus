@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useStudentStatement } from '@kampus/react-shared/use-finance-exports.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
-import { statementLineLabel } from '@kampus/school-core/lib/finance-statement.ts'
+import { statementLineLabel, statementNotes } from '@kampus/school-core/lib/finance-statement.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
@@ -64,18 +64,15 @@ export function StudentStatementSection({ studentId }: { studentId: string }) {
         </p>
       ) : (
         <>
-          {statement.unappliedCents > 0 ? (
-            <p role="note" className="mb-4 rounded-card border bg-surface-soft px-4 py-3 text-sm">
-              Taksitlere dağıtılmayan {money(statement.unappliedCents)} iade alacağıdır; kalan
-              tutardan düşülmemiştir.
+          {statementNotes(statement).map((note) => (
+            <p
+              key={note}
+              role="note"
+              className="mb-4 rounded-card border bg-surface-soft px-4 py-3 text-sm"
+            >
+              {note}
             </p>
-          ) : null}
-          {statement.openingImportCents > 0 ? (
-            <p role="note" className="mb-4 rounded-card border bg-surface-soft px-4 py-3 text-sm">
-              Ödenen tutarın {money(statement.openingImportCents)} kısmı açılış aktarımıdır: önceki
-              kayıtlardan aktarılmıştır, Kampüs tahsilatı ve dekontu yoktur.
-            </p>
-          ) : null}
+          ))}
           <DataTable
             listKey={`cari-ekstre-${studentId}`}
             rows={rows}

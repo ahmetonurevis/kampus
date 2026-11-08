@@ -320,6 +320,40 @@ test('DOM-FIN-041: iptal edilen taksite alınan kısmi ödeme ayrılışta mahsu
   assert.equal(row.closingCents, 0)
 })
 
+test('DOM-FIN-041, K-06: birden çok sözleşmeli ayrılışta bütün sözleşmelerin ödenmiş taksiti listede kalır', () => {
+  // k1'in i1'i (100.000) ve k2'nin i2'si (60.000) ödendi, k2'nin iptal edilen taksitine 20.000 alındı.
+  // Hak edilen 140.000, iade 40.000; kayıt sözleşmesi k2, döküm iki sözleşmeyi taşır.
+  const paidAt = '2026-09-15T09:00:00.000Z'
+  const base = withdrawal({ contractId: 'k2', paidCents: 180_000, refundCents: 40_000 })
+  const row = only(
+    reconcile({
+      invoices: [
+        invoice('i1', 100_000, '2026-09-15', { paidAt }),
+        invoice('i2', 60_000, '2026-09-15', { paidAt }),
+      ],
+      payments: [
+        payment(100_000, '2026-09-15', { i1: 100_000 }),
+        payment(60_000, '2026-09-15', { i2: 60_000 }),
+        payment(20_000, '2026-09-20', { cancelled: 20_000 }),
+      ],
+      contracts: [contract('k1', ['i1']), contract('k2', ['i2'])],
+      withdrawals: [
+        {
+          ...base,
+          breakdown: {
+            ...base.breakdown,
+            contracts: [{ contractId: 'k1' }, { contractId: 'k2' }],
+          },
+        },
+      ],
+    }),
+  )
+  assertBalanced(row)
+  assert.equal(row.withdrawalAdjustmentCents, 20_000)
+  assert.equal(row.creditCents, 40_000)
+  assert.equal(row.closingCents, -40_000)
+})
+
 test('DOM-FIN-041: ayrılışta kalan borç taksitte açık kalır, tahsilatı borcu kapatır', () => {
   // Hak edilen 50.000, ödenen 30.000: 20.000 borç taksiti; iptal edilen taksitin parası mahsup edilir.
   const debt = invoice('debt', 20_000, '2026-10-01', { installment: 2 })

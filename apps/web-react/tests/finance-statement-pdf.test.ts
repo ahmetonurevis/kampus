@@ -50,6 +50,23 @@ test('IST-107: ekstre özeti, hareketleri, toplamları ve iade alacağı yazıl�
   assert.ok(all.some((text) => text.includes('iade alacağıdır') || text.includes('dağıtılmayan')))
 })
 
+test('IST-107, DOM-FIN-040: ayrılış hesabı satırı ve ödenecek iade yazılır', () => {
+  const paidInvoice = { ...invoices(1)[0]!, paidAt: '2026-10-01T09:00:00.000Z', method: 'Nakit' }
+  const statement = studentStatement('s1', [paidInvoice], [], '2026-11-20', [
+    {
+      id: 'w1',
+      withdrawalDate: '2026-11-01',
+      refundCents: 4_000,
+      refundPaidDate: null,
+      creditCents: 0,
+    },
+  ])
+  const all = allTexts(studentStatementDocument(measurer, statement, OPTIONS))
+  for (const text of ['Ayrılış hesabı · iade alacağı', 'Ödenecek iade', money(4_000)])
+    assert.ok(all.includes(text), text)
+  assert.ok(all.some((text) => text.includes('Ayrılış iadesi olarak')))
+})
+
 test('IST-107: uzun ekstre sayfalanır; her sayfada tablo başlığı ve numara vardır', () => {
   const statement = studentStatement('s1', invoices(70), [], '2026-11-20')
   const document = studentStatementDocument(measurer, statement, OPTIONS)

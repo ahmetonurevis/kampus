@@ -353,7 +353,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Tanıma anı ve süresi dolan saatin gelire alınma kuralı rapor hesabında değişir; ekran ve CSV sütunları aynı kalır.
 - **Cevap:** bekleniyor
 
-#### M-13 · Kurumsal müşteriye toplu fatura
+#### M-14 · Kurumsal müşteriye toplu fatura
 
 - **Kural:** `DOM-FIN-060`; IST-089.
 - **Soru:** Şirket adına eğitim alan kursiyerlerin taksitleri şirkete tek belgeyle faturalanırken belge e-Fatura mı olmalıdır (şirket e-Fatura mükellefiyse); satırda kursiyer adı yazılabilir mi; fatura dönemi vade günüyle mi (tahakkuk) yoksa hizmet ayıyla mı belirlenir; ödenmiş taksit faturaya girer mi?
@@ -377,6 +377,15 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-51   | 2026-11-08 | `DOM-FIN-060` | Toplu faturayı yönetici ve ön büro keser; iptal yalnız yöneticidedir (tahsilat iptali gibi).                                                 | Rol dizileri (`CORPORATE_*_ROLES`) değişir.                                    |
 | K-52   | 2026-11-08 | `DOM-FIN-060` | Faturalanmış taksit ek protokolle değişirse yeni taksit yeniden faturalanmaz; fark için toplu fatura iptal edilip yeniden kesilir.           | Fark faturası (ek döküm) üretilir.                                             |
 | K-53   | 2026-11-08 | `DOM-FIN-060` | Toplu fatura numarası `KF-<yıl>-<sıra>`; yıl Europe/Istanbul, sıra kurumda yıl içinde ardışık, iptal edilen numara boşta kalır.              | `corporateInvoiceNumber` biçimi değişir.                                       |
+#### M-13 · Ödenen iadenin gün sonu ve kapalı gün kuralı
+
+- **Kural:** `DOM-FIN-036`, `DOM-FIN-041`; IST-113, IST-110.
+- **Soru:** Ayrılış iadesi kurumdan çıkan paradır. Gün sonu raporu yöntem bazında yalnız tahsilat ve iptali özetliyor. Ödenen iade gün sonuna "iade ödemesi" satırıyla (banka çıkışı) girmeli mi; girerse kapatılmış güne geriye tarihli iade ödemesi de tahsilat gibi reddedilmeli mi? İade hangi kurum hesabından ödendiği kaydedilmeli mi?
+- **Bugünkü varsayım:** İade IBAN'a havaleyle ödenir; ödeme günü ayrılış gününden önce, bugünden sonra olamaz (ON-093), ama gün sonuna girmez ve kapalı güne de yazılabilir. Kurumun ödeme yaptığı hesap kaydedilmez.
+- **Kodda:** `planRefundPayment` (`lib/withdrawals.ts`), `POST /api/v1/withdrawals/:withdrawalId/pay-refund`; gün sonu `lib/finance-day-closings.ts`.
+- **Öneri:** İade ödemesine kurumun bildirilmiş banka hesabı seçilsin (`DOM-FIN-032`); gün sonu raporu banka yönteminde ayrı "iade ödemesi" adedi ve tutarı göstersin, net bundan düşsün; kapalı güne iade ödemesi `finance_day_closed` ile reddedilsin. Nakit iade kapsam dışı kalsın. Rapor damgası ve kapanış satırı yeni alanı taşıyacağı için migration gerekir.
+- **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
+- **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
 
 ## Kararlaştırılanlar
 

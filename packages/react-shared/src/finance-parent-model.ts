@@ -5,7 +5,10 @@
 // burada yeniden hesaplanmaz. Kapsam (velayetli, kısıtsız ya da ödeyici veli) sunucudadır.
 import type { operations } from '@kampus/api-client/schema.d.ts'
 import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
-import { statementLineLabel } from '@kampus/school-core/lib/finance-statement.ts'
+import {
+  statementLineLabel,
+  statementNotes as coreStatementNotes,
+} from '@kampus/school-core/lib/finance-statement.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { isOpeningImport, OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
 
@@ -186,29 +189,26 @@ export function statementItems(lines: readonly StatementLineView[]): StatementIt
   }))
 }
 
-/** Ekstre toplamları: borç ve alacak toplamı, bugünkü kalan bakiye. */
+/** Ekstre toplamları: borç ve alacak toplamı, bugünkü kalan bakiye ve ödenecek ayrılış iadesi. */
 export function statementTotalRows(
-  statement: Pick<StudentStatementView, 'debitTotalCents' | 'creditTotalCents' | 'openCents'>,
+  statement: Pick<
+    StudentStatementView,
+    'debitTotalCents' | 'creditTotalCents' | 'openCents' | 'refundDueCents'
+  >,
 ): FactRow[] {
   return [
     ['Borç toplamı', money(statement.debitTotalCents)],
     ['Alacak toplamı', money(statement.creditTotalCents)],
     ['Kalan bakiye', money(statement.openCents)],
+    ...(statement.refundDueCents > 0
+      ? [['Ödenecek iade', money(statement.refundDueCents)] as const]
+      : []),
   ]
 }
 
-/** Ekstrenin açıklama notları (web `StudentStatementSection` ile aynı metin). */
+/** Ekstrenin açıklama notları (web `StudentStatementSection` ve PDF ile aynı metin, core'dan). */
 export function statementNotes(
-  statement: Pick<StudentStatementView, 'unappliedCents' | 'openingImportCents'>,
+  statement: Pick<StudentStatementView, 'unappliedCents' | 'openingImportCents' | 'refundDueCents'>,
 ): string[] {
-  const notes: string[] = []
-  if (statement.unappliedCents > 0)
-    notes.push(
-      `Taksitlere dağıtılmayan ${money(statement.unappliedCents)} iade alacağıdır; kalan tutardan düşülmemiştir.`,
-    )
-  if (statement.openingImportCents > 0)
-    notes.push(
-      `Ödenen tutarın ${money(statement.openingImportCents)} kısmı açılış aktarımıdır: önceki kayıtlardan aktarılmıştır, Kampüs tahsilatı ve dekontu yoktur.`,
-    )
-  return notes
+  return coreStatementNotes(statement)
 }

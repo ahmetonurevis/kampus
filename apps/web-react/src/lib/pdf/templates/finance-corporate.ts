@@ -1,6 +1,6 @@
 // Kurumsal müşteri belgeleri (IST-089, DOM-FIN-060, DOM-DIL-093): toplu fatura dökümü ve şirket
 // çalışanlarının katılım özeti. Rakamlar API yanıtından gelir, burada yeniden hesaplanmaz.
-// Toplu fatura kurum içi dökümdür, vergi belgesi değildir (M-13 doğrulanmalı).
+// Toplu fatura kurum içi dökümdür, vergi belgesi değildir (M-14 doğrulanmalı).
 import type {
   CorporateAttendanceReport,
   CorporateInvoice,

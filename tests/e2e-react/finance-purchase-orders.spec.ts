@@ -159,7 +159,9 @@ test.describe('DOM-FIN-072, DOM-FIN-073: teklif karşılaştırması ve sipariş
     await expect(order.getByText('2.400,00 ₺').first()).toBeVisible()
     await order.getByRole('button', { name: 'Sipariş PDF' }).click()
     const pdf = page.getByRole('dialog', { name: 'Satın alma siparişi · Önizleme' })
-    await expect(pdf).toBeVisible()
+    // Belge üretilene kadar beklenir: pencere DOM'a girdiği anda basılan Escape, Radix katmanı
+    // kaydını tamamlamadan alttaki sipariş panelini kapatır (zamanlamaya bağlı kırılma).
+    await expect(pdf.getByRole('button', { name: 'PDF’yi indir' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(pdf).toBeHidden()
     await order.getByRole('button', { name: 'Gönderildi işaretle' }).click()

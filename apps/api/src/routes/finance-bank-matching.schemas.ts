@@ -72,7 +72,7 @@ const importRowSchema = z
     amountCents: z.number().int().nullable().describe('Mutlak tutar, kuruş'),
     direction: z.enum(['credit', 'debit']).nullable(),
     description: z.string().describe('Açıklama ve gönderen; uzun rakam dizileri maskeli'),
-    reference: z.string(),
+    reference: z.string().describe('Referans; uzun rakam dizileri maskeli (K-122)'),
     issues: z.array(issueSchema),
   })
   .meta({ id: 'BankStatementImportRow' })
@@ -122,9 +122,14 @@ const transactionSchema = z
     bankAccountLabel: z.string().describe('Banka adı ve IBAN son dört hanesi'),
     bookingDate: z.string().describe('İşlem günü, `YYYY-MM-DD`'),
     amountCents: z.number().int().describe('Gelen tutar, kuruş'),
-    description: z.string().describe('Açıklama; 11+ haneli rakam dizileri maskeli (K-112)'),
+    description: z
+      .string()
+      .describe('Açıklama; gruplanmışlar dahil 11+ haneli rakam dizileri maskeli (K-112, K-122)'),
     counterparty: z.string().nullable(),
-    reference: z.string().nullable().describe('Banka referansı'),
+    reference: z
+      .string()
+      .nullable()
+      .describe('Banka referansı; uzun rakam dizileri maskeli (K-122)'),
     balanceCents: z.number().int().nullable(),
     sourceFormat: z.enum(BANK_STATEMENT_FORMATS),
     status: z.enum(BANK_TRANSACTION_STATUSES),

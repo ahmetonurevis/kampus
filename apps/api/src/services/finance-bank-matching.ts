@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import {
   assertBankTransactionIgnored,
   assertBankTransactionOpen,
+  assertNoPossibleDuplicate,
   bankIgnoreSchema,
   bankMatchDirectory,
   bankMatchSchema,
@@ -21,6 +22,7 @@ import {
   type BankImportPlan,
   type ParsedBankStatement,
 } from '@kampus/school-core/lib/finance-bank-statement.ts'
+import { addDays } from '@kampus/school-core/lib/finance-opening-watch.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { openAmount, type RecordPaymentInput } from '@kampus/school-core/lib/payments.ts'
 
@@ -33,6 +35,7 @@ import {
   listBankTransactions,
   markBankTransactionIgnored,
   markBankTransactionMatched,
+  possibleDuplicateCount,
   referencesInUse,
   restoreBankTransaction,
   type BankTransactionQuery,
@@ -44,6 +47,7 @@ import type { Issue } from '../errors.ts'
 import { AppError, ConflictError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { decodeImportFile } from './enrollment-import-file.ts'
+import { istanbulDayStart } from './list-filters.ts'
 import {
   FINANCE_TABLE_STORES,
   mapOperationError,
@@ -293,7 +297,8 @@ function transactionView(row: StoredBankTransaction, referenceInUse = false): Ba
     amountCents: row.amountCents,
     description: maskStatementText(row.statementDescription),
     counterparty: row.counterpartyName === null ? null : maskStatementText(row.counterpartyName),
-    reference: row.bankReference,
+    // Referans sütununa gönderen IBAN'ı ya da kimlik no da yazılabilir (K-122).
+    reference: row.bankReference === null ? null : maskStatementText(row.bankReference),
     balanceCents: row.balanceCents,
     sourceFormat: row.sourceFormat,
     status: row.status,
@@ -491,7 +496,9 @@ async function viewOf(tx: Database, ctx: ServiceContext, id: string) {
  * Öneriyi ya da seçilen taksiti onaylar (DOM-FIN-069): tahsilat hareketin tamamıyla, banka
  * havalesi yöntemiyle, hareketin hesabına ve gününe yazılır; önce seçilen taksit, artanı en eski
  * vade, açık taksitleri aşanı iade alacağı (DOM-FIN-030, K-110). Kapalı gün 422 (DOM-FIN-036).
- * Hareket aynı transaction'da `matched` olur; ikinci onay 409. 201.
+ * Hareket aynı transaction'da `matched` olur; ikinci onay 409. Aynı hesap, gün ve tutarda aynı
+ * öğrenciye eşleşmiş başka hareket ya da aynı gün aynı tutarda elle girilmiş banka havalesi
+ * tahsilatı varsa `confirmDuplicate` olmadan 409 (K-121). 201.
  */
 export async function matchBankTransactionCommand(
   ctx: ServiceContext,
@@ -521,7 +528,21 @@ export async function matchBankTransactionCommand(
   const { request, view } = recordPaymentOperation(ctx, payment, {
     load: async (tx) => {
       const row = await lockedTransaction(tx, ctx, transactionId, expectedVersion)
-      return () => assertBankTransactionOpen(row.status)
+      // Kurum kilidi altında: eşzamanlı ikinci onay birincinin yazdığını görür (K-121).
+      const twins = await possibleDuplicateCount(tx, ctx.institutionId, {
+        id: row.id,
+        bankAccountId: row.bankAccountId,
+        bookingDate: row.bookingDate,
+        amountCents: row.amountCents,
+        studentId: body.studentId,
+        // Elle girilen tahsilatın günü Europe/Istanbul günüdür.
+        paidFrom: new Date(istanbulDayStart(row.bookingDate)),
+        paidBefore: new Date(istanbulDayStart(addDays(row.bookingDate, 1))),
+      })
+      return () => {
+        assertBankTransactionOpen(row.status)
+        assertNoPossibleDuplicate(twins, body.confirmDuplicate === true)
+      }
     },
     after: async (tx, stored) => {
       const marked = await markBankTransactionMatched(tx, ctx.institutionId, {

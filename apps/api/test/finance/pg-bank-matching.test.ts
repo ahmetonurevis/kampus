@@ -25,7 +25,8 @@ import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
  * Banka hareketi onayının eşzamanlılığı (IST-115, ON-099; DOM-FIN-069, DOM-FIN-031). Aynı hareketi
  * iki kişi aynı anda onaylarsa kurum kilidinde sıraya girer: biri tahsilat yazar, öteki 409 alır,
  * tek tahsilat ve tek dağılım kalır. Kurum kilidi atlansa da durum ve sürüm koşullu güncelleme
- * ikinci yazmayı durdurur.
+ * ikinci yazmayı durdurur. Aynı havalenin iki ikiz hareketi aynı anda aynı öğrenciye onaylanırsa
+ * ikincisi kilit altında birincinin eşleşmesini görür ve olası mükerrer (K-121) alır.
  */
 
 const SEED = createSeed(FIXED_NOW)
@@ -115,7 +116,22 @@ describe('PostgreSQL 16: banka hareketi eşleştirme', { skip: PG_SKIP }, () => 
       now: FIXED_NOW,
       log: app.log,
     }
-    return { ctx, transactionId }
+    // Aynı havalenin ikinci biçimden aktarılmış ikizi: başka iz, referanssız (K-121).
+    const twinId = randomUUID()
+    await db.insert(bankTransactions).values({
+      institutionId: created.id,
+      id: twinId,
+      bankAccountId: accountId,
+      bookingDate: '2026-10-01',
+      amountCents: 1_000_000,
+      statementDescription: 'HAVALE DENIZ YILMAZ AYSE YILMAZ',
+      fingerprint: 'b'.repeat(64),
+      sourceFormat: 'mt940',
+      importBatchId: randomUUID(),
+      sourceLine: 4,
+      importedByUserId: created.admin.id,
+    })
+    return { ctx, transactionId, twinId }
   }
 
   async function untilLockWait(locktype: 'advisory' | 'transactionid', minimum = 1) {
@@ -186,6 +202,47 @@ describe('PostgreSQL 16: banka hareketi eşleştirme', { skip: PG_SKIP }, () => 
       .where(eq(bankTransactions.institutionId, ctx.institutionId))
     assert.equal(row?.status, 'matched')
     assert.equal(row?.version, 2)
+  })
+
+  test('K-121: ikiz iki hareketin eşzamanlı onayı: biri 201, öteki 409 olası mükerrer; tek tahsilat', async () => {
+    const { ctx, transactionId, twinId } = await setup()
+    const body = { studentId: 's1', invoiceId: INVOICE.id }
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, ctx.institutionId)
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    const outcomes = Promise.allSettled<CommandResponse>([
+      matchBankTransactionCommand(ctx, transactionId, body, 1, keyed()),
+      matchBankTransactionCommand(ctx, twinId, body, 1, keyed()),
+    ])
+    try {
+      await untilLockWait('advisory', 2)
+    } finally {
+      release.open()
+      await holder
+    }
+    const settled = await outcomes
+    assert.deepEqual(
+      settled.filter((item) => item.status === 'fulfilled').map((item) => item.value.statusCode),
+      [201],
+    )
+    const reason: unknown = settled.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 409 &&
+        reason.code === 'bank_match_possible_duplicate',
+      String(reason),
+    )
+    assert.deepEqual(await rowsOf(ctx.institutionId), { payments: 1, allocations: 1, audits: 1 })
+    const statuses = await db
+      .select({ status: bankTransactions.status })
+      .from(bankTransactions)
+      .where(eq(bankTransactions.institutionId, ctx.institutionId))
+    assert.deepEqual(statuses.map((row) => row.status).sort(), ['matched', 'unmatched'])
   })
 
   test('DOM-FIN-069: kilitsiz iki durum yazması: koşullu güncelleme ikinciyi durdurur', async () => {

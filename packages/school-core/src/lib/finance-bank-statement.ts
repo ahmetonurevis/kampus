@@ -490,10 +490,32 @@ export function foldStatementText(value: string): string {
 }
 
 /**
- * Hareketin mükerrer anahtarı (K-107): hesap + gün + tutar + yön + katlanmış açıklama + referans.
+ * İz için açıklama: katlanır (Türkçe harf ASCII'ye, büyük harf küçüğe), harf ve rakam dışı her şey
+ * tek boşluğa iner. CSV açıklaması ile MT940 `:86:` alanı aynı metni farklı noktalama ve ayraçla
+ * verir ("EFT. AYSE/DENIZ" ve "EFT AYSE DENIZ").
+ */
+export function normalizeStatementText(value: string): string {
+  return foldStatementText(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/** Hareketi tek başına tanımlayan banka referansı: en az 6 harf/rakam ve en az bir rakam (K-120). */
+const STRONG_REFERENCE_MIN = 6
+function strongReference(reference: string): string | null {
+  const compact = normalizeStatementText(reference).replace(/ /g, '')
+  return compact.length >= STRONG_REFERENCE_MIN && /\d/.test(compact) ? compact : null
+}
+
+/**
+ * Hareketin mükerrer anahtarı (K-107, K-120): hesap + gün + tutar ve
+ * - banka referansı hareketi tanımlıyorsa (`strongReference`) yalnız referans: aynı ekstre CSV ve
+ *   MT940 olarak ya da farklı sütun eşlemesiyle yüklense de iz aynıdır;
+ * - yoksa normalleştirilmiş açıklama ve gönderen ile kısa referans.
  * Aynı dosyada aynı anahtarlı birden çok hareket (aynı gün aynı açıklamayla iki havale) sıra
  * numarasıyla ayrılır; aynı dosya yeniden yüklenince sıra aynı kalır, ikinci yükleme yazmaz. API
- * anahtarın sha256 özetini saklar.
+ * anahtarın sha256 özetini saklar. Açıklaması biçimden biçime gerçekten farklı referanssız hareket
+ * ikinci kez yazılabilir; onaydaki olası mükerrer denetimi (K-121) çift tahsilatı durdurur.
  */
 export function bankTransactionKeys(
   bankAccountId: string,
@@ -503,12 +525,17 @@ export function bankTransactionKeys(
   const keys = new Map<number, string>()
   for (const line of lines) {
     if (!line.movement || line.direction !== 'credit' || line.issues.length > 0) continue
+    const reference = strongReference(line.reference)
     const base = [
       bankAccountId,
       line.bookingDate ?? '',
       String(line.amountCents ?? ''),
-      foldStatementText(`${line.description} ${line.counterparty}`),
-      foldStatementText(line.reference),
+      ...(reference !== null
+        ? [`ref:${reference}`]
+        : [
+            normalizeStatementText(`${line.description} ${line.counterparty}`),
+            normalizeStatementText(line.reference),
+          ]),
     ].join('|')
     const occurrence = (seen.get(base) ?? 0) + 1
     seen.set(base, occurrence)
@@ -534,6 +561,7 @@ export interface BankImportRow {
   direction: BankDirection | null
   /** Maskeli açıklama (`maskStatementText`); önizlemede gösterilir. */
   description: string
+  /** Maskeli referans (K-122). */
   reference: string
   issues: BankStatementIssue[]
 }
@@ -557,14 +585,42 @@ export interface BankImportPlan {
 }
 
 /**
- * 11 ve daha uzun rakam dizileri (T.C. kimlik no, IBAN gövdesi, telefon) son dört hanesi dışında
- * maskelenir: açıklama yanıtta ve önizlemede bu biçimde döner (K-112). Saklanan metin hamdır.
+ * Rakam dizisi: bitişik rakamlar ya da tek boşluk, tire veya noktayla bölünmüş en çok dört haneli
+ * gruplar. Gönderen kimlik numarasını ve IBAN'ı çoğunlukla gruplayarak yazar ("TR12 0006 1005 …",
+ * "123 456 789 01"). Grup en çok dört hanedir ve dizi bir sayının ortasından başlamaz: öğrenci
+ * numarasının ("2026001") yanındaki tarih onunla birleşip maskelenmez. Virgül ayraç değildir.
+ */
+const DIGIT_RUN = /(?<!\d[ .-]?)(?:\d{1,4}(?:[ .-]\d{1,4})+|\d+)(?!\d)/g
+const MASK_MIN_DIGITS = 11
+const MASK_KEEP_DIGITS = 4
+
+/**
+ * Metindeki rakam dizileri, eşleştirme için (DOM-FIN-069): her bitişik dizi ve maskeyle aynı kuralla
+ * gruplanmış dizilerin ayraçsız birleşimi ("100 000 001 46" → "10000000146"). Maske ile eşleştirme
+ * aynı yazımları tanır; bitişik yazımın okunuşu değişmez.
+ */
+export function statementDigitRuns(value: string): string[] {
+  const runs = new Set(value.match(/\d+/g) ?? [])
+  for (const run of value.match(DIGIT_RUN) ?? []) runs.add(run.replace(/\D/g, ''))
+  return [...runs]
+}
+
+/**
+ * Ayraçlarla birlikte 11 ve daha çok rakamlı diziler (T.C. kimlik no, IBAN gövdesi, telefon) son
+ * dört hanesi dışında maskelenir, ayraçlar yerinde kalır (K-112, K-122). Açıklama, gönderen ve
+ * referans yanıtta ve önizlemede bu biçimde döner; saklanan metin hamdır, eşleştirme hamla çalışır.
+ * Ayraçlı dizide tarih ile tutar yan yana gelirse fazladan maskelenebilir; bu güvenli yöndür.
  */
 export function maskStatementText(value: string): string {
-  return value.replace(
-    /(?<!\d)\d{11,}(?!\d)/g,
-    (digits) => `${'*'.repeat(digits.length - 4)}${digits.slice(-4)}`,
-  )
+  return value.replace(DIGIT_RUN, (run) => {
+    const total = run.replace(/\D/g, '').length
+    if (total < MASK_MIN_DIGITS) return run
+    let seen = 0
+    return run.replace(/\d/g, (digit) => {
+      seen += 1
+      return seen > total - MASK_KEEP_DIGITS ? digit : '*'
+    })
+  })
 }
 
 /**
@@ -606,7 +662,7 @@ export function planBankStatementImport(
       amountCents: line.amountCents,
       direction: line.direction,
       description: maskStatementText(clip(`${line.description} ${line.counterparty}`, 300)),
-      reference: line.reference,
+      reference: maskStatementText(line.reference),
       issues: line.issues,
     })
     if (

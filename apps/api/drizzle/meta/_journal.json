@@ -551,8 +551,15 @@
     {
       "idx": 78,
       "version": "7",
-      "when": 1794116611578,
-      "tag": "0078_create_suppliers_purchase_requests",
+      "when": 1794114445959,
+      "tag": "0078_comment_bank_transaction_fingerprint",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1794118515115,
+      "tag": "0079_create_suppliers_purchase_requests",
       "breakpoints": true
     }
   ]

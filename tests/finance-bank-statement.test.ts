@@ -53,6 +53,39 @@ describe('DOM-FIN-069: ekstre tutar ve tarih hücreleri', () => {
     )
     assert.equal(maskStatementText('OGR NO 2026001'), 'OGR NO 2026001')
   })
+
+  test('K-122: boşluk, tire ya da noktayla bölünmüş kimlik no ve IBAN da maskelenir', () => {
+    assert.equal(
+      maskStatementText('IBAN TR12 0006 1005 1978 6457 8413 26 HAVALE'),
+      'IBAN TR** **** **** **** **** **13 26 HAVALE',
+    )
+    assert.equal(maskStatementText('TC 123 456 789 01 EKIM'), 'TC *** *** *89 01 EKIM')
+    assert.equal(maskStatementText('TC 123-456-789-01'), 'TC ***-***-*89-01')
+    assert.equal(maskStatementText('TC 123.456.789.01'), 'TC ***.***.*89.01')
+    assert.equal(maskStatementText('TEL 0532 123 45 67'), 'TEL **** *** 45 67')
+    // Kısa diziler, tarih ve tutar değişmez; virgül ayraç sayılmaz.
+    assert.equal(
+      maskStatementText('OGR NO 2026001 01.10.2026 TAKSIT 3 24.500,00'),
+      'OGR NO 2026001 01.10.2026 TAKSIT 3 24.500,00',
+    )
+    // Bitişik uzun dizinin ardındaki grup diziyi korumaz.
+    assert.equal(maskStatementText('TC 12345678901 22'), 'TC *******8901 22')
+    // Harfe bitişik uzun dizi (referans) son dört hane dışında maskelenir.
+    assert.equal(maskStatementText('EFT2026100100001'), 'EFT*********0001')
+  })
+
+  test('K-122: önizleme satırında açıklama ve referans maskeli; aktarılacak hareket ham kalır', () => {
+    const raw = [
+      'Tarih;Açıklama;Tutar;Referans',
+      '01.10.2026;HAVALE TC 123 456 789 01;100,00;TR12 0006 1005 1978 6457 8413 26',
+    ].join('\n')
+    const lines = parse(raw).lines
+    const plan = planBankStatementImport(lines, bankTransactionKeys(ACCOUNT, lines), () => false)
+    assert.equal(plan.rows[0]?.description, 'HAVALE TC *** *** *89 01')
+    assert.equal(plan.rows[0]?.reference, 'TR** **** **** **** **** **13 26')
+    assert.equal(plan.transactions[0]?.description, 'HAVALE TC 123 456 789 01')
+    assert.equal(plan.transactions[0]?.reference, 'TR12 0006 1005 1978 6457 8413 26')
+  })
 })
 
 describe('DOM-FIN-069: CSV ekstresi', () => {
@@ -246,5 +279,43 @@ describe('K-107: mükerrer anahtarı ve aktarım planı', () => {
         [3, null],
       ],
     )
+  })
+})
+
+describe('K-120: biçimler arası mükerrer izi', () => {
+  const mt940 = (lines: string[]) =>
+    [':20:STMT', ':25:TR330006100519786457841326', ...lines, '-'].join('\n')
+  const keyOf = (raw: string) => [...bankTransactionKeys(ACCOUNT, parse(raw).lines).values()]
+
+  test('banka referansı varsa iz açıklamadan bağımsızdır: aynı hareket CSV ve MT940’ta aynı izi alır', () => {
+    const csv = [
+      'Tarih;Açıklama;Gönderen;Tutar;Dekont No',
+      '01.10.2026;EFT TAKSIT;AYSE YILMAZ;24.500,00;EFT-2026-0001',
+    ].join('\n')
+    const swift = mt940([
+      ':61:2610011001C24500,00NTRFNONREF//EFT20260001',
+      ':86:?20EFT AYSE YILMAZ?21DENIZ YILMAZ TAKSIT',
+    ])
+    assert.deepEqual(keyOf(swift), keyOf(csv))
+    // Gönderen sütunu eşlenmeden yüklense de iz aynıdır.
+    assert.deepEqual(keyOf(csv), keyOf(csv.replace('Gönderen', 'Not')))
+    // Başka tutar ya da gün başka harekettir.
+    assert.notDeepEqual(keyOf(csv.replace('24.500,00', '24.000,00')), keyOf(csv))
+  })
+
+  test('referans yoksa ya da kısaysa iz normalleştirilmiş açıklamadır: harf, noktalama ve boşluk farkı izi değiştirmez', () => {
+    const csv = [
+      'Tarih;Açıklama;Tutar;Referans',
+      '01.10.2026;EFT. Ayşe YILMAZ / Deniz Yılmaz - TAKSİT;24.500,00;',
+    ].join('\n')
+    const swift = mt940([
+      ':61:2610011001C24500,00NTRFNONREF',
+      ':86:?20EFT AYSE YILMAZ?21DENIZ YILMAZ TAKSIT',
+    ])
+    assert.deepEqual(keyOf(swift), keyOf(csv))
+    // "R4" gibi kısa referans hareketi tek başına tanımlamaz; açıklama izde kalır.
+    const short = (description: string) =>
+      keyOf(`Tarih;Açıklama;Tutar;Referans\n01.10.2026;${description};100,00;R4`)
+    assert.notDeepEqual(short('HAVALE DENIZ'), short('HAVALE NEHIR'))
   })
 })

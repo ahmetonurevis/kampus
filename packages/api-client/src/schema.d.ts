@@ -5028,6 +5028,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/purchase-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma raporu
+         * @description Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.
+         */
+        get: operations["getFinancePurchaseReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -53282,6 +53302,228 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinancePurchaseReport: {
+        parameters: {
+            query?: {
+                periodId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description Bütçe dönemi ya da tarih aralığı
+                             * @enum {string}
+                             */
+                            scope: "period" | "range";
+                            /** @description Kapsamın ilk günü `YYYY-MM-DD` */
+                            from: string;
+                            /** @description Kapsamın son günü `YYYY-MM-DD` */
+                            to: string;
+                            /** @description Bütçe dönemi kapsamında dönem; aralıkta boş */
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            } | null;
+                            totals: {
+                                /** @description İptal edilmemiş sipariş sayısı */
+                                orderCount: number;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                /** @description Siparişi olan tedarikçi sayısı */
+                                supplierCount: number;
+                            };
+                            /** @description Kapsamda iptal edilen siparişler; toplamlara girmez */
+                            cancelled: {
+                                orderCount: number;
+                                /** @description İptal edilen KDV dahil tutar */
+                                grossCents: number;
+                            };
+                            leadTime: {
+                                orderCount: number;
+                                /** @description Ortalama takvim günü, bir ondalık */
+                                averageDays: number | null;
+                                minDays: number | null;
+                                maxDays: number | null;
+                            };
+                            /** @description Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157) */
+                            categories: {
+                                /** @enum {string} */
+                                category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                                supplierCount: number;
+                                /** @description İptal edilmemiş sipariş sayısı */
+                                orderCount: number;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
+                                shareBasisPoints: number | null;
+                            }[];
+                            /** @description Brüt tutara göre azalan */
+                            suppliers: {
+                                /** @description Brüt tutara göre sıra, 1 en çok */
+                                rank: number;
+                                supplierId: string;
+                                /** @description Tedarikçinin güncel unvanı; şahıs tedarikçide kişisel veri (K-155) */
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                                isActive: boolean;
+                                /** @description İptal edilmemiş sipariş sayısı */
+                                orderCount: number;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
+                                shareBasisPoints: number | null;
+                                /** @description Talepten siparişe ortalama takvim günü, bir ondalık (K-158) */
+                                averageLeadDays: number | null;
+                            }[];
+                            /** @description En çok harcama yapılan beş tedarikçi */
+                            topSuppliers: {
+                                /** @description Brüt tutara göre sıra, 1 en çok */
+                                rank: number;
+                                supplierId: string;
+                                /** @description Tedarikçinin güncel unvanı; şahıs tedarikçide kişisel veri (K-155) */
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                                isActive: boolean;
+                                /** @description İptal edilmemiş sipariş sayısı */
+                                orderCount: number;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
+                                shareBasisPoints: number | null;
+                                /** @description Talepten siparişe ortalama takvim günü, bir ondalık (K-158) */
+                                averageLeadDays: number | null;
+                            }[];
+                            /** @description Talebin maliyet merkezine göre */
+                            costCenters: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                isActive: boolean;
+                                /** @description İptal edilmemiş sipariş sayısı */
+                                orderCount: number;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
+                                shareBasisPoints: number | null;
+                            }[];
+                            /** @description Talebin gider kalemine göre */
+                            budgetItems: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                isActive: boolean;
+                                /** @description İptal edilmemiş sipariş sayısı */
+                                orderCount: number;
+                                /** @description KDV hariç tutar, kuruş */
+                                netCents: number;
+                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                vatCents: number;
+                                /** @description KDV dahil tutar, kuruş */
+                                grossCents: number;
+                                /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
+                                shareBasisPoints: number | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2138,3 +2138,81 @@ test.describe('Finans: stok', () => {
     await expect(movements.getByRole('button', { name: /hareketini iptal et/ })).toHaveCount(0)
   })
 })
+
+test.describe('Finans: materyal seti', () => {
+  test('DOM-FIN-080: ön büro seti öğrenciye imzalı teslim eder; stok yetmezse ikinci teslim reddedilir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    // s1 (Deniz Yılmaz) ve s25 aynı 7. sınıfta; depoda tek kitap var.
+    const school = await tenant({ roles: ['yonetici', 'onburo'], students: ['s1', 's25'] })
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const warehouse = await client.post('/api/v1/finance/stock-warehouses', {
+        name: 'Ana depo',
+        campusId: 'b1',
+      })
+      expect(warehouse.status, JSON.stringify(warehouse.body)).toBe(201)
+      const item = await client.post('/api/v1/finance/stock-items', {
+        code: 'KIT-7',
+        name: '7. sınıf kitabı',
+        category: 'educational',
+        unit: 'piece',
+      })
+      expect(item.status, JSON.stringify(item.body)).toBe(201)
+      const itemId = (item.body as { data: { id: string } }).data.id
+      const entry = await client.post(
+        '/api/v1/finance/stock-entries',
+        {
+          itemId,
+          warehouseId: (warehouse.body as { data: { id: string } }).data.id,
+          quantity: 1,
+          movementDate: '2026-01-02',
+          reason: 'opening',
+        },
+        { 'idempotency-key': randomUUID() },
+      )
+      expect(entry.status, JSON.stringify(entry.body)).toBe(201)
+      const set = await client.post('/api/v1/finance/material-sets', {
+        name: '7. Sınıf Seti',
+        academicYear: 2026,
+        gradeLevel: 7,
+        items: [{ stockItemId: itemId, quantity: 1 }],
+      })
+      expect(set.status, JSON.stringify(set.body)).toBe(201)
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=materyal-seti`)
+    await expect(page.getByRole('button', { name: 'Yeni set' })).toHaveCount(0)
+    await page.getByRole('button', { name: '7. Sınıf Seti öğrencilerini aç' }).click()
+    const students = page.getByRole('table', { name: 'Setin öğrencileri' })
+    const deniz = students.locator('tbody tr').filter({ hasText: 'Deniz Yılmaz' })
+    await expect(deniz).toContainText('Teslim edilmedi')
+    await page.getByRole('button', { name: 'Deniz Yılmaz için teslim et' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Seti teslim et' })
+    await dialog.getByLabel('Depo').selectOption({ label: 'Ana depo · Kadıköy Kampüsü' })
+    await expect(dialog.getByLabel('Kâğıt teslim tutanağında imza alındı')).toBeChecked()
+    await dialog.getByRole('button', { name: 'Teslim et' }).click()
+    await expect(page.getByText('7. Sınıf Seti Deniz Yılmaz için teslim edildi.')).toBeVisible()
+    await expect(deniz).toContainText('Teslim edildi')
+    await expect(deniz).toContainText('Öğrencinin kendisi')
+    await expect(deniz).toContainText('Alındı')
+    // Ön büro teslimi iptal etmez (K-205).
+    await expect(page.getByRole('button', { name: 'Deniz Yılmaz teslimini iptal et' })).toHaveCount(
+      0,
+    )
+
+    const other = students.locator('tbody tr').filter({ hasNotText: 'Deniz Yılmaz' })
+    await other.getByRole('button', { name: /için teslim et$/ }).click()
+    const second = page.getByRole('dialog', { name: 'Seti teslim et' })
+    await second.getByLabel('Depo').selectOption({ label: 'Ana depo · Kadıköy Kampüsü' })
+    await second.getByRole('button', { name: 'Teslim et' }).click()
+    // K-181: stok yetmezse ileti depo alanında görünür, pencere açık kalır.
+    await expect(second.getByText(/çıkılabilecek en çok 0 adet/)).toBeVisible()
+  })
+})

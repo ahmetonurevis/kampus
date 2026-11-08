@@ -62,6 +62,9 @@ const FinanceInventorySection = lazy(async () => ({
 const FinanceFixedAssetsSection = lazy(async () => ({
   default: (await import('./FinanceFixedAssetsSection.tsx')).FinanceFixedAssetsSection,
 }))
+const FinanceMaterialSetsSection = lazy(async () => ({
+  default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -88,6 +91,7 @@ const VIEWS = {
   purchaseReport: { label: 'Satın alma raporu', param: 'satin-alma-raporu' },
   supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
   inventory: { label: 'Stok', param: 'stok' },
+  materialSets: { label: 'Materyal setleri', param: 'materyal-seti' },
   fixedAssets: { label: 'Demirbaşlar', param: 'demirbas' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
@@ -109,6 +113,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Satın alma raporu (DOM-FIN-075) yalnız yöneticidedir; ön büro görmez (K-155).
  * Tedarikçi carisi (DOM-FIN-076) yalnız yöneticidedir; ön büro görmez (K-160).
  * Stok (DOM-FIN-077, DOM-FIN-078) ikisine açıktır; ön büro okur ve çıkış yazar (K-180).
+ * Materyal setleri (DOM-FIN-080) ikisine açıktır; ön büro teslim eder ve imzayı işler (K-205).
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
@@ -254,6 +259,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'purchaseReport' ||
       tab === 'supplierLedger' ||
       tab === 'inventory' ||
+      tab === 'materialSets' ||
       tab === 'fixedAssets' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
@@ -262,6 +268,13 @@ export function FinancePage({ page }: { page: NavPage }) {
           {tab === 'purchaseReport' ? <FinancePurchaseReportSection /> : null}
           {tab === 'supplierLedger' ? <FinanceSupplierLedgerSection /> : null}
           {tab === 'inventory' ? <FinanceInventorySection role={session?.role ?? ''} /> : null}
+          {tab === 'materialSets' ? (
+            <FinanceMaterialSetsSection
+              role={session?.role ?? ''}
+              institutionType={session?.institution?.type ?? 'school'}
+              academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+            />
+          ) : null}
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
         </Suspense>
       ) : null}

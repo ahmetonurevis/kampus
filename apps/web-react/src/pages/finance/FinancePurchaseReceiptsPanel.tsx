@@ -20,9 +20,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import { usePurchaseReceiptPdf } from '@/hooks/use-finance-purchase-receipt-pdf.ts'
 import { notify } from '@/lib/notify.ts'
+import { PURCHASE_RECEIPT_TITLE } from '@/lib/pdf/templates/finance-purchase-receipt.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { PdfDialogButton } from './CorporateParts.tsx'
 import { reasonFormSchema, type ReasonFormValues } from './finance-procurement-forms.ts'
 import {
   receiptBody,
@@ -47,6 +50,7 @@ type Dialog = { kind: 'receive' } | { kind: 'cancel'; receipt: PurchaseReceipt }
  * KDV hariç gerçekleşen tutar, kabul formu ve kabul geçmişi. Kabulü yönetici ve ön büro kaydeder,
  * iptal yalnız yöneticidedir (K-153). Taslak siparişte gösterilmez: önce gönderildi işaretlenir.
  * Kaleme stok kartı seçilirse kabul edilen miktar seçilen depoya girer (DOM-FIN-078, K-184).
+ * Her kabulün tutanak PDF'i geçmişten alınır; iptal edilmiş kabulünki "İPTAL" işaretlidir (ON-337).
  */
 export function FinancePurchaseReceiptsPanel({ orderId }: { orderId: string }) {
   const query = usePurchaseReceiptBoard(orderId)
@@ -158,8 +162,15 @@ function History({
               {`İptal: ${receipt.cancelledByName ?? '—'} · ${timeText(receipt.cancelledAt)} · ${receipt.cancelReason ?? ''}`}
             </p>
           ) : null}
-          {receipt.actions.cancel ? (
-            <div>
+          <div className="flex flex-wrap gap-2">
+            <PdfDialogButton
+              label="Tutanak PDF"
+              title={PURCHASE_RECEIPT_TITLE}
+              id={{ orderId: board.order.id, receiptId: receipt.id }}
+              usePdf={usePurchaseReceiptPdf}
+              accessibleName={`Tutanak PDF · ${dayText(receipt.receiptDate)} kabulü`}
+            />
+            {receipt.actions.cancel ? (
               <Button
                 type="button"
                 size="sm"
@@ -169,8 +180,8 @@ function History({
               >
                 Kabulü iptal et
               </Button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </li>
       ))}
     </ul>

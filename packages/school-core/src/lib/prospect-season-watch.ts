@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { dayKey } from './format.ts'
-import { OPEN_PROSPECT_STAGES, type ProspectStage } from './prospects.ts'
+import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 
 /**
  * Kayıt sezonu nöbeti (docs/domain/kayit-ve-crm.md DOM-KAY-037; IST-079, IST-091; ON-077). Ön
@@ -135,10 +135,13 @@ export interface SeasonWatchInput {
 
 // --- Çıktı ---------------------------------------------------------------------------------
 
+/** Nöbete yalnız açık aday girer. */
+export type OpenProspectStage = (typeof OPEN_PROSPECT_STAGES)[number]
+
 interface ProspectBase {
   prospectId: string
   name: string
-  stage: ProspectStage
+  stage: OpenProspectStage
   branchName: string | null
 }
 
@@ -189,7 +192,7 @@ export interface SeasonWatch {
 // --- Hesap ---------------------------------------------------------------------------------
 
 const OPEN = new Set<string>(OPEN_PROSPECT_STAGES)
-const isOpen = (stage: string): stage is ProspectStage => OPEN.has(stage)
+const isOpen = (stage: string): stage is OpenProspectStage => OPEN.has(stage)
 const at = (value: string | null | undefined) => {
   if (!value) return null
   const time = Date.parse(value)

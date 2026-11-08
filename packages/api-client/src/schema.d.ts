@@ -3852,6 +3852,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/season-watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt sezonu nöbeti: görüşmeler, deneme dersleri, geciken takipler
+         * @description Açık adayların bugün ve yakın günlerde ilgilenilmesi gerekenleri (DOM-KAY-037). Pencere bugünden başlar, bugün dahil `days` gün (1–14, varsayılan 7; Europe/Istanbul). `meetings`: penceredeki tanışma görüşmeleri, saat sırasıyla (bitişi geçen `held`). `trials`: yalnız dil okulunda penceredeki deneme dersleri; gün dersin güncel kaydından, iptal edilen ya da programdan kalkan derse bağlı deneme yok. `followUps`: şu andan sonra başlayan görüşmesi ya da denemesi olmayan açık aday, ilk tutan nedenle bir kez (`first_contact`: açılışın ertesi gününe giren `Yeni aday`; `meeting_outcome`/`trial_outcome`: önceki bir gün yapılmış, aşaması hâlâ `Görüşme planlandı` ve sonrasında not yok; `stale`: son işlem 7 gün ya da daha eski); en çok gecikenler önce. Her bölüm toplamla birlikte en çok 50 satır döner. Satır aday kimliği, adı, aşaması ve kampüsünü taşır; telefon, e-posta, veli, not, ilgi ve kaynak dönmez. Arşivlenen aday sayılmaz. Bilinmeyen parametre ya da aralık dışı `days` 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectSeasonWatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
         parameters: {
             query?: never;
@@ -12504,6 +12524,113 @@ export interface components {
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRowInput"][];
         };
+        SeasonWatchMeetingInput: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Görüşmenin başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            /** @description Dakika; süresi saklanmamış eski görüşmede 30 */
+            duration: number;
+            room: string | null;
+            /** @description Görevli öğretmen; yoksa `null` */
+            teacherName: string | null;
+            /** @description Bitişi geçmiş mi */
+            held: boolean;
+        };
+        SeasonWatchTrialInput: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Dersin güncel başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            duration: number;
+            groupName: string | null;
+            held: boolean;
+            /** @description Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031) */
+            resultRecorded: boolean;
+        };
+        SeasonWatchFollowUpInput: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /**
+             * @description `first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi
+             * @enum {string}
+             */
+            reason: "first_contact" | "meeting_outcome" | "trial_outcome" | "stale";
+            /** @description Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem) */
+            sinceDate: string;
+            /** @description Dayanak günden bugüne geçen gün */
+            days: number;
+            /** @description Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null` */
+            trialResultRecorded: boolean | null;
+        };
+        ProspectSeasonWatchInput: {
+            window: {
+                /** @description Bugün */
+                from: string;
+                /** @description Pencerenin son günü (dahil) */
+                to: string;
+                days: number;
+            };
+            /** @description Deneme dersi bölümü var mı (yalnız dil okulu) */
+            trialsEnabled: boolean;
+            summary: {
+                meetingsToday: number;
+                meetingsInWindow: number;
+                trialsToday: number;
+                trialsInWindow: number;
+                followUps: number;
+                followUpsByReason: {
+                    first_contact: number;
+                    meeting_outcome: number;
+                    trial_outcome: number;
+                    stale: number;
+                };
+                /** @description Bugün açılan açık aday */
+                newToday: number;
+            };
+            meetings: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchMeetingInput"][];
+            };
+            trials: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchTrialInput"][];
+            };
+            followUps: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchFollowUpInput"][];
+            };
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -17013,6 +17140,113 @@ export interface components {
             paidCents: number;
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRow"][];
+        };
+        SeasonWatchMeeting: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Görüşmenin başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            /** @description Dakika; süresi saklanmamış eski görüşmede 30 */
+            duration: number;
+            room: string | null;
+            /** @description Görevli öğretmen; yoksa `null` */
+            teacherName: string | null;
+            /** @description Bitişi geçmiş mi */
+            held: boolean;
+        };
+        SeasonWatchTrial: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Dersin güncel başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            duration: number;
+            groupName: string | null;
+            held: boolean;
+            /** @description Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031) */
+            resultRecorded: boolean;
+        };
+        SeasonWatchFollowUp: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /**
+             * @description `first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi
+             * @enum {string}
+             */
+            reason: "first_contact" | "meeting_outcome" | "trial_outcome" | "stale";
+            /** @description Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem) */
+            sinceDate: string;
+            /** @description Dayanak günden bugüne geçen gün */
+            days: number;
+            /** @description Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null` */
+            trialResultRecorded: boolean | null;
+        };
+        ProspectSeasonWatch: {
+            window: {
+                /** @description Bugün */
+                from: string;
+                /** @description Pencerenin son günü (dahil) */
+                to: string;
+                days: number;
+            };
+            /** @description Deneme dersi bölümü var mı (yalnız dil okulu) */
+            trialsEnabled: boolean;
+            summary: {
+                meetingsToday: number;
+                meetingsInWindow: number;
+                trialsToday: number;
+                trialsInWindow: number;
+                followUps: number;
+                followUpsByReason: {
+                    first_contact: number;
+                    meeting_outcome: number;
+                    trial_outcome: number;
+                    stale: number;
+                };
+                /** @description Bugün açılan açık aday */
+                newToday: number;
+            };
+            meetings: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchMeeting"][];
+            };
+            trials: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchTrial"][];
+            };
+            followUps: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchFollowUp"][];
+            };
         };
     };
     responses: never;
@@ -42594,6 +42828,85 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["EnrollmentFunnel"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectSeasonWatch: {
+        parameters: {
+            query?: {
+                /** @description Bugün dahil pencere uzunluğu (gün, 1–14); verilmezse 7 */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectSeasonWatch"];
                     };
                 };
             };

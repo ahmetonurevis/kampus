@@ -380,11 +380,11 @@ Kullanıcı kararları (2026-11-07, K-33…K-39; yedisinde de öneri kabul edild
 
 ### DOM-FIN-054 · Cari ekstre
 
-- **Kural:** Öğrencinin ekstresi taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle gösterir. Borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat silinmez, iptal gününe ters kayıt olarak yazılır. Taksite dağıtılmayan tutar iade alacağıdır, bakiyeyi düşürmez.
+- **Kural:** Öğrencinin ekstresi taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle gösterir. Borç ve alacak toplamının farkı açık tutar eksi ödenmemiş ayrılış iadesidir. İptal edilen tahsilat silinmez, iptal gününe ters kayıt olarak yazılır. Taksite dağıtılmayan tutar iade alacağıdır, bakiyeyi düşürmez. Ayrılışta (`DOM-FIN-040`) iptal edilen taksite alınan ve o gün dağıtılmamış tutar ayrılış hesabına girer, artık iade alacağı değildir: tahsilat satırında alacak yazılır, ayrılış gününe hesabı kapatan satır düşer (mahsup edilen eksi iade; artıysa hak edilen ücret borcu, eksiyse iade alacağı). Ödenen iade ödeme gününe borç satırıdır; ödenmemiş iade bakiyede alacak olarak kalır ve ayrıca belirtilir.
 - **Gerekçe:** Veliye verilen ekstre taksit ve tahsilat kayıtlarıyla kuruşu kuruşuna tutmalıdır (IST-107).
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Veli `/veli/finans` ve öğrenci `/ogrenci/odemelerim` ekranında hareketler ve PDF, kurum görevlisinde taksit panelinde PDF (`StudentStatementSection.tsx`, `templates/finance-statement.ts`). PDF önizlemede açılır; indirme ve yazdırma aynı PDF'yi kullanır (`PdfButton` `student-statement`).
+- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Ayrılış satırları `withdrawal_settlement` ve `refund_payment`, ödenmemiş iade `refundDueCents` (ON-093); hesap yıl sonu mutabakatındaki ayrılış düzeltmesiyle aynıdır (`DOM-FIN-056`). Birden çok ayrılışı olan öğrencide iptal edilen taksite alınan tutar, tahsilat gününden sonraki ilk ayrılışa (yoksa sonuncuya) yazılır. Veli `/veli/finans` ve öğrenci `/ogrenci/odemelerim` ekranında hareketler ve PDF, kurum görevlisinde taksit panelinde PDF (`StudentStatementSection.tsx`, `templates/finance-statement.ts`). PDF önizlemede açılır; indirme ve yazdırma aynı PDF'yi kullanır (`PdfButton` `student-statement`).
 
 ## Mevcut kodla farklar
 

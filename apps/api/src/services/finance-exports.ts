@@ -52,7 +52,7 @@ import {
   type StoredFinanceExportProfile,
 } from '../db/finance-export-profiles.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
-import { refundsPaidInPeriod } from '../db/withdrawals.ts'
+import { refundsPaidInPeriod, withdrawalsForStatement } from '../db/withdrawals.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import {
@@ -204,7 +204,8 @@ const statementInvoice = balanceInvoice.extend({ installment: z.number().int() }
 
 /**
  * Cari ekstre (`GET /finance/students/:id/statement`, IST-107). Kapsam bakiyeyle aynıdır; hesap
- * core `studentStatement`'tadır. İptal gerekçesi personel alanı olduğu için satıra girmez.
+ * core `studentStatement`'tadır. İptal gerekçesi personel alanı olduğu için satıra girmez. Ayrılış
+ * hesabı ve iade ödemesi ayrılış kaydından okunur; gerekçe, ödeyici kararı ve IBAN girmez.
  */
 export async function studentStatementFor(
   ctx: ServiceContext,
@@ -226,7 +227,8 @@ export async function studentStatementFor(
     paidAt: payment.paidAt.toISOString(),
     reversedAt: payment.reversedAt?.toISOString() ?? null,
   }))
-  return studentStatement(studentId, invoices, payments, dayKey(ctx.now))
+  const withdrawals = await withdrawalsForStatement(ctx.db, ctx.institutionId, studentId)
+  return studentStatement(studentId, invoices, payments, dayKey(ctx.now), withdrawals)
 }
 
 export async function financeSummaryFor(

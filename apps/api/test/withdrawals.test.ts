@@ -628,6 +628,43 @@ describe('ayrılış ve iade uçları', () => {
     assert.equal(detail.json().data.refundCents, 3_000_000)
   })
 
+  test('IST-107, DOM-FIN-054: ekstre ayrılış hesabını ve iadeyi yazar; kısmi tahsilat iade alacağı kalmaz', async () => {
+    const a = await institution()
+    // 1. taksit tam, 2. taksit 10.000 ₺ kısmi; hak edilen 20.000 ₺, iade 40.000 ₺.
+    assert.equal((await pay(a.cookie, 6_000_000, 'TR-S1')).statusCode, 201)
+    const { id, version, refundCents } = (await withdraw(a.cookie)).json().data
+    assert.equal(refundCents, 4_000_000)
+    const statement = async () => {
+      const response = await send(
+        'GET',
+        `/api/v1/finance/students/${STUDENT?.id ?? ''}/statement`,
+        a.cookie,
+      )
+      assert.equal(response.statusCode, 200, response.body)
+      return response.json().data
+    }
+    const pending = await statement()
+    assert.equal(pending.unappliedCents, 0)
+    assert.equal(pending.refundDueCents, 4_000_000)
+    assert.equal(pending.openCents, 0)
+    const settlement = pending.lines.find(
+      (line: { kind: string }) => line.kind === 'withdrawal_settlement',
+    )
+    assert.equal(settlement?.date, '2026-10-01')
+    assert.equal(settlement?.creditCents, 3_000_000)
+    assert.equal(pending.lines.at(-1)?.balanceCents, -4_000_000)
+    assert.equal(pending.debitTotalCents - pending.creditTotalCents, -4_000_000)
+
+    assert.equal((await payRefund(a.cookie, id, version)).statusCode, 200)
+    const paid = await statement()
+    assert.equal(paid.refundDueCents, 0)
+    const refund = paid.lines.find((line: { kind: string }) => line.kind === 'refund_payment')
+    assert.equal(refund?.date, REFUND.paidDate)
+    assert.equal(refund?.debitCents, 4_000_000)
+    assert.equal(paid.lines.at(-1)?.balanceCents, 0)
+    assert.equal(paid.debitTotalCents, paid.creditTotalCents)
+  })
+
   test('DOM-FIN-040: liste sayfalıdır, iade durumuyla süzülür, bilinmeyen parametre 400', async () => {
     const a = await institution()
     assert.equal((await pay(a.cookie, NET / 2, 'TR-L1')).statusCode, 201)

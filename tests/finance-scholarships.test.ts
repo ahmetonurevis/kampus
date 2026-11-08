@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  cancelledRenewalScholarshipYears,
   createScholarshipProgramSchema,
   planAwardMebbis,
   planProgramCreate,
@@ -165,4 +166,30 @@ test('DOM-FIN-025, DOM-KAY-012: öğrenciye aynı eğitim yılında ikinci burs 
     () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true, canApprove: false }),
     isDomainError('scholarship_approval_required'),
   )
+})
+
+test('DOM-FIN-068, K-117: ayrılışla iptal edilen burslu yenilemenin yılı döner; bursuz ve planlı yenileme dönmez', () => {
+  const scholarship = { programId: 'p1', amountCents: 750_000 }
+  const renewal = (id: string, studentId: string, year: number, status: string, burs: boolean) =>
+    ({
+      id,
+      studentId,
+      year,
+      status,
+      pricing: { scholarship: burs ? scholarship : null },
+    }) as unknown as Parameters<typeof cancelledRenewalScholarshipYears>[0]['renewals'][number]
+  const state = {
+    renewals: [
+      renewal('r1', 's3', 2027, 'İptal', true),
+      renewal('r2', 's3', 2028, 'İptal', false),
+      renewal('r3', 's3', 2029, 'Planlandı', true),
+      renewal('r4', 's1', 2027, 'İptal', true),
+      renewal('r5', 's3', 2027, 'İptal', true),
+    ],
+  }
+  assert.deepEqual(cancelledRenewalScholarshipYears(state, 's3'), [2027])
+  assert.deepEqual(cancelledRenewalScholarshipYears({ renewals: [] }, 's3'), [])
+  // Köprü yenilemesinde fiyat kaydı yoktur.
+  const bridge = { ...renewal('r6', 's3', 2027, 'İptal', true), pricing: undefined }
+  assert.deepEqual(cancelledRenewalScholarshipYears({ renewals: [bridge] }, 's3'), [])
 })

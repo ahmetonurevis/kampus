@@ -38,12 +38,21 @@ const movementSchema = z.object({
   balanceAfterCents: cents('Gün sırasıyla bu hareketten sonraki bakiye'),
   channel: z.enum(SCHOLARSHIP_FUND_CHANNELS).nullable().describe('Bağışın kaynağı'),
   note: z.string().nullable().describe('Bağış notu'),
-  awardId: z.string().nullable().describe('Karşılanan burs ataması'),
-  studentId: z.string().nullable(),
+  awardId: z
+    .string()
+    .nullable()
+    .describe('Karşılanan burs ataması; yalnız `yonetici` rolünde dolu (K-98)'),
+  studentId: z
+    .string()
+    .nullable()
+    .describe('Burslu öğrenci; yalnız `yonetici` rolünde dolu (K-98)'),
   studentName: z.string().nullable().describe('Yalnız `yonetici` rolünde dolu (K-98)'),
   academicYear: z.number().int().nullable().describe('Bursun eğitim yılı'),
   cancelledAt: z.string().nullable(),
-  cancelReason: z.string().nullable(),
+  cancelReason: z
+    .string()
+    .nullable()
+    .describe('İptal gerekçesi; atama satırında yalnız `yonetici` rolünde dolu (K-98)'),
   version: z.number().int().describe('`If-Match` için hareket sürümü (iptal)'),
 })
 

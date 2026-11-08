@@ -213,17 +213,65 @@ export function planScholarshipFundAllocation(
   }
 }
 
-/** Atama iptali bakiyeyi geri verir; iptal edilmiş atama yeniden iptal edilmez. */
+/**
+ * Atama iptali bakiyeyi geri verir; iptal edilmiş atama yeniden iptal edilmez. Kapalı fonda atama
+ * iptal edilmez: kapanış sıfır bakiyeyle kesinleşmiştir, iptal kapalı fona bakiye açardı (K-97).
+ */
 export function planScholarshipFundAllocationCancel(
+  fund: ScholarshipFundState,
   allocation: { cancelledAt: string | null },
   input: unknown,
 ) {
   const data = scholarshipFundCancelSchema.parse(input)
+  requireOpen(fund)
   if (allocation.cancelledAt !== null)
     throw new DomainError('scholarship_fund_allocation_cancelled', 'Bu atama zaten iptal edildi.', {
       kind: 'conflict',
     })
   return data
+}
+
+/** Burs ataması kendiliğinden değişince fondan karşılanan payın sistem gerekçesi (K-117). */
+export const SCHOLARSHIP_FUND_RELEASE_REASONS = {
+  renewal_cancelled:
+    'Burs ataması arşivlendi: öğrenci ayrıldı, burslu yenileme iptal edildi (sistem).',
+} as const
+export type ScholarshipFundReleaseCause = keyof typeof SCHOLARSHIP_FUND_RELEASE_REASONS
+
+/** Bursun bir fondaki ataması; `fundClosedAt` atamanın fonunun kapanış anıdır. */
+export interface ReleasableFundAllocation {
+  id: string
+  amountCents: number
+  allocatedOn: string
+  createdAt: string
+  cancelledAt: string | null
+  fundClosedAt: string | null
+}
+
+/**
+ * Burs ataması arşivlenince ya da tutarı düşünce fondan karşılanan payın hangi atamalarla bırakılacağı
+ * (K-117…K-119). Geçerli atamaların toplamı `keepCents`'i (arşivde 0, azaltmada yeni burs tutarı)
+ * aşmayana dek en yeni atamadan başlayarak iptal edilir; atama bölünmez, açılan pay elle yeniden
+ * atanır. Kapalı fondaki atama iptal edilmez: kapanış sıfır bakiyeyle kesinleşmiştir (K-97, K-118);
+ * toplama yine girer. Dönen atamalar iptal sırasıdır.
+ */
+export function planAwardFundRelease<T extends ReleasableFundAllocation>(
+  allocations: readonly T[],
+  keepCents: number,
+): T[] {
+  const live = allocations.filter((row) => row.cancelledAt === null)
+  let covered = live.reduce((total, row) => total + row.amountCents, 0)
+  const newestFirst = live
+    .filter((row) => row.fundClosedAt === null)
+    .map((row) => ({ row, key: `${row.allocatedOn}|${row.createdAt}|${row.id}` }))
+    .sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0))
+  const released: T[] = []
+  for (const { row } of newestFirst) {
+    if (covered <= Math.max(0, keepCents)) break
+    released.push(row)
+    covered -= row.amountCents
+  }
+  return released
 }
 
 /** Bağış iptali bakiyeyi eksiye düşürecekse reddedilir; önce atama iptal edilir (K-97). */
@@ -335,7 +383,8 @@ export type ScholarshipFundMovement = {
 
 /**
  * Hareket dökümü: bağış ve atamalar gün, sonra giriş anı sırasıyla. `names` yalnız yetkili rolde
- * doludur; yoksa öğrenci adı boştur (K-98).
+ * doludur; yoksa atama satırında öğrenci adı, öğrenci ve burs kimliği ve iptal gerekçesi boştur
+ * (K-98). Bağış satırının notu ve gerekçesi öğrenciye bağlı olmadığı için kalır.
  */
 export function scholarshipFundMovements(
   donations: readonly StoredFundDonation[],
@@ -374,12 +423,14 @@ export function scholarshipFundMovements(
         balanceAfterCents: 0,
         channel: null,
         note: null,
-        awardId: row.awardId,
-        studentId: row.studentId,
+        // Ad gizlenen rolde öğrenciyi tanıtan her alan boştur: kimlik öğrenci listesinden, gerekçe
+        // serbest metinden adı açardı (K-98).
+        awardId: names === null ? null : row.awardId,
+        studentId: names === null ? null : row.studentId,
         studentName: names === null ? null : (names.get(row.studentId) ?? null),
         academicYear: row.academicYear,
         cancelledAt: row.cancelledAt,
-        cancelReason: row.cancelReason,
+        cancelReason: names === null ? null : row.cancelReason,
         version: row.version,
       },
     })),

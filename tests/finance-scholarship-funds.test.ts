@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   createScholarshipFundSchema,
+  planAwardFundRelease,
   planScholarshipFundAllocation,
   planScholarshipFundAllocationCancel,
   planScholarshipFundClose,
@@ -12,6 +13,7 @@ import {
   scholarshipFundCsv,
   scholarshipFundMovements,
   scholarshipFundTotals,
+  SCHOLARSHIP_FUND_RELEASE_REASONS,
   type StoredFundAllocation,
   type StoredFundDonation,
 } from '../packages/school-core/src/lib/finance-scholarship-funds.ts'
@@ -138,14 +140,19 @@ test('DOM-FIN-068: atama bakiyeyi ve bursun karşılanmamış kısmını aşamaz
 
 test('DOM-FIN-068: iptal gerekçe ister, ikinci kez yapılmaz; bağış iptali bakiyeyi eksiye düşürmez (K-97)', () => {
   const reason = { reason: 'Yanlış tutar girildi' }
-  assert.deepEqual(planScholarshipFundAllocationCancel({ cancelledAt: null }, reason), reason)
+  assert.deepEqual(planScholarshipFundAllocationCancel(OPEN, { cancelledAt: null }, reason), reason)
   assert.throws(
-    () => planScholarshipFundAllocationCancel({ cancelledAt: null }, { reason: 'kısa' }),
+    () => planScholarshipFundAllocationCancel(OPEN, { cancelledAt: null }, { reason: 'kısa' }),
     ZodError,
   )
   assert.throws(
-    () => planScholarshipFundAllocationCancel({ cancelledAt: CLOSED.closedAt }, reason),
+    () => planScholarshipFundAllocationCancel(OPEN, { cancelledAt: CLOSED.closedAt }, reason),
     isDomainError('scholarship_fund_allocation_cancelled', 'conflict'),
+  )
+  // Kapalı fonda iptal bakiye açardı; kapanış kesindir (K-97).
+  assert.throws(
+    () => planScholarshipFundAllocationCancel(CLOSED, { cancelledAt: null }, reason),
+    isDomainError('scholarship_fund_closed'),
   )
   const donation = { cancelledAt: null, amountCents: 300_000 }
   assert.deepEqual(planScholarshipFundDonationCancel(donation, 300_000, reason), reason)
@@ -235,10 +242,21 @@ test('DOM-FIN-068: bakiye geçerli bağış eksi geçerli atamadır; döküm gü
       ['d3', 0, 400_000, null],
     ],
   )
-  // Yetkisiz rolde ad yok (K-98).
-  assert.equal(
-    scholarshipFundMovements([], allocations, null).every((row) => row.studentName === null),
-    true,
+  // Yetkisiz rolde öğrenciyi tanıtan alan yok: ad, öğrenci ve burs kimliği, gerekçe (K-98).
+  const masked = scholarshipFundMovements(
+    [],
+    [{ ...allocation('a3', '2026-09-08', 100_000, '2026-09-09T09:00:00.000Z'), cancelReason: 'x' }],
+    null,
+  )
+  assert.deepEqual(
+    masked.map((row) => [
+      row.studentName,
+      row.studentId,
+      row.awardId,
+      row.cancelReason,
+      row.academicYear,
+    ]),
+    [[null, null, null, null, 2026]],
   )
 
   const csv = scholarshipFundCsv({ name: 'Mezunlar Fonu' }, totals, movements).split('\r\n')
@@ -249,4 +267,43 @@ test('DOM-FIN-068: bakiye geçerli bağış eksi geçerli atamadır; döküm gü
   assert.match(csv[3] ?? '', /"İptal edildi"/)
   assert.match(csv.at(-1) ?? '', /"Bakiye";"";"";"";4000,00;""$/)
   assert.match(csv.at(-2) ?? '', /-3000,00/)
+})
+
+test('DOM-FIN-068, K-117…K-119: burs arşivinde bütün açık fon payı, azaltmada yeni tutarı aşan pay en yeniden bırakılır', () => {
+  const row = (
+    id: string,
+    allocatedOn: string,
+    amountCents: number,
+    extra: { cancelledAt?: string; fundClosedAt?: string } = {},
+  ) => ({
+    id,
+    allocatedOn,
+    amountCents,
+    createdAt: `${allocatedOn}T09:00:00.000Z`,
+    cancelledAt: extra.cancelledAt ?? null,
+    fundClosedAt: extra.fundClosedAt ?? null,
+  })
+  const ids = (released: readonly { id: string }[]) => released.map((item) => item.id)
+  const rows = [
+    row('a1', '2026-09-01', 300_000),
+    row('a2', '2026-09-03', 200_000),
+    row('a3', '2026-09-02', 100_000),
+    row('a4', '2026-09-04', 400_000, { cancelledAt: '2026-09-05T09:00:00.000Z' }),
+  ]
+  // Arşiv (K-117): iptal edilmemiş bütün atamalar, en yeniden başlayarak.
+  assert.deepEqual(ids(planAwardFundRelease(rows, 0)), ['a2', 'a3', 'a1'])
+  // Azaltma (K-119): toplam 600.000 → 350.000; a2 (200.000) yetmez, a3 de bırakılır; atama bölünmez.
+  assert.deepEqual(ids(planAwardFundRelease(rows, 350_000)), ['a2', 'a3'])
+  assert.deepEqual(ids(planAwardFundRelease(rows, 600_000)), [])
+  assert.deepEqual(ids(planAwardFundRelease(rows, -1)), ['a2', 'a3', 'a1'])
+  // Kapalı fondaki atama iptal edilmez ama toplama girer (K-118).
+  const closed = [row('c1', '2026-09-10', 500_000, { fundClosedAt: CLOSED.closedAt }), ...rows]
+  assert.deepEqual(ids(planAwardFundRelease(closed, 0)), ['a2', 'a3', 'a1'])
+  // Toplam 1.100.000 (kapalı 500.000 dahil) → en çok 800.000.
+  assert.deepEqual(ids(planAwardFundRelease(closed, 800_000)), ['a2', 'a3'])
+  assert.deepEqual(ids(planAwardFundRelease([], 0)), [])
+  // Aynı gün: giriş anı, sonra kimlik belirler.
+  const sameDay = [row('b1', '2026-09-01', 1), row('b2', '2026-09-01', 1)]
+  assert.deepEqual(ids(planAwardFundRelease(sameDay, 1)), ['b2'])
+  assert.match(SCHOLARSHIP_FUND_RELEASE_REASONS.renewal_cancelled, /sistem/)
 })

@@ -279,3 +279,32 @@ export async function setScholarshipAwardMebbis(
     .returning({ id: scholarshipAwards.id })
   return rows.length === 1
 }
+
+/**
+ * Öğrencinin verilen eğitim yıllarındaki etkin burs atamalarını arşivler; arşivlenen kimlikleri
+ * döndürür (K-117). Servis kurum kilidi altındadır; arşivli atama kontenjandan ve tekil yıl
+ * kısıtından düşer.
+ */
+export async function archiveStudentScholarshipAwards(
+  tx: Database,
+  institutionId: string,
+  input: { studentId: string; academicYears: readonly number[]; now: Date },
+): Promise<string[]> {
+  if (input.academicYears.length === 0) return []
+  const rows = await tx
+    .update(scholarshipAwards)
+    .set({
+      archivedAt: input.now,
+      version: sql`${scholarshipAwards.version} + 1`,
+      updatedAt: input.now,
+    })
+    .where(
+      and(
+        activeAward(institutionId),
+        eq(scholarshipAwards.studentId, input.studentId),
+        inArray(scholarshipAwards.academicYear, [...input.academicYears]),
+      ),
+    )
+    .returning({ id: scholarshipAwards.id })
+  return rows.map((row) => row.id)
+}

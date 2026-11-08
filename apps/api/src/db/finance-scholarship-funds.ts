@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 
 import type {
   ScholarshipFundChannel,
@@ -387,6 +387,41 @@ export async function loadFundAllocations(
     .where(and(liveAllocation(institutionId), eq(scholarshipFundAllocations.fundId, fundId)))
     .orderBy(asc(scholarshipFundAllocations.allocatedOn), asc(scholarshipFundAllocations.createdAt))
   return rows.map(toAllocation)
+}
+
+export type AwardFundAllocation = FundAllocationRecord & { fundClosedAt: string | null }
+
+/**
+ * Bursların bütün fonlardaki geçerli atamaları, fonun kapanış anıyla (K-117, K-118). Servis kurum
+ * kilidi altında okur; aynı kilit fondan atama ve iptali de sıraya soktuğu için satır kilidi gerekmez.
+ */
+export async function loadAwardFundAllocations(
+  db: Database,
+  institutionId: string,
+  awardIds: readonly string[],
+): Promise<AwardFundAllocation[]> {
+  if (awardIds.length === 0) return []
+  const rows = await db
+    .select({ ...ALLOCATION_COLUMNS, fundClosedAt: scholarshipFunds.closedAt })
+    .from(scholarshipFundAllocations)
+    .innerJoin(
+      scholarshipFunds,
+      and(
+        eq(scholarshipFunds.institutionId, scholarshipFundAllocations.institutionId),
+        eq(scholarshipFunds.id, scholarshipFundAllocations.fundId),
+      ),
+    )
+    .where(
+      and(
+        liveAllocation(institutionId),
+        inArray(scholarshipFundAllocations.awardId, [...awardIds]),
+        isNull(scholarshipFundAllocations.cancelledAt),
+      ),
+    )
+  return rows.map(({ fundClosedAt, ...row }) => ({
+    ...toAllocation(row),
+    fundClosedAt: fundClosedAt?.toISOString() ?? null,
+  }))
 }
 
 export async function findFundDonation(

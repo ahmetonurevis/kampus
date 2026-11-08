@@ -17,6 +17,7 @@ import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
+import { FinanceForecastSection } from './FinanceForecastSection.tsx'
 import { InstallmentImportSection } from './InstallmentImportSection.tsx'
 import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
 import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
@@ -44,6 +45,7 @@ const VIEWS = {
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
+  forecast: { label: 'Tahmin', param: 'tahmin' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -52,11 +54,12 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
 }))
 /**
  * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
- * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
- * kapalı sekme gizlenir, adresi taksitlere düşer.
+ * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008), gelir ve nakit akışı tahmini yalnız
+ * yöneticidedir (DOM-FIN-063): kapalı sekme gizlenir, adresi taksitlere düşer.
  */
-const viewOptionsFor = (institutionType: string | undefined) =>
+const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
+    if (value === 'forecast') return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
@@ -76,9 +79,9 @@ export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
   const [params, setParams] = useSearchParams()
-  const viewOptions = viewOptionsFor(session?.institution?.type)
-  const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const isManager = session?.role === 'yonetici'
+  const viewOptions = viewOptionsFor(session?.institution?.type, isManager)
+  const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const totalsQuery = useFinanceTotals()
   const totals = totalsQuery.data?.data
 
@@ -163,6 +166,12 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'exports' && isManager ? (
         <FinanceReconciliationSection
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'forecast' && session?.institution ? (
+        <FinanceForecastSection
+          enrollmentYear={session.institution.academicYear ?? Number(today.slice(0, 4))}
+          institutionType={session.institution.type}
         />
       ) : null}
       {tab === 'eOzel' ? (

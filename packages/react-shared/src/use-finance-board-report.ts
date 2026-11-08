@@ -14,6 +14,8 @@ export interface FinanceBoardReportQuery {
   termId?: string
   from?: string
   to?: string
+  /** Bütçe ve maliyet bölümlerinin bütçe dönemi; verilmezse rapor dönemine uyan dönem (ON-329). */
+  budgetPeriodId?: string
 }
 
 /**

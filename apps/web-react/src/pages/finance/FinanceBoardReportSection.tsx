@@ -7,7 +7,9 @@ import { money, number } from '@kampus/school-core/lib/format.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useFinanceBoardReportPdf } from '@/hooks/use-finance-board-report-pdf.ts'
@@ -16,12 +18,21 @@ import {
   boardReportPeriodLabel,
   rateLabel,
 } from '@/lib/pdf/templates/finance-board-report.ts'
+import {
+  ALL_BOARD_REPORT_SECTIONS,
+  BOARD_REPORT_SECTIONS,
+  budgetPeriodLabel,
+  NO_BUDGET_PERIOD,
+  type BoardReportSections,
+} from '@/lib/pdf/templates/finance-board-report-sections.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
 import { FinancePdfDialog } from './FinancePdfDialog.tsx'
 import {
   boardReportQuery,
   boardYearOptions,
+  budgetPeriodOptions,
   CUSTOM_RANGE,
+  MATCHED_BUDGET_PERIOD,
   periodOptions,
   WHOLE_YEAR,
 } from './finance-board-report.ts'
@@ -29,18 +40,23 @@ import {
 /**
  * Yönetim kurulu raporu (DOM-FIN-064, ON-251): yönetici dönemi seçer, özet rakamları görür ve tek
  * PDF alır. Hesap sunucudadır; rapor kişi adı taşımaz, küçük kırılım hücreleri gizli gelir (K-77).
+ * Bütçe dönemi seçilebilir (K-113); bütçe, maliyet ve tahmin bölümleri PDF'e isteğe bağlı girer
+ * (ON-329).
  */
 export function FinanceBoardReportSection({ academicYear }: { academicYear: number }) {
   const learner = useEnrollmentLearner()
   const [year, setYear] = useState(academicYear)
   const [selection, setSelection] = useState(WHOLE_YEAR)
   const [range, setRange] = useState({ from: '', to: '' })
-  const query = boardReportQuery(year, selection, range)
+  const [budgetPeriodId, setBudgetPeriodId] = useState(MATCHED_BUDGET_PERIOD)
+  const [sections, setSections] = useState<BoardReportSections>(ALL_BOARD_REPORT_SECTIONS)
+  const query = boardReportQuery(year, selection, range, budgetPeriodId)
   // Dönem listesi yılın raporuyla gelir; elle aralık seçilmişken de yıl özeti okunur.
   const yearReport = useFinanceBoardReport({ year })
   const report = useFinanceBoardReport(query ?? { year })
   const data = query === null ? undefined : report.data?.data
   const terms = yearReport.data?.data.terms ?? []
+  const budgetPeriods = yearReport.data?.data.budgetPeriods ?? []
 
   return (
     <section
@@ -102,6 +118,19 @@ export function FinanceBoardReportSection({ academicYear }: { academicYear: numb
               </label>
             </>
           ) : null}
+          <label className="grid gap-1 text-sm font-medium">
+            Bütçe dönemi
+            <NativeSelect
+              value={budgetPeriodId}
+              onChange={(event) => setBudgetPeriodId(event.target.value)}
+            >
+              {budgetPeriodOptions(budgetPeriods).map((option) => (
+                <NativeSelectOption key={option.value} value={option.value}>
+                  {option.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
         </div>
       </header>
       <div className="grid gap-4 px-6 pt-4 pb-6 max-[650px]:px-4">
@@ -153,7 +182,27 @@ export function FinanceBoardReportSection({ academicYear }: { academicYear: numb
                   : []),
               ]}
             />
-            <BoardReportPdfButton query={query} />
+            <p className="text-sm">
+              {data.budgetPeriod === null
+                ? NO_BUDGET_PERIOD
+                : `Bütçe dönemi: ${budgetPeriodLabel(data.budgetPeriod)}`}
+            </p>
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 text-sm font-medium">PDF’e eklenecek bölümler</legend>
+              {BOARD_REPORT_SECTIONS.map((section) => (
+                <div key={section.key} className="flex min-h-11 items-center gap-2">
+                  <Checkbox
+                    id={`kurul-bolum-${section.key}`}
+                    checked={sections[section.key]}
+                    onCheckedChange={(checked) =>
+                      setSections({ ...sections, [section.key]: checked === true })
+                    }
+                  />
+                  <Label htmlFor={`kurul-bolum-${section.key}`}>{section.label}</Label>
+                </div>
+              ))}
+            </fieldset>
+            <BoardReportPdfButton query={query} sections={sections} />
           </>
         )}
       </div>
@@ -161,7 +210,13 @@ export function FinanceBoardReportSection({ academicYear }: { academicYear: numb
   )
 }
 
-function BoardReportPdfButton({ query }: { query: FinanceBoardReportQuery }) {
+function BoardReportPdfButton({
+  query,
+  sections,
+}: {
+  query: FinanceBoardReportQuery
+  sections: BoardReportSections
+}) {
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   return (
@@ -171,7 +226,12 @@ function BoardReportPdfButton({ query }: { query: FinanceBoardReportQuery }) {
         Rapor PDF’i
       </Button>
       {open ? (
-        <BoardReportPdfPreview query={query} onClose={() => setOpen(false)} button={button} />
+        <BoardReportPdfPreview
+          query={query}
+          sections={sections}
+          onClose={() => setOpen(false)}
+          button={button}
+        />
       ) : null}
     </div>
   )
@@ -179,14 +239,16 @@ function BoardReportPdfButton({ query }: { query: FinanceBoardReportQuery }) {
 
 function BoardReportPdfPreview({
   query,
+  sections,
   onClose,
   button,
 }: {
   query: FinanceBoardReportQuery
+  sections: BoardReportSections
   onClose: () => void
   button: RefObject<HTMLButtonElement | null>
 }) {
-  const pdf = useFinanceBoardReportPdf(query, true)
+  const pdf = useFinanceBoardReportPdf(query, sections, true)
   return (
     <FinancePdfDialog
       title={BOARD_REPORT_TITLE}

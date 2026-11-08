@@ -17,6 +17,7 @@ import {
   periodOptions,
   WHOLE_YEAR,
 } from '../src/pages/finance/finance-board-report.ts'
+import { NO_BUDGET_SECTIONS } from './finance-board-report-fixture.ts'
 import { allTexts, measurer } from './support/pdf-measurer.ts'
 
 // Yönetim kurulu raporu ekranı ve PDF şablonu (DOM-FIN-064, ON-251).
@@ -57,6 +58,7 @@ const report = (overrides: Partial<FinanceBoardReport> = {}): FinanceBoardReport
   institutionType: 'school',
   minGroupSize: 5,
   terms: [],
+  ...NO_BUDGET_SECTIONS,
   finance: {
     totals: { ...ZERO, accruedCents: 5_000_000, collectedCents: 1_200_000 },
     mismatchCount: 0,

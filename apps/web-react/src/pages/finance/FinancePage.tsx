@@ -10,6 +10,8 @@ import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { CorporateCustomersSection } from './CorporateCustomersSection.tsx'
+import { FinanceBoardReportSection } from './FinanceBoardReportSection.tsx'
+import { BOARD_REPORT_VIEW } from './finance-board-report.ts'
 import { CourseOffersSection } from './CourseOffersSection.tsx'
 import { EOzelSection } from './EOzelSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
@@ -47,6 +49,7 @@ const VIEWS = {
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
+  boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -55,11 +58,12 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
 }))
 /**
  * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
- * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
- * kapalı sekme gizlenir, adresi taksitlere düşer.
+ * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008); yönetim kurulu raporu yalnız
+ * yöneticinindir (DOM-FIN-064, K-80): kapalı sekme gizlenir, adresi taksitlere düşer.
  */
-const viewOptionsFor = (institutionType: string | undefined) =>
+const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
+    if (value === 'boardReport') return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
@@ -79,9 +83,9 @@ export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
   const [params, setParams] = useSearchParams()
-  const viewOptions = viewOptionsFor(session?.institution?.type)
-  const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const isManager = session?.role === 'yonetici'
+  const viewOptions = viewOptionsFor(session?.institution?.type, isManager)
+  const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const totalsQuery = useFinanceTotals()
   const totals = totalsQuery.data?.data
 
@@ -166,6 +170,11 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
       {tab === 'exports' && isManager ? (
         <FinanceReconciliationSection
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'boardReport' ? (
+        <FinanceBoardReportSection
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
       ) : null}

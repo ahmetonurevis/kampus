@@ -564,7 +564,11 @@ async function movementViews(
       cancelledByName: nameOf(movement.cancelledByUserId),
       cancelReason: movement.cancelReason,
       actions: {
-        cancel: canCancel && movement.cancelledAt === null && movement.receiptId === null,
+        cancel:
+          canCancel &&
+          movement.cancelledAt === null &&
+          movement.receiptId === null &&
+          movement.type !== 'delivery',
       },
       version: movement.version,
     }
@@ -576,8 +580,11 @@ export async function listStockMovementsFor(ctx: ServiceContext, query: StockMov
   return { items: await movementViews(ctx.db, ctx, items), total }
 }
 
-/** Hareketin ürün ve depo bağlamı: kartlar, bütün depolar ve ilgili çiftlerin hareketleri. */
-async function movementContext(
+/**
+ * Hareketin ürün ve depo bağlamı: kartlar, bütün depolar ve ilgili çiftlerin hareketleri. Materyal
+ * seti teslimi (DOM-FIN-080) de çıkış denetimini bununla kurar; kurum kilidi altında çağrılır.
+ */
+export async function movementContext(
   tx: Database,
   ctx: ServiceContext,
   itemIds: readonly (string | undefined)[],

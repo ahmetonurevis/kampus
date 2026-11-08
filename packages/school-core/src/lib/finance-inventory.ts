@@ -17,7 +17,9 @@ import { SUPPLIER_CATEGORIES } from './finance-suppliers.ts'
  * ve transfer girişi artırır; çıkış ve transfer çıkışı azaltır. Bir ürünün bir depodaki miktarı
  * hiçbir günün sonunda eksiye düşemez (K-181): geriye tarihli çıkış sonraki günleri de eksiye
  * düşürmemelidir. Transfer tek işlemde iki harekettir. Hareket silinmez, yönetici gerekçeyle iptal
- * eder; mal kabulden gelen giriş yalnız kabul iptaliyle geri alınır (DOM-FIN-074).
+ * eder; mal kabulden gelen giriş yalnız kabul iptaliyle geri alınır (DOM-FIN-074). Materyal seti
+ * teslimi (DOM-FIN-080) setin kalemleri kadar `delivery` çıkışı yazar; bu çıkışlar yalnız teslim
+ * iptaliyle geri alınır.
  *
  * Fonksiyonlar saftır; zaman `today` parametresiyle gelir.
  */
@@ -49,7 +51,14 @@ export const isStockUnit = (unit: string): unit is StockUnit =>
 export const STOCK_CATEGORIES = SUPPLIER_CATEGORIES
 export type StockCategory = (typeof STOCK_CATEGORIES)[number]
 
-export const STOCK_MOVEMENT_TYPES = ['in', 'out', 'transfer_in', 'transfer_out', 'receipt'] as const
+export const STOCK_MOVEMENT_TYPES = [
+  'in',
+  'out',
+  'transfer_in',
+  'transfer_out',
+  'receipt',
+  'delivery',
+] as const
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]
 export const STOCK_MOVEMENT_TYPE_LABELS = {
   in: 'Giriş',
@@ -57,6 +66,7 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   transfer_in: 'Transfer girişi',
   transfer_out: 'Transfer çıkışı',
   receipt: 'Mal kabul girişi',
+  delivery: 'Materyal seti teslimi',
 } as const satisfies Record<StockMovementType, string>
 const INBOUND: ReadonlySet<StockMovementType> = new Set(['in', 'transfer_in', 'receipt'])
 export const isInbound = (type: StockMovementType) => INBOUND.has(type)
@@ -473,13 +483,14 @@ function assertAvailable(
   pair: readonly StockMovementLine[],
   quantity: number,
   day: string,
+  path: (string | number)[] = ['quantity'],
 ) {
   const available = availableOn(pair, day)
   if (quantity > available)
     throw ruleError(
       'stock_insufficient',
       `${warehouse.name} deposunda yeterli ${item.name} yok (çıkılabilecek en çok ${String(available)} ${STOCK_UNIT_LABELS[item.unit]}).`,
-      ['quantity'],
+      path,
     )
 }
 
@@ -540,6 +551,50 @@ export function planStockTransfer(input: unknown, context: StockMovementContext)
   return data
 }
 
+export interface StockIssueLine {
+  itemId: string
+  quantity: number
+  /** Hata yolu (ör. `['items', 0, 'stockItemId']`). */
+  path: (string | number)[]
+}
+
+/**
+ * Birden çok kalemin aynı depodan aynı gün çıkışı (DOM-FIN-080 materyal seti teslimi): her kart ve
+ * depo etkin, gün bugünden sonra olamaz, her kalem o gün ve sonrasında depodaki miktarı aşamaz
+ * (K-181). Aynı kart iki kez gelirse miktarları birlikte denetlenir.
+ */
+export function planStockIssueLines(
+  data: { warehouseId: string; day: string; lines: readonly StockIssueLine[] },
+  context: StockMovementContext,
+  paths: { warehouse: (string | number)[]; day: (string | number)[] },
+): void {
+  const warehouse = assertWarehouse(context.warehouses.get(data.warehouseId), paths.warehouse)
+  if (data.day > context.today)
+    throw ruleError('stock_movement_date_future', 'Hareket günü bugünden sonra olamaz.', paths.day)
+  const totals = new Map<
+    string,
+    { item: StockItemRef; quantity: number; path: (string | number)[] }
+  >()
+  for (const line of data.lines) {
+    const item = assertItem(context.items.get(line.itemId), line.path)
+    const total = totals.get(item.id)
+    totals.set(item.id, {
+      item,
+      quantity: (total?.quantity ?? 0) + line.quantity,
+      path: total?.path ?? line.path,
+    })
+  }
+  for (const { item, quantity, path } of totals.values())
+    assertAvailable(
+      item,
+      warehouse,
+      pairOf(context.movements, item.id, warehouse.id),
+      quantity,
+      data.day,
+      path,
+    )
+}
+
 export interface CancellableMovement extends StockMovementLine {
   transferId: string | null
   receiptId: string | null
@@ -595,6 +650,11 @@ export function planStockMovementCancel(
     throw ruleError(
       'stock_movement_from_receipt',
       'Mal kabulden gelen giriş buradan iptal edilmez; kabulü iptal edin.',
+    )
+  if (movement.type === 'delivery')
+    throw ruleError(
+      'stock_movement_from_delivery',
+      'Materyal seti teslimindeki çıkış buradan iptal edilmez; teslimi iptal edin.',
     )
   const ids =
     movement.transferId === null

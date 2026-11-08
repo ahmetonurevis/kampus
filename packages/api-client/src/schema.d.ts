@@ -5459,7 +5459,7 @@ export interface paths {
         put?: never;
         /**
          * Stok hareketini iptal et
-         * @description Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle geri alınır (422 `stock_movement_from_receipt`); zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.
+         * @description Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle (422 `stock_movement_from_receipt`), materyal seti teslimi çıkışı yalnız teslim iptaliyle (422 `stock_movement_from_delivery`, DOM-FIN-080) geri alınır; zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.
          */
         post: operations["cancelStockMovement"];
         delete?: never;
@@ -5550,6 +5550,154 @@ export interface paths {
          * @description Gerekçe (5–500 karakter) ve gün ister; kayıt silinmez, geri alınmaz (K-188). Zaten hurdaya ayrılmış 422 `fixed_asset_scrapped`, gelecek gün 422 `fixed_asset_date_in_future`, alım gününden önceki gün 422 `fixed_asset_scrap_before_acquisition`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         post: operations["scrapFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Materyal setlerini listele
+         * @description Yeni eğitim yılı önce, aynı yılda ada göre; pasifler dahil. Her satır kalem sayısını, hedefteki etkin öğrenci ile teslim alan öğrencilerin sayısını ve iptal edilmemiş teslim sayısını taşır (DOM-FIN-080). Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        get: operations["listMaterialSets"];
+        put?: never;
+        /**
+         * Materyal seti tanımla
+         * @description Ad (eğitim yılında tekil: 409 `material_set_name_exists`), eğitim yılı, isteğe bağlı hedef (okulda `gradeLevel` 5–12, dil okulunda `courseId`; kurum türüne uymazsa 422 `material_set_target_unavailable`, kur yoksa 422 `material_set_course_not_found`) ve 1–30 kalem (etkin stok kartı ve öğrenci başına 1–100 adet; kart bir kez). Pasif ya da olmayan kart 422 `stock_item_inactive`, `stock_item_not_found` (DOM-FIN-080). Rol: `yonetici` (K-205). Modül `finance`.
+         */
+        post: operations["createMaterialSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-sets/{setId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Materyal seti ayrıntısı
+         * @description Set, kalemleri (stok kartı, birim, adet) ve sayılar. Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        get: operations["getMaterialSet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Materyal setini düzelt ya da pasifleştir
+         * @description Kısmi düzeltme. Ad, kalemler ve durum her zaman değişir; kalemler bütün olarak yeniden yazılır, önceki teslimler kendi kalemlerini korur. İptal edilmemiş teslimi olan setin eğitim yılı ve hedefi değişmez (422 `material_set_has_deliveries`, K-208). Pasif sete teslim yazılmaz. Sürüm tutmazsa 409 `version_conflict`; `If-Match` zorunlu. Rol: `yonetici` (K-205). Modül `finance`.
+         */
+        patch: operations["updateMaterialSet"];
+        trace?: never;
+    };
+    "/api/v1/finance/material-sets/{setId}/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Setin teslim edilen ve edilmeyen öğrencileri
+         * @description Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207) ve iptal edilmemiş teslim. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        get: operations["listMaterialSetStudents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-sets/{setId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğrenciye seti teslim et
+         * @description Teslim alan (`student` öğrencinin kendisi, `guardian` kayıtlı veli `guardianId`, `other` adı yazılan kişi `recipientName`), teslim günü (bugünden sonra olamaz: 422 `material_delivery_date_future`), depo ve kâğıt imza işareti. Seçilen depodan setin her kalemi için teslim gününde `delivery` stok çıkışı tek işlemde yazılır; stok o gün ve sonrasında yetmezse 422 `stock_insufficient` (mesajda çıkılabilecek en çok miktar, K-181), pasif depo ya da kart 422. Pasif set 422 `material_set_inactive`; olmayan ya da etkin olmayan öğrenci 422 `material_delivery_student_not_found`; hedef dışı öğrenci 422 `material_delivery_student_not_eligible`; iptal edilmemiş teslimi olan öğrenci 409 `material_delivery_exists`; öğrenciye bağlı olmayan veli 422 `material_delivery_guardian_not_found`, iletişim kısıtlı veli 422 `material_delivery_guardian_restricted` (K-206). Ödenmemiş materyal ücreti teslimi engellemez (K-207). `Idempotency-Key` zorunlu. Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        post: operations["createMaterialDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teslim alabilecek kayıtlı veliler
+         * @description Öğrencinin etkin veli bağları, ad ve yakınlıkla; iletişim kısıtlı veli listelenmez (K-206). Olmayan, arşivli ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        get: operations["listMaterialRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-deliveries/{deliveryId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Teslimi iptal et
+         * @description Gerekçeyle (5–500 karakter) iptal; teslim silinmez, stok çıkışları aynı gerekçeyle iptal edilir ve öğrenciye set yeniden teslim edilebilir (K-209). Zaten iptal edilmiş 422 `material_delivery_already_cancelled`. `If-Match` teslimin sürümüdür. Rol: `yonetici` (K-205). Modül `finance`.
+         */
+        post: operations["cancelMaterialDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-deliveries/{deliveryId}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Teslim imzasının alındığını işle
+         * @description Kâğıt imza sonradan getirildiğinde işaretlenir; geri alınmaz (K-206). İmzası alınmış teslim 422 `material_delivery_signature_exists`, iptal edilmiş teslim 422 `material_delivery_cancelled`. `If-Match` teslimin sürümüdür. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        post: operations["signMaterialDelivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -57552,7 +57700,7 @@ export interface operations {
                 /** @description Depo */
                 warehouseId?: string;
                 /** @description Hareket türü */
-                type?: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                type?: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
                 /** @description Bu günden (dahil) */
                 from?: string;
                 /** @description Bu güne kadar (dahil) */
@@ -57574,7 +57722,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -57722,7 +57870,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -57869,7 +58017,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -58019,7 +58167,7 @@ export interface operations {
                             movements: {
                                 id: string;
                                 /** @enum {string} */
-                                type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                                type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
                                 /** @description Hareket günü `YYYY-MM-DD` */
                                 movementDate: string;
                                 itemId: string;
@@ -58163,7 +58311,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -59173,6 +59321,1226 @@ export interface operations {
                             scrappedAt: string | null;
                             scrapReason: string | null;
                             createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMaterialSets: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Set adında arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Eğitim yılı */
+                academicYear?: number;
+                /** @description `active` etkin, `inactive` pasif */
+                status?: "active" | "inactive";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başladığı yıl */
+                            academicYear: number;
+                            /** @description Okulda hedef sınıf düzeyi; boşsa yok */
+                            gradeLevel: number | null;
+                            /** @description Dil okulunda hedef kur; boşsa yok */
+                            courseId: string | null;
+                            courseName: string | null;
+                            isActive: boolean;
+                            /** @description Kalem sayısı */
+                            itemCount: number;
+                            /** @description Hedefteki etkin öğrenci ile teslim alan öğrencilerin sayısı */
+                            studentCount: number;
+                            /** @description İptal edilmemiş teslim sayısı */
+                            deliveredCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createMaterialSet: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    academicYear: number;
+                    /** @default null */
+                    gradeLevel?: number | null;
+                    /** @default null */
+                    courseId?: string | null;
+                    items: {
+                        /** Format: uuid */
+                        stockItemId: string;
+                        quantity: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başladığı yıl */
+                            academicYear: number;
+                            /** @description Okulda hedef sınıf düzeyi; boşsa yok */
+                            gradeLevel: number | null;
+                            /** @description Dil okulunda hedef kur; boşsa yok */
+                            courseId: string | null;
+                            courseName: string | null;
+                            isActive: boolean;
+                            /** @description Kalem sayısı */
+                            itemCount: number;
+                            /** @description Hedefteki etkin öğrenci ile teslim alan öğrencilerin sayısı */
+                            studentCount: number;
+                            /** @description İptal edilmemiş teslim sayısı */
+                            deliveredCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İptal edilmemiş teslimi varsa eğitim yılı ve hedef değişmez (K-208) */
+                            hasDeliveries: boolean;
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Stok kartı etkin mi; pasif kartlı set teslim edilmez */
+                                isActive: boolean;
+                                /** @description Öğrenci başına adet */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMaterialSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                setId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başladığı yıl */
+                            academicYear: number;
+                            /** @description Okulda hedef sınıf düzeyi; boşsa yok */
+                            gradeLevel: number | null;
+                            /** @description Dil okulunda hedef kur; boşsa yok */
+                            courseId: string | null;
+                            courseName: string | null;
+                            isActive: boolean;
+                            /** @description Kalem sayısı */
+                            itemCount: number;
+                            /** @description Hedefteki etkin öğrenci ile teslim alan öğrencilerin sayısı */
+                            studentCount: number;
+                            /** @description İptal edilmemiş teslim sayısı */
+                            deliveredCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İptal edilmemiş teslimi varsa eğitim yılı ve hedef değişmez (K-208) */
+                            hasDeliveries: boolean;
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Stok kartı etkin mi; pasif kartlı set teslim edilmez */
+                                isActive: boolean;
+                                /** @description Öğrenci başına adet */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMaterialSet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                setId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    academicYear?: number;
+                    gradeLevel?: number | null;
+                    courseId?: string | null;
+                    items?: {
+                        /** Format: uuid */
+                        stockItemId: string;
+                        quantity: number;
+                    }[];
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başladığı yıl */
+                            academicYear: number;
+                            /** @description Okulda hedef sınıf düzeyi; boşsa yok */
+                            gradeLevel: number | null;
+                            /** @description Dil okulunda hedef kur; boşsa yok */
+                            courseId: string | null;
+                            courseName: string | null;
+                            isActive: boolean;
+                            /** @description Kalem sayısı */
+                            itemCount: number;
+                            /** @description Hedefteki etkin öğrenci ile teslim alan öğrencilerin sayısı */
+                            studentCount: number;
+                            /** @description İptal edilmemiş teslim sayısı */
+                            deliveredCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İptal edilmemiş teslimi varsa eğitim yılı ve hedef değişmez (K-208) */
+                            hasDeliveries: boolean;
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Stok kartı etkin mi; pasif kartlı set teslim edilmez */
+                                isActive: boolean;
+                                /** @description Öğrenci başına adet */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMaterialSetStudents: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğrenci adında (Türkçe harf duyarsız) ya da numarasında arama */
+                q?: string;
+                /** @description `delivered` teslim edilen, `pending` teslim edilmeyen */
+                status?: "delivered" | "pending";
+                /** @description `charged` kitap ve kırtasiye ücret kalemi olan, `none` olmayan */
+                fee?: "charged" | "none";
+                /** @description `received` imzası alınan, `missing` imzası bekleyen teslimler */
+                signature?: "received" | "missing";
+            };
+            header?: never;
+            path: {
+                setId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            studentNumber: string | null;
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207; ödeme durumu değil) */
+                            hasMaterialFee: boolean;
+                            /** @description İptal edilmemiş teslim; yoksa boş */
+                            delivery: {
+                                id: string;
+                                /** @description Teslim günü `YYYY-MM-DD` */
+                                deliveryDate: string;
+                                /** @enum {string} */
+                                recipientKind: "student" | "guardian" | "other";
+                                /** @description Kayıtlı velide teslim anındaki ad, başka kişide yazılan ad; öğrencide boş */
+                                recipientName: string | null;
+                                /** @description Kâğıt imza alındı mı */
+                                signatureReceived: boolean;
+                                warehouseName: string;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            } | null;
+                            /** @description Oturumdaki kullanıcının bu satırda yapabilecekleri */
+                            actions: {
+                                deliver: boolean;
+                                sign: boolean;
+                                cancel: boolean;
+                            };
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createMaterialDelivery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                setId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** Format: uuid */
+                    warehouseId: string;
+                    deliveryDate: string;
+                    /** @enum {string} */
+                    recipientKind: "student" | "guardian" | "other";
+                    /** @default null */
+                    guardianId?: string | null;
+                    /** @default null */
+                    recipientName?: string | null;
+                    signatureReceived: boolean;
+                    /** @default null */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            setId: string;
+                            setName: string;
+                            studentId: string;
+                            studentName: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            deliveryDate: string;
+                            /** @enum {string} */
+                            recipientKind: "student" | "guardian" | "other";
+                            recipientName: string | null;
+                            signatureReceived: boolean;
+                            signatureRecordedAt: string | null;
+                            note: string | null;
+                            /** @description Teslim anındaki kalemler; her biri bir stok çıkışıdır */
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Teslim edilen adet */
+                                quantity: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            actions: {
+                                cancel: boolean;
+                                sign: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMaterialRecipients: {
+        parameters: {
+            query: {
+                /** @description Öğrenci kaydı */
+                studentId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Veli bağı (`guardianId`) */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            relationship: "mother" | "father" | "legal_guardian" | "other";
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelMaterialDelivery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            setId: string;
+                            setName: string;
+                            studentId: string;
+                            studentName: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            deliveryDate: string;
+                            /** @enum {string} */
+                            recipientKind: "student" | "guardian" | "other";
+                            recipientName: string | null;
+                            signatureReceived: boolean;
+                            signatureRecordedAt: string | null;
+                            note: string | null;
+                            /** @description Teslim anındaki kalemler; her biri bir stok çıkışıdır */
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Teslim edilen adet */
+                                quantity: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            actions: {
+                                cancel: boolean;
+                                sign: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    signMaterialDelivery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            setId: string;
+                            setName: string;
+                            studentId: string;
+                            studentName: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            deliveryDate: string;
+                            /** @enum {string} */
+                            recipientKind: "student" | "guardian" | "other";
+                            recipientName: string | null;
+                            signatureReceived: boolean;
+                            signatureRecordedAt: string | null;
+                            note: string | null;
+                            /** @description Teslim anındaki kalemler; her biri bir stok çıkışıdır */
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Teslim edilen adet */
+                                quantity: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            actions: {
+                                cancel: boolean;
+                                sign: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

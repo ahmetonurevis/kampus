@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -14,6 +15,7 @@ import {
   type PaymentFormValues,
 } from '@kampus/school-core/lib/payments.ts'
 import { recordPaymentBody } from '@kampus/react-shared/finance-model.ts'
+import { BANK_MATCH_DUPLICATE_CODE } from '@kampus/react-shared/use-finance-bank-matching.ts'
 import {
   allocatedToInvoice,
   useBankAccounts,
@@ -45,7 +47,9 @@ type Props = {
  * Tahsilat kaydı (`POST /payments`; ADR 0006, DOM-FIN-030…032): kısa form sağ panelde. Tutar
  * taksitin kalanıyla gelir, kısmi ödeme girilebilir. Nakit yalnız kurum ayarı açıksa listelenir.
  * Gönderim `useRecordPayment` ile: istek anahtarı, çift tıklama kilidi, 409'da Türkçe mesaj ve
- * liste tazeleme kancadadır. Başarıda veya mükerrer ödemede panel kapanır.
+ * liste tazeleme kancadadır. Başarıda veya mükerrer ödemede panel kapanır. Havalede aynı gün aynı
+ * tutarda ekstreden onaylanmış tahsilat varsa (K-121) uyarı gösterilir; aynı yöntem, tutar ve günle
+ * ikinci gönderim yetkilinin açık onayıdır (`confirmDuplicate`).
  */
 export function PaymentPanel({ invoiceId, onClose }: Props) {
   return (
@@ -122,11 +126,18 @@ function PaymentForm({
   const selectedMethod = useWatch({ control: form.control, name: 'method' })
   const isCash = selectedMethod === CASH
   const isNote = selectedMethod === 'Senet'
+  // Olası mükerrer uyarısı (K-121): sunucunun mesajı ve uyarının verildiği yöntem/tutar/gün; bunlar
+  // değişince uyarı kalkar ve yeni gönderim yeniden denetlenir.
+  const [duplicate, setDuplicate] = useState<{ message: string; key: string } | null>(null)
+  const [amount, paidDate] = useWatch({ control: form.control, name: ['amount', 'paidDate'] })
+  const duplicateKey = `${selectedMethod}|${amount}|${paidDate}`
+  const warned = duplicate !== null && duplicate.key === duplicateKey
 
   const onSubmit = form.handleSubmit(async (values) => {
     const body = recordPaymentBody(row, values, today)
     if (body === null) return
-    const outcome = await pay.submit(body, {
+    const outcome = await pay.submit(warned ? { ...body, confirmDuplicate: true } : body, {
+      silent: (error) => error.code === BANK_MATCH_DUPLICATE_CODE,
       setError: (name, error) => {
         if (name === 'amountCents') form.setError('amount', error)
         else if (
@@ -142,7 +153,11 @@ function PaymentForm({
     if (outcome.status === 'success') {
       notify.success('Tahsilat kaydedildi.')
       onClose()
-    }
+    } else if (outcome.status === 'failed' && outcome.error.code === BANK_MATCH_DUPLICATE_CODE)
+      setDuplicate({
+        message: outcome.error.message,
+        key: `${values.method}|${values.amount}|${values.paidDate}`,
+      })
     // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz. Kullanılmış
     // referans da 409'dur ama düzeltilebilir: form açık kalır.
     else if (outcome.status === 'failed' && outcome.error.code === 'invoice_already_paid') onClose()
@@ -226,6 +241,11 @@ function PaymentForm({
           />
         )}
       </FormField>
+      {warned ? (
+        <p role="alert" className="rounded-md border border-warning p-3 text-sm">
+          {duplicate.message}
+        </p>
+      ) : null}
       {rootError?.message ? (
         <p role="alert" className="text-sm text-danger">
           {rootError.message}
@@ -233,7 +253,7 @@ function PaymentForm({
       ) : null}
       <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
         <Icon name="CircleCheck" size={17} aria-hidden="true" />
-        Tahsilatı kaydet
+        {warned ? 'Ayrı ödeme, yine de kaydet' : 'Tahsilatı kaydet'}
       </Button>
     </form>
   )

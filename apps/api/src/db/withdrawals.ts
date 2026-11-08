@@ -1,5 +1,6 @@
 import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
+import type { BoardReportWithdrawal } from '@kampus/school-core/lib/finance-board-report.ts'
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
 import type { OpeningWithdrawal } from '@kampus/school-core/lib/finance-opening-watch.ts'
 import type { ReconciliationWithdrawal } from '@kampus/school-core/lib/finance-reconciliation.ts'
@@ -297,6 +298,32 @@ export function withdrawalsForReconciliation(
     })
     .from(studentWithdrawals)
     .where(eq(studentWithdrawals.institutionId, institutionId))
+}
+
+/**
+ * Yönetim kurulu raporu için kurumun ayrılışları (DOM-FIN-064): mutabakat alanları ve neden
+ * kategorisi. IBAN, hesap sahibi, hedef okul ve ödeyici kararı seçilmez.
+ */
+export async function withdrawalsForBoardReport(
+  db: Database,
+  institutionId: string,
+): Promise<BoardReportWithdrawal[]> {
+  const rows = await db
+    .select({
+      id: studentWithdrawals.id,
+      studentId: studentWithdrawals.studentId,
+      contractId: studentWithdrawals.contractId,
+      withdrawalDate: studentWithdrawals.withdrawalDate,
+      reason: studentWithdrawals.reason,
+      refundCents: studentWithdrawals.refundCents,
+      debtCents: studentWithdrawals.debtCents,
+      refundPaidDate: studentWithdrawals.refundPaidDate,
+      breakdown: studentWithdrawals.breakdown,
+    })
+    .from(studentWithdrawals)
+    .where(eq(studentWithdrawals.institutionId, institutionId))
+  // Değerler `student_withdrawals_reason_check` ile sınırlıdır.
+  return rows.map((row) => ({ ...row, reason: row.reason as WithdrawalReason }))
 }
 
 /** Yalnız ödenmemiş iade ve beklenen sürüm güncellenir; tutmazsa `false`. */

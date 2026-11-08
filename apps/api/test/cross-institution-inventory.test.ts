@@ -1169,6 +1169,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yönetim kurulu raporu (ON-251, DOM-FIN-064).
+  'GET /api/v1/finance/board-report': liste(
+    'finance-board-report.test.ts',
+    'başka kurumun kayıtları raporda sayılmaz',
+    'URL_BASE',
+  ),
   // Onur: öğrenci başı maliyet ve kampüs konsolidasyonu (ON-249, ON-250; DOM-FIN-065).
   ...Object.fromEntries(
     ['GET /api/v1/finance/cost-per-student', 'GET /api/v1/finance/campus-consolidation'].map(

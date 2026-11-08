@@ -243,6 +243,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Rapor açık rızaya bağlanır; kayıtta işveren raporu rızası alınır, rızası olmayan kursiyer rapora girmez.
 - **Cevap:** bekleniyor
 
+#### H-26 · Burs fonu bağışçısının ve bursiyerin kişisel verisi
+
+- **Kural:** `DOM-FIN-068`; ON-259, K26.
+- **Soru:** Kişi bağışçının adını fon kaydında tutmanın hukuki dayanağı ve aydınlatma yükümlülüğü nedir (KVKK md. 4, 5, 10)? Anonim kalmak isteyen bağışçının adı kurumda hiç tutulmamalı mı, yoksa makbuz ya da mali kayıt için saklanıp yalnız raporlarda mı gizlenmeli? Bağışçıya, bağışının hangi öğrenciye burs olarak verildiği (ad, sınıf, başarı) bildirilebilir mi; bunun için burslu öğrencinin velisinden açık rıza gerekir mi?
+- **Bugünkü varsayım:** Bağışçının yalnız adı ya da kurum adı tutulur; anonim bağışta ad hiç saklanmaz, iletişim ve kimlik numarası alınmaz (K-95). Fon raporunda öğrenci adı yalnız yöneticiye görünür (K-98); bağışçıya rapor ya da erişim yoktur.
+- **Kodda:** `lib/finance-scholarship-funds.ts` (`createScholarshipFundSchema`), tablo `scholarship_funds.donor_name`; rapor `GET /api/v1/finance/scholarship-funds/:fundId/report`.
+- **Cevap değişirse:** Anonim bağışta ad gizli alan olarak saklanır ve yalnız yönetici görür; bağışçıya rapor için velinin rızası kesin kayıtta ya da burs atamasında alınır, rızası olmayan öğrenci bağışçı raporuna girmez.
+- **Cevap:** bekleniyor
+
 ## Mali müşavire
 
 #### M-01 · Eğitim hizmetinde fatura ve e-Arşiv zorunluluğu
@@ -381,6 +390,24 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Dönem seçeneğine mali yıl eklenir; KDV hariç tutar kalem bazındaki orandan (IST-104) hesaplanarak ayrı sütun olur.
 - **Cevap:** bekleniyor
 
+#### M-21 · Burs fonu bağışının makbuzu ve vergi indirimi
+
+- **Kural:** `DOM-FIN-068`; ON-259, K26.
+- **Soru:** Okula burs fonu için yapılan bağışa kurum hangi belgeyi düzenlemelidir (bağış makbuzu, alındı belgesi, fatura dışı belge)? Bağışçının bağışı gelir veya kurumlar vergisi matrahından indirebilmesi için belgenin ve kurumun taşıması gereken nitelik nedir; özel okul ve dil kursu (şirket) bu bakımdan farklı mıdır? Nakit bağış kabul edilebilir mi, yoksa banka yoluyla mı alınmalıdır?
+- **Bugünkü varsayım:** Kampüs bağış makbuzu ya da vergi belgesi üretmez; bağış kaynağı (banka havalesi/EFT, nakit, diğer) ve isteğe bağlı not (dekont numarası) bilgi olarak kaydedilir. Vergi indirimi hakkında ekranda ve belgede bir ifade yoktur.
+- **Kodda:** `planScholarshipFundDonation` (`lib/finance-scholarship-funds.ts`), `POST /api/v1/finance/scholarship-funds/:fundId/donations`; fon raporu PDF'i "makbuz değildir" notunu taşır.
+- **Cevap değişirse:** Bağış için numaralı makbuz belgesi (seri, sıra, bağışçı unvanı ve vergi numarası) eklenir; bağışçı bilgisi buna göre genişler (H-26 ile birlikte), nakit kanal kapatılabilir.
+- **Cevap:** bekleniyor
+
+#### M-22 · Burs fonu bağışının ve fondan karşılanan bursun muhasebe kaydı
+
+- **Kural:** `DOM-FIN-068`; `DOM-FIN-055`, `DOM-FIN-025`.
+- **Soru:** Burs fonuna gelen bağış kurumun geliri midir, yoksa bursiyer adına emanet (karşılık) olarak mı izlenmelidir? Fondan karşılanan bursta öğrenim ücretinden düşülen burs tutarı gider ya da indirim olarak nasıl kaydedilir; bağış ile burs farklı mali yıllara düşerse dönemsellik nasıl kurulur?
+- **Bugünkü varsayım:** Fon bağış ve atamaları muhasebe aktarımına (`DOM-FIN-055`) ve gün sonuna (`DOM-FIN-036`) girmez; fon kurum içi izleme kaydıdır. Burs sözleşmede `scholarship` kalemi olarak kalır, fondan atama sözleşmeyi değiştirmez.
+- **Kodda:** `scholarship_fund_donations`, `scholarship_fund_allocations`; muhasebe aktarımı `lib/finance-export.ts` bu tabloları okumaz.
+- **Cevap değişirse:** Muhasebe aktarımına `kind=scholarship_fund` satırları (bağış girişi, atama, iptal) eklenir; banka kanalı bağış banka hesabına bağlanır.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -408,6 +435,11 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-69   | 2026-11-08 | `DOM-FIN-063` | Bütçe yokken gider tek, saklanmayan elle aylık tutardır; girilmezse gider boştur ve "gider verisi yok" yazar.                                                                                                                                                                        | Bütçe kalemleri (`DOM-FIN-062`, ON-241) ay ay okunur.                                                      |
 | K-70   | 2026-11-08 | `DOM-FIN-063` | Yenilemesini yapmamış öğrencinin olasılıklı geliri tahmine girmez; yalnız yapılmış yenileme kesin gelirdedir.                                                                                                                                                                        | Geçen yılın yenileme oranıyla "yenileme beklentisi" kalemi eklenir.                                        |
 | K-71   | 2026-11-08 | `DOM-FIN-063` | Tahmini yönetici görür; CSV tarayıcıda yanıttan üretilir, kişi verisi taşımadığı için taze oturum ve denetim istemez.                                                                                                                                                                | CSV sunucuda `Accept: text/csv` ile, taze oturumlu ve denetimli olur.                                      |
+| K-95   | 2026-11-08 | `DOM-FIN-068` | Bağışçı fon düzeyinde tek kayıttır: kişi ya da kurum adı; anonim bağışta ad hiç saklanmaz, iletişim ve kimlik numarası alınmaz.                                                                                                                                                      | Anonimde ad gizli saklanır, bağışçı bağış başına girilir (H-26).                                           |
+| K-96   | 2026-11-08 | `DOM-FIN-068` | Fondan atama mevcut burs atamasına bağlanır; bir burs birden çok fondan parça parça karşılanabilir, toplamı burs tutarını aşamaz; aynı fondan aynı bursa tek geçerli atama.                                                                                                          | `planScholarshipFundAllocation` kuralı; tek fon kısıtı için tekil indeks.                                  |
+| K-97   | 2026-11-08 | `DOM-FIN-068` | Silme yok: bağış ve atama gerekçeyle iptal edilir; bakiyeyi eksiye düşürecek bağış iptali reddedilir; fon yalnız sıfır bakiyede kapanır.                                                                                                                                             | İptal ve kapanış planları (`lib/finance-scholarship-funds.ts`).                                            |
+| K-98   | 2026-11-08 | `DOM-FIN-068` | Fonu yönetici yönetir (burs onayı gibi), ön büro görür; raporda öğrenci adı yalnız yöneticiye, muhasebe rolü açılınca ona da.                                                                                                                                                        | `SCHOLARSHIP_FUND_READ_ROLES`, `SCHOLARSHIP_FUND_NAME_ROLES`, `scholarship.manage`.                        |
+| K-99   | 2026-11-08 | `DOM-FIN-068` | Fon raporu CSV'si sunucuda `Accept: text/csv` ile, taze oturumlu ve denetimli iner; PDF web'de aynı yanıttan üretilir. Bağış makbuzu üretilmez.                                                                                                                                      | CSV tarayıcıda üretilir ya da makbuz belgesi eklenir (M-21).                                               |
 
 ## Kararlaştırılanlar
 

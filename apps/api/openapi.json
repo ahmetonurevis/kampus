@@ -76197,6 +76197,3073 @@
         }
       }
     },
+    "/api/v1/finance/scholarship-funds": {
+      "get": {
+        "operationId": "listScholarshipFunds",
+        "summary": "Burs fonlarını listele",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Açık fonlar önce, ada göre; bağış, atama ve bakiye toplamlarıyla (DOM-FIN-068). `q` fon ya da bağışçı adında arar, `status` açık ya da kapalı fonları süzer. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Fon adında ya da bağışçı adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Açık ya da kapalı fonlar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "donorKind": {
+                            "type": "string",
+                            "enum": [
+                              "person",
+                              "organization",
+                              "anonymous"
+                            ],
+                            "description": "Bağışçı türü"
+                          },
+                          "donorName": {
+                            "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "closed"
+                            ],
+                            "description": "`closed`: bağış ve atama alınmaz"
+                          },
+                          "closedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "donatedCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli bağışların toplamı"
+                          },
+                          "allocatedCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli burs atamalarının toplamı"
+                          },
+                          "balanceCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                          },
+                          "donationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli bağış sayısı"
+                          },
+                          "allocationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli atama sayısı"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (kapanış)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "donorKind",
+                          "donorName",
+                          "status",
+                          "closedAt",
+                          "createdAt",
+                          "donatedCents",
+                          "allocatedCents",
+                          "balanceCents",
+                          "donationCount",
+                          "allocationCount",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createScholarshipFund",
+        "summary": "Burs fonu aç",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Ad, isteğe bağlı açıklama ve bağışçı (kişi ya da kurum adı; anonimde ad yazılmaz, K-95). Aynı adla ikinci açık fon 409 `scholarship_fund_exists`. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "donorKind": {
+                    "type": "string",
+                    "enum": [
+                      "person",
+                      "organization",
+                      "anonymous"
+                    ]
+                  },
+                  "donorName": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "name",
+                  "donorKind"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-funds/{fundId}/report": {
+      "get": {
+        "operationId": "getScholarshipFundReport",
+        "summary": "Burs fonu raporu",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Fon, toplamlar ve hareket dökümü (bağış ve atamalar gün sırasıyla, iptal edilenler dahil, yürüyen bakiyeyle; DOM-FIN-068). Öğrenci adı yalnız `yonetici` rolünde dolu (K-98). `Accept: text/csv` ile dosya iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.scholarship_fund_export`. Olmayan ya da başka kurumun fonu 404. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "fundId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-funds/{fundId}/donations": {
+      "post": {
+        "operationId": "donateToScholarshipFund",
+        "summary": "Fona bağış gir",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Tutar (kuruş), gün ve kaynak (`bank_transfer`, `cash`, `other`), isteğe bağlı not. Gelecek gün 422 `scholarship_fund_date_future`, kapalı fon 422 `scholarship_fund_closed`. Makbuz ya da vergi belgesi üretilmez (M-21). `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amountCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  },
+                  "donatedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "bank_transfer",
+                      "cash",
+                      "other"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "amountCents",
+                  "donatedOn",
+                  "channel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "fundId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-funds/{fundId}/allocations": {
+      "post": {
+        "operationId": "allocateFromScholarshipFund",
+        "summary": "Bursu fondan karşıla",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Kesin kayıtta ya da yenilemede yapılmış burs atamasını (DOM-FIN-025) fondan karşılanmış olarak bağlar; öğrenci ve eğitim yılı atamadan gelir, sözleşme değişmez (K-96). Tutar fon bakiyesini aşarsa 422 `scholarship_fund_insufficient`, bursun fonlardan karşılanmamış kısmını aşarsa 422 `scholarship_fund_exceeds_award`; aynı fondan aynı bursa ikinci atama 409 `scholarship_fund_allocation_exists`; olmayan ya da başka kurumun bursu 404. Kurum kilidi altında: eşzamanlı atamalar bakiyeyi aşamaz. `Idempotency-Key` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "awardId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "amountCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  }
+                },
+                "required": [
+                  "awardId",
+                  "amountCents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "fundId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel": {
+      "post": {
+        "operationId": "cancelScholarshipFundDonation",
+        "summary": "Bağışı iptal et",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Gerekçeyle (5–500 karakter); silinmez. Bakiyeyi eksiye düşürecekse 422 `scholarship_fund_donation_in_use` (önce atama iptal edilir, K-97); iptal edilmiş bağış 409 `scholarship_fund_donation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "fundId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "donationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel": {
+      "post": {
+        "operationId": "cancelScholarshipFundAllocation",
+        "summary": "Fondan atamayı iptal et",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Gerekçeyle (5–500 karakter); tutar fon bakiyesine geri döner, burs ataması kalır (K-97). İptal edilmiş atama 409 `scholarship_fund_allocation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "fundId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "allocationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-funds/{fundId}/close": {
+      "post": {
+        "operationId": "closeScholarshipFund",
+        "summary": "Burs fonunu kapat",
+        "tags": [
+          "finance-scholarship-funds"
+        ],
+        "description": "Yalnız sıfır bakiyede: aksi 422 `scholarship_fund_balance_not_zero`; kapalı fon 409 `scholarship_fund_already_closed`, sürüm tutmazsa 409 `version_conflict`. Kapalı fona bağış ve atama yapılmaz; rapor kalır. `If-Match` zorunlu. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "fundId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fund": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "donorKind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization",
+                                "anonymous"
+                              ],
+                              "description": "Bağışçı türü"
+                            },
+                            "donorName": {
+                              "description": "Kişi ya da kurum adı; anonimde boş (K-95)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "closed"
+                              ],
+                              "description": "`closed`: bağış ve atama alınmaz"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "donatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağışların toplamı"
+                            },
+                            "allocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli burs atamalarının toplamı"
+                            },
+                            "balanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bakiye = bağışlar − atamalar; eksiye düşmez"
+                            },
+                            "donationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli bağış sayısı"
+                            },
+                            "allocationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Geçerli atama sayısı"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (kapanış)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "donorKind",
+                            "donorName",
+                            "status",
+                            "closedAt",
+                            "createdAt",
+                            "donatedCents",
+                            "allocatedCents",
+                            "balanceCents",
+                            "donationCount",
+                            "allocationCount",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "donation",
+                                  "allocation"
+                                ]
+                              },
+                              "day": {
+                                "type": "string",
+                                "description": "Bağış ya da atama günü (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hareket tutarı (pozitif)"
+                              },
+                              "effectCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır"
+                              },
+                              "balanceAfterCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün sırasıyla bu hareketten sonraki bakiye"
+                              },
+                              "channel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "bank_transfer",
+                                      "cash",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bağışın kaynağı"
+                              },
+                              "note": {
+                                "description": "Bağış notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "awardId": {
+                                "description": "Karşılanan burs ataması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "studentName": {
+                                "description": "Yalnız `yonetici` rolünde dolu (K-98)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "academicYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bursun eğitim yılı"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için hareket sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "day",
+                              "amountCents",
+                              "effectCents",
+                              "balanceAfterCents",
+                              "channel",
+                              "note",
+                              "awardId",
+                              "studentId",
+                              "studentName",
+                              "academicYear",
+                              "cancelledAt",
+                              "cancelReason",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fund",
+                        "movements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/referral-rewards": {
       "get": {
         "operationId": "listReferralRewards",

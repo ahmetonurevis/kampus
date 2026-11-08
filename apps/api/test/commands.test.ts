@@ -62,6 +62,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/e-ozel/items/{kind}/{sourceId}/record',
   // Toplu fatura taksitleri tek belgeye bağlar (routes/finance-corporate.ts; IST-089, DOM-FIN-060).
   'POST /api/v1/finance/corporate-invoices',
+  // Burs fonu bağışı, ataması ve iptalleri para hareketidir (routes/finance-scholarship-funds.ts;
+  // DOM-FIN-068, ON-259).
+  'POST /api/v1/finance/scholarship-funds/{fundId}/donations',
+  'POST /api/v1/finance/scholarship-funds/{fundId}/allocations',
+  'POST /api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel',
+  'POST /api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel',
 ]
 // Onur: kayıt ve finans sonu
 

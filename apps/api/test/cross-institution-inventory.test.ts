@@ -1327,6 +1327,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: talep formunun bütçe durumu (ON-245; DOM-FIN-071, K-148).
+  'GET /api/v1/finance/purchase-requests/budget-status': liste(
+    'finance-purchase-requests.test.ts',
+    'başka kurum sızmaz (K-148)',
+    'budgetItemId: b.expense.id',
+  ),
 }
 
 /**

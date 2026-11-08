@@ -22,6 +22,7 @@ import { createFieldCollector } from '../command-failure.ts'
 import {
   checkPaymentForm,
   openAmount,
+  paymentDuplicateKey,
   paymentFailure,
   paymentFormDefaults,
   paymentMethodsFor,
@@ -46,7 +47,8 @@ type Props = {
 /**
  * Tahsilat kaydı (`POST /payments`; ADR 0006, DOM-FIN-030…032; web `PaymentPanel` eşi): tutar taksitin
  * kalanıyla gelir, kısmi ödeme girilebilir, nakit yalnız kurum ayarı açıksa listelenir. Form verileri
- * gelince kurulur. Değerler yalnız bellekte durur.
+ * gelince kurulur. Değerler yalnız bellekte durur. Havalede aynı gün aynı tutarda ekstreden onaylanmış
+ * tahsilat varsa (K-121) uyarı çıkar; "Ayrı ödeme, yine de kaydet" açık onaydır (`confirmDuplicate`).
  */
 export function PaymentSheet({ row, today, onBack, onClose }: Props) {
   const history = useStudentPayments(row.studentId)
@@ -105,6 +107,9 @@ function PaymentForm({
   const [message, setMessage] = useState<string | null>(null)
   // Sonucu belirsiz gönderim: form kilitlenir, yalnız aynı gövde yeniden gönderilir.
   const [uncertain, setUncertain] = useState<RecordPaymentBody | null>(null)
+  // Olası mükerrer uyarısı (K-121): sunucunun mesajı ve uyarının verildiği yöntem/tutar/gün.
+  const [duplicate, setDuplicate] = useState<{ message: string; key: string } | null>(null)
+  const warned = duplicate !== null && duplicate.key === paymentDuplicateKey(values)
   const isNote = values.method === 'Senet'
   const pending = pay.isPending
 
@@ -116,7 +121,7 @@ function PaymentForm({
     setMessage(null)
   }
 
-  async function send(body: RecordPaymentBody) {
+  async function send(body: RecordPaymentBody, key: string | null) {
     const collector = createFieldCollector()
     const outcome = await pay.submit(body, {
       setError: collector.setError,
@@ -135,6 +140,10 @@ function PaymentForm({
       onClose()
       return
     }
+    if (failure.possibleDuplicate && key !== null) {
+      setDuplicate({ message: failure.message ?? outcome.error.message, key })
+      return
+    }
     setErrors(failure.errors)
     setMessage(failure.message)
     setUncertain(failure.uncertain ? body : null)
@@ -143,7 +152,7 @@ function PaymentForm({
   function submit() {
     if (pending) return
     if (uncertain) {
-      void send(uncertain)
+      void send(uncertain, null)
       return
     }
     const check = checkPaymentForm(row, values, today)
@@ -154,7 +163,10 @@ function PaymentForm({
     }
     setErrors({})
     setMessage(null)
-    void send(check.body)
+    void send(
+      warned ? { ...check.body, confirmDuplicate: true } : check.body,
+      paymentDuplicateKey(values),
+    )
   }
 
   /** Belirsiz sonuçtan çıkarken liste sunucudan yeniden okunur. */
@@ -166,6 +178,9 @@ function PaymentForm({
 
   const footer = (
     <View style={{ gap: 12 }}>
+      {warned && !uncertain && (
+        <Notice tone="amber" title="Olası mükerrer tahsilat" text={duplicate.message} />
+      )}
       {message && (
         <Notice tone="red" title="Tahsilat kaydedilemedi" text={message}>
           {uncertain && (
@@ -177,7 +192,13 @@ function PaymentForm({
         </Notice>
       )}
       <Button primary icon="CircleCheck" disabled={pending} onPress={submit}>
-        {pending ? 'Kaydediliyor…' : uncertain ? 'Yeniden dene' : 'Tahsilatı kaydet'}
+        {pending
+          ? 'Kaydediliyor…'
+          : uncertain
+            ? 'Yeniden dene'
+            : warned
+              ? 'Ayrı ödeme, yine de kaydet'
+              : 'Tahsilatı kaydet'}
       </Button>
       <Button disabled={pending} onPress={() => leave(onBack)}>
         {uncertain ? 'Listeyi yenile ve çık' : 'Vazgeç'}

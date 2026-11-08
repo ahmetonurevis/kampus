@@ -270,6 +270,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Pasif tedarikçinin kişisel alanları süre dolunca imha işiyle anonimleştirilir; aydınlatma onayı tedarikçi kaydına alan olarak eklenir.
 - **Cevap:** bekleniyor
 
+#### H-29 · Ödeme talimatı dosyasında tedarikçi IBAN'ı ve talimatın niteliği
+
+- **Kural:** `DOM-FIN-076`; ON-143.
+- **Soru:** Ödeme talimatı dosyası şahıs tedarikçinin adını ve IBAN'ını açık taşır ve kullanıcının cihazına iner; bu aktarım hangi hukuki sebebe (KVKK md. 5/2-c sözleşmenin ifası) dayanır ve dosyanın cihazda tutulması için kurum içi kural gerekir mi? Bankanın toplu ödeme ekranına yüklenen dosya kurum adına ödeme talimatı sayılır mı; yükleyenin yetkisi (imza yetkilisi) Kampüs'te ayrıca kaydedilmeli mi?
+- **Bugünkü varsayım:** Veri sözleşmenin ifası için işlenir; IBAN ekranda maskeli, yalnız dosyada açıktır; dosya sunucuda saklanmaz, taze oturum ister ve denetim kaydına yalnız ödeme kimlikleri düşer. Talimatın bankaya iletimi ve imza yetkisi bankanın ve kurumun kendi sürecidir.
+- **Kodda:** `lib/finance-supplier-ledger.ts` (`paymentInstructionCsv`), `POST /api/v1/finance/supplier-payments/instruction-file`.
+- **Cevap değişirse:** Dosya iki aşamalı onayla (hazırlayan ve onaylayan ayrı kişi) alınır ya da imza yetkilisi kaydı eklenir; dosya şifreli arşiv olarak iner.
+- **Cevap:** bekleniyor
+
 ## Mali müşavire
 
 #### M-01 · Eğitim hizmetinde fatura ve e-Arşiv zorunluluğu
@@ -489,6 +498,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** `vatCents` belge toplamı üzerinden ya da başka yuvarlama kuralıyla hesaplar; kaleme tevkifat oranı ve tevkif edilen KDV sütunu eklenir (migration); sipariş taahhüt olarak bütçe kalanından düşülür (`purchaseBudgetInfo`).
 - **Cevap:** bekleniyor
 
+#### M-29 · Tedarikçi faturası ve ödemesinin muhasebe karşılığı ve aktarımı
+
+- **Kural:** `DOM-FIN-076`, `DOM-FIN-055`; ON-143.
+- **Soru:** Alış faturası e-Fatura ile muhasebe programına zaten düşüyorsa Kampüs'teki tedarikçi faturası yalnız takip kaydı mı kalmalı, yoksa muhasebe aktarım dosyasına alış faturası satırı olarak mı girmeli (mükerrer kayıt riski)? Tedarikçi ödemeleri aktarım dosyasında satıcılar (320) ile banka (102) ve kasa (100) hesaplarına nasıl eşlenmeli? Nakit tedarikçi ödemesi gün sonu kasa raporuna ve kasa defterine çıkış olarak girmeli mi? Çekle ödemede ödeme günü keşide günü mü vade günü mü sayılmalı? KDV tevkifatlı alış faturası ayrıca gösterilmeli mi?
+- **Bugünkü varsayım:** Kampüs muhasebe defteri tutmaz (IST-142); tedarikçi carisi yönetim takibidir. Fatura net, KDV ve KDV dahil tutarı taşır, tevkifat yoktur. Ödeme girildiği gün bakiyeyi düşürür; çekte ödeme günü kullanıcının girdiği gündür. Nakit tedarikçi ödemesi gün sonu kasasına girmez, yalnız kapatılmış güne yazılamaz (K-166). Tedarikçi hareketleri bugün muhasebe aktarımına girmez; öneri `DOM-FIN-076` "Muhasebe aktarımı" maddesindedir.
+- **Kodda:** `lib/finance-supplier-ledger.ts` (`supplierStatement`), `lib/finance-export.ts` (tedarikçi satırı yok).
+- **Cevap değişirse:** Aktarıma `supplier` dosya türü eklenir (yalnız ödemeler ya da fatura ve ödemeler); gün sonu raporuna nakit çıkış satırı eklenir; faturaya tevkifat oranı ve tevkif edilen KDV alanı eklenir (migration).
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -590,6 +608,13 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-146  | 2026-11-08 | `DOM-FIN-071` | Aşım ve bütçesiz talep engellenmez, uyarılır: gönderim ve onay 409 `budget_exceeded_warning` / `budget_line_missing_warning`, `confirmOverBudget: true` ile geçilir; açık onay denetim kaydına alan adı olarak düşer, talep satırında saklanmaz. Taslakta yalnız bilgidir.           | `confirmPurchaseBudget` 422 ile engeller ya da onay talep satırına kolon olarak yazılır (migration).                |
 | K-147  | 2026-11-08 | `DOM-FIN-071` | Aşım dönem × merkez × kalem satırının dönem toplamıyla ölçülür; aylık dağılım (K-64) ve üst merkezin satırı hesaba girmez, satır yoksa talep bütçesizdir.                                                                                                                            | `loadPurchaseBudgetFigures` ay ya da en yakın üst merkez satırına (`DOM-FIN-066` kuralı) bakar.                     |
 | K-148  | 2026-11-08 | `DOM-FIN-071` | Talep formu seçilen satırın plan, taahhüt ve kalanını gösterir; ön büro da görür (talep ayrıntısındaki bilgiyle aynı), bütçenin geri kalanını görmez (K-60).                                                                                                                         | `GET /finance/purchase-requests/budget-status` yalnız yöneticiye açılır, ön büroda form bilgisi gizlenir.           |
+| K-160  | 2026-11-08 | `DOM-FIN-076` | Tedarikçi carisini yalnız yönetici yönetir ve görür; ön büro görmez. Muhasebe rolü açılınca (OG-110) listeye girer. Pasif tedarikçinin geç gelen faturası ve ödemesi girilir.                                                                                                        | `SUPPLIER_LEDGER_ROLES` (`lib/finance-supplier-ledger.ts`) değişir.                                                 |
+| K-161  | 2026-11-08 | `DOM-FIN-076` | Fatura numarası boşluksuz ve büyük harfle saklanır; aynı tedarikçinin iptal edilmemiş faturaları arasında tekildir, iptal edilen numara yeniden girilir. Fatura tarihi bugünden sonra olamaz.                                                                                        | `normalizeInvoiceNumber`, `supplier_invoices_number_key` (migration).                                               |
+| K-162  | 2026-11-08 | `DOM-FIN-076` | Sipariş bağı isteğe bağlıdır, yalnız aynı tedarikçinin gönderilmiş siparişine; etkin faturaların KDV dahil toplamı siparişi aşarsa 409 uyarı, `confirmOverOrder: true` ile geçilir; onay denetim kaydında.                                                                           | Aşım engellenir ya da tolerans yüzdesi eklenir (`planSupplierInvoice`).                                             |
+| K-163  | 2026-11-08 | `DOM-FIN-076` | Plan 1–24 taksittir, toplamı KDV dahil tutara eşit, vade fatura tarihinden önce değil; plan ve iptal yalnız ödemesiz faturada. Vadesi geçmiş: vade günü geçmiş taksitin kalanı. Bakiye etkin fatura eksi ödeme.                                                                      | `checkSupplierInstallments`, `supplierInvoiceBalance`, `supplierStatement`.                                         |
+| K-164  | 2026-11-08 | `DOM-FIN-076` | Ödeme havale, EFT, nakit ya da çektir; nakit dışı kurum banka hesabından. Talimat dosyası genel CSV'dir (alıcı, IBAN açık, tutar, açıklama, gün, gönderen IBAN), yalnız havale ve EFT; ekranda IBAN maskeli.                                                                         | Bankaya özgü toplu ödeme biçimleri ADR ile eklenir (`paymentInstructionCsv`).                                       |
+| K-165  | 2026-11-08 | `DOM-FIN-076` | Ödeme girildiği anda bakiyeyi düşürür; talimat dosyası ödemeyi "talimatı alındı" işaretler, yeniden alma 409 ve `confirmReexport` ister. Dosya saklanmaz, taze oturum ve 10/dk; banka reddederse ödeme iptal edilir.                                                                 | Ödemeye "bankada gerçekleşti" durumu eklenir (ekstre eşleşmesi).                                                    |
+| K-166  | 2026-11-08 | `DOM-FIN-076` | Kapatılmış güne nakit ödeme ve kapalı bugünde nakit ödeme iptali reddedilir; nakit tedarikçi ödemesi gün sonu kasa beklenenine bugün girmez. `cash_payments_enabled` tedarikçi ödemesine uygulanmaz.                                                                                 | Gün sonu raporuna nakit çıkış satırı eklenir (`DOM-FIN-036`).                                                       |
 
 ## Kararlaştırılanlar
 

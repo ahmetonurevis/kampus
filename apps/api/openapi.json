@@ -18888,6 +18888,383 @@
           "rows"
         ]
       },
+      "SeasonWatchMeetingInput": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Görüşmenin başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dakika; süresi saklanmamış eski görüşmede 30"
+          },
+          "room": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teacherName": {
+            "description": "Görevli öğretmen; yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean",
+            "description": "Bitişi geçmiş mi"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "room",
+          "teacherName",
+          "held"
+        ]
+      },
+      "SeasonWatchTrialInput": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Dersin güncel başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "groupName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "resultRecorded": {
+            "type": "boolean",
+            "description": "Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031)"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "groupName",
+          "held",
+          "resultRecorded"
+        ]
+      },
+      "SeasonWatchFollowUpInput": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "first_contact",
+              "meeting_outcome",
+              "trial_outcome",
+              "stale"
+            ],
+            "description": "`first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi"
+          },
+          "sinceDate": {
+            "type": "string",
+            "description": "Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem)"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Dayanak günden bugüne geçen gün"
+          },
+          "trialResultRecorded": {
+            "description": "Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null`",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "reason",
+          "sinceDate",
+          "days",
+          "trialResultRecorded"
+        ]
+      },
+      "ProspectSeasonWatchInput": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Bugün"
+              },
+              "to": {
+                "type": "string",
+                "description": "Pencerenin son günü (dahil)"
+              },
+              "days": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "days"
+            ]
+          },
+          "trialsEnabled": {
+            "type": "boolean",
+            "description": "Deneme dersi bölümü var mı (yalnız dil okulu)"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "meetingsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "meetingsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUps": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUpsByReason": {
+                "type": "object",
+                "properties": {
+                  "first_contact": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "meeting_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "trial_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "stale": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "first_contact",
+                  "meeting_outcome",
+                  "trial_outcome",
+                  "stale"
+                ]
+              },
+              "newToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bugün açılan açık aday"
+              }
+            },
+            "required": [
+              "meetingsToday",
+              "meetingsInWindow",
+              "trialsToday",
+              "trialsInWindow",
+              "followUps",
+              "followUpsByReason",
+              "newToday"
+            ]
+          },
+          "meetings": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchMeetingInput"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ]
+          },
+          "trials": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchTrialInput"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ]
+          },
+          "followUps": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchFollowUpInput"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ]
+          }
+        },
+        "required": [
+          "window",
+          "trialsEnabled",
+          "summary",
+          "meetings",
+          "trials",
+          "followUps"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -38176,6 +38553,393 @@
           "totalCents",
           "paidCents",
           "rows"
+        ],
+        "additionalProperties": false
+      },
+      "SeasonWatchMeeting": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Görüşmenin başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dakika; süresi saklanmamış eski görüşmede 30"
+          },
+          "room": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teacherName": {
+            "description": "Görevli öğretmen; yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean",
+            "description": "Bitişi geçmiş mi"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "room",
+          "teacherName",
+          "held"
+        ],
+        "additionalProperties": false
+      },
+      "SeasonWatchTrial": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Dersin güncel başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "groupName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "resultRecorded": {
+            "type": "boolean",
+            "description": "Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031)"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "groupName",
+          "held",
+          "resultRecorded"
+        ],
+        "additionalProperties": false
+      },
+      "SeasonWatchFollowUp": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "first_contact",
+              "meeting_outcome",
+              "trial_outcome",
+              "stale"
+            ],
+            "description": "`first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi"
+          },
+          "sinceDate": {
+            "type": "string",
+            "description": "Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem)"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Dayanak günden bugüne geçen gün"
+          },
+          "trialResultRecorded": {
+            "description": "Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null`",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "reason",
+          "sinceDate",
+          "days",
+          "trialResultRecorded"
+        ],
+        "additionalProperties": false
+      },
+      "ProspectSeasonWatch": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Bugün"
+              },
+              "to": {
+                "type": "string",
+                "description": "Pencerenin son günü (dahil)"
+              },
+              "days": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "days"
+            ],
+            "additionalProperties": false
+          },
+          "trialsEnabled": {
+            "type": "boolean",
+            "description": "Deneme dersi bölümü var mı (yalnız dil okulu)"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "meetingsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "meetingsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUps": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUpsByReason": {
+                "type": "object",
+                "properties": {
+                  "first_contact": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "meeting_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "trial_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "stale": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "first_contact",
+                  "meeting_outcome",
+                  "trial_outcome",
+                  "stale"
+                ],
+                "additionalProperties": false
+              },
+              "newToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bugün açılan açık aday"
+              }
+            },
+            "required": [
+              "meetingsToday",
+              "meetingsInWindow",
+              "trialsToday",
+              "trialsInWindow",
+              "followUps",
+              "followUpsByReason",
+              "newToday"
+            ],
+            "additionalProperties": false
+          },
+          "meetings": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchMeeting"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ],
+            "additionalProperties": false
+          },
+          "trials": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchTrial"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ],
+            "additionalProperties": false
+          },
+          "followUps": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchFollowUp"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "window",
+          "trialsEnabled",
+          "summary",
+          "meetings",
+          "trials",
+          "followUps"
         ],
         "additionalProperties": false
       }
@@ -89124,6 +89888,110 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/EnrollmentFunnel"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/season-watch": {
+      "get": {
+        "operationId": "getProspectSeasonWatch",
+        "summary": "Kayıt sezonu nöbeti: görüşmeler, deneme dersleri, geciken takipler",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Açık adayların bugün ve yakın günlerde ilgilenilmesi gerekenleri (DOM-KAY-037). Pencere bugünden başlar, bugün dahil `days` gün (1–14, varsayılan 7; Europe/Istanbul). `meetings`: penceredeki tanışma görüşmeleri, saat sırasıyla (bitişi geçen `held`). `trials`: yalnız dil okulunda penceredeki deneme dersleri; gün dersin güncel kaydından, iptal edilen ya da programdan kalkan derse bağlı deneme yok. `followUps`: şu andan sonra başlayan görüşmesi ya da denemesi olmayan açık aday, ilk tutan nedenle bir kez (`first_contact`: açılışın ertesi gününe giren `Yeni aday`; `meeting_outcome`/`trial_outcome`: önceki bir gün yapılmış, aşaması hâlâ `Görüşme planlandı` ve sonrasında not yok; `stale`: son işlem 7 gün ya da daha eski); en çok gecikenler önce. Her bölüm toplamla birlikte en çok 50 satır döner. Satır aday kimliği, adı, aşaması ve kampüsünü taşır; telefon, e-posta, veli, not, ilgi ve kaynak dönmez. Arşivlenen aday sayılmaz. Bilinmeyen parametre ya da aralık dışı `days` 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 14
+            },
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "description": "Bugün dahil pencere uzunluğu (gün, 1–14); verilmezse 7"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProspectSeasonWatch"
                     }
                   },
                   "required": [

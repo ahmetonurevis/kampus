@@ -244,6 +244,8 @@ test('ON-035: görünüm adresten okunur; bilinmeyen değer listedir', () => {
   assert.equal(meetingView('liste'), 'liste')
   assert.equal(meetingView(null), 'liste')
   assert.equal(meetingView('ay'), 'liste')
+  // DOM-KAY-037: kayıt sezonu nöbeti üçüncü görünümdür (ON-077).
+  assert.equal(meetingView('nobet'), 'nobet')
 })
 
 test('ON-035: hafta adresteki günün pazartesisidir; geçersiz değer bugünün haftasıdır', () => {

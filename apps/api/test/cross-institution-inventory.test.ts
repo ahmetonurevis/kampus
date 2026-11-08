@@ -942,6 +942,10 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'enrollment-funnel.test.ts',
     'başka kurumun adayı huniye girmez',
   ),
+  'GET /api/v1/prospects/season-watch': liste(
+    'prospect-season-watch.test.ts',
+    'başka kurumun adayı, dersi ve adları nöbete girmez',
+  ),
   ...Object.fromEntries(
     (
       [

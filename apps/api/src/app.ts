@@ -63,6 +63,7 @@ import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
+import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -475,6 +476,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerEnrollmentImportRoutes(app)
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
+  registerProspectSeasonWatchRoutes(app)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)

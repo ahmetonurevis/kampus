@@ -372,6 +372,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
 - **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
 
+#### M-17 · Yönetim kurulu raporunda gelirin esası
+
+- **Kural:** `DOM-FIN-064`; `DOM-FIN-056`.
+- **Soru:** Yönetim kuruluna sunulan dönem raporunda gelir taksitin vade günüyle (tahakkuk) mı, hizmetin verildiği dönemle mi gösterilmeli? Burs ve indirim gelir indirimi mi, gider mi yazılmalı; ayrılış düzeltmesi ve ödenen iade kurul raporunda gelirden mi düşülmeli?
+- **Bugünkü varsayım:** Rapor gelir rakamı üretmez; mutabakat kalemlerini (vade gününde tahakkuk, ödeme gününde tahsilat, ayrılış düzeltmesi, iade) ayrı satırlarla verir. Burs ve indirim bilgi satırıdır, taksit netten açıldığı için tahakkuktan ayrıca düşülmez. Dil okulunda paket geliri kullanılan saat oranıyla tanınır (M-12).
+- **Kodda:** `lib/finance-board-report.ts` (`financeBoardReport`), PDF `apps/web-react/src/lib/pdf/templates/finance-board-report.ts`.
+- **Cevap değişirse:** Rapora hizmet dönemine göre gelir satırı eklenir; burs ve indirimin yeri değişir. Mutabakat hesabı değişmez.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -392,6 +401,13 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-56   | 2026-11-08 | `DOM-FIN-061` | Onaylanmamış sözleşme listesine ek protokol de girer; ayrılan ya da mezun öğrencinin bekleyen sözleşmesi girmez.                                                                                                                                                                     | `unapprovedContracts` süzgeci.                                                                             |
 | K-57   | 2026-11-08 | `DOM-FIN-061` | Kayıt değişikliği yalnız var olan olaylardır (kesin kayıt, yenileme, dönem geçişi, mezuniyet, ayrılış). Yenileme dışı sınıf/şube değişikliği ve dondurma kaydı tutulmadığı için görünmez; veliden gelen ayrılış talebi kaydı da yoktur, yalnız onaylanmış ayrılış ve iadesi izlenir. | Sınıf değişikliği olayı (Oğuzhan alanı, öğrenci düzenleme) ve dondurma (ON-067) gelince olay türü eklenir. |
 | K-58   | 2026-11-08 | `DOM-FIN-061` | Görünüm yönetici ve ön büroya açıktır, ön büro da tutarları görür; her bölüm en çok 20 satır gösterir, tamamı mevcut listelerdedir.                                                                                                                                                  | Rol dizisi (`routes/finance-opening-watch.ts`), `OPENING_WATCH_ROW_LIMIT`.                                 |
+| K-75   | 2026-11-08 | `DOM-FIN-064` | Dönem eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); dil okulunda yılın dönemi ya da elle en çok bir yıllık aralık seçilebilir. Süren dönemde bitiş bugündür, başlamamış dönem 422. Burs, indirim ve yenileme oranı seçilen eğitim yılına göredir.                               | `boardReportPeriod` (`lib/finance-board-report.ts`).                                                       |
+| K-76   | 2026-11-08 | `DOM-FIN-064` | Gecikmiş alacak yaşlandırması raporun alındığı günün durumudur (`/finance/totals` gecikmiş tutarı); geçmiş günün yaşlandırması tutulmaz. Vadesi dönem sonundan sonra olan taksit girmez. Dilimler 1–30, 31–60, 61–90, 90+ gün.                                                       | `overdueAging`, `BOARD_REPORT_AGING_BUCKETS`.                                                              |
+| K-77   | 2026-11-08 | `DOM-FIN-064` | Küçük grup bastırma eşiği 5 kişidir: kırılım hücresinde 1–4 kişi varsa sayı ve tutar gizlenir; tek gizli hücrede en küçük görünür dolu hücre de gizlenir. Kurum geneli toplamlar gizlenmez. Ortak kural (OG-766) gelince ona bağlanır.                                               | `BOARD_REPORT_MIN_GROUP`, `suppressSmallGroups`.                                                           |
+| K-78   | 2026-11-08 | `DOM-FIN-064` | Yenileme oranı: dönem sonunda kayıtlı ve mezuniyet planı olmayan öğrencilerden sonraki eğitim yılına yenilemesi planlanmış ya da uygulanmış olanların yüzdesi. Yalnız okulda (`renewal` modülü); dil okulunda kur ilerlemesi oranı yoktur.                                           | `enrollmentSummary` (`renewal`).                                                                           |
+| K-79   | 2026-11-08 | `DOM-FIN-064` | Aday hunisi rapora yalnız toplam satırla girer; kaynak ve danışman kırılımı girmez (danışman adı kişi verisidir). `crm` kapalıysa bölüm yoktur.                                                                                                                                      | `financeBoardReport` (`funnel`).                                                                           |
+| K-80   | 2026-11-08 | `DOM-FIN-064` | Raporu yalnız yönetici alır; kişi verisi taşımadığı için taze oturum ve denetim kaydı istemez, PDF tarayıcıda üretilir. Muhasebe rolü açılınca okuma önerilir.                                                                                                                       | Rol dizisi (`routes/finance-board-report.ts`), `DOM-FIN-057` tablosu.                                      |
+| K-81   | 2026-11-08 | `DOM-FIN-064` | Bütçe–gerçekleşen, maliyet merkezi, gelir ve nakit tahmini (K24 diğer görevleri) ile dil okulunda kur kırılımı rapora girmez; o modüller birleşince ayrı bölüm olarak eklenir.                                                                                                       | `financeBoardReport` bölümleri, PDF şablonu.                                                               |
 
 ## Kararlaştırılanlar
 

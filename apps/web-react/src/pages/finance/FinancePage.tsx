@@ -16,8 +16,11 @@ import { FinanceBudgetSection } from './FinanceBudgetSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
+import { FinanceOpeningWatchSection } from './FinanceOpeningWatchSection.tsx'
+import { OPENING_WATCH_VIEW } from './finance-opening-watch.ts'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
+import { FinanceForecastSection } from './FinanceForecastSection.tsx'
 import { InstallmentImportSection } from './InstallmentImportSection.tsx'
 import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
 import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
@@ -33,6 +36,7 @@ import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
+  openingWatch: { label: 'Açılış nöbeti', param: OPENING_WATCH_VIEW },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
   dayClosing: { label: 'Gün sonu', param: 'gunsonu' },
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
@@ -46,6 +50,7 @@ const VIEWS = {
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   budget: { label: 'Bütçe', param: 'butce' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
+  forecast: { label: 'Tahmin', param: 'tahmin' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -54,12 +59,12 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
 }))
 /**
  * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
- * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008), bütçe yalnız yöneticidedir
- * (DOM-FIN-062, K-60): kapalı sekme gizlenir, adresi taksitlere düşer.
+ * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008), bütçe (DOM-FIN-062, K-60) ile gelir ve
+ * nakit akışı tahmini (DOM-FIN-063) yalnız yöneticidedir: kapalı sekme gizlenir, adresi taksitlere düşer.
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
-    if (value === 'budget') return isManager
+    if (value === 'budget' || value === 'forecast') return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
@@ -132,6 +137,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           )
         }
       />
+      {tab === 'openingWatch' ? <FinanceOpeningWatchSection onOpenInvoice={openInvoice} /> : null}
       {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
       {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
       {tab === 'contracts' ? <ContractsSection /> : null}
@@ -166,6 +172,12 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'exports' && isManager ? (
         <FinanceReconciliationSection
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'forecast' && session?.institution ? (
+        <FinanceForecastSection
+          enrollmentYear={session.institution.academicYear ?? Number(today.slice(0, 4))}
+          institutionType={session.institution.type}
         />
       ) : null}
       {tab === 'budget' ? (

@@ -64,7 +64,7 @@ test('DOM-FIN-062: gelir kalemi ücret türüne eşlenir, gider kalemi eşlenmez
   )
 })
 
-test('DOM-FIN-062: kalem kodu tekil; ücret türüne tek etkin gelir kalemi (K-65)', () => {
+test('DOM-FIN-062: kalem kodu tekil; ücret türüne tek etkin gelir kalemi (K-72)', () => {
   assert.throws(
     () => planBudgetItem({ code: 'k1', name: 'Yeni', kind: 'income' }, [item(1)]),
     isDomainError('budget_item_code_taken', 'conflict'),

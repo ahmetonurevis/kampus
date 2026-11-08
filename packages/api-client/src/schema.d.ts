@@ -3968,6 +3968,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/forecasts/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gelir tahmini
+         * @description Seçilen eğitim yılının gelir tahmini (ON-246; IST-104, IST-117; DOM-FIN-063). `year` verilmezse kurumun kayıt yılı. Kesin gelir yılın iptal edilmemiş taksitlerinin toplamıdır (yeni kayıt ve yenileme ayrı). `contracts` yılın yürürlükteki sözleşmelerindeki liste fiyatı, indirim ve bursu bilgi olarak verir. Huni beklentisi son 24 ayda açılmış açık adayların ulaştıkları adıma göre, son 24 ayda kapanmış adaylardan hesaplanan dönüşüm oranı ile tarife fiyatı (yoksa önceki yılın tarifesi, o da yoksa sözleşme ortalaması) çarpımıdır; indirim ve burs aynı sözleşmelerin oranıyla düşülür. Huni geçmiş yılda ve `crm` modülü kapalıyken `null`dır. Varsayımlar `assumptions` alanındadır. Tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Bilinmeyen parametre 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFinanceRevenueForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/forecasts/cash-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nakit akışı tahmini
+         * @description Bu aydan başlayarak `months` ay (1–24, varsayılan 12) için aylık nakit akışı tahmini (ON-247; IST-105; DOM-FIN-063). Ay Europe/Istanbul ayıdır. Planlanan tahsilat vadesi bugün ya da sonra olan taksitlerin kalan tutarıdır; beklenen tahsilat son 12 ayın vadesinde (30 gün içinde) tahsil oranıyla düzeltilir, fark tahsil riskidir. Bugün gecikmiş açık tutar geç tahsil oranıyla ilk aya yazılır. Ödenmemiş ayrılış iadesi vadesinin ayına (geçmişse ilk aya) çıkış olarak yazılır. Gider planı yoktur: `monthlyExpenseCents` verilirse her aya aynı gider yazılır, verilmezse `expenseCents` `null` ve `assumptions.expenseSource` `none`dır. Örneklem boşsa oran varsayılandır (`default`). Tutarlar kuruş, oranlar on binde bir. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFinanceCashFlowForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/opening-watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Açılış nöbeti: ilk taksitler, onaysız sözleşmeler, kayıt değişiklikleri, iadeler
+         * @description Yeni öğretim yılı ya da dönem açılışında izlenecekler (DOM-FIN-061). `firstInstallments`: seçilen yılın sözleşme zinciri başına en küçük numaralı güncel taksiti; kalanı olan ve vadesi geçmiş ya da 7 gün içinde gelecek olanlar (kısmi ödeme düşülür). `unapprovedContracts`: seçilen yılın kurum imzası ya da ödeyici onayı bekleyen sürümleri (ek protokol dahil; ayrılan öğrenci hariç). `enrollmentChanges`: pencereye düşen kesin kayıt, yenileme planı, dönem geçişi, mezuniyet ve ayrılış (DOM-KAY-026); yenileme modülü kapalıysa geçiş olayı yoktur (`renewalModule`). `refunds`: pencereden bağımsız ödenmemiş bütün ayrılış iadeleri. Her bölüm sayılarla birlikte en çok 20 satır döner. `academicYear` verilmezse kurumun etkin yılı; pencere yıl (ya da `termId` dönemi) başlangıcından 30 gün önce ile 41 gün sonrası arasıdır, `from`/`to` birlikte verilirse onlar (yalnız biri 400). Ters pencere 422 `opening_window_invalid`, 120 günü aşan 422 `opening_window_too_long`, yılda olmayan dönem 422 `opening_term_not_found`. Hiçbir şey yazmaz. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceOpeningWatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/cost-centers": {
         parameters: {
             query?: never;
@@ -3983,7 +4043,7 @@ export interface paths {
         put?: never;
         /**
          * Maliyet merkezi ekle
-         * @description Kampüs merkezi bir kampüse bağlanır (zorunlu), program okulda sınıf düzeyine, dil okulunda kura bağlanabilir, birim bağsızdır. Kod kurumda tekil: 409 `cost_center_code_taken`; kampüse tek etkin merkez: 409 `cost_center_campus_taken`; aynı üst merkezde aynı programa tek etkin merkez: 409 `cost_center_program_taken`. Üst merkez yok, pasif, döngü ya da 4 düzeyi aşma 422 (`cost_center_parent_not_found`, `cost_center_parent_inactive`, `cost_center_too_deep`); kampüs ya da kur yok 422, kurum türüne uymayan bağ 422 `cost_center_link_unavailable` (DOM-FIN-062, K-66). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         * @description Kampüs merkezi bir kampüse bağlanır (zorunlu), program okulda sınıf düzeyine, dil okulunda kura bağlanabilir, birim bağsızdır. Kod kurumda tekil: 409 `cost_center_code_taken`; kampüse tek etkin merkez: 409 `cost_center_campus_taken`; aynı üst merkezde aynı programa tek etkin merkez: 409 `cost_center_program_taken`. Üst merkez yok, pasif, döngü ya da 4 düzeyi aşma 422 (`cost_center_parent_not_found`, `cost_center_parent_inactive`, `cost_center_too_deep`); kampüs ya da kur yok 422, kurum türüne uymayan bağ 422 `cost_center_link_unavailable` (DOM-FIN-062, K-73). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
          */
         post: operations["createCostCenter"];
         delete?: never;
@@ -4027,7 +4087,7 @@ export interface paths {
         put?: never;
         /**
          * Bütçe kalemi ekle
-         * @description Gelir ya da gider kalemi; gelir kalemi isteğe bağlı bir ücret türüne eşlenir, giderde ücret türü 400. Kod kurumda tekil: 409 `budget_item_code_taken`; bir ücret türüne tek etkin gelir kalemi: 409 `budget_item_fee_kind_taken` (K-65). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         * @description Gelir ya da gider kalemi; gelir kalemi isteğe bağlı bir ücret türüne eşlenir, giderde ücret türü 400. Kod kurumda tekil: 409 `budget_item_code_taken`; bir ücret türüne tek etkin gelir kalemi: 409 `budget_item_fee_kind_taken` (K-72). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
          */
         post: operations["createBudgetItem"];
         delete?: never;
@@ -41920,6 +41980,476 @@ export interface operations {
                                     attendanceUnavailable: boolean;
                                 }[];
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceRevenueForecast: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            /** @description Kesin kaydın yazıldığı eğitim yılı (kurum ayarı) */
+                            enrollmentYear: number;
+                            /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                            today: string;
+                            /** @description Kesin gelir: yılın iptal edilmemiş taksitleri */
+                            committed: {
+                                totalCents: number;
+                                newEnrollmentCents: number;
+                                renewalCents: number;
+                                students: number;
+                                newStudents: number;
+                                renewalStudents: number;
+                            };
+                            /** @description Yılın yürürlükteki sözleşmeleri: liste fiyatı, indirim ve burs (bilgi) */
+                            contracts: {
+                                count: number;
+                                listCents: number;
+                                discountCents: number;
+                                scholarshipCents: number;
+                                netCents: number;
+                            };
+                            /** @description Huni beklentisi; geçmiş yılda ve `crm` kapalıyken `null` */
+                            pipeline: {
+                                prospects: number;
+                                steps: {
+                                    /** @enum {string} */
+                                    step: "prospect" | "meeting" | "trial";
+                                    /** @description Bu adımda bekleyen açık aday */
+                                    prospects: number;
+                                    /** @description Örneklemde bu adıma ulaşan kapanmış aday */
+                                    sampleSize: number;
+                                    /** @description Adımdan kesin kayda dönüşüm oranı (on binde bir); örneklem boşsa `null` */
+                                    rateBasisPoints: number | null;
+                                    grossCents: number;
+                                    discountCents: number;
+                                    netCents: number;
+                                }[];
+                                grossCents: number;
+                                discountCents: number;
+                                netCents: number;
+                                unpricedProspects: number;
+                                unratedProspects: number;
+                            } | null;
+                            expectedTotalCents: number;
+                            assumptions: {
+                                /** @enum {string} */
+                                pipelineStatus: "included" | "crm_disabled" | "past_year";
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyFrom: string;
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyTo: string;
+                                historyClosedProspects: number;
+                                tariffYear: number | null;
+                                tariffCarriedOver: boolean;
+                                discountReferenceYear: number | null;
+                                discountRateBasisPoints: number;
+                                contractAverageCents: number | null;
+                                priceSources: {
+                                    tariffLevel: number;
+                                    tariffAverage: number;
+                                    contractAverage: number;
+                                    none: number;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceCashFlowForecast: {
+        parameters: {
+            query?: {
+                months?: number;
+                monthlyExpenseCents?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                            today: string;
+                            /** @description `YYYY-MM`, Europe/Istanbul */
+                            from: string;
+                            /** @description `YYYY-MM`, Europe/Istanbul */
+                            to: string;
+                            months: {
+                                /** @description `YYYY-MM`, Europe/Istanbul */
+                                month: string;
+                                /** @description Vadesi bugün ya da sonra olan kalan taksit tutarı */
+                                scheduledCents: number;
+                                /** @description Planlanan × vadesinde tahsil oranı */
+                                expectedCollectionCents: number;
+                                /** @description Planlanan eksi beklenen */
+                                atRiskCents: number;
+                                /** @description Gecikmiş alacaktan beklenen (yalnız ilk ay) */
+                                overdueRecoveryCents: number;
+                                /** @description Ödenmemiş ayrılış iadesi */
+                                refundCents: number;
+                                /** @description Elle girilen gider; verilmediyse `null` */
+                                expenseCents: number | null;
+                                netCents: number;
+                                cumulativeNetCents: number;
+                            }[];
+                            totals: {
+                                /** @description Vadesi bugün ya da sonra olan kalan taksit tutarı */
+                                scheduledCents: number;
+                                /** @description Planlanan × vadesinde tahsil oranı */
+                                expectedCollectionCents: number;
+                                /** @description Planlanan eksi beklenen */
+                                atRiskCents: number;
+                                /** @description Gecikmiş alacaktan beklenen (yalnız ilk ay) */
+                                overdueRecoveryCents: number;
+                                /** @description Ödenmemiş ayrılış iadesi */
+                                refundCents: number;
+                                /** @description Elle girilen gider; verilmediyse `null` */
+                                expenseCents: number | null;
+                                netCents: number;
+                            };
+                            overdueOpenCents: number;
+                            beyondHorizonCents: number;
+                            pendingRefundCents: number;
+                            assumptions: {
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyFrom: string;
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyTo: string;
+                                historyInvoices: number;
+                                historyAmountCents: number;
+                                graceDays: number;
+                                onTimeRateBasisPoints: number;
+                                /** @enum {string} */
+                                onTimeRateSource: "history" | "default";
+                                lateRecoveryRateBasisPoints: number;
+                                /** @enum {string} */
+                                lateRecoveryRateSource: "history" | "default";
+                                /** @enum {string} */
+                                expenseSource: "manual" | "none";
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceOpeningWatch: {
+        parameters: {
+            query?: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027); verilmezse kurumun etkin yılı */
+                academicYear?: number;
+                /** @description Dönem kimliği: pencere dönemin başlangıç gününe göre kurulur */
+                termId?: string;
+                /** @description Pencere başlangıcı (YYYY-MM-DD) */
+                from?: string;
+                /** @description Pencere bitişi (YYYY-MM-DD) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            today: string;
+                            from: string;
+                            to: string;
+                            /** @description Pencerenin dayandığı yıl ya da dönem başlangıç günü */
+                            anchorDate: string;
+                            termId: string | null;
+                            /** @description Seçilen yılın dönemleri (başlangıç sırasıyla) */
+                            terms: {
+                                id: string;
+                                name: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description Yenileme modülü açık mı; kapalıysa geçiş olayı yoktur */
+                            renewalModule: boolean;
+                            firstInstallments: {
+                                overdueCount: number;
+                                overdueCents: number;
+                                dueSoonCount: number;
+                                dueSoonCents: number;
+                                rows: {
+                                    invoiceId: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    className: string | null;
+                                    contractId: string | null;
+                                    installment: number;
+                                    dueDate: string;
+                                    amountCents: number;
+                                    /** @description Kısmi ödeme düşülmüş kalan (DOM-FIN-030) */
+                                    remainingCents: number;
+                                    /** @enum {string} */
+                                    status: "overdue" | "due_soon";
+                                    /** @description Vadeden sonraki ilk günden sayılan gecikme; yoksa 0 */
+                                    overdueDays: number;
+                                }[];
+                            };
+                            unapprovedContracts: {
+                                awaitingSignatoryCount: number;
+                                awaitingApprovalCount: number;
+                                rows: {
+                                    contractId: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @enum {string} */
+                                    status: "awaiting_signatory" | "awaiting_approval";
+                                    revision: number;
+                                    contractAt: string;
+                                }[];
+                            };
+                            enrollmentChanges: {
+                                counts: {
+                                    enrolled: number;
+                                    renewed: number;
+                                    promoted: number;
+                                    graduated: number;
+                                    withdrawn: number;
+                                };
+                                withdrawnWithoutRenewal: number;
+                                rows: {
+                                    /** @enum {string} */
+                                    kind: "enrolled" | "renewed" | "promoted" | "graduated" | "withdrawn";
+                                    date: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    fromClassName: string | null;
+                                    toClassName: string | null;
+                                    /** @description Ayrılışta: seçilen yıla yenileme hiç planlanmamış */
+                                    withoutRenewal: boolean;
+                                }[];
+                            };
+                            refunds: {
+                                pendingCount: number;
+                                pendingCents: number;
+                                overdueCount: number;
+                                overdueCents: number;
+                                rows: {
+                                    withdrawalId: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    withdrawalDate: string;
+                                    refundCents: number;
+                                    refundDueDate: string;
+                                    overdueDays: number;
+                                }[];
+                            };
                         };
                     };
                 };

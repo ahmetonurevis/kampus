@@ -1,6 +1,7 @@
 import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
+import type { OpeningWithdrawal } from '@kampus/school-core/lib/finance-opening-watch.ts'
 import type { ReconciliationWithdrawal } from '@kampus/school-core/lib/finance-reconciliation.ts'
 import type { StatementWithdrawal } from '@kampus/school-core/lib/finance-statement.ts'
 import type { ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
@@ -256,6 +257,27 @@ export async function withdrawalsForStatement(
       ),
     )
   return rows.map(({ breakdown, ...row }) => ({ ...row, creditCents: breakdown.creditCents }))
+}
+
+/**
+ * Açılış nöbeti için kurumun ayrılışları (DOM-FIN-061): yalnız gün ve iade tutarı; gerekçe,
+ * döküm ve hesap bilgisi seçilmez.
+ */
+export function withdrawalsForOpeningWatch(
+  db: Database,
+  institutionId: string,
+): Promise<OpeningWithdrawal[]> {
+  return db
+    .select({
+      id: studentWithdrawals.id,
+      studentId: studentWithdrawals.studentId,
+      withdrawalDate: studentWithdrawals.withdrawalDate,
+      refundCents: studentWithdrawals.refundCents,
+      refundDueDate: studentWithdrawals.refundDueDate,
+      refundPaidDate: studentWithdrawals.refundPaidDate,
+    })
+    .from(studentWithdrawals)
+    .where(eq(studentWithdrawals.institutionId, institutionId))
 }
 
 /** Mutabakat için kurumun ayrılışları (ON-085); IBAN ve hesap sahibi seçilmez. */

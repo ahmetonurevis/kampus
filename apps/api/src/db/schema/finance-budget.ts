@@ -114,7 +114,7 @@ export const costCenters = pgTable(
 
 /**
  * Bütçe kalemi (DOM-FIN-062; ON-241). Gelir kalemi isteğe bağlı olarak bir ücret türüne eşlenir;
- * bir ücret türüne tek etkin gelir kalemi (K-65). Silinmez, pasifleşir.
+ * bir ücret türüne tek etkin gelir kalemi (K-72). Silinmez, pasifleşir.
  */
 export const budgetItems = pgTable(
   'budget_items',

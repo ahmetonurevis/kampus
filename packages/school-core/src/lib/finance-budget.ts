@@ -113,7 +113,7 @@ function assertItem(
     )
 }
 
-/** Yeni kalem planı (DOM-FIN-062, K-65); yeni kalem etkindir. */
+/** Yeni kalem planı (DOM-FIN-062, K-72); yeni kalem etkindir. */
 export function planBudgetItem(input: unknown, items: readonly BudgetItemNode[]): BudgetItemFields {
   const data = budgetItemSchema.parse(input)
   assertItem({ ...data, id: null, isActive: true }, items)

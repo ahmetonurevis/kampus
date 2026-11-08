@@ -71,6 +71,8 @@ const STATUS_LABELS = { none: 'İade yok', pending: 'Ödenecek', paid: 'Ödendi'
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['studentName', 'refundCents', 'statusLabel']
 const START_FORM = 'ayrilis-formu'
+/** İade durumu adreste de tutulur: açılış nöbeti bekleyen iadelere bağlanır (DOM-FIN-061). */
+const WITHDRAWAL_URL_FILTERS = { refundStatus: 'iade' }
 const REFUND_FORM = 'iade-formu'
 
 /**
@@ -85,7 +87,7 @@ const isRefundStatus = (value: unknown): value is keyof typeof STATUS_LABELS =>
 
 export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
   const learner = useEnrollmentLearner()
-  const list = useListState('ayrilislar')
+  const list = useListState('ayrilislar', { urlFilters: WITHDRAWAL_URL_FILTERS })
   // Öğrenci adı araması ve iade durumu sunucuda süzülür (ON-118).
   const search = useDebouncedValue(list.state.query)
   const refundStatus = isRefundStatus(list.state.filters.refundStatus)

@@ -105,6 +105,17 @@ function reach(prospect: FunnelProspect, language: boolean): number {
   return FUNNEL_STEPS.indexOf('prospect')
 }
 
+/**
+ * Adayın ulaştığı en ileri huni adımı (birikimli sayımın kuralı). Gelir tahmini (DOM-FIN-063) açık
+ * adayı bu adıma göre ağırlıklandırır.
+ */
+export function funnelReach(
+  prospect: FunnelProspect,
+  institutionType: InstitutionType,
+): FunnelStep {
+  return FUNNEL_STEPS[reach(prospect, institutionType === 'language_school')] ?? 'prospect'
+}
+
 /** Yüzde, bir ondalığa yuvarlanmış; payda 0 ise `null`. */
 export function funnelRate(count: number, base: number): number | null {
   if (base <= 0) return null

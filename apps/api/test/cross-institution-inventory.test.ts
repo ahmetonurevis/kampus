@@ -1046,6 +1046,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-FIN-059: başka kurumun kursiyeri 404, B kurumunun sözleşmesi değişmez',
     'get(url(B_ONLY), await a.learner(ADULT))',
   ),
+  // Onur: açılış nöbeti (ON-095, DOM-FIN-061).
+  'GET /api/v1/finance/opening-watch': liste(
+    'finance-opening-watch.test.ts',
+    'başka kurumun taksiti, sözleşmesi ve iadesi açılış nöbetinde yok',
+    'URL_BASE',
+  ),
   // Onur: kurumsal müşteri ve toplu fatura (ON-100, IST-089).
   ...Object.fromEntries(
     (
@@ -1109,6 +1115,17 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         marker,
       ),
     ]),
+  ),
+  // Onur: gelir ve nakit akışı tahmini (ON-246, ON-247; DOM-FIN-063).
+  'GET /api/v1/finance/forecasts/revenue': liste(
+    'finance-forecasts.test.ts',
+    'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
+    'REVENUE',
+  ),
+  'GET /api/v1/finance/forecasts/cash-flow': liste(
+    'finance-forecasts.test.ts',
+    'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
+    'CASH_FLOW',
   ),
   // Onur: bütçe ve maliyet merkezi (ON-241, ON-242; DOM-FIN-062).
   ...Object.fromEntries(

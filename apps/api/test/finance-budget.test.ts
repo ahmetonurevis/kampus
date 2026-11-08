@@ -382,7 +382,7 @@ describe('DOM-FIN-062: bütçe ve maliyet merkezi uçları', () => {
     )
   })
 
-  test('DOM-FIN-062: bütçe kalemleri; ücret türü tekil, kullanılan kalemin türü değişmez (K-65)', async () => {
+  test('DOM-FIN-062: bütçe kalemleri; ücret türü tekil, kullanılan kalemin türü değişmez (K-72)', async () => {
     const t = await ready()
     assertError(
       await call('POST', ITEMS, t.admin, {

@@ -166,7 +166,7 @@ test('DOM-FIN-062: aynı üst merkezde aynı programa tek etkin merkez; başka k
   )
 })
 
-test('DOM-FIN-062: üst merkez var ve etkin olmalı; hiyerarşi en çok 4 düzey (K-66)', () => {
+test('DOM-FIN-062: üst merkez var ve etkin olmalı; hiyerarşi en çok 4 düzey (K-73)', () => {
   assert.throws(
     () => planCostCenter({ code: 'X', name: 'Alt', type: 'unit', parentId: id(50) }, context([])),
     isDomainError('cost_center_parent_not_found'),

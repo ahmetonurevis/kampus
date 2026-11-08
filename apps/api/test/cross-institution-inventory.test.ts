@@ -1274,6 +1274,59 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: tedarikçi (ON-221; DOM-FIN-070).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/suppliers', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/suppliers', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/suppliers/:supplierId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/suppliers/:supplierId', "call('PATCH', bUrl, a.admin"],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-suppliers.test.ts',
+        'başka kurumun tedarikçisi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: satın alma talebi (ON-222; DOM-FIN-071).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/purchase-requests', 'get(REQUESTS, a.admin)'],
+        [
+          'liste',
+          'GET /api/v1/finance/purchase-requests/options',
+          '`${REQUESTS}/options`, a.admin',
+        ],
+        ['gövde', 'POST /api/v1/finance/purchase-requests', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/purchase-requests/:requestId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/purchase-requests/:requestId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        ...(['submit', 'approve', 'reject', 'cancel'] as const).map(
+          (verb) =>
+            [
+              'kayıt',
+              `POST /api/v1/finance/purchase-requests/:requestId/${verb}`,
+              'act(a.admin, bRequest, verb',
+            ] as const,
+        ),
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-purchase-requests.test.ts',
+        'başka kurumun talebi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

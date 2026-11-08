@@ -52,6 +52,8 @@ import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipFundRoutes } from './routes/finance-scholarship-funds.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
+import { registerFinancePurchaseRequestRoutes } from './routes/finance-purchase-requests.ts'
+import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -145,6 +147,20 @@ export const REDACTED_PATHS = [
   '*.counterpartyName',
   'ignoreReason',
   '*.ignoreReason',
+  // kvkk: K — tedarikçinin vergi numarası (şahısta TCKN), yetkili iletişimi ve adresi
+  // (DOM-FIN-070); IBAN yukarıda `iban`. Talep gerekçesi serbest metindir (DOM-FIN-071).
+  'taxNumber',
+  '*.taxNumber',
+  'contactName',
+  '*.contactName',
+  'contactPhone',
+  '*.contactPhone',
+  'contactEmail',
+  '*.contactEmail',
+  'address',
+  '*.address',
+  'justification',
+  '*.justification',
   // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
   'signatory',
   '*.signatory',
@@ -463,6 +479,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceBudgetActualsRoutes(app)
   registerFinanceCostReportRoutes(app)
   registerFinanceBankMatchingRoutes(app)
+  registerFinanceSupplierRoutes(app)
+  registerFinancePurchaseRequestRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

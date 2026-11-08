@@ -521,7 +521,7 @@ Kullanıcı kararları (2026-11-07, K-33…K-39; yedisinde de öneri kabul edild
 - **Gerekçe:** Satın alma talebi, sipariş, mal kabul ve gider gerçekleşeni (ON-224…ON-227, `DOM-FIN-066`) aynı tedarikçi kaydına dayanır; vergi numarasının doğrulanması mükerrer cari açılmasını ve e-fatura eşleşme hatasını önler.
 - **Kaynak:** İşletme kuralı; VUK md. 8 (vergi kimlik numarası), KVKK md. 4 ve 12. Şahıs tedarikçi verisinin saklama süresi **doğrulanmalı** (H-28); tedarikçi carisinin hesap planına bağlanması **doğrulanmalı** (M-24). Açık ürün kararları öneriyle uygulandı (K-125…K-127, onay bekliyor).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core, API, web) — kural `packages/school-core/src/lib/finance-suppliers.ts` (VKN/TCKN denetimi `lib/finance-corporate.ts`, IBAN `lib/withdrawals.ts`); tablo `suppliers` (migration 0079); uçlar `GET/POST /api/v1/finance/suppliers`, `GET/PATCH /api/v1/finance/suppliers/:supplierId` (`apps/api/src/routes/finance-suppliers.ts`). Web: Finans & Tahsilat "Tedarikçiler" sekmesi (`?gorunum=tedarikci`, `FinanceSuppliersSection.tsx`). Yok: belge dosyası yükleme (platform dosya altyapısı), tedarikçi carisi ve ödeme, kurum tanımlı kategori.
+- **Kodda:** var (core, API, web) — kural `packages/school-core/src/lib/finance-suppliers.ts` (VKN/TCKN denetimi `lib/finance-corporate.ts`, IBAN `lib/withdrawals.ts`); tablo `suppliers` (migration `create_suppliers_purchase_requests`); uçlar `GET/POST /api/v1/finance/suppliers`, `GET/PATCH /api/v1/finance/suppliers/:supplierId` (`apps/api/src/routes/finance-suppliers.ts`). Web: Finans & Tahsilat "Tedarikçiler" sekmesi (`?gorunum=tedarikci`, `FinanceSuppliersSection.tsx`). Yok: belge dosyası yükleme (platform dosya altyapısı), tedarikçi carisi ve ödeme, kurum tanımlı kategori.
 
 ### DOM-FIN-071 · Satın alma talebi
 
@@ -534,7 +534,7 @@ Kullanıcı kararları (2026-11-07, K-33…K-39; yedisinde de öneri kabul edild
 - **Gerekçe:** Harcama ihtiyacının gerekçesiyle ve bütçe kalemine bağlı kaydı bütçe disiplininin ilk adımıdır (K23, K24); kalem tutarlarının hesaplanması toplamların elle bozulmasını önler.
 - **Kaynak:** İşletme kuralı (iç kontrol). Açık ürün kararları öneriyle uygulandı (K-128…K-132, onay bekliyor).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core, API, web) — kural `packages/school-core/src/lib/finance-purchase-requests.ts`; tablolar `purchase_requests`, `purchase_request_items` (migration 0079); uçlar `/api/v1/finance/purchase-requests` (liste, oluşturma, `options`), `/:requestId` (ayrıntı, düzeltme), `/:requestId/submit|approve|reject|cancel` (`apps/api/src/routes/finance-purchase-requests.ts`). Web: Finans & Tahsilat "Satın alma talepleri" sekmesi (`?gorunum=satin-alma`, `FinancePurchaseRequestsSection.tsx`). Yok: kademeli onay (ON-223), bütçe aşım engeli (ON-245), sipariş ve gider gerçekleşeni bağı.
+- **Kodda:** var (core, API, web) — kural `packages/school-core/src/lib/finance-purchase-requests.ts`; tablolar `purchase_requests`, `purchase_request_items` (migration `create_suppliers_purchase_requests`); uçlar `/api/v1/finance/purchase-requests` (liste, oluşturma, `options`), `/:requestId` (ayrıntı, düzeltme), `/:requestId/submit|approve|reject|cancel` (`apps/api/src/routes/finance-purchase-requests.ts`). Web: Finans & Tahsilat "Satın alma talepleri" sekmesi (`?gorunum=satin-alma`, `FinancePurchaseRequestsSection.tsx`). Yok: kademeli onay (ON-223), bütçe aşım engeli (ON-245), sipariş ve gider gerçekleşeni bağı.
 
 ## Mevcut kodla farklar
 

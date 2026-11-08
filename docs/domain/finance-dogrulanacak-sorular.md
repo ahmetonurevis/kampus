@@ -266,7 +266,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-070`; ON-221.
 - **Soru:** Gerçek kişi (şahıs) tedarikçinin T.C. kimlik numarası, adresi, telefonu, e-postası ve IBAN'ı hangi hukuki sebeple (KVKK md. 5/2-c sözleşmenin ifası, md. 5/2-ç hukuki yükümlülük) işlenir ve tedarikçi pasifleştikten sonra ne kadar saklanmalı? Aydınlatma metni tedarikçiye nasıl verilmeli?
 - **Bugünkü varsayım:** Veri sözleşmenin ifası ve vergi yükümlülüğü için işlenir; listede TCKN ve IBAN maskeli, tam değer yalnız yöneticinin ayrıntısında; tedarikçi silinmez, pasifleşir; ayrı imha süresi yoktur.
-- **Kodda:** `suppliers.tax_number`, `contact_*`, `address`, `iban` (migration 0079); `maskSupplierTaxNumber`, `maskIban`.
+- **Kodda:** `suppliers.tax_number`, `contact_*`, `address`, `iban` (migration `create_suppliers_purchase_requests`); `maskSupplierTaxNumber`, `maskIban`.
 - **Cevap değişirse:** Pasif tedarikçinin kişisel alanları süre dolunca imha işiyle anonimleştirilir; aydınlatma onayı tedarikçi kaydına alan olarak eklenir.
 - **Cevap:** bekleniyor
 

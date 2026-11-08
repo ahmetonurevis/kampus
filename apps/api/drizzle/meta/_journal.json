@@ -547,6 +547,13 @@
       "when": 1794111023743,
       "tag": "0077_create_bank_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794116611578,
+      "tag": "0078_create_suppliers_purchase_requests",
+      "breakpoints": true
     }
   ]
 }

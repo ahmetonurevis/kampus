@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { PURCHASE_ORDER_STATUSES } from '@kampus/school-core/lib/finance-purchase-orders.ts'
 import { PURCHASE_UNITS } from '@kampus/school-core/lib/finance-purchase-requests.ts'
+import { SUPPLIER_TYPES } from '@kampus/school-core/lib/finance-suppliers.ts'
 
 import { dataResponse } from './common.schemas.ts'
 
@@ -17,6 +18,17 @@ const receiptBoardSchema = z.object({
       id: z.string(),
       number: z.string(),
       status: z.enum(PURCHASE_ORDER_STATUSES),
+      supplier: z
+        .object({
+          name: z.string(),
+          type: z.enum(SUPPLIER_TYPES),
+          taxOffice: z.string().nullable().describe('Vergi dairesi; şahıs tedarikçide boş (K-215)'),
+          taxNumber: z
+            .string()
+            .nullable()
+            .describe('VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)'),
+        })
+        .describe('Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)'),
       version,
     })
     .describe('Sipariş; durum kabul edilen toplamdan türetilir (K-150)'),
@@ -44,6 +56,12 @@ const receiptBoardSchema = z.object({
     .array(
       z.object({
         id: z.string(),
+        sequence: z
+          .number()
+          .int()
+          .describe(
+            'Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)',
+          ),
         receiptDate: z.string().describe('Kabul günü `YYYY-MM-DD`'),
         warehouseId: z
           .string()
@@ -58,9 +76,12 @@ const receiptBoardSchema = z.object({
             orderItemId: z.string(),
             name: z.string(),
             unit: z.enum(PURCHASE_UNITS),
+            orderedQuantity: count('Kalemin sipariş miktarı'),
+            unitPriceCents: cents('Sipariş birim fiyatı, KDV hariç, kuruş'),
             acceptedQuantity: count('Kabul edilen miktar'),
             rejectedQuantity: count('Reddedilen miktar'),
             rejectReason: z.string().nullable(),
+            netCents: cents('Kabul edilen miktar × birim fiyat, KDV hariç (K-151)'),
             stockItemId: z
               .string()
               .nullable()

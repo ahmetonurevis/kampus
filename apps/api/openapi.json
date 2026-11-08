@@ -115765,6 +115765,43 @@
                                 "cancelled"
                               ]
                             },
+                            "supplier": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "company",
+                                    "individual"
+                                  ]
+                                },
+                                "taxOffice": {
+                                  "description": "Vergi dairesi; şahıs tedarikçide boş (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "taxNumber": {
+                                  "description": "VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "taxOffice",
+                                "taxNumber"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -115776,6 +115813,7 @@
                             "id",
                             "number",
                             "status",
+                            "supplier",
                             "version"
                           ],
                           "additionalProperties": false,
@@ -115872,6 +115910,12 @@
                               "id": {
                                 "type": "string"
                               },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)"
+                              },
                               "receiptDate": {
                                 "type": "string",
                                 "description": "Kabul günü `YYYY-MM-DD`"
@@ -115931,6 +115975,18 @@
                                         "service"
                                       ]
                                     },
+                                    "orderedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kalemin sipariş miktarı"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                    },
                                     "acceptedQuantity": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
@@ -115948,6 +116004,12 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
                                     },
                                     "stockItemId": {
                                       "description": "Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)",
@@ -115967,9 +116029,12 @@
                                     "orderItemId",
                                     "name",
                                     "unit",
+                                    "orderedQuantity",
+                                    "unitPriceCents",
                                     "acceptedQuantity",
                                     "rejectedQuantity",
                                     "rejectReason",
+                                    "netCents",
                                     "stockItemId",
                                     "stockItemName"
                                   ],
@@ -116025,6 +116090,7 @@
                             },
                             "required": [
                               "id",
+                              "sequence",
                               "receiptDate",
                               "warehouseId",
                               "warehouseName",
@@ -116325,6 +116391,43 @@
                                 "cancelled"
                               ]
                             },
+                            "supplier": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "company",
+                                    "individual"
+                                  ]
+                                },
+                                "taxOffice": {
+                                  "description": "Vergi dairesi; şahıs tedarikçide boş (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "taxNumber": {
+                                  "description": "VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "taxOffice",
+                                "taxNumber"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -116336,6 +116439,7 @@
                             "id",
                             "number",
                             "status",
+                            "supplier",
                             "version"
                           ],
                           "additionalProperties": false,
@@ -116432,6 +116536,12 @@
                               "id": {
                                 "type": "string"
                               },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)"
+                              },
                               "receiptDate": {
                                 "type": "string",
                                 "description": "Kabul günü `YYYY-MM-DD`"
@@ -116491,6 +116601,18 @@
                                         "service"
                                       ]
                                     },
+                                    "orderedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kalemin sipariş miktarı"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                    },
                                     "acceptedQuantity": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
@@ -116508,6 +116630,12 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
                                     },
                                     "stockItemId": {
                                       "description": "Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)",
@@ -116527,9 +116655,12 @@
                                     "orderItemId",
                                     "name",
                                     "unit",
+                                    "orderedQuantity",
+                                    "unitPriceCents",
                                     "acceptedQuantity",
                                     "rejectedQuantity",
                                     "rejectReason",
+                                    "netCents",
                                     "stockItemId",
                                     "stockItemName"
                                   ],
@@ -116585,6 +116716,7 @@
                             },
                             "required": [
                               "id",
+                              "sequence",
                               "receiptDate",
                               "warehouseId",
                               "warehouseName",
@@ -116820,6 +116952,43 @@
                                 "cancelled"
                               ]
                             },
+                            "supplier": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "company",
+                                    "individual"
+                                  ]
+                                },
+                                "taxOffice": {
+                                  "description": "Vergi dairesi; şahıs tedarikçide boş (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "taxNumber": {
+                                  "description": "VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "taxOffice",
+                                "taxNumber"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337)"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -116831,6 +117000,7 @@
                             "id",
                             "number",
                             "status",
+                            "supplier",
                             "version"
                           ],
                           "additionalProperties": false,
@@ -116927,6 +117097,12 @@
                               "id": {
                                 "type": "string"
                               },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216)"
+                              },
                               "receiptDate": {
                                 "type": "string",
                                 "description": "Kabul günü `YYYY-MM-DD`"
@@ -116986,6 +117162,18 @@
                                         "service"
                                       ]
                                     },
+                                    "orderedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kalemin sipariş miktarı"
+                                    },
+                                    "unitPriceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                    },
                                     "acceptedQuantity": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
@@ -117003,6 +117191,12 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
                                     },
                                     "stockItemId": {
                                       "description": "Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)",
@@ -117022,9 +117216,12 @@
                                     "orderItemId",
                                     "name",
                                     "unit",
+                                    "orderedQuantity",
+                                    "unitPriceCents",
                                     "acceptedQuantity",
                                     "rejectedQuantity",
                                     "rejectReason",
+                                    "netCents",
                                     "stockItemId",
                                     "stockItemName"
                                   ],
@@ -117080,6 +117277,7 @@
                             },
                             "required": [
                               "id",
+                              "sequence",
                               "receiptDate",
                               "warehouseId",
                               "warehouseName",

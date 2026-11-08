@@ -3116,6 +3116,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/scholarship-funds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Burs fonlarını listele
+         * @description Açık fonlar önce, ada göre; bağış, atama ve bakiye toplamlarıyla (DOM-FIN-068). `q` fon ya da bağışçı adında arar, `status` açık ya da kapalı fonları süzer. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listScholarshipFunds"];
+        put?: never;
+        /**
+         * Burs fonu aç
+         * @description Ad, isteğe bağlı açıklama ve bağışçı (kişi ya da kurum adı; anonimde ad yazılmaz, K-95). Aynı adla ikinci açık fon 409 `scholarship_fund_exists`. Rol: `yonetici`.
+         */
+        post: operations["createScholarshipFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-funds/{fundId}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Burs fonu raporu
+         * @description Fon, toplamlar ve hareket dökümü (bağış ve atamalar gün sırasıyla, iptal edilenler dahil, yürüyen bakiyeyle; DOM-FIN-068). Öğrenci adı yalnız `yonetici` rolünde dolu (K-98). `Accept: text/csv` ile dosya iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.scholarship_fund_export`. Olmayan ya da başka kurumun fonu 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getScholarshipFundReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-funds/{fundId}/donations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fona bağış gir
+         * @description Tutar (kuruş), gün ve kaynak (`bank_transfer`, `cash`, `other`), isteğe bağlı not. Gelecek gün 422 `scholarship_fund_date_future`, kapalı fon 422 `scholarship_fund_closed`. Makbuz ya da vergi belgesi üretilmez (M-21). `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici`.
+         */
+        post: operations["donateToScholarshipFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-funds/{fundId}/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bursu fondan karşıla
+         * @description Kesin kayıtta ya da yenilemede yapılmış burs atamasını (DOM-FIN-025) fondan karşılanmış olarak bağlar; öğrenci ve eğitim yılı atamadan gelir, sözleşme değişmez (K-96). Tutar fon bakiyesini aşarsa 422 `scholarship_fund_insufficient`, bursun fonlardan karşılanmamış kısmını aşarsa 422 `scholarship_fund_exceeds_award`; aynı fondan aynı bursa ikinci atama 409 `scholarship_fund_allocation_exists`; olmayan ya da başka kurumun bursu 404. Kurum kilidi altında: eşzamanlı atamalar bakiyeyi aşamaz. `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["allocateFromScholarshipFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bağışı iptal et
+         * @description Gerekçeyle (5–500 karakter); silinmez. Bakiyeyi eksiye düşürecekse 422 `scholarship_fund_donation_in_use` (önce atama iptal edilir, K-97); iptal edilmiş bağış 409 `scholarship_fund_donation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["cancelScholarshipFundDonation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fondan atamayı iptal et
+         * @description Gerekçeyle (5–500 karakter); tutar fon bakiyesine geri döner, burs ataması kalır (K-97). İptal edilmiş atama 409 `scholarship_fund_allocation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["cancelScholarshipFundAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-funds/{fundId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Burs fonunu kapat
+         * @description Yalnız sıfır bakiyede: aksi 422 `scholarship_fund_balance_not_zero`; kapalı fon 409 `scholarship_fund_already_closed`, sürüm tutmazsa 409 `version_conflict`. Kapalı fona bağış ve atama yapılmaz; rapor kalır. `If-Match` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["closeScholarshipFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/referral-rewards": {
         parameters: {
             query?: never;
@@ -35547,6 +35691,1296 @@ export interface operations {
                             mebbisRecordedDate: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listScholarshipFunds: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Fon adında ya da bağışçı adında arama */
+                q?: string;
+                /** @description Açık ya da kapalı fonlar */
+                status?: "active" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            description: string | null;
+                            /**
+                             * @description Bağışçı türü
+                             * @enum {string}
+                             */
+                            donorKind: "person" | "organization" | "anonymous";
+                            /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                            donorName: string | null;
+                            /**
+                             * @description `closed`: bağış ve atama alınmaz
+                             * @enum {string}
+                             */
+                            status: "active" | "closed";
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli bağışların toplamı */
+                            donatedCents: number;
+                            /** @description Geçerli burs atamalarının toplamı */
+                            allocatedCents: number;
+                            /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                            balanceCents: number;
+                            /** @description Geçerli bağış sayısı */
+                            donationCount: number;
+                            /** @description Geçerli atama sayısı */
+                            allocationCount: number;
+                            /** @description `If-Match` için kayıt sürümü (kapanış) */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createScholarshipFund: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string;
+                    /** @enum {string} */
+                    donorKind: "person" | "organization" | "anonymous";
+                    donorName?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getScholarshipFundReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    donateToScholarshipFund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                fundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    amountCents: number;
+                    donatedOn: string;
+                    /** @enum {string} */
+                    channel: "bank_transfer" | "cash" | "other";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    allocateFromScholarshipFund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                fundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    awardId: string;
+                    amountCents: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelScholarshipFundDonation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                fundId: string;
+                donationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelScholarshipFundAllocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                fundId: string;
+                allocationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeScholarshipFund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                fundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fund: {
+                                id: string;
+                                name: string;
+                                description: string | null;
+                                /**
+                                 * @description Bağışçı türü
+                                 * @enum {string}
+                                 */
+                                donorKind: "person" | "organization" | "anonymous";
+                                /** @description Kişi ya da kurum adı; anonimde boş (K-95) */
+                                donorName: string | null;
+                                /**
+                                 * @description `closed`: bağış ve atama alınmaz
+                                 * @enum {string}
+                                 */
+                                status: "active" | "closed";
+                                closedAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli bağışların toplamı */
+                                donatedCents: number;
+                                /** @description Geçerli burs atamalarının toplamı */
+                                allocatedCents: number;
+                                /** @description Bakiye = bağışlar − atamalar; eksiye düşmez */
+                                balanceCents: number;
+                                /** @description Geçerli bağış sayısı */
+                                donationCount: number;
+                                /** @description Geçerli atama sayısı */
+                                allocationCount: number;
+                                /** @description `If-Match` için kayıt sürümü (kapanış) */
+                                version: number;
+                            };
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "donation" | "allocation";
+                                /** @description Bağış ya da atama günü (YYYY-MM-DD) */
+                                day: string;
+                                /** @description Hareket tutarı (pozitif) */
+                                amountCents: number;
+                                /** @description Bakiyeye etkisi: bağış artı, atama eksi, iptal edilen sıfır */
+                                effectCents: number;
+                                /** @description Gün sırasıyla bu hareketten sonraki bakiye */
+                                balanceAfterCents: number;
+                                /** @description Bağışın kaynağı */
+                                channel: ("bank_transfer" | "cash" | "other") | null;
+                                /** @description Bağış notu */
+                                note: string | null;
+                                /** @description Karşılanan burs ataması */
+                                awardId: string | null;
+                                studentId: string | null;
+                                /** @description Yalnız `yonetici` rolünde dolu (K-98) */
+                                studentName: string | null;
+                                /** @description Bursun eğitim yılı */
+                                academicYear: number | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description `If-Match` için hareket sürümü (iptal) */
+                                version: number;
+                            }[];
                         };
                     };
                 };

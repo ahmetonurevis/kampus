@@ -526,6 +526,13 @@
       "when": 1794097104024,
       "tag": "0074_create_corporate_customers",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794103412521,
+      "tag": "0075_create_scholarship_funds",
+      "breakpoints": true
     }
   ]
 }

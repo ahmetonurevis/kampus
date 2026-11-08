@@ -28,6 +28,16 @@ export const rateLabel = (rate: number | null) =>
 /** Gizli hücre metni (K-77): eşik belgede yazar. */
 export const suppressedLabel = (minGroupSize: number) => `Gizli (<${String(minGroupSize)})`
 
+/**
+ * Kırılımın bütün hücreleri gizliyse (kırılımdaki kişi eşikten az; K-77) tablonun altına yazılan not:
+ * toplam kurum genelidir ve hangi hücrenin dolu olduğu gösterilmez.
+ */
+export const breakdownHiddenNote = (minGroupSize: number) =>
+  `Bu kırılımda ${String(minGroupSize)} kişiden az kişi olduğu için kırılımın tamamı gizlidir; toplam kurum geneli olarak yazar.`
+
+const allSuppressed = (rows: readonly { suppressed: boolean }[]) =>
+  rows.length > 0 && rows.every((row) => row.suppressed)
+
 export function boardReportFilename(period: FinanceBoardReport['period']): string {
   return `yonetim-kurulu-raporu-${period.from}-${period.to}.pdf`
 }
@@ -158,6 +168,7 @@ export function financeBoardReportDocument(
     ],
     true,
   )
+  if (allSuppressed(finance.methods.rows)) doc.paragraph(breakdownHiddenNote(minGroupSize), 9)
 
   doc.section('Gecikmiş alacak yaşlandırması')
   doc.paragraph(
@@ -175,6 +186,7 @@ export function financeBoardReportDocument(
     ],
     true,
   )
+  if (allSuppressed(finance.aging.rows)) doc.paragraph(breakdownHiddenNote(minGroupSize), 9)
 
   if (finance.packages) {
     const packages = finance.packages
@@ -218,6 +230,7 @@ export function financeBoardReportDocument(
     enrollment.reasons.map((row) => [WITHDRAWAL_REASON_LABELS[row.reason], count(row.count)]),
     true,
   )
+  if (allSuppressed(enrollment.reasons)) doc.paragraph(breakdownHiddenNote(minGroupSize), 9)
 
   doc.section('Aday hunisi')
   if (funnel === null) doc.paragraph('Kayıt modülü kapalı olduğu için aday hunisi yok.')
@@ -237,7 +250,7 @@ export function financeBoardReportDocument(
   }
 
   doc.paragraph(
-    `${String(minGroupSize)} kişiden az olan kırılım hücreleri kişiyi belli etmemesi için gizlenmiştir; tek gizli hücre toplamdan bulunabileceği için en küçük ikinci hücre de gizlenir.`,
+    `${String(minGroupSize)} kişiden az olan kırılım hücreleri kişiyi belli etmemesi için gizlenmiştir. Gizli hücreler toplamdan bulunabileceği için birlikte ${String(minGroupSize)} kişiden azsa en küçük ikinci hücre de gizlenir; böyle bir hücre yoksa kırılımın tamamı gizlidir, toplam kurum geneli olarak yazar.`,
     9,
   )
   doc.signatures('Hazırlayan', 'Yönetim kurulu adına', true)

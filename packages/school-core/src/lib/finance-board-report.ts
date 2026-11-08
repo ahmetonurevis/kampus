@@ -182,27 +182,33 @@ export type Suppressed<T> = T & { suppressed: boolean }
 
 /**
  * Küçük grup bastırma (K-77). 1–4 kişilik hücre gizlenir (birincil). Kırılımın toplamı raporda
- * yazdığı için tek gizli hücre toplamdan geri hesaplanabilir: o zaman en küçük görünür dolu hücre de
- * gizlenir (ikincil). Sıfır hücre gizlenmez; kimseyi belli etmez.
+ * yazdığı için gizli hücrelerin birleşimi toplamdan geri hesaplanabilir; bu birleşim de bir gruptur
+ * ve eşikten az farklı kişi kapsıyorsa (tek gizli hücre, ya da aynı kişinin iki gizli hücrede
+ * sayılması) en küçük görünür dolu hücre de gizlenir (ikincil; o hücre tek başına eşiği aşar).
+ * Gizlenecek görünür dolu hücre yoksa kırılımın tamamı küçük bir gruptur: sıfır hücreler dahil bütün
+ * hücreler gizlenir. Kurum geneli toplam (yöntem, yaşlandırma, ayrılış toplamı) yine yazar; ama
+ * hangi yöntem, dilim ya da nedenin dolu olduğu görünmez. Toplamın kendisi gizlenmez: aynı toplam
+ * raporun başka yerinden de çıkar (mutabakat tahsilatı; dönem başı + yeni − ayrılış − mezuniyet =
+ * dönem sonu), yalnız onu gizlemek sızıntıyı kapatmaz. `membersOf` hücredeki kişi kimlikleridir;
+ * kişi sayısı farklı kimliklerden sayılır.
  */
 export function suppressSmallGroups<T>(
   cells: readonly T[],
-  countOf: (cell: T) => number,
+  membersOf: (cell: T) => Iterable<string>,
   threshold: number = BOARD_REPORT_MIN_GROUP,
 ): Suppressed<T>[] {
-  const hidden = cells.map((cell) => {
-    const count = countOf(cell)
-    return count > 0 && count < threshold
-  })
-  if (hidden.filter(Boolean).length === 1) {
+  const members = cells.map((cell) => new Set(membersOf(cell)))
+  const hidden = members.map((set) => set.size > 0 && set.size < threshold)
+  const hiddenPeople = new Set(members.flatMap((set, index) => (hidden[index] ? [...set] : [])))
+  if (hiddenPeople.size > 0 && hiddenPeople.size < threshold) {
     let pick = -1
-    cells.forEach((cell, index) => {
-      const count = countOf(cell)
-      if (hidden[index] || count <= 0) return
-      const current = cells[pick]
-      if (current === undefined || count < countOf(current)) pick = index
+    members.forEach((set, index) => {
+      if (hidden[index] || set.size === 0) return
+      const current = members[pick]
+      if (current === undefined || set.size < current.size) pick = index
     })
-    if (pick !== -1) hidden[pick] = true
+    if (pick === -1) hidden.fill(true)
+    else hidden[pick] = true
   }
   return cells.map((cell, index) => ({ ...cell, suppressed: hidden[index] === true }))
 }
@@ -364,7 +370,7 @@ function methodBreakdown(payments: readonly ExportPayment[], period: FinancePeri
     const tally = tallies.get(method)
     return {
       method,
-      studentCount: tally?.students.size ?? 0,
+      students: tally?.students ?? new Set<string>(),
       collectedCents: tally?.collectedCents ?? 0,
       reversedCents: tally?.reversedCents ?? 0,
     }
@@ -372,18 +378,24 @@ function methodBreakdown(payments: readonly ExportPayment[], period: FinancePeri
   const collectedCents = cells.reduce((total, cell) => total + cell.collectedCents, 0)
   const reversedCents = cells.reduce((total, cell) => total + cell.reversedCents, 0)
   return {
-    rows: suppressSmallGroups(cells, (cell) => cell.studentCount).map(
-      (cell): BoardReportMethodRow =>
-        cell.suppressed
-          ? {
-              method: cell.method,
-              studentCount: null,
-              collectedCents: null,
-              reversedCents: null,
-              netCents: null,
-              suppressed: true,
-            }
-          : { ...cell, netCents: cell.collectedCents - cell.reversedCents, suppressed: false },
+    rows: suppressSmallGroups(cells, (cell) => cell.students).map((cell): BoardReportMethodRow =>
+      cell.suppressed
+        ? {
+            method: cell.method,
+            studentCount: null,
+            collectedCents: null,
+            reversedCents: null,
+            netCents: null,
+            suppressed: true,
+          }
+        : {
+            method: cell.method,
+            studentCount: cell.students.size,
+            collectedCents: cell.collectedCents,
+            reversedCents: cell.reversedCents,
+            netCents: cell.collectedCents - cell.reversedCents,
+            suppressed: false,
+          },
     ),
     collectedCents,
     reversedCents,
@@ -424,18 +436,22 @@ function overdueAging(input: BoardReportInput) {
   }
   const cells = BOARD_REPORT_AGING_BUCKETS.map((bucket) => ({
     bucket: bucket.key,
-    studentCount: buckets.get(bucket.key)?.students.size ?? 0,
+    students: buckets.get(bucket.key)?.students ?? new Set<string>(),
     amountCents: buckets.get(bucket.key)?.amountCents ?? 0,
   }))
   return {
     asOf: today,
     overdueCents,
     studentCount: students.size,
-    rows: suppressSmallGroups(cells, (cell) => cell.studentCount).map(
-      (cell): BoardReportAgingRow =>
-        cell.suppressed
-          ? { bucket: cell.bucket, studentCount: null, amountCents: null, suppressed: true }
-          : cell,
+    rows: suppressSmallGroups(cells, (cell) => cell.students).map((cell): BoardReportAgingRow =>
+      cell.suppressed
+        ? { bucket: cell.bucket, studentCount: null, amountCents: null, suppressed: true }
+        : {
+            bucket: cell.bucket,
+            studentCount: cell.students.size,
+            amountCents: cell.amountCents,
+            suppressed: false,
+          },
     ),
   }
 }
@@ -463,7 +479,7 @@ function enrollmentSummary(input: BoardReportInput): BoardReport['enrollment'] {
   let newCount = 0
   let withdrawnCount = 0
   let graduatedCount = 0
-  const reasons = new Map<WithdrawalReason, number>()
+  const reasons = new Map<WithdrawalReason, string[]>()
   const activeAtEnd: string[] = []
   for (const student of input.students) {
     const events = enrollmentEvents(student, {
@@ -493,7 +509,7 @@ function enrollmentSummary(input: BoardReportInput): BoardReport['enrollment'] {
       else {
         withdrawnCount += 1
         const reason = exit.withdrawalId === null ? undefined : reasonOf.get(exit.withdrawalId)
-        if (reason !== undefined) reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
+        if (reason !== undefined) push(reasons, reason, student.id)
       }
   }
 
@@ -528,9 +544,13 @@ function enrollmentSummary(input: BoardReportInput): BoardReport['enrollment'] {
     withdrawnCount,
     graduatedCount,
     reasons: suppressSmallGroups(
-      WITHDRAWAL_REASONS.map((reason) => ({ reason, count: reasons.get(reason) ?? 0 })),
-      (cell) => cell.count,
-    ).map((cell) => (cell.suppressed ? { ...cell, count: null } : cell)),
+      WITHDRAWAL_REASONS.map((reason) => ({ reason, students: reasons.get(reason) ?? [] })),
+      (cell) => cell.students,
+    ).map((cell): BoardReportReasonRow => ({
+      reason: cell.reason,
+      count: cell.suppressed ? null : cell.students.length,
+      suppressed: cell.suppressed,
+    })),
     renewal,
   }
 }

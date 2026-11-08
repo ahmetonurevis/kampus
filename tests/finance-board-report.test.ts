@@ -228,28 +228,78 @@ test('DOM-FIN-064 sorgu: aralığın iki ucu birlikte, dönem ile aralık birlik
 // --- Küçük grup bastırma --------------------------------------------------------------------------
 
 test('DOM-FIN-064 küçük grup: 1–4 kişilik hücre gizlenir, tek gizli hücrede en küçük ikinci de', () => {
-  const count = (cell: { n: number }) => cell.n
+  const members = (cell: { people: string[] }) => cell.people
+  const cell = (prefix: string, n: number) => ({ people: ids(prefix, n) })
+  const hiddenOf = (cells: { people: string[] }[]) =>
+    suppressSmallGroups(cells, members).map((item) => item.suppressed)
   assert.equal(BOARD_REPORT_MIN_GROUP, 5)
-  assert.deepEqual(
-    suppressSmallGroups([{ n: 0 }, { n: 7 }, { n: 12 }], count).map((cell) => cell.suppressed),
-    [false, false, false],
-  )
+  assert.deepEqual(hiddenOf([cell('a', 0), cell('b', 7), cell('c', 12)]), [false, false, false])
   // Tek birincil gizli hücre: en küçük görünür dolu hücre (7) de gizlenir; sıfır gizlenmez.
+  assert.deepEqual(hiddenOf([cell('a', 2), cell('b', 0), cell('c', 7), cell('d', 12)]), [
+    true,
+    false,
+    true,
+    false,
+  ])
+  // İki birincil gizli hücre beş farklı kişiyle birbirini korur.
+  assert.deepEqual(hiddenOf([cell('a', 1), cell('b', 4), cell('c', 9)]), [true, true, false])
+  // Kişi sayısı farklı kimliklerden sayılır; aynı kişinin tekrarı hücreyi büyütmez.
+  assert.deepEqual(hiddenOf([{ people: ['a', 'a', 'a', 'a', 'a'] }, cell('c', 9)]), [true, true])
+})
+
+test('DOM-FIN-064 küçük grup: gizli hücrelerin birleşimi eşikten azsa korumaz, ikincil gizlenir', () => {
+  const members = (cell: { people: string[] }) => cell.people
+  const hiddenOf = (cells: { people: string[] }[]) =>
+    suppressSmallGroups(cells, members).map((item) => item.suppressed)
+  // Aynı kişi iki hücrede: birleşim tek kişidir, toplamdan çıkan fark onun tutarıdır.
+  assert.deepEqual(hiddenOf([{ people: ['x'] }, { people: ['x'] }, { people: ids('c', 9) }]), [
+    true,
+    true,
+    true,
+  ])
+  // Ayrı iki kişi de beşten az: birleşim kişiyi belli eder.
   assert.deepEqual(
-    suppressSmallGroups([{ n: 2 }, { n: 0 }, { n: 7 }, { n: 12 }], count).map(
-      (cell) => cell.suppressed,
-    ),
-    [true, false, true, false],
+    hiddenOf([{ people: ['x'] }, { people: ['y'] }, { people: [] }, { people: ids('c', 9) }]),
+    [true, true, false, true],
   )
-  // İki birincil gizli hücre birbirini korur.
-  assert.deepEqual(
-    suppressSmallGroups([{ n: 1 }, { n: 4 }, { n: 9 }], count).map((cell) => cell.suppressed),
-    [true, true, false],
+  // Gizlenecek başka dolu hücre yoksa kırılım tamamen gizlenir, sıfır hücreler dahil.
+  assert.deepEqual(hiddenOf([{ people: ids('a', 3) }, { people: [] }]), [true, true])
+  assert.deepEqual(hiddenOf([{ people: [] }, { people: [] }]), [false, false])
+})
+
+test('DOM-FIN-064 küçük grup: ikincil gizleme yapılamazsa kırılım tamamen gizlenir, toplam sızdırmaz', () => {
+  // Tek ödeyen kişi: nakit hücresi gizlense de sıfır hücreler görünürse toplam tutar onundur.
+  const methodPayments = [exportPayment('s1', 'Nakit', 12_345, '2026-10-01')]
+  // Üç ayrılış aynı nedenle: neden hücresi gizlense de toplam ayrılış sayısı onu verir.
+  const students = ids('w', 3).map((id) => student(id, '2025-09-01', false))
+  const withdrawals = students.map((item, index) =>
+    withdrawal(`wd${String(index)}`, item.id, '2026-10-01', 'relocation'),
   )
-  // Başka dolu hücre yoksa ikincil gizleme yapılamaz.
+  const report = financeBoardReport(input({ methodPayments, students, withdrawals }))
+  const { methods } = report.finance
+  assert.equal(methods.collectedCents, 12_345)
+  assert.ok(methods.rows.every((row) => row.suppressed && row.collectedCents === null))
+  assert.equal(report.enrollment.withdrawnCount, 3)
+  assert.ok(report.enrollment.reasons.every((row) => row.suppressed && row.count === null))
+})
+
+test('DOM-FIN-064 küçük grup: iki dilimdeki aynı kişi birbirini korumaz, ikincil gizleme yapılır', () => {
+  const invoices = [
+    // Tek kişi iki dilimde: iki gizli hücrenin toplamı onun borcudur.
+    invoice('x1-i1', 'x1', 10_000, '2027-01-01'),
+    invoice('x1-i2', 'x1', 20_000, '2026-12-01'),
+    ...ids('c', 6).map((id) => invoice(`${id}-i`, id, 30_000, '2026-09-20')),
+  ]
+  const { aging } = financeBoardReport(input({ invoices })).finance
+  assert.equal(aging.studentCount, 7)
   assert.deepEqual(
-    suppressSmallGroups([{ n: 3 }, { n: 0 }], count).map((cell) => cell.suppressed),
-    [true, false],
+    aging.rows.map((row) => [row.bucket, row.suppressed]),
+    [
+      ['days_1_30', true],
+      ['days_31_60', true],
+      ['days_61_90', false],
+      ['days_91_plus', true],
+    ],
   )
 })
 
@@ -465,16 +515,8 @@ test('DOM-FIN-064 kayıt: dönem başı + yeni − ayrılış − mezuniyet = d�
       enrollment.graduatedCount,
     enrollment.endCount,
   )
-  // İki ayrılış nedeni (birer kişi) birbirini korur; tutar ya da ad yok.
-  const shown = enrollment.reasons.filter((row) => !row.suppressed)
-  assert.ok(shown.every((row) => row.count === 0))
-  assert.deepEqual(
-    enrollment.reasons.filter((row) => row.suppressed).map((row) => [row.reason, row.count]),
-    [
-      ['transfer', null],
-      ['documented', null],
-    ],
-  )
+  // İki ayrılış (birer kişi) toplam ayrılıştan bulunur; hangi nedenin dolu olduğu da görünmez.
+  assert.ok(enrollment.reasons.every((row) => row.suppressed && row.count === null))
 })
 
 test('DOM-FIN-064 kayıt: beş ve üstü ayrılış nedeni sayıyla görünür', () => {

@@ -14,6 +14,7 @@ import {
   corporateReportTotals,
   isValidTaxNumber,
   linkCorporateEmployeeSchema,
+  linkCovers,
   permilleLabel,
   planCorporateInvoice,
   planCorporateInvoiceCancel,
@@ -154,6 +155,15 @@ test('DOM-FIN-060: bağ bitişi başlangıçtan önce olamaz, bitmiş bağ yenid
     () => planEmployeeEnd(link({ endsOn: '2026-10-01' }), { endsOn: '2026-10-02' }),
     isDomainError('corporate_link_ended', 'conflict'),
   )
+})
+
+test('DOM-FIN-060: bağ günü iki uç dahil kapsar; ileri tarihli başlangıç ve bitiş tarihle değerlendirilir', () => {
+  assert.equal(linkCovers(link(), '2026-08-31'), false)
+  assert.equal(linkCovers(link(), '2026-09-01'), true)
+  assert.equal(linkCovers(link({ endsOn: '2026-12-31' }), '2026-10-06'), true)
+  assert.equal(linkCovers(link({ endsOn: '2026-12-31' }), '2026-12-31'), true)
+  assert.equal(linkCovers(link({ endsOn: '2026-12-31' }), '2027-01-01'), false)
+  assert.equal(linkCovers(link({ startsOn: '2026-11-01' }), '2026-10-06'), false)
 })
 
 test('DOM-FIN-060: toplu fatura dönemde ve bağ içinde vadesi gelen taksitleri alır', () => {

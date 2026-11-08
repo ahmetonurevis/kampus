@@ -233,7 +233,7 @@ export function registerFinanceCorporateRoutes(app: FastifyInstance) {
         operationId: 'archiveCorporateCustomer',
         tags,
         summary: 'Kurumsal müşteriyi arşivle',
-        description: `Etkin bağlı kursiyeri olan şirket 422 \`corporate_customer_has_employees\`; kesilmiş faturalar kalır. Sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` zorunlu. ${LANGUAGE_ONLY} ${STAFF}`,
+        description: `Bugün bitmemiş bağı (etkin, bitişi ya da başlangıcı ileri tarihli) olan şirket 422 \`corporate_customer_has_employees\`; kesilmiş faturalar kalır. Sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` zorunlu. ${LANGUAGE_ONLY} ${STAFF}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: customerParams,
         response: { 200: customerArchiveResponse, ...commandErrors },

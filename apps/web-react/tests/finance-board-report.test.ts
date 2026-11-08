@@ -5,6 +5,7 @@ import { money } from '@kampus/school-core/lib/format.ts'
 import {
   boardReportFilename,
   boardReportPeriodLabel,
+  breakdownHiddenNote,
   financeBoardReportDocument,
   rateLabel,
   suppressedLabel,
@@ -217,6 +218,35 @@ test('DOM-FIN-064: dil okulunda kursiyer, paket geliri ve dönem adı; crm kapal
   )
   assert.ok(boardReportPeriodLabel(data.period).includes('Güz'))
   assert.equal(boardReportFilename(data.period), 'yonetim-kurulu-raporu-2026-09-07-2026-12-20.pdf')
+})
+
+test('DOM-FIN-064: kırılımın tamamı gizliyse PDF notu yazar, toplam kurum geneli kalır', () => {
+  const note = breakdownHiddenNote(5)
+  const notes = (data: FinanceBoardReport) =>
+    allTexts(financeBoardReportDocument(measurer, data, OPTIONS))
+      .join(' ')
+      .split(note).length - 1
+  // Varsayılan raporda yalnız ayrılış nedenleri tamamen gizli.
+  assert.equal(notes(report()), 1)
+  const hiddenMethods = report({
+    finance: {
+      ...report().finance,
+      methods: {
+        ...report().finance.methods,
+        rows: report().finance.methods.rows.map((row) => ({
+          method: row.method,
+          studentCount: null,
+          collectedCents: null,
+          reversedCents: null,
+          netCents: null,
+          suppressed: true,
+        })),
+      },
+    },
+  })
+  assert.equal(notes(hiddenMethods), 2)
+  const all = allTexts(financeBoardReportDocument(measurer, hiddenMethods, OPTIONS))
+  assert.ok(all.some((line) => line.includes(money(1_200_000))))
 })
 
 test('DOM-FIN-064: oran etiketi Türkçe ondalıkla, payda yoksa tire', () => {

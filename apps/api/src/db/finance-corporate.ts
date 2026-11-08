@@ -10,6 +10,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  lt,
   lte,
   max,
   or,
@@ -114,6 +115,7 @@ export async function listCorporateCustomers(
   db: Database,
   institutionId: string,
   query: { page: number; pageSize: number; q?: string | undefined },
+  today: string,
 ): Promise<{
   items: (StoredCorporateCustomer & { activeEmployeeCount: number })[]
   total: number
@@ -138,7 +140,7 @@ export async function listCorporateCustomers(
     .where(
       and(
         eq(corporateCustomerEmployees.institutionId, institutionId),
-        isNull(corporateCustomerEmployees.endsOn),
+        linkCoversDay(today),
         isNull(corporateCustomerEmployees.archivedAt),
       ),
     )
@@ -235,6 +237,19 @@ const linkScope = (institutionId: string) =>
     isNull(corporateCustomerEmployees.archivedAt),
   )
 
+/**
+ * Bağ verilen günü kapsar (core `linkCovers`; gün Europe/Istanbul `YYYY-MM-DD`): etkin çalışan budur.
+ * Bitişi ileri tarihli bağ bitişine kadar etkindir, başlangıcı ileri tarihli bağ henüz değildir.
+ */
+const linkCoversDay = (day: string) =>
+  and(
+    lte(corporateCustomerEmployees.startsOn, day),
+    or(isNull(corporateCustomerEmployees.endsOn), gte(corporateCustomerEmployees.endsOn, day)),
+  )
+/** Bağ verilen günde bitmemiş: etkin ya da henüz başlamamış. Şirket arşivini engeller. */
+const linkOpenOn = (day: string) =>
+  or(isNull(corporateCustomerEmployees.endsOn), gte(corporateCustomerEmployees.endsOn, day))
+
 /** Şirketin bütün bağları (etkin ve biten), başlangıca göre. */
 export async function loadCustomerLinks(
   db: Database,
@@ -280,10 +295,11 @@ export async function findCustomerLink(
   return row ?? null
 }
 
-export async function countActiveEmployees(
+async function countEmployees(
   db: Database,
   institutionId: string,
   customerId: string,
+  condition: ReturnType<typeof linkOpenOn>,
 ): Promise<number> {
   const [row] = await db
     .select({ total: count() })
@@ -292,26 +308,49 @@ export async function countActiveEmployees(
       and(
         linkScope(institutionId),
         eq(corporateCustomerEmployees.customerId, customerId),
-        isNull(corporateCustomerEmployees.endsOn),
+        condition,
       ),
     )
   return row?.total ?? 0
 }
 
-/** Şirketin bağları sayfalı: etkin önce, sonra yeni başlayan önce. */
+/** Şirkete `today` günü etkin bağlı kursiyer sayısı. */
+export const countActiveEmployees = (
+  db: Database,
+  institutionId: string,
+  customerId: string,
+  today: string,
+) => countEmployees(db, institutionId, customerId, linkCoversDay(today))
+
+/** `today` günü bitmemiş (etkin ya da ileri tarihli) bağ sayısı; varsa şirket arşivlenmez. */
+export const countOpenEmployees = (
+  db: Database,
+  institutionId: string,
+  customerId: string,
+  today: string,
+) => countEmployees(db, institutionId, customerId, linkOpenOn(today))
+
+/**
+ * Şirketin bağları sayfalı: bitişsiz önce, sonra yeni başlayan önce. `active` bugünü kapsayan,
+ * `ended` bitişi bugünden önce olan bağdır; başlangıcı ileri tarihli bağ yalnız süzgeçsiz listededir.
+ */
 export async function listCustomerLinks(
   db: Database,
   institutionId: string,
   customerId: string,
   query: { page: number; pageSize: number; status?: 'active' | 'ended' | undefined },
+  today: string,
 ): Promise<{ items: StoredCorporateLink[]; total: number }> {
   const where = and(
     linkScope(institutionId),
     eq(corporateCustomerEmployees.customerId, customerId),
     query.status === 'active'
-      ? isNull(corporateCustomerEmployees.endsOn)
+      ? linkCoversDay(today)
       : query.status === 'ended'
-        ? isNotNull(corporateCustomerEmployees.endsOn)
+        ? and(
+            isNotNull(corporateCustomerEmployees.endsOn),
+            lt(corporateCustomerEmployees.endsOn, today),
+          )
         : undefined,
   )
   const [totalRow] = await db
@@ -694,15 +733,101 @@ export type CorporateEnrollmentRow = {
   courseName: string
   level: string
   totalHours: number
+  /**
+   * Kur kaydının gerçek başlangıcı: kursiyerin kura ilk katıldığı an. Grup birleştirmesi hedefe
+   * katılma anı "şimdi" olan yeni satır yazar (`moveGroupMembers`); başlangıç birleştirilen kaynak
+   * satırların zincirinden bulunur. Katılım özetinde kaydın bağ içinde başlayıp başlamadığını
+   * belirler (DOM-FIN-060).
+   */
+  startedAt: Date
 }
 
-/** Kursiyerlerin arşivlenmemiş kur kayıtları; grup ve kur adıyla, katılım sırasıyla. */
+type MemberLink = { groupId: string; joinedAt: Date }
+type MergedMember = MemberLink & { studentId: string; archivedAt: Date; mergedIntoGroupId: string }
+
+/**
+ * Birleştirmeyle taşınmış kaydın ilk katılma anı. Birleştirme kaynak satırı arşivler ve hedefe aynı
+ * anla (`archivedAt` = yeni satırın `joinedAt`'i) yeni satır yazar; kaynak grup `mergedIntoGroupId`
+ * ile hedefi gösterir. Zincir geriye izlenir; eşleşme yoksa satırın kendi katılma anıdır.
+ */
+function firstJoinedAt(row: MemberLink, merged: readonly MergedMember[]): Date {
+  let current = row
+  const seen = new Set<MergedMember>()
+  for (;;) {
+    const previous = merged.find(
+      (item) =>
+        !seen.has(item) &&
+        item.mergedIntoGroupId === current.groupId &&
+        item.archivedAt.getTime() === current.joinedAt.getTime(),
+    )
+    if (previous === undefined) return current.joinedAt
+    seen.add(previous)
+    current = previous
+  }
+}
+
+/**
+ * Kursiyerlerin arşivlenmemiş kur kayıtları; grup ve kur adıyla, katılım sırasıyla. Başlangıç
+ * birleştirme zincirinden hesaplanır (`firstJoinedAt`).
+ */
 export async function loadEnrollmentsOfStudents(
   db: Database,
   institutionId: string,
   studentIds: readonly string[],
 ): Promise<CorporateEnrollmentRow[]> {
   if (studentIds.length === 0) return []
+  const [rows, merged] = await Promise.all([
+    loadCurrentEnrollments(db, institutionId, studentIds),
+    loadMergedMembers(db, institutionId, studentIds),
+  ])
+  return rows.map(({ groupId, joinedAt, ...row }) => {
+    const own = merged.filter((item) => item.studentId === row.studentId)
+    return { ...row, startedAt: firstJoinedAt({ groupId, joinedAt }, own) }
+  })
+}
+
+/** Birleştirilen (iptal edilmiş, `mergedIntoGroupId` dolu) gruplardaki arşivlenmiş kur kayıtları. */
+async function loadMergedMembers(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+): Promise<MergedMember[]> {
+  const rows = await db
+    .select({
+      studentId: languageGroupMembers.studentId,
+      groupId: languageGroupMembers.groupId,
+      joinedAt: languageGroupMembers.joinedAt,
+      archivedAt: languageGroupMembers.archivedAt,
+      mergedIntoGroupId: languageGroups.mergedIntoGroupId,
+    })
+    .from(languageGroupMembers)
+    .innerJoin(
+      languageGroups,
+      and(
+        eq(languageGroups.institutionId, languageGroupMembers.institutionId),
+        eq(languageGroups.id, languageGroupMembers.groupId),
+      ),
+    )
+    .where(
+      and(
+        eq(languageGroupMembers.institutionId, institutionId),
+        inArray(languageGroupMembers.studentId, [...studentIds]),
+        isNotNull(languageGroupMembers.archivedAt),
+        isNotNull(languageGroups.mergedIntoGroupId),
+      ),
+    )
+  return rows.flatMap(({ archivedAt, mergedIntoGroupId, ...row }) =>
+    archivedAt === null || mergedIntoGroupId === null
+      ? []
+      : [{ ...row, archivedAt, mergedIntoGroupId }],
+  )
+}
+
+function loadCurrentEnrollments(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+) {
   return db
     .select({
       enrollmentId: languageGroupMembers.id,
@@ -712,6 +837,8 @@ export async function loadEnrollmentsOfStudents(
       courseName: courses.name,
       level: courses.level,
       totalHours: courses.totalHours,
+      groupId: languageGroupMembers.groupId,
+      joinedAt: languageGroupMembers.joinedAt,
     })
     .from(languageGroupMembers)
     .innerJoin(

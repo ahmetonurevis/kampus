@@ -21,6 +21,7 @@ import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
 import { FinanceOpeningWatchSection } from './FinanceOpeningWatchSection.tsx'
 import { OPENING_WATCH_VIEW } from './finance-opening-watch.ts'
+import { ScholarshipFundsSection } from './ScholarshipFundsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { FinanceForecastSection } from './FinanceForecastSection.tsx'
@@ -48,6 +49,7 @@ const VIEWS = {
   courseOffers: { label: 'Kur yenileme', param: 'kur-yenileme' },
   corporate: { label: 'Kurumsal müşteriler', param: 'kurumsal' },
   scholarships: { label: 'Burslar', param: 'burs' },
+  scholarshipFunds: { label: 'Burs fonları', param: 'burs-fonu' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
@@ -172,6 +174,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
       ) : null}
+      {tab === 'scholarshipFunds' ? <ScholarshipFundsSection canManage={isManager} /> : null}
       {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
       {tab === 'referrals' ? <ReferralRewardsSection /> : null}
       {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}

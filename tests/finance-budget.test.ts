@@ -64,7 +64,7 @@ test('DOM-FIN-062: gelir kalemi ücret türüne eşlenir, gider kalemi eşlenmez
   )
 })
 
-test('DOM-FIN-062: kalem kodu tekil; ücret türüne tek etkin gelir kalemi (K-60)', () => {
+test('DOM-FIN-062: kalem kodu tekil; ücret türüne tek etkin gelir kalemi (K-65)', () => {
   assert.throws(
     () => planBudgetItem({ code: 'k1', name: 'Yeni', kind: 'income' }, [item(1)]),
     isDomainError('budget_item_code_taken', 'conflict'),
@@ -113,7 +113,7 @@ test('DOM-FIN-062: kullanılan kalemin türü değişmez; giderde ücret türü 
 
 // --- Dönem ---------------------------------------------------------------------------------------
 
-test('DOM-FIN-062: eğitim yılına bağlı dönem yılın günlerini kopyalar (K-58, IST-011)', () => {
+test('DOM-FIN-062: eğitim yılına bağlı dönem yılın günlerini kopyalar (K-63, IST-011)', () => {
   const plan = planBudgetPeriod(
     { name: '2026–2027 bütçesi', academicYear: 2026 },
     { periods: [], yearDates: () => ({ startDate: '2026-09-07', endDate: '2027-08-31' }) },
@@ -219,7 +219,7 @@ test('DOM-FIN-062: dönem günleri yalnız taslakta ve dağılımlı satır yokk
   )
 })
 
-test('DOM-FIN-062: taslak → açık → kapalı; açık dönemler örtüşmez (K-56, K-57)', () => {
+test('DOM-FIN-062: taslak → açık → kapalı; açık dönemler örtüşmez (K-61, K-62)', () => {
   const draft = period(1)
   assert.doesNotThrow(() => planBudgetPeriodOpen(draft, [draft, period(2)]))
   const openOther = period(2, { status: 'open', startDate: '2027-08-31', endDate: '2027-12-31' })
@@ -274,7 +274,7 @@ const lineContext: LineContext = {
   duplicate: false,
 }
 
-test('DOM-FIN-062: satır planlanan tutarı ve isteğe bağlı aylık dağılımı taşır (K-59)', () => {
+test('DOM-FIN-062: satır planlanan tutarı ve isteğe bağlı aylık dağılımı taşır (K-64)', () => {
   assert.deepEqual(planBudgetLine(lineInput, lineContext), { ...lineInput, monthlyCents: null })
   const monthly = evenMonthlySplit(1_200_000, 12)
   assert.deepEqual(

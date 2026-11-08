@@ -9,13 +9,13 @@ import { financeCodeSchema, financeNameSchema } from './finance-cost-centers.ts'
 /**
  * Bütçe dönemi, bütçe kalemi ve planlanan tutar (docs/domain/finans.md DOM-FIN-062; ON-241,
  * IST-011). Dönem taslak → açık → kapalı ilerler; kapalı dönemde hiçbir şey değişmez. Açık dönemler
- * örtüşmez (K-57). Tutar kuruş tamsayıdır; aylık dağılım isteğe bağlıdır ve toplamı tutara eşittir
- * (K-59). Toplamlar satırlardan hesaplanır, saklanmaz. Fonksiyonlar saftır; kayıtları servis yükler.
+ * örtüşmez (K-62). Tutar kuruş tamsayıdır; aylık dağılım isteğe bağlıdır ve toplamı tutara eşittir
+ * (K-64). Toplamlar satırlardan hesaplanır, saklanmaz. Fonksiyonlar saftır; kayıtları servis yükler.
  */
 
 /**
- * Bütçeyi yönetici yönetir (K-55). Muhasebe rolü açılınca (OG-110, DOM-FIN-057) bu listeye girer;
- * dönem açma ve kapama `BUDGET_STATUS_ROLES`'te yöneticide kalır (K-56).
+ * Bütçeyi yönetici yönetir (K-60). Muhasebe rolü açılınca (OG-110, DOM-FIN-057) bu listeye girer;
+ * dönem açma ve kapama `BUDGET_STATUS_ROLES`'te yöneticide kalır (K-61).
  */
 export const BUDGET_ROLES = ['yonetici'] as const
 export const BUDGET_STATUS_ROLES = ['yonetici'] as const
@@ -113,7 +113,7 @@ function assertItem(
     )
 }
 
-/** Yeni kalem planı (DOM-FIN-062, K-60); yeni kalem etkindir. */
+/** Yeni kalem planı (DOM-FIN-062, K-65); yeni kalem etkindir. */
 export function planBudgetItem(input: unknown, items: readonly BudgetItemNode[]): BudgetItemFields {
   const data = budgetItemSchema.parse(input)
   assertItem({ ...data, id: null, isActive: true }, items)
@@ -260,7 +260,7 @@ function assertNameFree(
 
 /**
  * Yeni dönem planı. `yearDates` eğitim yılına bağlı dönemde servisin bulduğu günlerdir (kurumun yıl
- * kaydı, yoksa 1 Eylül – 31 Ağustos; K-58); gün aralığıyla verilen dönemde kullanılmaz.
+ * kaydı, yoksa 1 Eylül – 31 Ağustos; K-63); gün aralığıyla verilen dönemde kullanılmaz.
  */
 export function planBudgetPeriod(
   input: unknown,
@@ -333,7 +333,7 @@ export function planBudgetPeriodUpdate(
 const overlaps = (a: BudgetPeriodDates, b: BudgetPeriodDates) =>
   a.startDate <= b.endDate && b.startDate <= a.endDate
 
-/** Taslak dönemi açar; açık dönemler örtüşmez (K-57). */
+/** Taslak dönemi açar; açık dönemler örtüşmez (K-62). */
 export function planBudgetPeriodOpen(
   period: BudgetPeriodNode,
   periods: readonly BudgetPeriodNode[],
@@ -350,7 +350,7 @@ export function planBudgetPeriodOpen(
     )
 }
 
-/** Açık dönemi kapatır; kapanış geri alınmaz (K-56). */
+/** Açık dönemi kapatır; kapanış geri alınmaz (K-61). */
 export function planBudgetPeriodClose(period: Pick<BudgetPeriodNode, 'status'>): void {
   if (period.status !== 'open')
     throw ruleError('budget_period_not_open', 'Yalnız açık dönem kapatılabilir.')
@@ -415,7 +415,7 @@ export const updateBudgetLineSchema = z
   .refine((value) => Object.keys(value).length > 0, 'Değiştirilecek bir alan girin.')
 export type UpdateBudgetLineInput = z.input<typeof updateBudgetLineSchema>
 
-/** Dağılım verilmişse dönemin her ayı için bir tutar ve toplam planlanan tutar (K-59). */
+/** Dağılım verilmişse dönemin her ayı için bir tutar ve toplam planlanan tutar (K-64). */
 function assertMonthly(
   amountCents: number,
   monthlyCents: readonly number[] | null,

@@ -6,7 +6,7 @@ import { DomainError } from './errors.ts'
 /**
  * Maliyet merkezi (docs/domain/finans.md DOM-FIN-062; ON-242, IST-010). Kurum gelir ve giderini
  * kampüs, birim ve program merkezleri üzerinden planlar. Merkez silinmez, pasifleştirilir;
- * hiyerarşi en çok `COST_CENTER_MAX_DEPTH` düzeydir (K-61). Fonksiyonlar saftır: kurumun bütün
+ * hiyerarşi en çok `COST_CENTER_MAX_DEPTH` düzeydir (K-66). Fonksiyonlar saftır: kurumun bütün
  * merkezleri, kampüs ve kur kimlikleri servisten gelir; karar burada verilir.
  */
 
@@ -19,7 +19,7 @@ export const COST_CENTER_TYPE_LABELS = {
   program: 'Program',
 } as const satisfies Record<CostCenterType, string>
 
-/** Kök merkez 1. düzeydir; en derin merkez 4. düzeyde olur (K-61). */
+/** Kök merkez 1. düzeydir; en derin merkez 4. düzeyde olur (K-66). */
 export const COST_CENTER_MAX_DEPTH = 4
 export const FINANCE_CODE_MAX = 20
 export const FINANCE_NAME_MAX = 120

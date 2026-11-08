@@ -5,6 +5,11 @@ import {
   BOARD_REPORT_AGING_BUCKETS,
   BOARD_REPORT_PERIOD_KINDS,
 } from '@kampus/school-core/lib/finance-board-report.ts'
+import {
+  BUDGET_ITEM_KINDS,
+  BUDGET_PERIOD_STATUSES,
+} from '@kampus/school-core/lib/finance-budget.ts'
+import { BUDGET_ACTUAL_BASES } from '@kampus/school-core/lib/finance-budget-actuals.ts'
 import { PAYMENT_METHODS } from '@kampus/school-core/lib/payments.ts'
 import { WITHDRAWAL_REASONS } from '@kampus/school-core/lib/withdrawals.ts'
 
@@ -34,6 +39,142 @@ const amounts = z.object({
   openDebtCents: cents().describe('Dönem sonunda vadesi gelmiş açık taksit tutarı'),
   creditCents: cents(),
 })
+
+const basisPoints = () => z.number().int().nullable().describe('On binde bir; payda sıfırsa `null`')
+
+const budgetPeriodOption = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(BUDGET_PERIOD_STATUSES),
+  startDate: z.string(),
+  endDate: z.string(),
+})
+
+const budgetTotals = z.object({
+  plannedCents: cents().describe('Dönem planı'),
+  plannedToDateCents: cents()
+    .nullable()
+    .describe('Bugüne kadarki ayların planı; dağılımsız satır varken dönem bitmediyse `null`'),
+  actualCents: cents().nullable().describe('Gerçekleşen; hesaplanmıyorsa (veri yok) `null`'),
+  varianceCents: cents().nullable().describe('Gerçekleşen − dönem planı'),
+  realizationBasisPoints: basisPoints().describe('Gerçekleşen ÷ dönem planı, on binde bir'),
+})
+
+const campusRow = z.object({
+  studentCount: z.number().int(),
+  accruedCents: cents(),
+  netCollectedCents: cents().describe('Tahsilat − iptal − iade'),
+  budgetExpenseCents: cents().describe('Bütçe gideri (ortak gider payı dahil)'),
+  accruedPerStudentCents: cents().nullable().describe('5 kişiden az ya da öğrencisiz `null`'),
+  budgetExpensePerStudentCents: cents()
+    .nullable()
+    .describe('Öğrenci başı maliyet; 5 kişiden az ya da öğrencisiz `null`'),
+  suppressed: z.boolean().describe('Küçük grup: öğrenci başı değer gizli (K-102)'),
+})
+
+const sections = {
+  budgetPeriods: z
+    .array(budgetPeriodOption)
+    .describe('Kurumun arşivlenmemiş bütçe dönemleri (seçim için), yeniden eskiye'),
+  budgetPeriod: budgetPeriodOption
+    .extend({
+      selection: z
+        .enum(['chosen', 'matched'])
+        .describe('`chosen`: `budgetPeriodId` ile seçildi; `matched`: rapor dönemine göre bulundu'),
+    })
+    .nullable()
+    .describe('Bütçe ve maliyet bölümlerinin dönemi; uyan dönem yoksa `null`'),
+  budget: z
+    .object({
+      basis: z.enum(BUDGET_ACTUAL_BASES),
+      asOfDate: z
+        .string()
+        .nullable()
+        .describe('Hareketlerin sayıldığı son gün; başlamadıysa `null`'),
+      expenseData: z
+        .enum(['none', 'available'])
+        .describe('`none`: gider gerçekleşeni kaynağı yok (veri yok)'),
+      income: budgetTotals.extend({
+        unmatchedCents: cents().nullable().describe('Kaleme eşlenmemiş gelir'),
+      }),
+      expense: budgetTotals,
+      net: z.object({ plannedCents: cents(), actualCents: cents().nullable() }),
+      topVariances: z
+        .array(
+          z.object({
+            itemCode: z.string(),
+            itemName: z.string(),
+            itemKind: z.enum(BUDGET_ITEM_KINDS),
+            plannedCents: cents(),
+            plannedToDateCents: cents().nullable(),
+            actualCents: cents(),
+            varianceCents: cents().describe('Gerçekleşen − karşılaştırma planı'),
+            realizationBasisPoints: basisPoints(),
+            comparedTo: z
+              .enum(['to_date', 'period'])
+              .describe('`to_date`: bugüne kadarki plan; `period`: dönem planı'),
+          }),
+        )
+        .describe('En çok sapan kalemler (merkezler toplanır), en çok 5'),
+    })
+    .nullable()
+    .describe('Bütçe–gerçekleşen özeti (DOM-FIN-066, tahakkuk esası); bütçe dönemi yoksa `null`'),
+  costs: z
+    .object({
+      from: z.string(),
+      to: z.string(),
+      minGroupSize: z.number().int(),
+      campuses: z.array(campusRow.extend({ campusId: z.string().nullable(), name: z.string() })),
+      totals: campusRow,
+    })
+    .nullable()
+    .describe(
+      'Kampüs konsolide özet ve öğrenci başı maliyet (DOM-FIN-065); bütçe dönemi yoksa `null`',
+    ),
+  forecast: z
+    .object({
+      today: z.string(),
+      revenue: z.object({
+        year: z.number().int().describe('Tahmin yılı: bugünün eğitim yılından sonraki yıl'),
+        committedCents: cents(),
+        newEnrollmentCents: cents(),
+        renewalCents: cents(),
+        pipelineNetCents: cents().nullable().describe('Huni beklentisi; huni yoksa `null`'),
+        pipelineStatus: z.enum(['included', 'crm_disabled', 'past_year']),
+        expectedTotalCents: cents(),
+        discountCents: cents(),
+        scholarshipCents: cents(),
+        tariffYear: z.number().int().nullable(),
+      }),
+      cashFlow: z.object({
+        from: z.string(),
+        to: z.string(),
+        months: z.array(
+          z.object({
+            month: z.string().describe('`YYYY-MM`'),
+            expectedInCents: cents().describe('Beklenen tahsilat + gecikmişten geç tahsil'),
+            refundCents: cents(),
+            expenseCents: cents().nullable().describe('Gider verisi yoksa `null`'),
+            netCents: cents(),
+            cumulativeNetCents: cents(),
+          }),
+        ),
+        totals: z.object({
+          scheduledCents: cents(),
+          expectedInCents: cents(),
+          atRiskCents: cents(),
+          refundCents: cents(),
+          expenseCents: cents().nullable(),
+          netCents: cents(),
+        }),
+        overdueOpenCents: cents(),
+        pendingRefundCents: cents(),
+        onTimeRateBasisPoints: z.number().int(),
+        expenseSource: z.enum(['manual', 'none']),
+      }),
+    })
+    .describe('Gelecek yıl gelir tahmini ve 12 aylık nakit akışı (DOM-FIN-063), bugün itibarıyla'),
+}
 
 export const boardReportResponseSchema = dataResponse(
   z.object({
@@ -139,5 +280,6 @@ export const boardReportResponseSchema = dataResponse(
       })
       .nullable()
       .describe('Dönemde açılan adayların hunisi (DOM-KAY-040); `crm` kapalıysa `null`'),
+    ...sections,
   }),
 )

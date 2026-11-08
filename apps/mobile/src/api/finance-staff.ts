@@ -219,7 +219,22 @@ export interface PaymentFailure {
   uncertain: boolean
   /** Taksit başkası tarafından ödendi: form geçersizdir, kapanır (liste kancada tazelenir). */
   alreadyPaid: boolean
+  /**
+   * Olası mükerrer (K-121, ON-332): aynı gün aynı tutarda ekstreden onaylanmış havale var. Hata
+   * değil uyarıdır; aynı yöntem, tutar ve günle ikinci gönderim `confirmDuplicate` taşır.
+   */
+  possibleDuplicate: boolean
 }
+
+const POSSIBLE_DUPLICATE_CODE = 'bank_match_possible_duplicate'
+
+/**
+ * Olası mükerrer uyarısının bağlı olduğu form değerleri (K-121): sunucu öğrenciye, yönteme, tutara
+ * ve güne bakar. Bunlardan biri değişince uyarı kalkar, gönderim yeniden denetlenir.
+ */
+export const paymentDuplicateKey = (
+  values: Pick<PaymentFormInput, 'method' | 'amount' | 'paidDate'>,
+): string => [values.method, values.amount.trim(), values.paidDate].join('|')
 
 export function paymentFailure(error: ApiError, collected: FieldErrors = {}): PaymentFailure {
   const failure = commandFailure(error, { invoice_already_paid: ALREADY_PAID_MESSAGE }, collected)
@@ -235,6 +250,7 @@ export function paymentFailure(error: ApiError, collected: FieldErrors = {}): Pa
     message: failure.message ?? unknown[0] ?? null,
     uncertain: keepsIdempotencyKey(error),
     alreadyPaid: error.code === 'invoice_already_paid',
+    possibleDuplicate: error.code === POSSIBLE_DUPLICATE_CODE,
   }
 }
 

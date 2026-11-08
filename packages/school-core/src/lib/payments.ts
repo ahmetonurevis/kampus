@@ -108,6 +108,9 @@ export const recordPaymentSchema = z.strictObject({
   paidDate: daySchema.optional(),
   invoiceId: requiredText.optional(),
   bankAccountId: requiredText.optional(),
+  // Olası mükerrer uyarısından (K-121, ters yön) sonra yetkilinin ayrı ödeme olduğunu açıkça
+  // onayladığı ikinci gönderim; yalnız banka havalesinde anlamlıdır, tahsilata yazılmaz.
+  confirmDuplicate: z.boolean().optional(),
 })
 export type RecordPaymentInput = z.input<typeof recordPaymentSchema>
 

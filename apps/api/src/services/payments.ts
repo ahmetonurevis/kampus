@@ -7,6 +7,7 @@ import {
 } from '@kampus/school-core/lib/finance-day-closings.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
+import { assertNoStatementDuplicate } from '@kampus/school-core/lib/finance-bank-matching.ts'
 import {
   assertMebbisChangeAllowed,
   bankAccountSchema,
@@ -39,7 +40,10 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
-import { reopenBankTransactionOfPayment } from '../db/finance-bank-transactions.ts'
+import {
+  reopenBankTransactionOfPayment,
+  statementPaymentCount,
+} from '../db/finance-bank-transactions.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -72,6 +76,7 @@ import { dayRange } from './list-filters.ts'
  */
 
 const SPEC = OPERATION_COMMANDS['invoice.pay']
+const BANK_TRANSFER: PaymentMethod = 'Banka havalesi'
 
 /**
  * Öğrencinin taksit ve sözleşmeleri (ADR 0010 karar 8, ölçüt 4; ON-046f). Tahsilat, iptal ve ayrılış
@@ -190,12 +195,20 @@ export function recordPaymentOperation(
         reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
       const accounts = await listBankAccounts(tx, ctx.institutionId)
       const bankAccountIds = accounts.map((account) => account.id)
+      const paidDay = data.paidDate ?? dayKey(ctx.now)
       // Kurum kilidi altında: kapanışla aynı anda güne tahsilat yazılamaz (DOM-FIN-036).
-      const dayClosed = await isFinanceDayClosed(
-        tx,
-        ctx.institutionId,
-        data.paidDate ?? dayKey(ctx.now),
-      )
+      const dayClosed = await isFinanceDayClosed(tx, ctx.institutionId, paidDay)
+      // Elle girilen havale (K-121, ters yön): kurum kilidi altında okunur; eşzamanlı ekstre onayı
+      // ya bunu görür ya da bu tahsilatı (possibleDuplicateCount). Ekstre onayı kendi denetimini
+      // `step` ile yapar.
+      const statementTwins =
+        step === undefined && data.method === BANK_TRANSFER
+          ? await statementPaymentCount(tx, ctx.institutionId, {
+              studentId: data.studentId,
+              amountCents: data.amountCents,
+              bookingDate: paidDay,
+            })
+          : 0
       return {
         scalars,
         run: (state, { now }) => {
@@ -205,7 +218,7 @@ export function recordPaymentOperation(
           })
           check?.()
           assertPaymentDayOpen(dayClosed)
-          return planPayment(state, data, {
+          const plan = planPayment(state, data, {
             allocated,
             cashEnabled,
             referenceInUse,
@@ -213,6 +226,9 @@ export function recordPaymentOperation(
             now,
             institutionType,
           })
+          // Uyarı yalnız başka engeli olmayan girişte çıkar; açık onaydan sonra yeni hata gelmez.
+          assertNoStatementDuplicate(statementTwins, data.confirmDuplicate === true)
+          return plan
         },
       }
     },

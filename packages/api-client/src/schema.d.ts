@@ -3295,7 +3295,7 @@ export interface paths {
         put?: never;
         /**
          * Tahsilat kaydet
-         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled`. Kurumda bildirilmiş hesap varsa nakit dışı tahsilat `bankAccountId` ister (422 `bank_account_required`), arşivli veya başka kurumun hesabı 422 `bank_account_invalid` (DOM-FIN-032). Senet hesaba bağlanmaz, `reference` senet numarasıdır; burslu öğrenciden 422 `scholarship_promissory_note` (DOM-FIN-025). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled`. Kurumda bildirilmiş hesap varsa nakit dışı tahsilat `bankAccountId` ister (422 `bank_account_required`), arşivli veya başka kurumun hesabı 422 `bank_account_invalid` (DOM-FIN-032). Senet hesaba bağlanmaz, `reference` senet numarasıdır; burslu öğrenciden 422 `scholarship_promissory_note` (DOM-FIN-025). İleri tarih 422 `payment_date_in_future`. Banka havalesinde öğrenciye aynı gün aynı tutarda banka ekstresinden onaylanmış etkin tahsilat varsa 409 `bank_match_possible_duplicate` (K-121, DOM-FIN-069); ayrı ödemeyse `confirmDuplicate: true` ile yeniden gönderilir, nakit, kart ve senet denetlenmez. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["recordPayment"];
         delete?: never;
@@ -38297,6 +38297,7 @@ export interface operations {
                     paidDate?: string;
                     invoiceId?: string;
                     bankAccountId?: string;
+                    confirmDuplicate?: boolean;
                 };
             };
         };

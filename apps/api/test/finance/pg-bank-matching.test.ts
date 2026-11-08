@@ -17,6 +17,7 @@ import { bankAccounts, paymentAllocations, payments } from '../../src/db/schema/
 import { AppError } from '../../src/errors.ts'
 import type { ServiceContext } from '../../src/plugins/authenticate.ts'
 import { matchBankTransactionCommand } from '../../src/services/finance-bank-matching.ts'
+import { recordPaymentCommand } from '../../src/services/payments.ts'
 import type { CommandResponse } from '../../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from '../support/app.ts'
 import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
@@ -26,7 +27,9 @@ import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
  * iki kişi aynı anda onaylarsa kurum kilidinde sıraya girer: biri tahsilat yazar, öteki 409 alır,
  * tek tahsilat ve tek dağılım kalır. Kurum kilidi atlansa da durum ve sürüm koşullu güncelleme
  * ikinci yazmayı durdurur. Aynı havalenin iki ikiz hareketi aynı anda aynı öğrenciye onaylanırsa
- * ikincisi kilit altında birincinin eşleşmesini görür ve olası mükerrer (K-121) alır.
+ * ikincisi kilit altında birincinin eşleşmesini görür ve olası mükerrer (K-121) alır. Aynı havale
+ * aynı anda hem elle tahsilat olarak girilip hem ekstreden onaylanırsa sonra gelen olası mükerrer
+ * alır (K-121, iki yön; ON-332).
  */
 
 const SEED = createSeed(FIXED_NOW)
@@ -244,6 +247,104 @@ describe('PostgreSQL 16: banka hareketi eşleştirme', { skip: PG_SKIP }, () => 
       .where(eq(bankTransactions.institutionId, ctx.institutionId))
     assert.deepEqual(statuses.map((row) => row.status).sort(), ['matched', 'unmatched'])
   })
+
+  /**
+   * Elle havale ve ekstre onayı kurum kilidinde sıraya girer; `first` kilit kuyruğuna önce girer
+   * (PostgreSQL bekleyen kilitleri geliş sırasıyla verir). Sonra gelen olası mükerrer alır.
+   */
+  async function manualAndStatementRace(first: 'manual' | 'statement') {
+    const { ctx, transactionId } = await setup()
+    // İkinci açık taksit: sonra gelen işlem "açık taksit yok" ile değil, mükerrer uyarısıyla durmalı.
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        {
+          collection: 'invoices',
+          id: 'test-pg-inv-2',
+          data: {
+            ...INVOICE,
+            id: 'test-pg-inv-2',
+            installment: 2,
+            dueDate: '2026-11-15T09:00:00.000Z',
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const [account] = await db
+      .select({ id: bankAccounts.id })
+      .from(bankAccounts)
+      .where(eq(bankAccounts.institutionId, ctx.institutionId))
+    assert.ok(account)
+    const commands = {
+      statement: () =>
+        matchBankTransactionCommand(
+          ctx,
+          transactionId,
+          { studentId: 's1', invoiceId: INVOICE.id },
+          1,
+          keyed(),
+        ),
+      manual: () =>
+        recordPaymentCommand(
+          ctx,
+          {
+            studentId: 's1',
+            amountCents: 1_000_000,
+            method: 'Banka havalesi',
+            reference: 'DEKONT-77',
+            paidDate: '2026-10-01',
+            bankAccountId: account.id,
+          },
+          { idempotency: keyed(), expectedVersion: null },
+        ),
+    }
+    const second = first === 'manual' ? 'statement' : 'manual'
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, ctx.institutionId)
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    const outcomes: Promise<CommandResponse>[] = []
+    try {
+      outcomes.push(commands[first]())
+      await untilLockWait('advisory', 1)
+      outcomes.push(commands[second]())
+      await untilLockWait('advisory', 2)
+    } finally {
+      release.open()
+      await holder
+    }
+    const [winner, loser] = await Promise.allSettled(outcomes)
+    assert.equal(winner?.status === 'fulfilled' ? winner.value.statusCode : winner?.reason, 201)
+    const reason: unknown = loser?.status === 'rejected' ? loser.reason : loser?.value
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 409 &&
+        reason.code === 'bank_match_possible_duplicate',
+      String(reason),
+    )
+    const [paid] = await db
+      .select({ n: count() })
+      .from(payments)
+      .where(eq(payments.institutionId, ctx.institutionId))
+    assert.equal(paid?.n, 1)
+    const [row] = await db
+      .select({ status: bankTransactions.status })
+      .from(bankTransactions)
+      .where(eq(bankTransactions.id, transactionId))
+    assert.equal(row?.status, first === 'statement' ? 'matched' : 'unmatched')
+  }
+
+  test('DOM-FIN-069, K-121: ekstre onayıyla eşzamanlı elle havale: onay 201, elle giriş 409 olası mükerrer; tek tahsilat (ON-332)', () =>
+    manualAndStatementRace('statement'))
+
+  test('DOM-FIN-069, K-121: elle havaleyle eşzamanlı ekstre onayı: elle giriş 201, onay 409 olası mükerrer; tek tahsilat (ON-332)', () =>
+    manualAndStatementRace('manual'))
 
   test('DOM-FIN-069: kilitsiz iki durum yazması: koşullu güncelleme ikinciyi durdurur', async () => {
     const { ctx, transactionId } = await setup()

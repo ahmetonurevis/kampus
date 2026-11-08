@@ -23,6 +23,7 @@ import {
   openAmount,
   paymentCommandFailure,
   paymentFacts,
+  paymentDuplicateKey,
   paymentFailure,
   paymentFormDefaults,
   paymentListItem,
@@ -230,6 +231,27 @@ describe('ON-123 mobil yönetici finans ve ön büro tahsilat takibi', () => {
     assert.equal(used.alreadyPaid, false)
     assert.equal(used.errors.reference, 'Bu işlem referansı daha önce kaydedilmiş.')
     assert.equal(used.message, null)
+  })
+
+  test('DOM-FIN-069, K-121 olası mükerrer uyarıdır: mesaj korunur, form kilitlenmez; yöntem/tutar/gün değişince anahtar değişir (ON-332)', () => {
+    const message =
+      'Bu kişiye aynı gün aynı tutarda banka ekstresinden onaylanmış bir havale tahsilatı var.'
+    const failure = paymentFailure(apiError(409, 'bank_match_possible_duplicate', message))
+    assert.equal(failure.possibleDuplicate, true)
+    assert.equal(failure.message, message)
+    assert.equal(failure.uncertain, false)
+    assert.equal(failure.alreadyPaid, false)
+    assert.equal(paymentFailure(apiError(409, 'payment_reference_used')).possibleDuplicate, false)
+    const values = {
+      method: 'Banka havalesi' as const,
+      amount: '24.500,00',
+      paidDate: '2026-10-01',
+    }
+    const key = paymentDuplicateKey(values)
+    assert.equal(paymentDuplicateKey({ ...values, amount: ' 24.500,00 ' }), key)
+    assert.notEqual(paymentDuplicateKey({ ...values, amount: '100' }), key)
+    assert.notEqual(paymentDuplicateKey({ ...values, method: 'Kredi kartı' }), key)
+    assert.notEqual(paymentDuplicateKey({ ...values, paidDate: '2026-10-02' }), key)
   })
 
   test('DOM-FIN-030 ağ ve 5xx belirsizdir: form kilitlenir, tutar alanına yazılan hata eşlenir', () => {

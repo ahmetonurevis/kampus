@@ -46,6 +46,24 @@ async function invoice(client: ApiClient, id: string): Promise<InvoiceRecord> {
 }
 
 /** Arayüzden geçmeden ödeme (başka bir kullanıcının aynı anda tahsilatı). */
+/**
+ * İadenin çıktığı kurum hesabı (M-13, DOM-FIN-032). Hesap tanımlı kurumda banka havalesi tahsilatı
+ * hesap ister; bu yüzden tahsilatlardan sonra, iade ödenmeden hemen önce eklenir. Kimliği döner.
+ */
+async function addRefundBankAccount(client: ApiClient): Promise<string> {
+  const account = await client.post(
+    '/api/v1/bank-accounts',
+    {
+      bankName: 'Örnek Bankası',
+      iban: 'TR320010009999901234567890',
+      accountHolder: 'Akademi Özel Okulları',
+    },
+    { 'idempotency-key': randomUUID() },
+  )
+  expect(account.status, 'kurum hesabı').toBe(201)
+  return (account.body as { data: { id: string } }).data.id
+}
+
 async function payThroughApi(client: ApiClient, id: string, method: string) {
   const record = await invoice(client, id)
   const response = await client.context.fetch('/api/v1/payments', {
@@ -862,21 +880,10 @@ test.describe('Finans: tahsilat', () => {
     await page.keyboard.press('Escape')
 
     // M-13: iade kurumun bildirilmiş hesabından ödenir; hesap tanımlıysa ilk hesap öntanımlıdır.
-    const account = await client.post(
-      '/api/v1/bank-accounts',
-      {
-        bankName: 'Örnek Bankası',
-        iban: 'TR320010009999901234567890',
-        accountHolder: 'Akademi Özel Okulları',
-      },
-      { 'idempotency-key': randomUUID() },
-    )
-    expect(account.status, 'kurum hesabı').toBe(201)
+    const accountId = await addRefundBankAccount(client)
     await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
     const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
-    await expect(refund.getByLabel('Kurum banka hesabı')).toHaveValue(
-      (account.body as { data: { id: string } }).data.id,
-    )
+    await expect(refund.getByLabel('Kurum banka hesabı')).toHaveValue(accountId)
     await refund.getByLabel('IBAN').fill('TR330006100519786457841326')
     await refund.getByLabel('Hesap sahibi').fill('Başka Kişi')
     await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
@@ -1050,6 +1057,7 @@ test.describe('Finans: tahsilat', () => {
     await expect(breakdown).toContainText('Tahsilat velinin hesabından yapıldı')
     await page.keyboard.press('Escape')
 
+    await addRefundBankAccount(client)
     await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
     const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
     await refund.getByLabel('IBAN').fill('TR330006100519786457841326')

@@ -353,6 +353,16 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Tanıma anı ve süresi dolan saatin gelire alınma kuralı rapor hesabında değişir; ekran ve CSV sütunları aynı kalır.
 - **Cevap:** bekleniyor
 
+#### M-13 · Ödenen iadenin gün sonu ve kapalı gün kuralı
+
+- **Kural:** `DOM-FIN-036`, `DOM-FIN-041`; IST-113, IST-110.
+- **Soru:** Ayrılış iadesi kurumdan çıkan paradır. Gün sonu raporu yöntem bazında yalnız tahsilat ve iptali özetliyor. Ödenen iade gün sonuna "iade ödemesi" satırıyla (banka çıkışı) girmeli mi; girerse kapatılmış güne geriye tarihli iade ödemesi de tahsilat gibi reddedilmeli mi? İade hangi kurum hesabından ödendiği kaydedilmeli mi?
+- **Bugünkü varsayım:** İade IBAN'a havaleyle ödenir; ödeme günü ayrılış gününden önce, bugünden sonra olamaz (ON-093), ama gün sonuna girmez ve kapalı güne de yazılabilir. Kurumun ödeme yaptığı hesap kaydedilmez.
+- **Kodda:** `planRefundPayment` (`lib/withdrawals.ts`), `POST /api/v1/withdrawals/:withdrawalId/pay-refund`; gün sonu `lib/finance-day-closings.ts`.
+- **Öneri:** İade ödemesine kurumun bildirilmiş banka hesabı seçilsin (`DOM-FIN-032`); gün sonu raporu banka yönteminde ayrı "iade ödemesi" adedi ve tutarı göstersin, net bundan düşsün; kapalı güne iade ödemesi `finance_day_closed` ile reddedilsin. Nakit iade kapsam dışı kalsın. Rapor damgası ve kapanış satırı yeni alanı taşıyacağı için migration gerekir.
+- **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
+- **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
+
 ## Kararlaştırılanlar
 
 Aşağıdakiler soru değildir; proje sahibinin kararıdır ve kural belgelerine "kullanıcı kararı" olarak işlenmiştir.

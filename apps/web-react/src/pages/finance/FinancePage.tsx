@@ -12,6 +12,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { CorporateCustomersSection } from './CorporateCustomersSection.tsx'
 import { CourseOffersSection } from './CourseOffersSection.tsx'
 import { EOzelSection } from './EOzelSection.tsx'
+import { FinanceBudgetSection } from './FinanceBudgetSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
@@ -47,6 +48,7 @@ const VIEWS = {
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
+  budget: { label: 'Bütçe', param: 'butce' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
 } as const
@@ -57,12 +59,12 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
 }))
 /**
  * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
- * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008), gelir ve nakit akışı tahmini yalnız
- * yöneticidedir (DOM-FIN-063): kapalı sekme gizlenir, adresi taksitlere düşer.
+ * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008), bütçe (DOM-FIN-062, K-60) ile gelir ve
+ * nakit akışı tahmini (DOM-FIN-063) yalnız yöneticidedir: kapalı sekme gizlenir, adresi taksitlere düşer.
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
-    if (value === 'forecast') return isManager
+    if (value === 'budget' || value === 'forecast') return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
@@ -176,6 +178,12 @@ export function FinancePage({ page }: { page: NavPage }) {
         <FinanceForecastSection
           enrollmentYear={session.institution.academicYear ?? Number(today.slice(0, 4))}
           institutionType={session.institution.type}
+        />
+      ) : null}
+      {tab === 'budget' ? (
+        <FinanceBudgetSection
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          institutionType={session?.institution?.type ?? 'school'}
         />
       ) : null}
       {tab === 'eOzel' ? (

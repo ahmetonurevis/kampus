@@ -124,7 +124,12 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
 
   const member = async (institutionId: string, role: Role) =>
     signInAs(app, await createMember(app, institutionId, role))
-  const entry = (cookie: string, t: Tenant, extra: Json = {}, headers = key()) =>
+  const entry = (
+    cookie: string,
+    t: Tenant,
+    extra: Json = {},
+    headers: Record<string, string> = key(),
+  ) =>
     call(
       'POST',
       ENTRIES,
@@ -139,7 +144,12 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
       },
       headers,
     )
-  const issue = (cookie: string, t: Tenant, extra: Json = {}, headers = key()) =>
+  const issue = (
+    cookie: string,
+    t: Tenant,
+    extra: Json = {},
+    headers: Record<string, string> = key(),
+  ) =>
     call(
       'POST',
       ISSUES,

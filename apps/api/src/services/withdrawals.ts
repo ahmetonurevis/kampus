@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { cancelledRenewalContractIds } from '@kampus/school-core/lib/finance-referrals.ts'
+import { cancelledRenewalScholarshipYears } from '@kampus/school-core/lib/finance-scholarships.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   planRefundPayment,
@@ -30,6 +31,7 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { applyWithdrawalToReferralRewards } from './finance-referrals.ts'
+import { archiveCancelledRenewalAwards } from './finance-scholarships.ts'
 import { notify } from './notify.ts'
 import {
   runCommand,
@@ -44,7 +46,8 @@ import { auditWork } from './task-work.ts'
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
  * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, kalan paket saatinin iade
- * hareketi, iade kaydı ve kimlik arşivi tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz;
+ * hareketi, iade kaydı, kimlik arşivi ve iptal edilen burslu yenilemenin burs ve fon payı (K-117)
+ * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz;
  * denetime yalnız alan adları düşer. İade ödendi bildirimi (`refund_paid`) ödemeyle aynı
  * transaction'dadır, yalnız ayrılış kimliğini taşır.
  */
@@ -229,7 +232,11 @@ export function withdrawStudentCommand(
               ...account,
               now,
             })
-            return { ...plan, cancelledContractIds: cancelledRenewalContractIds(state, studentId) }
+            return {
+              ...plan,
+              cancelledContractIds: cancelledRenewalContractIds(state, studentId),
+              cancelledScholarshipYears: cancelledRenewalScholarshipYears(state, studentId),
+            }
           },
         }
       },
@@ -253,6 +260,7 @@ export function withdrawStudentCommand(
         })
         await archiveStudentIdentity(tx, ctx.institutionId, plan.studentId, ctx.now)
         await applyWithdrawalToReferralRewards(tx, ctx, plan)
+        await archiveCancelledRenewalAwards(tx, ctx, plan.studentId, plan.cancelledScholarshipYears)
         await audit(tx, ctx, 'student.withdraw', id, [
           'withdrawalDate',
           'reason',

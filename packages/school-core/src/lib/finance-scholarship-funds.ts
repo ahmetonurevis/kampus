@@ -231,6 +231,49 @@ export function planScholarshipFundAllocationCancel(
   return data
 }
 
+/** Burs ataması kendiliğinden değişince fondan karşılanan payın sistem gerekçesi (K-117). */
+export const SCHOLARSHIP_FUND_RELEASE_REASONS = {
+  renewal_cancelled:
+    'Burs ataması arşivlendi: öğrenci ayrıldı, burslu yenileme iptal edildi (sistem).',
+} as const
+export type ScholarshipFundReleaseCause = keyof typeof SCHOLARSHIP_FUND_RELEASE_REASONS
+
+/** Bursun bir fondaki ataması; `fundClosedAt` atamanın fonunun kapanış anıdır. */
+export interface ReleasableFundAllocation {
+  id: string
+  amountCents: number
+  allocatedOn: string
+  createdAt: string
+  cancelledAt: string | null
+  fundClosedAt: string | null
+}
+
+/**
+ * Burs ataması arşivlenince ya da tutarı düşünce fondan karşılanan payın hangi atamalarla bırakılacağı
+ * (K-117…K-119). Geçerli atamaların toplamı `keepCents`'i (arşivde 0, azaltmada yeni burs tutarı)
+ * aşmayana dek en yeni atamadan başlayarak iptal edilir; atama bölünmez, açılan pay elle yeniden
+ * atanır. Kapalı fondaki atama iptal edilmez: kapanış sıfır bakiyeyle kesinleşmiştir (K-97, K-118);
+ * toplama yine girer. Dönen atamalar iptal sırasıdır.
+ */
+export function planAwardFundRelease<T extends ReleasableFundAllocation>(
+  allocations: readonly T[],
+  keepCents: number,
+): T[] {
+  const live = allocations.filter((row) => row.cancelledAt === null)
+  let covered = live.reduce((total, row) => total + row.amountCents, 0)
+  const newestFirst = live
+    .filter((row) => row.fundClosedAt === null)
+    .map((row) => ({ row, key: `${row.allocatedOn}|${row.createdAt}|${row.id}` }))
+    .sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0))
+  const released: T[] = []
+  for (const { row } of newestFirst) {
+    if (covered <= Math.max(0, keepCents)) break
+    released.push(row)
+    covered -= row.amountCents
+  }
+  return released
+}
+
 /** Bağış iptali bakiyeyi eksiye düşürecekse reddedilir; önce atama iptal edilir (K-97). */
 export function planScholarshipFundDonationCancel(
   donation: { cancelledAt: string | null; amountCents: number },

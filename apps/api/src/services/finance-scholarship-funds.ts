@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
+  planAwardFundRelease,
   planScholarshipFundAllocation,
   planScholarshipFundAllocationCancel,
   planScholarshipFundClose,
@@ -9,10 +10,12 @@ import {
   planScholarshipFundDonation,
   planScholarshipFundDonationCancel,
   SCHOLARSHIP_FUND_NAME_ROLES,
+  SCHOLARSHIP_FUND_RELEASE_REASONS,
   scholarshipFundAllocationSchema,
   scholarshipFundCsv,
   scholarshipFundMovements,
   scholarshipFundTotals,
+  type ScholarshipFundReleaseCause,
   type ScholarshipFundStatus,
 } from '@kampus/school-core/lib/finance-scholarship-funds.ts'
 
@@ -28,6 +31,7 @@ import {
   insertFundDonation,
   insertScholarshipFund,
   listScholarshipFunds,
+  loadAwardFundAllocations,
   loadFundAllocations,
   loadFundDonations,
   openScholarshipFundNames,
@@ -342,6 +346,47 @@ export function cancelScholarshipFundAllocationCommand(
     () => ({ statusCode: 200, body }),
     idempotency,
   )
+}
+
+/**
+ * Burs ataması arşivlenince ya da tutarı düşünce fondan karşılanan payı bırakır (K-117…K-119).
+ * Çağıran komutun transaction'ında ve kurum kilidi altında çalışır: bursun atamaları okunur, core
+ * hangi atamaların iptal edileceğine karar verir, her iptal sürüm koşuluyla sistem gerekçesi ve
+ * çağıranın kullanıcısıyla yazılır, denetime alan adları düşer. Kapalı fondaki atama kalır (K-118).
+ * İptal edilen atama kimliklerini döndürür.
+ */
+export async function releaseAwardFundAllocations(
+  tx: Database,
+  ctx: ServiceContext,
+  awards: readonly { awardId: string; keepCents: number }[],
+  cause: ScholarshipFundReleaseCause,
+): Promise<string[]> {
+  const rows = await loadAwardFundAllocations(
+    tx,
+    ctx.institutionId,
+    awards.map((award) => award.awardId),
+  )
+  const released: string[] = []
+  for (const { awardId, keepCents } of awards) {
+    const own = rows.filter((row) => row.awardId === awardId)
+    for (const { id, version } of planAwardFundRelease(own, keepCents)) {
+      const saved = await cancelFundAllocation(tx, ctx.institutionId, {
+        id,
+        expectedVersion: version,
+        userId: ctx.actor.userId,
+        reason: SCHOLARSHIP_FUND_RELEASE_REASONS[cause],
+        now: ctx.now,
+      })
+      // Kurum kilidi altında okunan satır değişmiş olamaz; olduysa işlem bütünüyle geri alınır.
+      if (!saved) throw new ConflictError()
+      await auditWork(tx, ctx, 'scholarship_fund.allocation_release', { type: ALLOCATION, id }, [
+        'cancelledAt',
+        'cancelReason',
+      ])
+      released.push(id)
+    }
+  }
+  return released
 }
 
 /** Fon yalnız sıfır bakiyede kapanır; kapalı fona bağış ve atama yapılmaz (K-97). */

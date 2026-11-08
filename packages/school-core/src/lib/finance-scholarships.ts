@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { daySchema } from './domain.ts'
 import { learnerWords } from './enrollment-learner.ts'
@@ -155,4 +156,25 @@ export function requireAwardableProgram(
       path,
     })
   return program
+}
+
+/**
+ * Ayrılışla iptal edilen burslu yenilemelerin eğitim yılları (K-117): o yılların bursu yürürlüğe
+ * girmez, servis atamayı arşivler ve fondan karşılanan payı bırakır. Öğrenci yılda en çok bir burs
+ * aldığından yıl atamayı belirler; bursu olmayan yenileme ve süren yılın bursu dokunulmaz.
+ * `withdrawStudent` sonrasındaki State'le çağrılır.
+ */
+export function cancelledRenewalScholarshipYears(
+  state: Pick<State, 'renewals'>,
+  studentId: string,
+): number[] {
+  return [
+    ...new Set(
+      state.renewals.flatMap((item) =>
+        item.studentId === studentId && item.status === 'İptal' && item.pricing?.scholarship
+          ? [item.year]
+          : [],
+      ),
+    ),
+  ]
 }

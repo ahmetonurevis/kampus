@@ -10,6 +10,7 @@ import {
 
 import type { Database } from '../db/client.ts'
 import {
+  archiveStudentScholarshipAwards,
   findScholarshipAward,
   findScholarshipProgram,
   insertScholarshipProgram,
@@ -21,6 +22,7 @@ import {
 } from '../db/finance-scholarships.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { releaseAwardFundAllocations } from './finance-scholarship-funds.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -163,5 +165,31 @@ export function recordScholarshipMebbisCommand(
     },
     () => ({ statusCode: 200, body }),
     idempotency,
+  )
+}
+
+/**
+ * Ayrılışla iptal edilen burslu yenilemelerin atamalarını arşivler ve fondan karşılanan paylarını
+ * bırakır (K-117; DOM-FIN-025, DOM-FIN-068). Ayrılış komutunun transaction'ında, kurum kilidi
+ * altında çalışır; süren yılın bursu ve fon payı kalır.
+ */
+export async function archiveCancelledRenewalAwards(
+  tx: Database,
+  ctx: ServiceContext,
+  studentId: string,
+  academicYears: readonly number[],
+): Promise<void> {
+  const archived = await archiveStudentScholarshipAwards(tx, ctx.institutionId, {
+    studentId,
+    academicYears,
+    now: ctx.now,
+  })
+  for (const id of archived)
+    await auditWork(tx, ctx, 'scholarship.award_archive', { type: AWARD, id }, ['archivedAt'])
+  await releaseAwardFundAllocations(
+    tx,
+    ctx,
+    archived.map((awardId) => ({ awardId, keepCents: 0 })),
+    'renewal_cancelled',
   )
 }

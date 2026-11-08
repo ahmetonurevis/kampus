@@ -16,6 +16,7 @@ import {
   scholarshipFundAllocations,
   scholarshipFundDonations,
 } from '../../src/db/schema/finance-scholarship-funds.ts'
+import { scholarshipAwards } from '../../src/db/schema/finance-scholarships.ts'
 import { AppError } from '../../src/errors.ts'
 import type { ServiceContext } from '../../src/plugins/authenticate.ts'
 import {
@@ -24,6 +25,7 @@ import {
   createScholarshipFundCommand,
   donateToScholarshipFundCommand,
 } from '../../src/services/finance-scholarship-funds.ts'
+import { archiveCancelledRenewalAwards } from '../../src/services/finance-scholarships.ts'
 import type { CommandResponse } from '../../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from '../support/app.ts'
 import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
@@ -238,5 +240,42 @@ describe('PostgreSQL 16: burs fonu bakiyesi', { skip: PG_SKIP }, () => {
         ),
       )
     assert.ok((donated?.total ?? 0) - allocated >= 0)
+  })
+
+  test('DOM-FIN-068, K-117: burs arşivi ile fondan atama yarışında arşivli bursa geçerli atama kalmaz', async () => {
+    for (const archiveFirst of [true, false]) {
+      const { ctx, fundId, awards } = await setup(1_000_000)
+      const awardId = awards[0] ?? ''
+      // Ayrılış komutunun yazma adımı: kurum kilidi altında arşiv ve fon payının bırakılması.
+      const archive = async (): Promise<CommandResponse> => {
+        await db.transaction(async (tx) => {
+          await lockInstitution(tx, ctx.institutionId)
+          await archiveCancelledRenewalAwards(tx, { ...ctx, db: tx }, 'test-s1', [2026])
+        })
+        return { statusCode: 200, body: null, replayed: false } as CommandResponse
+      }
+      const allocate = () =>
+        allocateFromScholarshipFundCommand(ctx, fundId, { awardId, amountCents: 600_000 }, keyed())
+      const settled = await race(ctx, archiveFirst ? [archive, allocate] : [allocate, archive])
+      const [award] = await db
+        .select({ archivedAt: scholarshipAwards.archivedAt })
+        .from(scholarshipAwards)
+        .where(
+          and(
+            eq(scholarshipAwards.institutionId, ctx.institutionId),
+            eq(scholarshipAwards.id, awardId),
+          ),
+        )
+      assert.notEqual(award?.archivedAt, null)
+      // Hangi istek önce kilidi alırsa alsın arşivli bursun geçerli ataması yoktur ve bakiye tamdır.
+      assert.deepEqual(await activeAllocations(ctx.institutionId), [])
+      const failed = settled.filter((item) => item.status === 'rejected')
+      assert.ok(failed.length <= 1)
+      if (failed[0]?.status === 'rejected')
+        assert.ok(
+          failed[0].reason instanceof AppError && failed[0].reason.statusCode === 404,
+          String(failed[0].reason),
+        )
+    }
   })
 })

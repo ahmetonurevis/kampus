@@ -88488,6 +88488,596 @@
         }
       }
     },
+    "/api/v1/finance/opening-watch": {
+      "get": {
+        "operationId": "getFinanceOpeningWatch",
+        "summary": "Açılış nöbeti: ilk taksitler, onaysız sözleşmeler, kayıt değişiklikleri, iadeler",
+        "tags": [
+          "finance-opening-watch"
+        ],
+        "description": "Yeni öğretim yılı ya da dönem açılışında izlenecekler (DOM-FIN-061). `firstInstallments`: seçilen yılın sözleşme zinciri başına en küçük numaralı güncel taksiti; kalanı olan ve vadesi geçmiş ya da 7 gün içinde gelecek olanlar (kısmi ödeme düşülür). `unapprovedContracts`: seçilen yılın kurum imzası ya da ödeyici onayı bekleyen sürümleri (ek protokol dahil; ayrılan öğrenci hariç). `enrollmentChanges`: pencereye düşen kesin kayıt, yenileme planı, dönem geçişi, mezuniyet ve ayrılış (DOM-KAY-026); yenileme modülü kapalıysa geçiş olayı yoktur (`renewalModule`). `refunds`: pencereden bağımsız ödenmemiş bütün ayrılış iadeleri. Her bölüm sayılarla birlikte en çok 20 satır döner. `academicYear` verilmezse kurumun etkin yılı; pencere yıl (ya da `termId` dönemi) başlangıcından 30 gün önce ile 41 gün sonrası arasıdır, `from`/`to` birlikte verilirse onlar (yalnız biri 400). Ters pencere 422 `opening_window_invalid`, 120 günü aşan 422 `opening_window_too_long`, yılda olmayan dönem 422 `opening_term_not_found`. Hiçbir şey yazmaz. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Eğitim yılının başlangıç yılı (2026 → 2026–2027); verilmezse kurumun etkin yılı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "description": "Dönem kimliği: pencere dönemin başlangıç gününe göre kurulur"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Pencere başlangıcı (YYYY-MM-DD)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Pencere bitişi (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "today": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "anchorDate": {
+                          "type": "string",
+                          "description": "Pencerenin dayandığı yıl ya da dönem başlangıç günü"
+                        },
+                        "termId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terms": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Seçilen yılın dönemleri (başlangıç sırasıyla)"
+                        },
+                        "renewalModule": {
+                          "type": "boolean",
+                          "description": "Yenileme modülü açık mı; kapalıysa geçiş olayı yoktur"
+                        },
+                        "firstInstallments": {
+                          "type": "object",
+                          "properties": {
+                            "overdueCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "overdueCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "dueSoonCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "dueSoonCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "studentId": {
+                                    "type": "string"
+                                  },
+                                  "studentName": {
+                                    "type": "string",
+                                    "description": "Öğrenci ya da kursiyer adı; kayıt yoksa \"—\""
+                                  },
+                                  "className": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "contractId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "installment": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "dueDate": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "remainingCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kısmi ödeme düşülmüş kalan (DOM-FIN-030)"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "overdue",
+                                      "due_soon"
+                                    ]
+                                  },
+                                  "overdueDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Vadeden sonraki ilk günden sayılan gecikme; yoksa 0"
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "studentId",
+                                  "studentName",
+                                  "className",
+                                  "contractId",
+                                  "installment",
+                                  "dueDate",
+                                  "amountCents",
+                                  "remainingCents",
+                                  "status",
+                                  "overdueDays"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "overdueCount",
+                            "overdueCents",
+                            "dueSoonCount",
+                            "dueSoonCents",
+                            "rows"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "unapprovedContracts": {
+                          "type": "object",
+                          "properties": {
+                            "awaitingSignatoryCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "awaitingApprovalCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "studentId": {
+                                    "type": "string"
+                                  },
+                                  "studentName": {
+                                    "type": "string",
+                                    "description": "Öğrenci ya da kursiyer adı; kayıt yoksa \"—\""
+                                  },
+                                  "className": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "awaiting_signatory",
+                                      "awaiting_approval"
+                                    ]
+                                  },
+                                  "revision": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "contractAt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "studentId",
+                                  "studentName",
+                                  "className",
+                                  "status",
+                                  "revision",
+                                  "contractAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "awaitingSignatoryCount",
+                            "awaitingApprovalCount",
+                            "rows"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "enrollmentChanges": {
+                          "type": "object",
+                          "properties": {
+                            "counts": {
+                              "type": "object",
+                              "properties": {
+                                "enrolled": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "renewed": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "promoted": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "graduated": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "withdrawn": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "enrolled",
+                                "renewed",
+                                "promoted",
+                                "graduated",
+                                "withdrawn"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "withdrawnWithoutRenewal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "enrolled",
+                                      "renewed",
+                                      "promoted",
+                                      "graduated",
+                                      "withdrawn"
+                                    ]
+                                  },
+                                  "date": {
+                                    "type": "string"
+                                  },
+                                  "studentId": {
+                                    "type": "string"
+                                  },
+                                  "studentName": {
+                                    "type": "string",
+                                    "description": "Öğrenci ya da kursiyer adı; kayıt yoksa \"—\""
+                                  },
+                                  "fromClassName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "toClassName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "withoutRenewal": {
+                                    "type": "boolean",
+                                    "description": "Ayrılışta: seçilen yıla yenileme hiç planlanmamış"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "date",
+                                  "studentId",
+                                  "studentName",
+                                  "fromClassName",
+                                  "toClassName",
+                                  "withoutRenewal"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "counts",
+                            "withdrawnWithoutRenewal",
+                            "rows"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "refunds": {
+                          "type": "object",
+                          "properties": {
+                            "pendingCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "pendingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "overdueCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "overdueCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "withdrawalId": {
+                                    "type": "string"
+                                  },
+                                  "studentId": {
+                                    "type": "string"
+                                  },
+                                  "studentName": {
+                                    "type": "string",
+                                    "description": "Öğrenci ya da kursiyer adı; kayıt yoksa \"—\""
+                                  },
+                                  "withdrawalDate": {
+                                    "type": "string"
+                                  },
+                                  "refundCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "refundDueDate": {
+                                    "type": "string"
+                                  },
+                                  "overdueDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "withdrawalId",
+                                  "studentId",
+                                  "studentName",
+                                  "withdrawalDate",
+                                  "refundCents",
+                                  "refundDueDate",
+                                  "overdueDays"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "pendingCount",
+                            "pendingCents",
+                            "overdueCount",
+                            "overdueCents",
+                            "rows"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "academicYear",
+                        "today",
+                        "from",
+                        "to",
+                        "anchorDate",
+                        "termId",
+                        "terms",
+                        "renewalModule",
+                        "firstInstallments",
+                        "unapprovedContracts",
+                        "enrollmentChanges",
+                        "refunds"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

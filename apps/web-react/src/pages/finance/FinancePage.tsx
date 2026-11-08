@@ -15,6 +15,8 @@ import { EOzelSection } from './EOzelSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
+import { FinanceOpeningWatchSection } from './FinanceOpeningWatchSection.tsx'
+import { OPENING_WATCH_VIEW } from './finance-opening-watch.ts'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { InstallmentImportSection } from './InstallmentImportSection.tsx'
@@ -32,6 +34,7 @@ import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
+  openingWatch: { label: 'Açılış nöbeti', param: OPENING_WATCH_VIEW },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
   dayClosing: { label: 'Gün sonu', param: 'gunsonu' },
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
@@ -129,6 +132,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           )
         }
       />
+      {tab === 'openingWatch' ? <FinanceOpeningWatchSection onOpenInvoice={openInvoice} /> : null}
       {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
       {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
       {tab === 'contracts' ? <ContractsSection /> : null}

@@ -24,9 +24,9 @@ import { dayKey } from './format.ts'
  * da bütçe döneminde açılan siparişlerin (DOM-FIN-073) tutarı tedarikçi kategorisi, tedarikçi,
  * maliyet merkezi ve gider kalemi bazında toplanır; iptal edilen sipariş tutara girmez, ayrıca
  * sayılır. Talepten siparişe ortalama süre ve en çok harcama yapılan tedarikçiler verilir. Salt okur
- * hesaptır, hiçbir şey saklanmaz; tutarlar kuruş, paylar on binde birdir. Kabul edilen (ON-226),
- * faturalanan ve ödenen (ON-143) tutar sütunları o kayıtlar gelince eklenir; sipariş tutarı aynı
- * kalır. Fonksiyonlar saftır.
+ * hesaptır, hiçbir şey saklanmaz; tutarlar kuruş, paylar on binde birdir. Her kırılımda siparişin
+ * teslim alınan (mal kabul, KDV hariç), faturalanan (KDV dahil), ödenen ve açık tutarı da verilir;
+ * siparişe bağlı olmayan faturalar ayrı satırdadır (ON-336, K-195…K-199). Fonksiyonlar saftır.
  */
 
 /** Raporu okuyan roller: bütçeyi gören rol (K-155; bugün yalnız yönetici, muhasebe açılınca o da). */
@@ -142,17 +142,69 @@ export interface PurchaseReportRef {
   isActive: boolean
 }
 
+/**
+ * Mal kabul kalemi (DOM-FIN-074): kabul edilen miktar × siparişin KDV hariç birim fiyatı teslim
+ * alınan tutardır (K-151 gerçekleşen tanımı); iptal edilen kabul sayılmaz.
+ */
+export interface PurchaseReportReceiptLine {
+  orderId: string
+  /** Kabulün iptal anı; iptal edilmişse boş değildir. */
+  cancelledAt: string | null
+  acceptedQuantity: number
+  unitPriceCents: number
+}
+
+/** Tedarikçi faturası (DOM-FIN-076); tutar KDV dahildir. */
+export interface PurchaseReportInvoice {
+  id: string
+  supplierId: string
+  /** Bağlı sipariş; siparişsiz faturada boş. */
+  purchaseOrderId: string | null
+  invoiceDate: string
+  grossCents: number
+  cancelledAt: string | null
+}
+
+/** Tedarikçi ödemesi (DOM-FIN-076); iptal edilen ödeme sayılmaz. */
+export interface PurchaseReportPayment {
+  invoiceId: string
+  amountCents: number
+  cancelledAt: string | null
+}
+
 export interface PurchaseReportInput {
   scope: PurchaseReportScope
   orders: readonly PurchaseReportOrder[]
   suppliers: readonly PurchaseReportSupplier[]
   costCenters: readonly PurchaseReportRef[]
   budgetItems: readonly PurchaseReportRef[]
+  /** Kapsamdaki siparişlerin kabul kalemleri; kabul günü süzülmez (K-196). */
+  receiptLines: readonly PurchaseReportReceiptLine[]
+  /** Kapsamdaki siparişlere bağlı faturalar ve siparişsiz faturalar (K-196, K-197). */
+  invoices: readonly PurchaseReportInvoice[]
+  /** Bu faturaların ödemeleri; ödeme günü süzülmez (K-196). */
+  payments: readonly PurchaseReportPayment[]
+  /**
+   * Siparişsiz faturanın fatura tarihi bu günler arasında olmalıdır: aralıkta seçilen günler,
+   * bütçe döneminde dönemin başlangıç ve bitiş günü (K-197).
+   */
+  invoiceDays: { from: string; to: string }
 }
 
 // --- Çıktı ---------------------------------------------------------------------------------------
 
-export interface PurchaseAmounts extends AmountTotals {
+/**
+ * Siparişin teslim, fatura ve ödeme durumu (K-195). Teslim alınan KDV hariçtir (mal kabuldeki
+ * gerçekleşen); faturalanan, ödenen ve açık KDV dahildir. Açık = faturalanan − ödenen.
+ */
+export interface PurchaseSettlement {
+  receivedNetCents: number
+  invoicedGrossCents: number
+  paidCents: number
+  openCents: number
+}
+
+export interface PurchaseAmounts extends AmountTotals, PurchaseSettlement {
   orderCount: number
 }
 
@@ -192,9 +244,24 @@ export interface PurchaseLeadTime {
   maxDays: number | null
 }
 
+/** Siparişe bağlı olmayan etkin faturalar (K-197); toplamlara ve kırılımlara girmez. */
+export interface PurchaseUnlinkedInvoices {
+  invoiceCount: number
+  invoicedGrossCents: number
+  paidCents: number
+  openCents: number
+}
+
 export interface PurchaseReport {
   totals: PurchaseAmounts & { supplierCount: number }
-  cancelled: { orderCount: number; grossCents: number }
+  /** İptal edilen siparişler; bağlı faturaları ve ödemeleri de burada, toplamlara girmez (K-198). */
+  cancelled: {
+    orderCount: number
+    grossCents: number
+    invoicedGrossCents: number
+    paidCents: number
+  }
+  unlinkedInvoices: PurchaseUnlinkedInvoices
   leadTime: PurchaseLeadTime
   categories: PurchaseCategoryRow[]
   suppliers: PurchaseSupplierRow[]
@@ -205,18 +272,85 @@ export interface PurchaseReport {
 
 // --- Hesap ---------------------------------------------------------------------------------------
 
+const emptySettlement = (): PurchaseSettlement => ({
+  receivedNetCents: 0,
+  invoicedGrossCents: 0,
+  paidCents: 0,
+  openCents: 0,
+})
+
 const emptyAmounts = (): PurchaseAmounts => ({
   orderCount: 0,
   netCents: 0,
   vatCents: 0,
   grossCents: 0,
+  ...emptySettlement(),
 })
 
-function addTo(target: PurchaseAmounts, amounts: AmountTotals) {
+function addTo(target: PurchaseAmounts, amounts: AmountTotals, settlement: PurchaseSettlement) {
   target.orderCount += 1
   target.netCents += amounts.netCents
   target.vatCents += amounts.vatCents
   target.grossCents += amounts.grossCents
+  target.receivedNetCents += settlement.receivedNetCents
+  target.invoicedGrossCents += settlement.invoicedGrossCents
+  target.paidCents += settlement.paidCents
+  target.openCents += settlement.openCents
+}
+
+const sumBy = <K>(map: Map<K, number>, key: K, cents: number) =>
+  map.set(key, (map.get(key) ?? 0) + cents)
+
+/**
+ * Sipariş başına teslim, fatura ve ödeme (K-195, K-196): iptal edilmemiş kabullerin kabul edilen
+ * miktarı × KDV hariç birim fiyat; iptal edilmemiş bağlı faturaların KDV dahil toplamı; o faturalara
+ * yapılan iptal edilmemiş ödemeler. Siparişsiz faturalar ayrıca döner (K-197).
+ */
+function settlements(input: PurchaseReportInput) {
+  const received = new Map<string, number>()
+  for (const line of input.receiptLines)
+    if (line.cancelledAt === null)
+      sumBy(received, line.orderId, line.acceptedQuantity * line.unitPriceCents)
+  const paidByInvoice = new Map<string, number>()
+  for (const payment of input.payments)
+    if (payment.cancelledAt === null) sumBy(paidByInvoice, payment.invoiceId, payment.amountCents)
+  const invoiced = new Map<string, number>()
+  const paid = new Map<string, number>()
+  const unlinked: PurchaseUnlinkedInvoices = {
+    invoiceCount: 0,
+    invoicedGrossCents: 0,
+    paidCents: 0,
+    openCents: 0,
+  }
+  for (const invoice of input.invoices) {
+    if (invoice.cancelledAt !== null) continue
+    const invoicePaid = paidByInvoice.get(invoice.id) ?? 0
+    if (invoice.purchaseOrderId === null) {
+      if (
+        invoice.invoiceDate < input.invoiceDays.from ||
+        invoice.invoiceDate > input.invoiceDays.to
+      )
+        continue
+      unlinked.invoiceCount += 1
+      unlinked.invoicedGrossCents += invoice.grossCents
+      unlinked.paidCents += invoicePaid
+      continue
+    }
+    sumBy(invoiced, invoice.purchaseOrderId, invoice.grossCents)
+    sumBy(paid, invoice.purchaseOrderId, invoicePaid)
+  }
+  unlinked.openCents = unlinked.invoicedGrossCents - unlinked.paidCents
+  const forOrder = (orderId: string): PurchaseSettlement => {
+    const invoicedGrossCents = invoiced.get(orderId) ?? 0
+    const paidCents = paid.get(orderId) ?? 0
+    return {
+      receivedNetCents: received.get(orderId) ?? 0,
+      invoicedGrossCents,
+      paidCents,
+      openCents: invoicedGrossCents - paidCents,
+    }
+  }
+  return { forOrder, unlinked }
 }
 
 /** Pay on binde birdir; yarım yukarı yuvarlanır. */
@@ -279,12 +413,14 @@ function refRows(
  * Satın alma raporu (DOM-FIN-075). Kapsamdaki siparişlerden iptal edilmeyenler toplanır (taslak
  * dahil, K-156); sipariş tutarı kalemlerden `DOM-FIN-072` kuralıyla hesaplanır. Çok kategorili
  * tedarikçinin siparişi her kategorisinde sayılır: kategori satırlarının toplamı genel toplamı
- * aşabilir (K-157). Tedarikçi adı ve kategorileri tedarikçinin güncel kaydındandır.
+ * aşabilir (K-157). Tedarikçi adı ve kategorileri tedarikçinin güncel kaydındandır. Teslim, fatura
+ * ve ödeme kapsamdaki siparişlerindir; kabul, fatura ve ödeme günü ayrıca süzülmez (K-195, K-196).
  */
 export function purchaseReport(input: PurchaseReportInput): PurchaseReport {
   const suppliers = new Map(input.suppliers.map((supplier) => [supplier.id, supplier]))
   const totals = emptyAmounts()
-  const cancelled = { orderCount: 0, grossCents: 0 }
+  const cancelled = { orderCount: 0, grossCents: 0, invoicedGrossCents: 0, paidCents: 0 }
+  const { forOrder, unlinked } = settlements(input)
   const bySupplier = new Map<string, PurchaseAmounts & { leadDays: number }>()
   const byCategory = new Map<SupplierCategory, PurchaseAmounts & { suppliers: Set<string> }>()
   const byCenter = new Map<string, PurchaseAmounts>()
@@ -294,32 +430,35 @@ export function purchaseReport(input: PurchaseReportInput): PurchaseReport {
   for (const order of input.orders) {
     if (!inPurchaseReportScope(order, input.scope)) continue
     const { totals: amounts } = purchaseOrderAmounts(order.lines)
+    const settlement = forOrder(order.id)
     if (order.status === 'cancelled') {
       cancelled.orderCount += 1
       cancelled.grossCents += amounts.grossCents
+      cancelled.invoicedGrossCents += settlement.invoicedGrossCents
+      cancelled.paidCents += settlement.paidCents
       continue
     }
-    addTo(totals, amounts)
+    addTo(totals, amounts, settlement)
     const lead = purchaseLeadDays(order)
     leadDays.push(lead)
 
     const supplier = bySupplier.get(order.supplierId) ?? { ...emptyAmounts(), leadDays: 0 }
-    addTo(supplier, amounts)
+    addTo(supplier, amounts, settlement)
     supplier.leadDays += lead
     bySupplier.set(order.supplierId, supplier)
 
     for (const category of suppliers.get(order.supplierId)?.categories ?? []) {
       const row = byCategory.get(category) ?? { ...emptyAmounts(), suppliers: new Set<string>() }
-      addTo(row, amounts)
+      addTo(row, amounts, settlement)
       row.suppliers.add(order.supplierId)
       byCategory.set(category, row)
     }
 
     const center = byCenter.get(order.costCenterId) ?? emptyAmounts()
-    addTo(center, amounts)
+    addTo(center, amounts, settlement)
     byCenter.set(order.costCenterId, center)
     const item = byItem.get(order.budgetItemId) ?? emptyAmounts()
-    addTo(item, amounts)
+    addTo(item, amounts, settlement)
     byItem.set(order.budgetItemId, item)
   }
 
@@ -356,6 +495,7 @@ export function purchaseReport(input: PurchaseReportInput): PurchaseReport {
   return {
     totals: { ...totals, supplierCount: bySupplier.size },
     cancelled,
+    unlinkedInvoices: unlinked,
     leadTime: {
       orderCount: leadDays.length,
       averageDays: averageTenths(leadTotal, leadDays.length),
@@ -372,17 +512,22 @@ export function purchaseReport(input: PurchaseReportInput): PurchaseReport {
 
 // --- CSV -----------------------------------------------------------------------------------------
 
+/** Başlıklar KDV esasını açıkça yazar (K-199). */
 const CSV_HEADER = [
   'Kırılım',
   'Ad',
   'Kod',
   'Tür',
   'Kategoriler',
-  'Sipariş',
-  'Net',
-  'KDV',
-  'Brüt',
+  'Sipariş sayısı',
+  'Sipariş tutarı (KDV hariç)',
+  'Sipariş KDV',
+  'Sipariş tutarı (KDV dahil)',
   'Pay (%)',
+  'Teslim alınan (KDV hariç)',
+  'Faturalanan (KDV dahil)',
+  'Ödenen (KDV dahil)',
+  'Açık (KDV dahil)',
 ]
 
 /** On binde biri yüzde olarak yazar (`12,34`); boşsa boş hücre. */
@@ -398,56 +543,81 @@ const amountCells = (row: PurchaseAmounts) => [
   csvAmount(row.grossCents),
 ]
 
+const settlementCells = (row: Omit<PurchaseSettlement, 'receivedNetCents'>, received: string) => [
+  received,
+  csvAmount(row.invoicedGrossCents),
+  csvAmount(row.paidCents),
+  csvAmount(row.openCents),
+]
+
 /**
  * Raporun CSV dökümü (`;`, ondalık virgül, formül kaçışı): toplam, kategori, tedarikçi, maliyet
- * merkezi ve gider kalemi satırları tek tabloda, "Kırılım" sütunuyla ayrılır. Şahıs tedarikçinin adı
+ * merkezi ve gider kalemi satırları tek tabloda, "Kırılım" sütunuyla ayrılır; siparişsiz faturalar
+ * toplamın altında ayrı satırdır, sipariş sütunları boştur (K-197, K-199). Şahıs tedarikçinin adı
  * kişisel veridir; vergi numarası yazılmaz (K-155).
  */
 export function purchaseReportCsv(
   report: Pick<
     PurchaseReport,
-    'totals' | 'categories' | 'suppliers' | 'costCenters' | 'budgetItems'
+    'totals' | 'unlinkedInvoices' | 'categories' | 'suppliers' | 'costCenters' | 'budgetItems'
   >,
 ): string {
   const blank = csvCell('')
+  const line = (head: string[], row: PurchaseAmounts, share: string) => [
+    ...head,
+    ...amountCells(row),
+    share,
+    ...settlementCells(row, csvAmount(row.receivedNetCents)),
+  ]
   const rows: string[][] = [
-    [csvCell('Toplam'), blank, blank, blank, blank, ...amountCells(report.totals), blank],
-    ...report.categories.map((row) => [
-      csvCell('Tedarikçi kategorisi'),
-      csvCell(SUPPLIER_CATEGORY_LABELS[row.category]),
-      blank,
-      blank,
-      blank,
-      ...amountCells(row),
-      percentCell(row.shareBasisPoints),
-    ]),
-    ...report.suppliers.map((row) => [
-      csvCell('Tedarikçi'),
-      csvCell(row.name),
-      blank,
-      csvCell(SUPPLIER_TYPE_LABELS[row.type]),
-      csvCell(row.categories.map((category) => SUPPLIER_CATEGORY_LABELS[category]).join(', ')),
-      ...amountCells(row),
-      percentCell(row.shareBasisPoints),
-    ]),
-    ...report.costCenters.map((row) => [
-      csvCell('Maliyet merkezi'),
-      csvCell(row.name),
-      csvCell(row.code),
-      blank,
-      blank,
-      ...amountCells(row),
-      percentCell(row.shareBasisPoints),
-    ]),
-    ...report.budgetItems.map((row) => [
-      csvCell('Gider kalemi'),
-      csvCell(row.name),
-      csvCell(row.code),
-      blank,
-      blank,
-      ...amountCells(row),
-      percentCell(row.shareBasisPoints),
-    ]),
+    line([csvCell('Toplam'), blank, blank, blank, blank], report.totals, blank),
+    [
+      csvCell('Siparişsiz fatura'),
+      csvCell(`${String(report.unlinkedInvoices.invoiceCount)} fatura`),
+      // Kod, tür, kategori, sipariş sayısı ve tutarları ile pay yoktur; teslim alınan da boştur.
+      ...Array<string>(8).fill(blank),
+      ...settlementCells(report.unlinkedInvoices, blank),
+    ],
+    ...report.categories.map((row) =>
+      line(
+        [
+          csvCell('Tedarikçi kategorisi'),
+          csvCell(SUPPLIER_CATEGORY_LABELS[row.category]),
+          blank,
+          blank,
+          blank,
+        ],
+        row,
+        percentCell(row.shareBasisPoints),
+      ),
+    ),
+    ...report.suppliers.map((row) =>
+      line(
+        [
+          csvCell('Tedarikçi'),
+          csvCell(row.name),
+          blank,
+          csvCell(SUPPLIER_TYPE_LABELS[row.type]),
+          csvCell(row.categories.map((category) => SUPPLIER_CATEGORY_LABELS[category]).join(', ')),
+        ],
+        row,
+        percentCell(row.shareBasisPoints),
+      ),
+    ),
+    ...report.costCenters.map((row) =>
+      line(
+        [csvCell('Maliyet merkezi'), csvCell(row.name), csvCell(row.code), blank, blank],
+        row,
+        percentCell(row.shareBasisPoints),
+      ),
+    ),
+    ...report.budgetItems.map((row) =>
+      line(
+        [csvCell('Gider kalemi'), csvCell(row.name), csvCell(row.code), blank, blank],
+        row,
+        percentCell(row.shareBasisPoints),
+      ),
+    ),
   ]
   return [CSV_HEADER.map(csvCell), ...rows].map((row) => row.join(CSV_SEPARATOR)).join('\r\n')
 }

@@ -5037,7 +5037,7 @@ export interface paths {
         };
         /**
          * Satın alma raporu
-         * @description Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.
+         * @description Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Her satırda ve toplamda ayrıca teslim alınan (iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı, **KDV hariç**), faturalanan (siparişe bağlı iptal edilmemiş faturalar, **KDV dahil**), ödenen (bu faturalara iptal edilmemiş ödemeler, **KDV dahil**) ve açık tutar (faturalanan eksi ödenen, **KDV dahil**) döner; kabul, fatura ve ödeme günü süzülmez, kapsamdaki siparişlerinkidir (K-195, K-196). Siparişe bağlı olmayan faturalar `unlinkedInvoices` satırındadır: fatura tarihi aralıkta (bütçe döneminde dönemin günlerinde); toplamlara girmez (K-197). İptal edilen siparişin faturası ve ödemesi `cancelled` altındadır (K-198). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner (sütun başlıkları KDV hariç/dahil esasını yazar, siparişsiz fatura toplamın altında ayrı satırdır; K-199): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.
          */
         get: operations["getFinancePurchaseReport"];
         put?: never;
@@ -53633,20 +53633,42 @@ export interface operations {
                             totals: {
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Siparişi olan tedarikçi sayısı */
                                 supplierCount: number;
                             };
-                            /** @description Kapsamda iptal edilen siparişler; toplamlara girmez */
+                            /** @description Kapsamda iptal edilen siparişler; faturaları ve ödemeleriyle toplamlara girmez (K-198) */
                             cancelled: {
                                 orderCount: number;
                                 /** @description İptal edilen KDV dahil tutar */
                                 grossCents: number;
+                                /** @description İptal edilen siparişlere bağlı etkin faturalar, KDV dahil */
+                                invoicedGrossCents: number;
+                                /** @description Bu faturalara iptal edilmemiş ödemeler, KDV dahil */
+                                paidCents: number;
+                            };
+                            /** @description Siparişe bağlı olmayan etkin faturalar: fatura tarihi kapsamın günlerinde (bütçe döneminde dönemin günleri); toplamlara ve kırılımlara girmez (K-197) */
+                            unlinkedInvoices: {
+                                invoiceCount: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                             };
                             leadTime: {
                                 orderCount: number;
@@ -53662,12 +53684,20 @@ export interface operations {
                                 supplierCount: number;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                             }[];
@@ -53684,12 +53714,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                                 /** @description Talepten siparişe ortalama takvim günü, bir ondalık (K-158) */
@@ -53708,12 +53746,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                                 /** @description Talepten siparişe ortalama takvim günü, bir ondalık (K-158) */
@@ -53727,12 +53773,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                             }[];
@@ -53744,12 +53798,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                             }[];

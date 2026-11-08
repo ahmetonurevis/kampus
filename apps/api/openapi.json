@@ -105686,7 +105686,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -105694,11 +105694,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -105706,7 +105718,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -105728,6 +105740,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -106210,7 +106224,7 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                          "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                         },
                         "pendingCents": {
                           "type": "integer",
@@ -106218,11 +106232,23 @@
                           "maximum": 9007199254740991,
                           "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                         },
+                        "orderedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                        },
+                        "receivedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                        },
                         "committedCents": {
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                          "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                         },
                         "remainingCents": {
                           "anyOf": [
@@ -106230,7 +106256,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                              "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                             },
                             {
                               "type": "null"
@@ -106242,6 +106268,8 @@
                         "plannedCents",
                         "approvedCents",
                         "pendingCents",
+                        "orderedCents",
+                        "receivedCents",
                         "committedCents",
                         "remainingCents"
                       ],
@@ -106602,7 +106630,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -106610,11 +106638,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -106622,7 +106662,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -106644,6 +106684,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -107202,7 +107244,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -107210,11 +107252,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -107222,7 +107276,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -107244,6 +107298,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -107735,7 +107791,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -107743,11 +107799,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -107755,7 +107823,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -107777,6 +107845,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -108273,7 +108343,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -108281,11 +108351,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -108293,7 +108375,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -108315,6 +108397,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -108804,7 +108888,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -108812,11 +108896,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -108824,7 +108920,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -108846,6 +108942,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -109335,7 +109433,7 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
                             },
                             "pendingCents": {
                               "type": "integer",
@@ -109343,11 +109441,23 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
                             "committedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
                             },
                             "remainingCents": {
                               "anyOf": [
@@ -109355,7 +109465,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -109377,6 +109487,8 @@
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
                             "committedCents",
                             "remainingCents",
                             "exceedsRemaining",
@@ -114195,6 +114307,1389 @@
                         "sentByName",
                         "cancelledByName",
                         "cancelReason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders/{orderId}/receipts": {
+      "get": {
+        "operationId": "getPurchaseReceiptBoard",
+        "summary": "Siparişin mal kabul durumu",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Kalem başına sipariş, kabul edilen, reddedilen ve kalan miktar; gerçekleşen tutar (kabul edilen × birim fiyat, KDV hariç; K-151); kabul geçmişi (iptal edilenler dahil) ve kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun siparişi 404. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "sent",
+                                "partially_received",
+                                "completed",
+                                "cancelled"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status",
+                            "version"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sipariş; durum kabul edilen toplamdan türetilir (K-150)"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı"
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "acceptedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş kabullerde kabul edilen toplam"
+                              },
+                              "rejectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz"
+                              },
+                              "remainingQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı eksi kabul edilen"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "unit",
+                              "quantity",
+                              "unitPriceCents",
+                              "acceptedQuantity",
+                              "rejectedQuantity",
+                              "remainingQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sipariş kalemleri ve teslim durumu"
+                        },
+                        "receivedNetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
+                        },
+                        "receipts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "receiptDate": {
+                                "type": "string",
+                                "description": "Kabul günü `YYYY-MM-DD`"
+                              },
+                              "receivedBy": {
+                                "type": "string",
+                                "description": "Teslim alan personel (K-152)"
+                              },
+                              "inspectionNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kabul edilen kısmın KDV hariç tutarı"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "orderItemId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": "string",
+                                      "enum": [
+                                        "piece",
+                                        "pack",
+                                        "box",
+                                        "kilogram",
+                                        "liter",
+                                        "meter",
+                                        "hour",
+                                        "day",
+                                        "month",
+                                        "service"
+                                      ]
+                                    },
+                                    "acceptedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar"
+                                    },
+                                    "rejectedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Reddedilen miktar"
+                                    },
+                                    "rejectReason": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "orderItemId",
+                                    "name",
+                                    "unit",
+                                    "acceptedQuantity",
+                                    "rejectedQuantity",
+                                    "rejectReason"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "cancel": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "cancel"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcı bu kabulü iptal edebilir mi (K-153)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "receiptDate",
+                              "receivedBy",
+                              "inspectionNote",
+                              "netCents",
+                              "lines",
+                              "createdAt",
+                              "createdByName",
+                              "cancelledAt",
+                              "cancelledByName",
+                              "cancelReason",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "receive": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "receive"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcı yeni kabul kaydedebilir mi"
+                        }
+                      },
+                      "required": [
+                        "order",
+                        "items",
+                        "receivedNetCents",
+                        "receipts",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPurchaseReceipt",
+        "summary": "Mal kabul kaydet",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Gönderilmiş ya da kısmen teslim alınmış siparişe kalem bazında kabul: kabul günü, teslim alan personel, muayene notu, kabul edilen ve reddedilen miktar (ret nedeniyle). Kalemde kabul edilen toplam sipariş miktarını aşamaz (422 `purchase_receipt_quantity_exceeded`; kurum kilidi altında denetlenir); reddedilen miktar karşılanmış sayılmaz (K-150). Sipariş durumu yeniden hesaplanır: hiç kabul yok gönderildi, kısmen kısmen teslim, tamamı tamamlandı. Taslak sipariş 422 `purchase_receipt_order_not_sent`, iptal edilmiş 422 `purchase_receipt_order_cancelled`, tamamlanmış 422 `purchase_receipt_order_completed`; gelecek gün 422 `purchase_receipt_date_future`, sipariş açılışından önce 422 `purchase_receipt_date_before_order`, kapalı bütçe dönemi 422 `purchase_receipt_period_closed`; siparişte olmayan kalem 422 `purchase_receipt_item_not_found`. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "receiptDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "receivedBy": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "inspectionNote": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lines": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "orderItemId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "acceptedQuantity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000000
+                        },
+                        "rejectedQuantity": {
+                          "default": 0,
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000000
+                        },
+                        "rejectReason": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 300
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "orderItemId",
+                        "acceptedQuantity"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "receiptDate",
+                  "receivedBy",
+                  "lines"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "sent",
+                                "partially_received",
+                                "completed",
+                                "cancelled"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status",
+                            "version"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sipariş; durum kabul edilen toplamdan türetilir (K-150)"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı"
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "acceptedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş kabullerde kabul edilen toplam"
+                              },
+                              "rejectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz"
+                              },
+                              "remainingQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı eksi kabul edilen"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "unit",
+                              "quantity",
+                              "unitPriceCents",
+                              "acceptedQuantity",
+                              "rejectedQuantity",
+                              "remainingQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sipariş kalemleri ve teslim durumu"
+                        },
+                        "receivedNetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
+                        },
+                        "receipts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "receiptDate": {
+                                "type": "string",
+                                "description": "Kabul günü `YYYY-MM-DD`"
+                              },
+                              "receivedBy": {
+                                "type": "string",
+                                "description": "Teslim alan personel (K-152)"
+                              },
+                              "inspectionNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kabul edilen kısmın KDV hariç tutarı"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "orderItemId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": "string",
+                                      "enum": [
+                                        "piece",
+                                        "pack",
+                                        "box",
+                                        "kilogram",
+                                        "liter",
+                                        "meter",
+                                        "hour",
+                                        "day",
+                                        "month",
+                                        "service"
+                                      ]
+                                    },
+                                    "acceptedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar"
+                                    },
+                                    "rejectedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Reddedilen miktar"
+                                    },
+                                    "rejectReason": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "orderItemId",
+                                    "name",
+                                    "unit",
+                                    "acceptedQuantity",
+                                    "rejectedQuantity",
+                                    "rejectReason"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "cancel": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "cancel"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcı bu kabulü iptal edebilir mi (K-153)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "receiptDate",
+                              "receivedBy",
+                              "inspectionNote",
+                              "netCents",
+                              "lines",
+                              "createdAt",
+                              "createdByName",
+                              "cancelledAt",
+                              "cancelledByName",
+                              "cancelReason",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "receive": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "receive"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcı yeni kabul kaydedebilir mi"
+                        }
+                      },
+                      "required": [
+                        "order",
+                        "items",
+                        "receivedNetCents",
+                        "receipts",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders/{orderId}/receipts/{receiptId}/cancel": {
+      "post": {
+        "operationId": "cancelPurchaseReceipt",
+        "summary": "Mal kabulü iptal et",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Kabulü gerekçeyle iptal eder; kayıt silinmez, iptal izi tutulur. Sipariş durumu kalan kabullerden yeniden hesaplanır ve iptal edilen kabul gider gerçekleşeninden düşer. Zaten iptal edilmiş 422 `purchase_receipt_already_cancelled`, kapalı bütçe dönemindeki kabul 422 `purchase_receipt_period_closed`. `If-Match` kabulün sürümüdür; tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-153). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "receiptId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "sent",
+                                "partially_received",
+                                "completed",
+                                "cancelled"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status",
+                            "version"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sipariş; durum kabul edilen toplamdan türetilir (K-150)"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı"
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV hariç birim fiyat, kuruş"
+                              },
+                              "acceptedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş kabullerde kabul edilen toplam"
+                              },
+                              "rejectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz"
+                              },
+                              "remainingQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı eksi kabul edilen"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "unit",
+                              "quantity",
+                              "unitPriceCents",
+                              "acceptedQuantity",
+                              "rejectedQuantity",
+                              "remainingQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sipariş kalemleri ve teslim durumu"
+                        },
+                        "receivedNetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151)"
+                        },
+                        "receipts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "receiptDate": {
+                                "type": "string",
+                                "description": "Kabul günü `YYYY-MM-DD`"
+                              },
+                              "receivedBy": {
+                                "type": "string",
+                                "description": "Teslim alan personel (K-152)"
+                              },
+                              "inspectionNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kabul edilen kısmın KDV hariç tutarı"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "orderItemId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": "string",
+                                      "enum": [
+                                        "piece",
+                                        "pack",
+                                        "box",
+                                        "kilogram",
+                                        "liter",
+                                        "meter",
+                                        "hour",
+                                        "day",
+                                        "month",
+                                        "service"
+                                      ]
+                                    },
+                                    "acceptedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kabul edilen miktar"
+                                    },
+                                    "rejectedQuantity": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Reddedilen miktar"
+                                    },
+                                    "rejectReason": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "orderItemId",
+                                    "name",
+                                    "unit",
+                                    "acceptedQuantity",
+                                    "rejectedQuantity",
+                                    "rejectReason"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "cancel": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "cancel"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Oturumdaki kullanıcı bu kabulü iptal edebilir mi (K-153)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "receiptDate",
+                              "receivedBy",
+                              "inspectionNote",
+                              "netCents",
+                              "lines",
+                              "createdAt",
+                              "createdByName",
+                              "cancelledAt",
+                              "cancelledByName",
+                              "cancelReason",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "receive": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "receive"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcı yeni kabul kaydedebilir mi"
+                        }
+                      },
+                      "required": [
+                        "order",
+                        "items",
+                        "receivedNetCents",
+                        "receipts",
+                        "actions"
                       ],
                       "additionalProperties": false
                     }

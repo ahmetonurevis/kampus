@@ -221,13 +221,18 @@ describe('DOM-FIN-064: yönetim kurulu raporunun bütçe, maliyet ve tahmin böl
     assert.deepEqual(withoutToDate(budget.expense), totals.expense)
     assert.equal((budget.income as Json).plannedToDateCents, null, 'dağılımsız satır (K-64)')
     assert.deepEqual(budget.net, totals.net)
-    assert.equal(budget.expenseData, 'none')
-    assert.equal((budget.expense as Json).actualCents, null)
+    // Gider gerçekleşeni mal kabulden gelir (DOM-FIN-074, K-151); kabul yok, sıfır.
+    assert.equal(budget.expenseData, 'available')
+    assert.equal((budget.expense as Json).actualCents, 0)
     // Tahakkuk: Eylül 1.000.000 + Ekim 400.000 (bugün 6 Ekim); gelir kalemi merkezlerden toplanır.
     assert.equal((budget.income as Json).actualCents, 1_400_000)
     assert.deepEqual(
       (budget.topVariances as Json[]).map((item) => [item.itemCode, item.actualCents]),
-      [['G-100', 1_400_000]],
+      // Gider kalemi de sıfır gerçekleşenle sapanlar arasına girer.
+      [
+        ['G-100', 1_400_000],
+        ['P-100', 0],
+      ],
     )
 
     const consolidation = await get(

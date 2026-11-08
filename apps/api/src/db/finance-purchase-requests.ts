@@ -9,6 +9,7 @@ import type {
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 
 import type { Database } from './client.ts'
+import { loadOrderBudgetFigures, requestHasLiveOrder } from './finance-purchase-receipts.ts'
 import { memberships, users } from './schema/auth.ts'
 import { budgetItems, budgetLines, budgetPeriods, costCenters } from './schema/finance-budget.ts'
 import { purchaseRequestItems, purchaseRequests } from './schema/finance-purchase-requests.ts'
@@ -363,9 +364,10 @@ export async function updatePurchaseRequest(
 }
 
 /**
- * Bütçe kalanının girdileri (DOM-FIN-071, ON-245, K-145): dönem × merkez × kalem satırının planı ve
- * aynı üçlüdeki onaylanmış ve kararı bekleyen taleplerin toplamı; hesaplanan talep (`exceptId`)
- * hariç tutulur. Gönderim ve onayda kurum kilidi altında okunur.
+ * Bütçe kalanının girdileri (DOM-FIN-071, ON-245, K-145): dönem × merkez × kalem satırının planı,
+ * aynı üçlüdeki kararı bekleyen ve etkin siparişi olmayan onaylanmış taleplerin tahmini toplamı,
+ * etkin siparişlerin açık kısmı ve kabul edilen (gerçekleşen) kısmı (K-154); hesaplanan talep
+ * (`exceptId`) hariç tutulur. Gönderim ve onayda kurum kilidi altında okunur.
  */
 export async function loadPurchaseBudgetFigures(
   db: Database,
@@ -404,15 +406,19 @@ export async function loadPurchaseBudgetFigures(
         eq(purchaseRequests.budgetItemId, key.budgetItemId),
         inArray(purchaseRequests.status, ['submitted', 'approved']),
         key.exceptId === null ? undefined : sql`${purchaseRequests.id} <> ${key.exceptId}`,
+        // Etkin siparişi olan talep tahmini toplamıyla değil siparişiyle sayılır (K-154).
+        sql`not ${requestHasLiveOrder}`,
       ),
     )
     .groupBy(purchaseRequests.status)
   const sumOf = (status: PurchaseRequestStatus) =>
     Number(sums.find((row) => row.status === status)?.totalCents ?? 0)
+  const orders = await loadOrderBudgetFigures(db, institutionId, key)
   return {
     plannedCents: line?.amountCents ?? null,
     approvedCents: sumOf('approved'),
     pendingCents: sumOf('submitted'),
+    ...orders,
   }
 }
 

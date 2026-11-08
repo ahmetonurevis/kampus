@@ -15,8 +15,8 @@ import {
  * seçili teklifinden açılır; kalemler, fiyatlar ve tedarikçi bilgisi açılış anının kopyasıdır.
  * Numara `SA-<yıl>-<sıra>`: yıl açılış gününün Europe/Istanbul yılı, sıra kurumda yıl içinde
  * ardışık, iptal edilen numara boşta kalır (K-139). Durum taslak → gönderildi → kısmen teslim →
- * tamamlandı; taslak ve gönderilmiş sipariş gerekçeyle iptal edilir. Teslim adımları mal kabulle
- * (ON-226) gelir. Onaylanmış talep yalnız siparişle kapanır: talepte en çok bir etkin (iptal
+ * tamamlandı; taslak ve gönderilmiş sipariş gerekçeyle iptal edilir. Teslim adımları mal kabulden
+ * türetilir (DOM-FIN-074, `lib/finance-purchase-receipts.ts`). Onaylanmış talep yalnız siparişle kapanır: talepte en çok bir etkin (iptal
  * edilmemiş) sipariş olur; sipariş iptal edilirse talep yeniden teklif ve seçime açılır (K-140).
  */
 

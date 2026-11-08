@@ -4984,6 +4984,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/purchase-orders/{orderId}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Siparişin mal kabul durumu
+         * @description Kalem başına sipariş, kabul edilen, reddedilen ve kalan miktar; gerçekleşen tutar (kabul edilen × birim fiyat, KDV hariç; K-151); kabul geçmişi (iptal edilenler dahil) ve kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun siparişi 404. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.
+         */
+        get: operations["getPurchaseReceiptBoard"];
+        put?: never;
+        /**
+         * Mal kabul kaydet
+         * @description Gönderilmiş ya da kısmen teslim alınmış siparişe kalem bazında kabul: kabul günü, teslim alan personel, muayene notu, kabul edilen ve reddedilen miktar (ret nedeniyle). Kalemde kabul edilen toplam sipariş miktarını aşamaz (422 `purchase_receipt_quantity_exceeded`; kurum kilidi altında denetlenir); reddedilen miktar karşılanmış sayılmaz (K-150). Sipariş durumu yeniden hesaplanır: hiç kabul yok gönderildi, kısmen kısmen teslim, tamamı tamamlandı. Taslak sipariş 422 `purchase_receipt_order_not_sent`, iptal edilmiş 422 `purchase_receipt_order_cancelled`, tamamlanmış 422 `purchase_receipt_order_completed`; gelecek gün 422 `purchase_receipt_date_future`, sipariş açılışından önce 422 `purchase_receipt_date_before_order`, kapalı bütçe dönemi 422 `purchase_receipt_period_closed`; siparişte olmayan kalem 422 `purchase_receipt_item_not_found`. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.
+         */
+        post: operations["createPurchaseReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders/{orderId}/receipts/{receiptId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mal kabulü iptal et
+         * @description Kabulü gerekçeyle iptal eder; kayıt silinmez, iptal izi tutulur. Sipariş durumu kalan kabullerden yeniden hesaplanır ve iptal edilen kabul gider gerçekleşeninden düşer. Zaten iptal edilmiş 422 `purchase_receipt_already_cancelled`, kapalı bütçe dönemindeki kabul 422 `purchase_receipt_period_closed`. `If-Match` kabulün sürümüdür; tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-153). Modül `finance`.
+         */
+        post: operations["cancelPurchaseReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -49458,11 +49502,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -49708,11 +49756,15 @@ export interface operations {
                         /** @description Talep formunun bütçe durumu (K-148) */
                         data: {
                             plannedCents: number | null;
-                            /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                            /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                             approvedCents: number;
                             /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                             pendingCents: number;
-                            /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                            /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                            orderedCents: number;
+                            /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                            receivedCents: number;
+                            /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                             committedCents: number;
                             remainingCents: number | null;
                         };
@@ -49866,11 +49918,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -50067,11 +50123,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -50254,11 +50314,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -50443,11 +50507,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -50630,11 +50698,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -50817,11 +50889,15 @@ export interface operations {
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
-                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
-                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
                                 committedCents: number;
                                 remainingCents: number | null;
                                 /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
@@ -52633,6 +52709,528 @@ export interface operations {
                             sentByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseReceiptBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sipariş; durum kabul edilen toplamdan türetilir (K-150) */
+                            order: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            };
+                            /** @description Sipariş kalemleri ve teslim durumu */
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Sipariş miktarı */
+                                quantity: number;
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /** @description İptal edilmemiş kabullerde kabul edilen toplam */
+                                acceptedQuantity: number;
+                                /** @description İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz */
+                                rejectedQuantity: number;
+                                /** @description Sipariş miktarı eksi kabul edilen */
+                                remainingQuantity: number;
+                            }[];
+                            /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
+                            receivedNetCents: number;
+                            /** @description Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla */
+                            receipts: {
+                                id: string;
+                                /** @description Kabul günü `YYYY-MM-DD` */
+                                receiptDate: string;
+                                /** @description Teslim alan personel (K-152) */
+                                receivedBy: string;
+                                inspectionNote: string | null;
+                                /** @description Kabul edilen kısmın KDV hariç tutarı */
+                                netCents: number;
+                                lines: {
+                                    orderItemId: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                    /** @description Kabul edilen miktar */
+                                    acceptedQuantity: number;
+                                    /** @description Reddedilen miktar */
+                                    rejectedQuantity: number;
+                                    rejectReason: string | null;
+                                }[];
+                                createdAt: string;
+                                createdByName: string | null;
+                                cancelledAt: string | null;
+                                cancelledByName: string | null;
+                                cancelReason: string | null;
+                                /** @description Oturumdaki kullanıcı bu kabulü iptal edebilir mi (K-153) */
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            /** @description Oturumdaki kullanıcı yeni kabul kaydedebilir mi */
+                            actions: {
+                                receive: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPurchaseReceipt: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    receiptDate: string;
+                    receivedBy: string;
+                    /** @default null */
+                    inspectionNote?: string | null;
+                    lines: {
+                        /** Format: uuid */
+                        orderItemId: string;
+                        acceptedQuantity: number;
+                        /** @default 0 */
+                        rejectedQuantity?: number;
+                        /** @default null */
+                        rejectReason?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sipariş; durum kabul edilen toplamdan türetilir (K-150) */
+                            order: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            };
+                            /** @description Sipariş kalemleri ve teslim durumu */
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Sipariş miktarı */
+                                quantity: number;
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /** @description İptal edilmemiş kabullerde kabul edilen toplam */
+                                acceptedQuantity: number;
+                                /** @description İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz */
+                                rejectedQuantity: number;
+                                /** @description Sipariş miktarı eksi kabul edilen */
+                                remainingQuantity: number;
+                            }[];
+                            /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
+                            receivedNetCents: number;
+                            /** @description Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla */
+                            receipts: {
+                                id: string;
+                                /** @description Kabul günü `YYYY-MM-DD` */
+                                receiptDate: string;
+                                /** @description Teslim alan personel (K-152) */
+                                receivedBy: string;
+                                inspectionNote: string | null;
+                                /** @description Kabul edilen kısmın KDV hariç tutarı */
+                                netCents: number;
+                                lines: {
+                                    orderItemId: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                    /** @description Kabul edilen miktar */
+                                    acceptedQuantity: number;
+                                    /** @description Reddedilen miktar */
+                                    rejectedQuantity: number;
+                                    rejectReason: string | null;
+                                }[];
+                                createdAt: string;
+                                createdByName: string | null;
+                                cancelledAt: string | null;
+                                cancelledByName: string | null;
+                                cancelReason: string | null;
+                                /** @description Oturumdaki kullanıcı bu kabulü iptal edebilir mi (K-153) */
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            /** @description Oturumdaki kullanıcı yeni kabul kaydedebilir mi */
+                            actions: {
+                                receive: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPurchaseReceipt: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                orderId: string;
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sipariş; durum kabul edilen toplamdan türetilir (K-150) */
+                            order: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            };
+                            /** @description Sipariş kalemleri ve teslim durumu */
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Sipariş miktarı */
+                                quantity: number;
+                                /** @description KDV hariç birim fiyat, kuruş */
+                                unitPriceCents: number;
+                                /** @description İptal edilmemiş kabullerde kabul edilen toplam */
+                                acceptedQuantity: number;
+                                /** @description İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz */
+                                rejectedQuantity: number;
+                                /** @description Sipariş miktarı eksi kabul edilen */
+                                remainingQuantity: number;
+                            }[];
+                            /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
+                            receivedNetCents: number;
+                            /** @description Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla */
+                            receipts: {
+                                id: string;
+                                /** @description Kabul günü `YYYY-MM-DD` */
+                                receiptDate: string;
+                                /** @description Teslim alan personel (K-152) */
+                                receivedBy: string;
+                                inspectionNote: string | null;
+                                /** @description Kabul edilen kısmın KDV hariç tutarı */
+                                netCents: number;
+                                lines: {
+                                    orderItemId: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                    /** @description Kabul edilen miktar */
+                                    acceptedQuantity: number;
+                                    /** @description Reddedilen miktar */
+                                    rejectedQuantity: number;
+                                    rejectReason: string | null;
+                                }[];
+                                createdAt: string;
+                                createdByName: string | null;
+                                cancelledAt: string | null;
+                                cancelledByName: string | null;
+                                cancelReason: string | null;
+                                /** @description Oturumdaki kullanıcı bu kabulü iptal edebilir mi (K-153) */
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            /** @description Oturumdaki kullanıcı yeni kabul kaydedebilir mi */
+                            actions: {
+                                receive: boolean;
+                            };
                         };
                     };
                 };

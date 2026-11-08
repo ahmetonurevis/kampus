@@ -122,9 +122,12 @@ test('DOM-FIN-066: yönetici dönem panelinde gerçekleşeni görür, esası de�
   await expect(incomeRow).toContainText(money(PLAN))
   await expect(incomeRow).toContainText(money(DUE))
   await expect(incomeRow).toContainText(money(DUE - PLAN))
-  await expect(table.getByRole('row', { name: /P-100/ })).toContainText('Gerçekleşen verisi yok')
+  // Gider gerçekleşeni mal kabulden gelir (DOM-FIN-074, K-151); kabul yok, sıfır.
+  await expect(table.getByRole('row', { name: /P-100/ })).toContainText(money(0))
   await expect(
-    report.getByRole('listitem').filter({ hasText: /^Gider gerçekleşeni yok/ }),
+    report
+      .getByRole('listitem')
+      .filter({ hasText: /^Gider gerçekleşeni satın alma mal kabulünden/ }),
   ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 

@@ -489,6 +489,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** `vatCents` belge toplamı üzerinden ya da başka yuvarlama kuralıyla hesaplar; kaleme tevkifat oranı ve tevkif edilen KDV sütunu eklenir (migration); sipariş taahhüt olarak bütçe kalanından düşülür (`purchaseBudgetInfo`).
 - **Cevap:** bekleniyor
 
+#### M-27 · Mal kabulde gider tahakkuku ve KDV
+
+- **Kural:** `DOM-FIN-074`, `DOM-FIN-066`, `DOM-FIN-071`; ON-226.
+- **Soru:** Satın alınan mal ve hizmetin gideri bütçe–gerçekleşen raporunda hangi gün ve tutarla sayılmalı: teslim alındığı (mal kabul) gün mü, tedarikçi faturasının günü mü? Tutar KDV hariç mi (indirilecek KDV gider değildir), KDV dahil mi yazılmalı; KDV'yi indiremeyen kurumda fark ne olur? Faturası gelmemiş teslim için dönem sonunda gider tahakkuku (fatura bekleyen alım) yapılmalı mı? Bütçe gider satırları KDV hariç mi planlanmalı?
+- **Bugünkü varsayım:** Kabul edilen miktar × sipariş birim fiyatı, KDV hariç, kabul gününde tahakkuk eder; ödeme günü yoktur, nakit esasında gider tedarikçi ödemesiyle (ON-143) gelecektir. Bütçe kalanında siparişli talep KDV hariç sipariş tutarıyla, siparişsiz talep tahmini (KDV dahil, K-130) toplamla sayılır (K-151, K-154).
+- **Kodda:** `lib/finance-purchase-receipts.ts` (`receiptNetCents`, `receiptExpenseActuals`), `apps/api/src/db/finance-purchase-receipts.ts` (`loadReceiptExpenseRows`, `loadOrderBudgetFigures`).
+- **Cevap değişirse:** Gerçekleşen KDV dahil (`pricedLine` brüt) ya da fatura gününden alınır; fatura gelince kabul tahakkuku faturayla yer değiştirir (ON-143); talep tahmini KDV hariç girilir (K-130).
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -590,6 +599,11 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-146  | 2026-11-08 | `DOM-FIN-071` | Aşım ve bütçesiz talep engellenmez, uyarılır: gönderim ve onay 409 `budget_exceeded_warning` / `budget_line_missing_warning`, `confirmOverBudget: true` ile geçilir; açık onay denetim kaydına alan adı olarak düşer, talep satırında saklanmaz. Taslakta yalnız bilgidir.           | `confirmPurchaseBudget` 422 ile engeller ya da onay talep satırına kolon olarak yazılır (migration).                |
 | K-147  | 2026-11-08 | `DOM-FIN-071` | Aşım dönem × merkez × kalem satırının dönem toplamıyla ölçülür; aylık dağılım (K-64) ve üst merkezin satırı hesaba girmez, satır yoksa talep bütçesizdir.                                                                                                                            | `loadPurchaseBudgetFigures` ay ya da en yakın üst merkez satırına (`DOM-FIN-066` kuralı) bakar.                     |
 | K-148  | 2026-11-08 | `DOM-FIN-071` | Talep formu seçilen satırın plan, taahhüt ve kalanını gösterir; ön büro da görür (talep ayrıntısındaki bilgiyle aynı), bütçenin geri kalanını görmez (K-60).                                                                                                                         | `GET /finance/purchase-requests/budget-status` yalnız yöneticiye açılır, ön büroda form bilgisi gizlenir.           |
+| K-150  | 2026-11-08 | `DOM-FIN-074` | Kabul kalem bazındadır, birden çok kısmi kabul olur; kabul edilen toplam sipariş miktarını aşamaz. Reddedilen miktar karşılanmış sayılmaz, tedarikçi yeniden gönderir. Durum kabul edilen toplamdan türetilir; taslak, iptal ve tamamlanmış siparişe kabul yok.                      | Ret miktarı kalandan düşer (`receiptProgress`); eksik teslimle kapatma eklenir.                                     |
+| K-151  | 2026-11-08 | `DOM-FIN-066` | Gider gerçekleşeni kabul edilen miktar × sipariş birim fiyatı, KDV hariç, kabul gününde tahakkuk; ödeme günü yok (ON-143). Kalem talebin gider kalemi, merkez talebin birimi. Satın alma dışı gider elle kaydedilene kadar sıfır görünür (M-27).                                     | `receiptExpenseActuals` brüt tutar ya da fatura günü kullanır.                                                      |
+| K-152  | 2026-11-08 | `DOM-FIN-074` | Teslim alan personel serbest metin addır (hizmetli, depo sorumlusu sistem kullanıcısı olmayabilir); kaydı giren kullanıcı ayrıca tutulur. Kabul günü sipariş açılış gününden önce, bugünden sonra olamaz.                                                                            | `received_by` yerine personel kaydına yabancı anahtar (migration).                                                  |
+| K-153  | 2026-11-08 | `DOM-FIN-074` | Kabulü yönetici ve ön büro kaydeder; iptal yalnız yöneticide, gerekçeyle, silmeden. Kabul günü kapalı bütçe dönemine düşen kabul kaydedilmez ve iptal edilmez.                                                                                                                       | `PURCHASE_RECEIPT_*_ROLES`; kapalı dönem denetimi kaldırılır.                                                       |
+| K-154  | 2026-11-08 | `DOM-FIN-071` | Bütçe kalanında etkin siparişi olan onaylı talep sipariş KDV hariç tutarıyla sayılır: kabul edilen kısım gerçekleşen, kalanı taahhüt; iptal edilen sipariş sayılmaz, talep yeniden tahmini toplamla sayılır.                                                                         | `loadOrderBudgetFigures` brüt tutar ya da talep tahminini kullanır.                                                 |
 
 ## Kararlaştırılanlar
 

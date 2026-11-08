@@ -73,6 +73,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/bank-transactions/{transactionId}/match',
   // Satın alma siparişi numaralı belge açar (routes/finance-purchase-orders.ts; DOM-FIN-073).
   'POST /api/v1/finance/purchase-orders',
+  // Mal kabul gider gerçekleşeni yazar (routes/finance-purchase-receipts.ts; DOM-FIN-074).
+  'POST /api/v1/finance/purchase-orders/{orderId}/receipts',
 ]
 // Onur: kayıt ve finans sonu
 

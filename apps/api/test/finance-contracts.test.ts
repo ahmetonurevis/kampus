@@ -494,6 +494,91 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
     )
   })
 
+  test('IST-107, DOM-FIN-040, DOM-FIN-010: ek protokolle kalkan taksitin geçerli tahsilatı olmaz; ekstrede ayrılış hesabına girmez', async () => {
+    const t = await tenant()
+    const previous = await approve(t)
+    const payment = async (amountCents: number, reference: string, invoiceId?: string) => {
+      const response = await post(
+        '/api/v1/payments',
+        t.admin,
+        {
+          studentId: STUDENT?.id,
+          amountCents,
+          method: 'Banka havalesi',
+          reference,
+          ...(invoiceId === undefined ? {} : { invoiceId }),
+        },
+        null,
+      )
+      assert.equal(response.statusCode, 201, response.body)
+      return response.json().data as { id: string; version: number }
+    }
+    // 2. taksite alınan tahsilat iptal edilir: dağılımı kalır ama geçersizdir; taksit yine açıktır.
+    const wrong = await payment(1_000_000, 'TR-EK-IPTAL', 'test-inv-2')
+    const reversed = await post(
+      `/api/v1/payments/${wrong.id}/reverse`,
+      t.admin,
+      { reason: 'Yanlış taksite girildi' },
+      wrong.version,
+    )
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    await payment(5_000_000, 'TR-EK-1', 'test-inv-1')
+
+    // Ek protokol yalnız tahsilatı olmayan taksiti (2.) kaldırır; geçerli dağılım taşınmaz, çünkü yok.
+    const created = await post(url(CONTRACT_ID, 'amendments'), t.admin, AMEND, previous.version)
+    assert.equal(created.statusCode, 201, created.body)
+    const amendmentId: string = created.json().data.entity.id
+    await approve(t, amendmentId)
+    const rows = await invoiceRows(t.id)
+    assert.notEqual(rows.find((row) => row.id === 'test-inv-2')?.archivedAt ?? null, null)
+    assert.equal(rows.find((row) => row.id === 'test-inv-1')?.archivedAt, null)
+    const allocated = await allocatedByInvoice(db, t.id, String(STUDENT?.id))
+    assert.equal(allocated.get('test-inv-2'), undefined)
+
+    // Yeni plana kısmi tahsilat; ayrılış açık taksitleri iptal eder, bu tutar ayrılış hesabına girer.
+    await payment(1_000_000, 'TR-EK-2')
+    const withdrawn = await post(
+      `/api/v1/students/${String(STUDENT?.id)}/withdraw`,
+      t.admin,
+      {
+        withdrawalDate: '2026-10-06',
+        termStartDate: '2026-09-07',
+        attendedUnits: 18,
+        totalUnits: 180,
+        reason: 'relocation',
+        targetSchool: 'Test Okulu',
+      },
+      null,
+    )
+    assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+    const { refundCents } = withdrawn.json().data as { refundCents: number }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/finance/students/${String(STUDENT?.id)}/statement`,
+      headers: { origin: TEST_ORIGIN, cookie: t.admin },
+    })
+    assert.equal(response.statusCode, 200, response.body)
+    const statement = response.json().data as {
+      openCents: number
+      refundDueCents: number
+      lines: { kind: string; debitCents: number; creditCents: number; balanceCents: number }[]
+    }
+    // Ayrılış hesabına yalnız ayrılışta iptal edilen taksite alınan 10.000 ₺ girer; iptal edilmiş
+    // tahsilatın ek protokolle kalkan taksite dağılımı girmez.
+    const net = 1_000_000 - refundCents
+    const settlement = statement.lines.filter((line) => line.kind === 'withdrawal_settlement')
+    assert.deepEqual(
+      settlement.map((line) => [line.debitCents, line.creditCents]),
+      net === 0 ? [] : [[Math.max(net, 0), Math.max(-net, 0)]],
+    )
+    assert.ok(refundCents > 0 && net !== 0, 'ayrılış hesabı satırı yazılır')
+    assert.equal(
+      statement.lines.at(-1)?.balanceCents,
+      statement.openCents - statement.refundDueCents,
+    )
+  })
+
   test('DOM-FIN-020: ek protokolde indirim sözleşmenin tarifesinden hesaplanır', async () => {
     // Fikstür sözleşmesi kurumun tarifesine bağlıdır (`insertTestTariff`: %10 erken kayıt).
     const t = await tenant()

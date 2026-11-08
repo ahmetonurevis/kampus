@@ -72,6 +72,20 @@ describe('DOM-FIN-069: kimlik sinyalleri', () => {
     assert.equal(JSON.stringify(top).includes('10000000146'), false)
   })
 
+  test('DOM-FIN-069: boşluk, tire ya da noktayla gruplanmış kimlik no da tanınır; puan bitişik yazımla aynı', () => {
+    const contiguous = suggest('HAVALE TC 10000000146 EKIM', 2_450_000)
+    for (const written of ['100 000 001 46', '100-000-001-46', '100.000.001.46', '1000 0000 146'])
+      assert.deepEqual(suggest(`HAVALE TC ${written} EKIM`, 2_450_000), contiguous, written)
+    // Gruplanmış son haneler de son hane sinyalidir (6+ hane güçlü).
+    const [suffix] = suggest('ODEME 000 146', 2_450_000)
+    assert.deepEqual(suffix?.reasons, ['national_id_suffix', 'amount_exact'])
+    assert.equal(suffix?.score, 75)
+    // Öğrenci numarasının yanındaki tarih numarayı bozmaz; ayrı gruplar kendi başına okunur.
+    const [byNumber] = suggest('OGR NO 2026004 01.10.2026', 1_500_000)
+    assert.equal(byNumber?.studentId, 's-kaan')
+    assert.ok(byNumber?.reasons.includes('student_number'))
+  })
+
   test('kimlik no son haneleri: 6+ hane güçlü, 4 hane zayıf; yıl gibi görünen dört hane sayılmaz', () => {
     const [long] = suggest('ODEME 000146', 2_450_000)
     assert.deepEqual(long?.reasons, ['national_id_suffix', 'amount_exact'])

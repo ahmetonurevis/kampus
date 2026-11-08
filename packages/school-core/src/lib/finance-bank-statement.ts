@@ -595,6 +595,17 @@ const MASK_MIN_DIGITS = 11
 const MASK_KEEP_DIGITS = 4
 
 /**
+ * Metindeki rakam dizileri, eşleştirme için (DOM-FIN-069): her bitişik dizi ve maskeyle aynı kuralla
+ * gruplanmış dizilerin ayraçsız birleşimi ("100 000 001 46" → "10000000146"). Maske ile eşleştirme
+ * aynı yazımları tanır; bitişik yazımın okunuşu değişmez.
+ */
+export function statementDigitRuns(value: string): string[] {
+  const runs = new Set(value.match(/\d+/g) ?? [])
+  for (const run of value.match(DIGIT_RUN) ?? []) runs.add(run.replace(/\D/g, ''))
+  return [...runs]
+}
+
+/**
  * Ayraçlarla birlikte 11 ve daha çok rakamlı diziler (T.C. kimlik no, IBAN gövdesi, telefon) son
  * dört hanesi dışında maskelenir, ayraçlar yerinde kalır (K-112, K-122). Açıklama, gönderen ve
  * referans yanıtta ve önizlemede bu biçimde döner; saklanan metin hamdır, eşleştirme hamla çalışır.

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { requiredText } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { foldStatementText } from './finance-bank-statement.ts'
+import { foldStatementText, statementDigitRuns } from './finance-bank-statement.ts'
 
 /**
  * Banka hareketi eşleştirme önerisi (IST-115, ON-099; docs/domain/finans.md DOM-FIN-069). Gelen
@@ -362,8 +362,8 @@ function addSignal(
 /** Açıklamadaki kimlik sinyalleri: öğrenci → puan ve gerekçe. */
 function identitySignals(directory: BankMatchDirectory, text: string): Map<string, Signals> {
   const found = new Map<string, Signals>()
-  const digitRuns = text.match(/\d+/g) ?? []
-  for (const digits of new Set(digitRuns)) {
+  // Gruplanmış yazım ("123 456 789 01") birleşik dizi olarak da okunur; puanlar aynıdır.
+  for (const digits of statementDigitRuns(text)) {
     for (const id of directory.byNationalId.get(digits) ?? [])
       addSignal(found, id, 'national_id', BANK_MATCH_POINTS.national_id)
     for (const id of directory.byNumber.get(digits) ?? [])

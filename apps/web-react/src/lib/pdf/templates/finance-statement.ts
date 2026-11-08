@@ -2,6 +2,7 @@
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   statementLineLabel,
+  statementNotes,
   type StudentStatement,
 } from '@kampus/school-core/lib/finance-statement.ts'
 import { DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
@@ -60,14 +61,10 @@ export function studentStatementDocument(
   doc.fields([
     ['Borç toplamı', money(statement.debitTotalCents)],
     ['Alacak toplamı', money(statement.creditTotalCents)],
+    ...(statement.refundDueCents > 0
+      ? [['Ödenecek iade', money(statement.refundDueCents)] as const]
+      : []),
   ])
-  if (statement.unappliedCents > 0)
-    doc.paragraph(
-      `Taksitlere dağıtılmayan ${money(statement.unappliedCents)} iade alacağıdır; kalan tutardan düşülmemiştir.`,
-    )
-  if (statement.openingImportCents > 0)
-    doc.paragraph(
-      `Ödenen tutarın ${money(statement.openingImportCents)} kısmı açılış aktarımıdır: önceki kayıtlardan aktarılmıştır, Kampüs tahsilatı ve dekontu yoktur.`,
-    )
+  for (const note of statementNotes(statement)) doc.paragraph(note)
   return doc.finish()
 }

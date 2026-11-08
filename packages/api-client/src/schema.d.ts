@@ -2493,7 +2493,7 @@ export interface paths {
         };
         /**
          * Öğrencinin cari ekstresi
-         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Dosyadan aktarılan geçmiş ödeme `opening_import` satırıdır: borcu kapatır, tahsilat değildir, dekontu yoktur (DOM-FIN-014). Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
+         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Dosyadan aktarılan geçmiş ödeme `opening_import` satırıdır: borcu kapatır, tahsilat değildir, dekontu yoktur (DOM-FIN-014). Ayrılışta iptal edilen taksite alınan ve dağıtılmamış tutar ayrılış hesabına girer, iade alacağı sayılmaz; ayrılış gününe `withdrawal_settlement` (mahsup edilen ile iade farkı), iade ödendiğinde `refund_payment` satırı düşer. Ödenmemiş iade `refundDueCents` alanındadır; son bakiye `openCents − refundDueCents` olur (DOM-FIN-040, DOM-FIN-054). Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
          */
         get: operations["getStudentStatement"];
         put?: never;
@@ -30003,12 +30003,14 @@ export interface operations {
                             creditTotalCents: number;
                             /** @description Taksite dağıtılmayan, iade alacağı olan tutar (kuruş) */
                             unappliedCents: number;
+                            /** @description Ödenmemiş ayrılış iadesi: kurumun öğrenciye borcu (kuruş) */
+                            refundDueCents: number;
                             lines: {
                                 /**
-                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme, dosyadan aktarılan geçmiş ödeme (tahsilat değildir)
+                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme, dosyadan aktarılan geçmiş ödeme (tahsilat değildir), ayrılış hesabı, iade ödemesi
                                  * @enum {string}
                                  */
-                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment" | "opening_import";
+                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment" | "opening_import" | "withdrawal_settlement" | "refund_payment";
                                 /** @description İşlem günü (YYYY-MM-DD, Europe/Istanbul) */
                                 date: string;
                                 /** @description Borç (kuruş) */

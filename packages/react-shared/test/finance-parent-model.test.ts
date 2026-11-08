@@ -190,7 +190,12 @@ test('DOM-FIN-054 ekstre satırları yürüyen bakiyeyi ve web ile aynı açıkl
     ],
   )
   assert.deepEqual(
-    statementTotalRows({ debitTotalCents: 100_000, creditTotalCents: 40_000, openCents: 60_000 }),
+    statementTotalRows({
+      debitTotalCents: 100_000,
+      creditTotalCents: 40_000,
+      openCents: 60_000,
+      refundDueCents: 0,
+    }),
     [
       ['Borç toplamı', '1.000,00 ₺'],
       ['Alacak toplamı', '400,00 ₺'],
@@ -199,9 +204,32 @@ test('DOM-FIN-054 ekstre satırları yürüyen bakiyeyi ve web ile aynı açıkl
   )
 })
 
+test('IST-107, DOM-FIN-040: ödenmemiş ayrılış iadesi toplamda ve notta yazılır', () => {
+  const statement = { unappliedCents: 0, openingImportCents: 0, refundDueCents: 150_000 }
+  assert.deepEqual(
+    statementTotalRows({
+      debitTotalCents: 100_000,
+      creditTotalCents: 250_000,
+      openCents: 0,
+      refundDueCents: 150_000,
+    }).at(-1),
+    ['Ödenecek iade', '1.500,00 ₺'],
+  )
+  assert.deepEqual(statementNotes(statement), [
+    'Ayrılış iadesi olarak 1.500,00 ₺ ödenecektir; bakiyede alacak olarak görünür.',
+  ])
+})
+
 test('DOM-FIN-014 ekstre notları iade alacağını ve açılış aktarımını ayrıca anlatır', () => {
-  assert.deepEqual(statementNotes({ unappliedCents: 0, openingImportCents: 0 }), [])
-  const notes = statementNotes({ unappliedCents: 20_000, openingImportCents: 30_000 })
+  assert.deepEqual(
+    statementNotes({ unappliedCents: 0, openingImportCents: 0, refundDueCents: 0 }),
+    [],
+  )
+  const notes = statementNotes({
+    unappliedCents: 20_000,
+    openingImportCents: 30_000,
+    refundDueCents: 0,
+  })
   assert.equal(notes.length, 2)
   assert.match(notes[0]!, /200,00 ₺ iade alacağıdır/)
   assert.match(notes[1]!, /300,00 ₺ kısmı açılış aktarımıdır/)

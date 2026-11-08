@@ -799,11 +799,16 @@ function requirePayerDecision(
 const normalizedName = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr')
 
 /**
- * İade ödemesi (DOM-FIN-041): hesap sahibi ödeyici olmalıdır; ödenen iade değiştirilemez. Saf
- * denetimdir, yazımı servis yapar.
+ * İade ödemesi (DOM-FIN-041): hesap sahibi ödeyici olmalıdır; ödenen iade değiştirilemez. İade
+ * ayrılıştan doğar, ödeme günü ayrılış gününden önce olamaz. Saf denetimdir, yazımı servis yapar.
  */
 export function planRefundPayment(
-  withdrawal: { refundCents: number; refundPaidDate: string | null; payerName: string },
+  withdrawal: {
+    refundCents: number
+    refundPaidDate: string | null
+    payerName: string
+    withdrawalDate: string
+  },
   input: unknown,
   today: string,
 ): { paidDate: string; iban: string; accountHolder: string } {
@@ -816,6 +821,12 @@ export function planRefundPayment(
     throw new DomainError('refund_date_in_future', 'Ödeme tarihi ileri bir gün olamaz.', {
       path: ['paidDate'],
     })
+  if (data.paidDate < withdrawal.withdrawalDate)
+    throw new DomainError(
+      'refund_date_before_withdrawal',
+      'İade ödeme tarihi ayrılış tarihinden önce olamaz.',
+      { path: ['paidDate'] },
+    )
   if (normalizedName(data.accountHolder) !== normalizedName(withdrawal.payerName))
     throw new DomainError(
       'refund_holder_mismatch',

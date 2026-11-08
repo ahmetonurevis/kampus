@@ -6,6 +6,7 @@ import {
   studentStatement,
   type StatementInvoice,
   type StatementPayment,
+  type StatementWithdrawal,
 } from '../packages/school-core/src/lib/finance-statement.ts'
 
 const TODAY = '2026-11-20'
@@ -34,12 +35,25 @@ const payment = (
   ...overrides,
 })
 
-/** IST-107 kabul ölçütü: her ekstrede toplamlar birbirini ve bakiyeyi tutar. */
+/**
+ * IST-107 kabul ölçütü: her ekstrede toplamlar birbirini ve bakiyeyi tutar. Ödenmemiş ayrılış iadesi
+ * kurumun öğrenciye borcudur; bakiye açık tutardan bu kadar aşağıdadır (DOM-FIN-054).
+ */
 function assertConsistent(statement: ReturnType<typeof studentStatement>) {
-  assert.equal(statement.debitTotalCents - statement.creditTotalCents, statement.openCents)
-  assert.equal(statement.lines.at(-1)?.balanceCents ?? 0, statement.openCents)
+  const balance = statement.openCents - statement.refundDueCents
+  assert.equal(statement.debitTotalCents - statement.creditTotalCents, balance)
+  assert.equal(statement.lines.at(-1)?.balanceCents ?? 0, balance)
   assert.equal(statement.totalCents - statement.paidCents, statement.openCents)
 }
+
+const withdrawal = (overrides: Partial<StatementWithdrawal> = {}): StatementWithdrawal => ({
+  id: 'w1',
+  withdrawalDate: '2026-11-01',
+  refundCents: 0,
+  refundPaidDate: null,
+  creditCents: 0,
+  ...overrides,
+})
 
 test('IST-107: boş ekstre sıfırdır', () => {
   const statement = studentStatement('s1', [], [], TODAY)
@@ -245,4 +259,102 @@ test('DOM-FIN-014: tahsilat kaydı olmayan eski taksit açılış aktarımı say
   const statement = studentStatement('s1', [legacy], [], TODAY)
   assert.equal(statement.lines.filter((item) => item.kind === 'legacy_payment').length, 1)
   assert.equal(statement.openingImportCents, 0)
+})
+
+test('IST-107, DOM-FIN-040: ayrılışta iptal edilen taksite alınan tutar iade hesabına girer, iade alacağı ayrıca yazılmaz', () => {
+  // 2. taksit ayrılışta iptal edildi; ona alınan 3.000 hesaba girdi, hesap 1.000 iade çıkardı.
+  const invoices = [invoice(1, { paidAt: '2026-10-10T09:00:00.000Z', method: 'Banka havalesi' })]
+  const payments = [
+    payment('p1', [{ invoiceId: 'inv-1', amountCents: 10_000 }]),
+    payment('p2', [{ invoiceId: 'inv-iptal', amountCents: 3_000 }], {
+      paidAt: '2026-10-20T09:00:00.000Z',
+    }),
+  ]
+  const pending = studentStatement('s1', invoices, payments, TODAY, [
+    withdrawal({ refundCents: 1_000 }),
+  ])
+  assert.equal(pending.unappliedCents, 0)
+  assert.equal(pending.refundDueCents, 1_000)
+  assert.equal(pending.openCents, 0)
+  assert.deepEqual(
+    pending.lines.map((line) => [line.kind, line.date, line.debitCents, line.creditCents]),
+    [
+      ['installment', '2026-10-15', 10_000, 0],
+      ['payment', '2026-10-10', 0, 10_000],
+      ['payment', '2026-10-20', 0, 3_000],
+      ['withdrawal_settlement', '2026-11-01', 2_000, 0],
+    ].sort((a, b) => String(a[1]).localeCompare(String(b[1]))),
+  )
+  assert.equal(pending.lines.at(-1)?.balanceCents, -1_000)
+  assertConsistent(pending)
+
+  const paid = studentStatement('s1', invoices, payments, TODAY, [
+    withdrawal({ refundCents: 1_000, refundPaidDate: '2026-11-10' }),
+  ])
+  const last = paid.lines.at(-1)
+  assert.equal(last?.kind, 'refund_payment')
+  assert.equal(last.debitCents, 1_000)
+  assert.equal(last.balanceCents, 0)
+  assert.equal(paid.refundDueCents, 0)
+  assertConsistent(paid)
+})
+
+test('IST-107, DOM-FIN-054: ayrılışta mahsup edilen dağıtılmamış tutar alacak yazılır; sonraki fazla ödeme iade alacağı kalır', () => {
+  const invoices = [
+    invoice(1, { paidAt: '2026-10-10T09:00:00.000Z', method: 'Banka havalesi' }),
+    invoice(2, { id: 'borc', amount: 1_000, dueDate: '2026-11-01T09:00:00.000Z' }),
+  ]
+  const payments = [
+    payment('p1', [{ invoiceId: 'inv-1', amountCents: 10_000 }], { amountCents: 12_500 }),
+    payment('p2', [{ invoiceId: 'borc', amountCents: 1_000 }], {
+      amountCents: 1_500,
+      paidAt: '2026-11-05T09:00:00.000Z',
+    }),
+  ]
+  const statement = studentStatement('s1', invoices, payments, TODAY, [
+    withdrawal({ refundCents: 2_500, creditCents: 2_500, refundPaidDate: '2026-11-03' }),
+  ])
+  const first = statement.lines.find((line) => line.paymentId === 'p1')
+  assert.equal(first?.creditCents, 12_500)
+  assert.equal(first.unappliedCents, 0)
+  assert.equal(statement.unappliedCents, 500)
+  assert.equal(statement.lines.filter((line) => line.kind === 'withdrawal_settlement').length, 0)
+  assert.equal(statement.openCents, 0)
+  assertConsistent(statement)
+})
+
+test('IST-107, DOM-FIN-041: ayrılışta kalan borç hesabı tutar; mahsup borç satırıdır', () => {
+  const invoices = [
+    invoice(1, { paidAt: '2026-10-10T09:00:00.000Z', method: 'Banka havalesi' }),
+    invoice(3, { id: 'borc', amount: 1_000, dueDate: '2026-11-01T09:00:00.000Z' }),
+  ]
+  const payments = [
+    payment('p1', [{ invoiceId: 'inv-1', amountCents: 10_000 }]),
+    payment('p2', [{ invoiceId: 'inv-iptal', amountCents: 2_000 }], {
+      paidAt: '2026-10-20T09:00:00.000Z',
+    }),
+  ]
+  const statement = studentStatement('s1', invoices, payments, TODAY, [withdrawal()])
+  const settlement = statement.lines.find((line) => line.kind === 'withdrawal_settlement')
+  assert.equal(settlement?.debitCents, 2_000)
+  assert.equal(statementLineLabel(settlement), 'Ayrılış hesabı · hak edilen ücret')
+  assert.equal(statement.openCents, 1_000)
+  assert.equal(statement.overdueCents, 1_000)
+  assert.equal(statement.refundDueCents, 0)
+  assert.equal(statement.unappliedCents, 0)
+  assertConsistent(statement)
+})
+
+test('IST-107: ayrılış ve iade satırlarının açıklaması', () => {
+  const { lines } = studentStatement(
+    's1',
+    [invoice(1, { paidAt: '2026-10-10T09:00:00.000Z', method: 'Nakit' })],
+    [],
+    TODAY,
+    [withdrawal({ refundCents: 4_000, refundPaidDate: '2026-11-05' })],
+  )
+  assert.deepEqual(lines.map(statementLineLabel).slice(-2), [
+    'Ayrılış hesabı · iade alacağı',
+    'İade ödemesi',
+  ])
 })

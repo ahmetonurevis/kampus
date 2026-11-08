@@ -4999,7 +4999,7 @@ export interface paths {
         put?: never;
         /**
          * Mal kabul kaydet
-         * @description Gönderilmiş ya da kısmen teslim alınmış siparişe kalem bazında kabul: kabul günü, teslim alan personel, muayene notu, kabul edilen ve reddedilen miktar (ret nedeniyle). Kalemde kabul edilen toplam sipariş miktarını aşamaz (422 `purchase_receipt_quantity_exceeded`; kurum kilidi altında denetlenir); reddedilen miktar karşılanmış sayılmaz (K-150). Sipariş durumu yeniden hesaplanır: hiç kabul yok gönderildi, kısmen kısmen teslim, tamamı tamamlandı. Taslak sipariş 422 `purchase_receipt_order_not_sent`, iptal edilmiş 422 `purchase_receipt_order_cancelled`, tamamlanmış 422 `purchase_receipt_order_completed`; gelecek gün 422 `purchase_receipt_date_future`, sipariş açılışından önce 422 `purchase_receipt_date_before_order`, kapalı bütçe dönemi 422 `purchase_receipt_period_closed`; siparişte olmayan kalem 422 `purchase_receipt_item_not_found`. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.
+         * @description Gönderilmiş ya da kısmen teslim alınmış siparişe kalem bazında kabul: kabul günü, teslim alan personel, muayene notu, kabul edilen ve reddedilen miktar (ret nedeniyle). Kalemde kabul edilen toplam sipariş miktarını aşamaz (422 `purchase_receipt_quantity_exceeded`; kurum kilidi altında denetlenir); reddedilen miktar karşılanmış sayılmaz (K-150). Sipariş durumu yeniden hesaplanır: hiç kabul yok gönderildi, kısmen kısmen teslim, tamamı tamamlandı. Taslak sipariş 422 `purchase_receipt_order_not_sent`, iptal edilmiş 422 `purchase_receipt_order_cancelled`, tamamlanmış 422 `purchase_receipt_order_completed`; gelecek gün 422 `purchase_receipt_date_future`, sipariş açılışından önce 422 `purchase_receipt_date_before_order`, kapalı bütçe dönemi 422 `purchase_receipt_period_closed`; siparişte olmayan kalem 422 `purchase_receipt_item_not_found`. Stok kartı (`lines[].stockItemId`) seçilen kalemin kabul edilen miktarı `warehouseId` deposuna kabul gününde giriş yazar (DOM-FIN-078, K-184): kart ve depo etkin, kartın birimi sipariş kalemininkiyle aynı (422 `stock_unit_mismatch`); kart seçilip depo seçilmezse 400. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.
          */
         post: operations["createPurchaseReceipt"];
         delete?: never;
@@ -5019,7 +5019,7 @@ export interface paths {
         put?: never;
         /**
          * Mal kabulü iptal et
-         * @description Kabulü gerekçeyle iptal eder; kayıt silinmez, iptal izi tutulur. Sipariş durumu kalan kabullerden yeniden hesaplanır ve iptal edilen kabul gider gerçekleşeninden düşer. Zaten iptal edilmiş 422 `purchase_receipt_already_cancelled`, kapalı bütçe dönemindeki kabul 422 `purchase_receipt_period_closed`. `If-Match` kabulün sürümüdür; tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-153). Modül `finance`.
+         * @description Kabulü gerekçeyle iptal eder; kayıt silinmez, iptal izi tutulur. Sipariş durumu kalan kabullerden yeniden hesaplanır ve iptal edilen kabul gider gerçekleşeninden düşer. Zaten iptal edilmiş 422 `purchase_receipt_already_cancelled`, kapalı bütçe dönemindeki kabul 422 `purchase_receipt_period_closed`. Kabulün stok girişleri de iptal edilir; giriş sonraki çıkışlarla kullanıldıysa ve iptal stoku eksiye düşürecekse 422 `stock_cancel_negative` (K-184). `If-Match` kabulün sürümüdür; tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-153). Modül `finance`.
          */
         post: operations["cancelPurchaseReceipt"];
         delete?: never;
@@ -5230,6 +5230,198 @@ export interface paths {
         get: operations["getSupplierStatement"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok kartlarını listele
+         * @description Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); `warehouseId` verilirse yalnız o depodaki miktar. `critical=true` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları verir. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listStockItems"];
+        put?: never;
+        /**
+         * Stok kartı ekle
+         * @description Kod (büyük harfe çevrilir), ad, kategori (tedarikçi kategorileri), birim (`piece`, `pack`, `box`, `kilogram`, `liter`, `meter`; K-182) ve isteğe bağlı kritik seviye. Kod kurumda tekil: 409 `stock_item_code_exists` (DOM-FIN-077). Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok kartı ayrıntısı
+         * @description Kart, toplam miktar ve depo başına miktar. Olmayan ya da başka kurumun kartı 404. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["getStockItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Stok kartını düzelt ya da pasifleştir
+         * @description Kısmi düzeltme. Hareketi olan kartın birimi değişmez (422 `stock_item_unit_locked`); miktarı olan kart pasifleşmez (422 `stock_item_has_stock`); başka kartın kodu 409 `stock_item_code_exists`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        patch: operations["updateStockItem"];
+        trace?: never;
+    };
+    "/api/v1/finance/stock-warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Depoları listele
+         * @description Ada göre; pasifler dahil, kampüs adı ve stoklu ürün çeşidi sayısıyla (DOM-FIN-077). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listStockWarehouses"];
+        put?: never;
+        /**
+         * Depo ekle
+         * @description Ad, kurumun etkin kampüsü ve isteğe bağlı not. Kampüs yoksa ya da pasifse 422 `stock_warehouse_campus_not_found`; ad kurumda tekil (Türkçe harf duyarsız): 409 `stock_warehouse_name_exists` (DOM-FIN-077, K-180). Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockWarehouse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-warehouses/{warehouseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Depoyu düzelt ya da pasifleştir
+         * @description Kısmi düzeltme. Stoku olan depo başka kampüse bağlanmaz ve pasifleşmez (422 `stock_warehouse_has_stock`); ad tekil (409 `stock_warehouse_name_exists`); sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        patch: operations["updateStockWarehouse"];
+        trace?: never;
+    };
+    "/api/v1/finance/stock-movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok hareketlerini listele
+         * @description En yeni gün önce; iptal edilenler dahil. Kart, depo, tür ve gün aralığıyla süzülür (DOM-FIN-078). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listStockMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok girişi yaz
+         * @description Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok çıkışı yaz
+         * @description Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 `stock_insufficient`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        post: operations["createStockIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Depolar arası transfer
+         * @description Tek işlemde iki hareket: çıkış deposundan transfer çıkışı, giriş deposuna transfer girişi; aynı `transferId`. Depolar farklı ve etkin; kampüsleri farklı olabilir. Çıkış deposunun miktarı aşılamaz (422 `stock_insufficient`). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-movements/{movementId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok hareketini iptal et
+         * @description Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle geri alınır (422 `stock_movement_from_receipt`); zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["cancelStockMovement"];
         delete?: never;
         options?: never;
         head?: never;
@@ -53122,6 +53314,9 @@ export interface operations {
                                 id: string;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
+                                /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
                                 /** @description Teslim alan personel (K-152) */
                                 receivedBy: string;
                                 inspectionNote: string | null;
@@ -53137,6 +53332,9 @@ export interface operations {
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
+                                    stockItemId: string | null;
+                                    stockItemName: string | null;
                                 }[];
                                 createdAt: string;
                                 createdByName: string | null;
@@ -53251,6 +53449,8 @@ export interface operations {
                     receivedBy: string;
                     /** @default null */
                     inspectionNote?: string | null;
+                    /** @default null */
+                    warehouseId?: string | null;
                     lines: {
                         /** Format: uuid */
                         orderItemId: string;
@@ -53259,6 +53459,8 @@ export interface operations {
                         rejectedQuantity?: number;
                         /** @default null */
                         rejectReason?: string | null;
+                        /** @default null */
+                        stockItemId?: string | null;
                     }[];
                 };
             };
@@ -53306,6 +53508,9 @@ export interface operations {
                                 id: string;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
+                                /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
                                 /** @description Teslim alan personel (K-152) */
                                 receivedBy: string;
                                 inspectionNote: string | null;
@@ -53321,6 +53526,9 @@ export interface operations {
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
+                                    stockItemId: string | null;
+                                    stockItemName: string | null;
                                 }[];
                                 createdAt: string;
                                 createdByName: string | null;
@@ -53481,6 +53689,9 @@ export interface operations {
                                 id: string;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
+                                /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
                                 /** @description Teslim alan personel (K-152) */
                                 receivedBy: string;
                                 inspectionNote: string | null;
@@ -53496,6 +53707,9 @@ export interface operations {
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
+                                    stockItemId: string | null;
+                                    stockItemName: string | null;
                                 }[];
                                 createdAt: string;
                                 createdByName: string | null;
@@ -55536,6 +55750,1628 @@ export interface operations {
                             }[];
                         };
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Kategori */
+                category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                /** @description `active` etkin, `inactive` pasif kayıtlar */
+                status?: "active" | "inactive";
+                /** @description `true`: yalnız kritik seviyedeki etkin kartlar */
+                critical?: "true";
+                /** @description Miktar yalnız bu depodan */
+                warehouseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                    /** @enum {string} */
+                    unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                    /** @default null */
+                    minQuantity?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStockItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStockItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code?: string;
+                    name?: string;
+                    /** @enum {string} */
+                    category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                    /** @enum {string} */
+                    unit?: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                    minQuantity?: number | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockWarehouses: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `active` etkin, `inactive` pasif kayıtlar */
+                status?: "active" | "inactive";
+                /** @description Kampüs */
+                campusId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            campusId: string;
+                            /** @description Kampüs adı; kampüs arşivlendiyse boş */
+                            campusName: string | null;
+                            note: string | null;
+                            isActive: boolean;
+                            /** @description Miktarı sıfırdan farklı ürün çeşidi sayısı */
+                            itemCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockWarehouse: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    campusId: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            campusId: string;
+                            /** @description Kampüs adı; kampüs arşivlendiyse boş */
+                            campusName: string | null;
+                            note: string | null;
+                            isActive: boolean;
+                            /** @description Miktarı sıfırdan farklı ürün çeşidi sayısı */
+                            itemCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStockWarehouse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                warehouseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    campusId?: string;
+                    note?: string | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            campusId: string;
+                            /** @description Kampüs adı; kampüs arşivlendiyse boş */
+                            campusName: string | null;
+                            note: string | null;
+                            isActive: boolean;
+                            /** @description Miktarı sıfırdan farklı ürün çeşidi sayısı */
+                            itemCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockMovements: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Stok kartı */
+                itemId?: string;
+                /** @description Depo */
+                warehouseId?: string;
+                /** @description Hareket türü */
+                type?: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                /** @description Bu günden (dahil) */
+                from?: string;
+                /** @description Bu güne kadar (dahil) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    quantity: number;
+                    movementDate: string;
+                    note?: string | null;
+                    /** Format: uuid */
+                    warehouseId: string;
+                    /** @enum {string} */
+                    reason: "opening" | "donation" | "count_surplus" | "returned" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockIssue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    quantity: number;
+                    movementDate: string;
+                    note?: string | null;
+                    /** Format: uuid */
+                    warehouseId: string;
+                    /** @enum {string} */
+                    reason: "usage" | "damage" | "loss" | "count_shortage" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockTransfer: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    quantity: number;
+                    movementDate: string;
+                    note?: string | null;
+                    /** Format: uuid */
+                    fromWarehouseId: string;
+                    /** Format: uuid */
+                    toWarehouseId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            transferId: string;
+                            /** @description Çıkış ve giriş hareketi */
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                                /** @description Hareket günü `YYYY-MM-DD` */
+                                movementDate: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                                quantity: number;
+                                /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                                reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                                note: string | null;
+                                transferId: string | null;
+                                /** @description Transferde karşı depo */
+                                counterpartWarehouseName: string | null;
+                                /** @description Mal kabul girişinde sipariş */
+                                orderId: string | null;
+                                orderNumber: string | null;
+                                createdAt: string;
+                                createdByName: string | null;
+                                cancelledAt: string | null;
+                                cancelledByName: string | null;
+                                cancelReason: string | null;
+                                /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStockMovement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                movementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
                     };
                 };
             };

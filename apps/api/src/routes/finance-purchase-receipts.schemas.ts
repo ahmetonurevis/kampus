@@ -45,6 +45,11 @@ const receiptBoardSchema = z.object({
       z.object({
         id: z.string(),
         receiptDate: z.string().describe('Kabul günü `YYYY-MM-DD`'),
+        warehouseId: z
+          .string()
+          .nullable()
+          .describe('Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184)'),
+        warehouseName: z.string().nullable(),
         receivedBy: z.string().describe('Teslim alan personel (K-152)'),
         inspectionNote: z.string().nullable(),
         netCents: cents('Kabul edilen kısmın KDV hariç tutarı'),
@@ -56,6 +61,11 @@ const receiptBoardSchema = z.object({
             acceptedQuantity: count('Kabul edilen miktar'),
             rejectedQuantity: count('Reddedilen miktar'),
             rejectReason: z.string().nullable(),
+            stockItemId: z
+              .string()
+              .nullable()
+              .describe('Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184)'),
+            stockItemName: z.string().nullable(),
           }),
         ),
         createdAt: z.string(),

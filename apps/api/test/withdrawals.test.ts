@@ -596,6 +596,12 @@ describe('ayrılış ve iade uçları', () => {
       422,
       'refund_holder_mismatch',
     )
+    // IST-110: iade ayrılıştan önceki bir güne ödenmiş yazılamaz; kayıt değişmez.
+    assertError(
+      await payRefund(a.cookie, id, version, { ...REFUND, paidDate: '2026-09-30' }),
+      422,
+      'refund_date_before_withdrawal',
+    )
     assertError(
       await payRefund(a.cookie, id, version, { ...REFUND, iban: 'TR1' }),
       400,

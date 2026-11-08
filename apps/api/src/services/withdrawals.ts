@@ -308,6 +308,7 @@ export async function payRefundCommand(
                 refundCents: row.refundCents,
                 refundPaidDate: row.refundPaidDate,
                 payerName: refundPayerName(state, row, institutionType),
+                withdrawalDate: row.withdrawalDate,
               },
               input,
               dayKey(ctx.now),

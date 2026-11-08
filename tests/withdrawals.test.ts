@@ -350,7 +350,12 @@ test('DOM-FIN-041: iade ödemesi IBAN, ödeyici ve tekrar denetler', () => {
   assert.equal(isValidTurkishIban(IBAN), true)
   assert.equal(isValidTurkishIban('TR330006100519786457841327'), false)
   assert.equal(isValidTurkishIban('DE89370400440532013000'), false)
-  const row = { refundCents: 100, refundPaidDate: null, payerName: 'Ayşe Yılmaz' }
+  const row = {
+    refundCents: 100,
+    refundPaidDate: null,
+    payerName: 'Ayşe Yılmaz',
+    withdrawalDate: '2026-10-01',
+  }
   const input = {
     paidDate: '2026-10-05',
     iban: `${IBAN.slice(0, 4)} ${IBAN.slice(4)}`,
@@ -374,6 +379,24 @@ test('DOM-FIN-041: iade ödemesi IBAN, ödeyici ve tekrar denetler', () => {
   assert.throws(
     () => planRefundPayment({ ...row, refundPaidDate: '2026-10-01' }, input, today),
     isDomainError('refund_already_paid', 'conflict'),
+  )
+})
+
+test('DOM-FIN-041, IST-110: iade ayrılış gününden önceki bir güne ödenmiş yazılamaz', () => {
+  const row = {
+    refundCents: 100,
+    refundPaidDate: null,
+    payerName: 'Ayşe Yılmaz',
+    withdrawalDate: '2026-10-05',
+  }
+  const input = { paidDate: '2026-10-04', iban: IBAN, accountHolder: 'Ayşe Yılmaz' }
+  assert.throws(
+    () => planRefundPayment(row, input, '2026-10-06'),
+    isDomainError('refund_date_before_withdrawal'),
+  )
+  assert.equal(
+    planRefundPayment(row, { ...input, paidDate: '2026-10-05' }, '2026-10-06').paidDate,
+    '2026-10-05',
   )
 })
 

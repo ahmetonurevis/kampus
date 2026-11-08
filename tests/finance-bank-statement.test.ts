@@ -220,7 +220,8 @@ describe('K-107: mükerrer anahtarı ve aktarım planı', () => {
     const keys = bankTransactionKeys(ACCOUNT, lines)
     assert.equal(keys.size, 3)
     const [first, second] = [keys.get(2), keys.get(3)]
-    assert.ok(first?.endsWith('#1') && second?.endsWith('#2'))
+    assert.ok(first !== undefined && second !== undefined)
+    assert.ok(first.endsWith('#1') && second.endsWith('#2'))
     assert.equal(first.replace(/#1$/, ''), second.replace(/#2$/, ''))
     assert.notEqual(bankTransactionKeys('other', lines).get(2), first)
     // Aynı dosya ikinci kez: anahtarlar aynıdır.

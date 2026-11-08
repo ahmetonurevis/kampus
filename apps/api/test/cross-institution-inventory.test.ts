@@ -1110,6 +1110,48 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: bütçe ve maliyet merkezi (ON-241, ON-242; DOM-FIN-062).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/cost-centers', 'ids(CENTERS)'],
+        ['gövde', 'POST /api/v1/finance/cost-centers', 'parentId: b.campus.id'],
+        ['kayıt', 'PATCH /api/v1/finance/cost-centers/:costCenterId', "call('PATCH', bCenter"],
+        ['liste', 'GET /api/v1/finance/budget-items', 'ids(ITEMS)'],
+        ['gövde', 'POST /api/v1/finance/budget-items', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/budget-items/:itemId', "call('PATCH', bItem"],
+        ['liste', 'GET /api/v1/finance/budget-periods', 'ids(PERIODS)'],
+        ['gövde', 'POST /api/v1/finance/budget-periods', "name: 'Sızma'"],
+        ['kayıt', 'GET /api/v1/finance/budget-periods/:periodId', 'get(bPeriod, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/budget-periods/:periodId', "call('PATCH', bPeriod"],
+        ['kayıt', 'POST /api/v1/finance/budget-periods/:periodId/open', '`${bPeriod}/open`'],
+        ['kayıt', 'POST /api/v1/finance/budget-periods/:periodId/close', '`${bPeriod}/close`'],
+        ['kayıt', 'GET /api/v1/finance/budget-periods/:periodId/lines', 'get(`${bPeriod}/lines`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/budget-periods/:periodId/lines',
+          "call('POST', `${bPeriod}/lines`",
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/budget-periods/:periodId/lines/:lineId',
+          "call('PATCH', bLineUrl",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/budget-periods/:periodId/lines/:lineId',
+          "call('DELETE', bLineUrl",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-budget.test.ts',
+        'başka kurumun merkezi, kalemi, dönemi ve satırı 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

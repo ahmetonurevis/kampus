@@ -35,6 +35,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
 import { reasonFormSchema, type ReasonFormValues } from './finance-procurement-forms.ts'
 import { ORDER_STATUS_VIEW } from './finance-purchase-order-forms.ts'
+import { FinancePurchaseReceiptsPanel } from './FinancePurchaseReceiptsPanel.tsx'
 
 const NO_SORT: readonly string[] = []
 const MOBILE = ['number', 'status', 'total']
@@ -63,7 +64,8 @@ type Row = {
 /**
  * Satın alma siparişleri (`?gorunum=siparis`; DOM-FIN-073, ON-225). Sipariş talebin seçili
  * teklifinden açılır (talep panelindeki "Teklifler" bölümü). Ayrıntı (`?siparis=`) PDF önizlemesi,
- * gönderildi işareti (yönetici ve ön büro) ve iptal (yönetici) taşır. Tedarikçiye e-posta
+ * gönderildi işareti (yönetici ve ön büro), iptal (yönetici) ve gönderilmiş siparişte mal kabul
+ * bölümünü (DOM-FIN-074) taşır. Tedarikçiye e-posta
  * gönderilmez: PDF kurum dışından iletilir (K-142).
  */
 export function FinancePurchaseOrdersSection() {
@@ -288,6 +290,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
           </div>
         </dl>
       </section>
+      {order.status === 'draft' ? null : <FinancePurchaseReceiptsPanel orderId={order.id} />}
       {cancelling ? <CancelModal order={order} onClose={() => setCancelling(false)} /> : null}
     </div>
   )

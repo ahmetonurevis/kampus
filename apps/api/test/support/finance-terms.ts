@@ -1,6 +1,10 @@
+import { eq } from 'drizzle-orm'
+
 import type { Database } from '../../src/db/client.ts'
 import { insertFeeTariff } from '../../src/db/fee-tariffs.ts'
 import { insertScholarshipProgram } from '../../src/db/finance-scholarships.ts'
+import { bankAccounts } from '../../src/db/schema/payments.ts'
+import { studentWithdrawals } from '../../src/db/schema/withdrawals.ts'
 import { FIXED_NOW } from './app.ts'
 
 /**
@@ -81,4 +85,39 @@ export function contractTerms(input: {
     approvedByUserId: 'u-yonetici',
     payer: input.payer ?? 'guardian',
   }
+}
+
+/** İade ödemesinin çıktığı kurum hesabı (M-13, DOM-FIN-032); kurum başına aynı kimlik. */
+export const TEST_REFUND_BANK_ACCOUNT_ID = '7c3e9a1b-4d2f-4e8a-b6c5-2f1e0d9c8b7a'
+export const TEST_REFUND_BANK_LABEL = 'Test Bankası · 0777'
+
+/** Kurumun bildirilmiş hesabını açar; varsa bir şey yapmaz. */
+export async function insertRefundBankAccount(db: Database, institutionId: string): Promise<void> {
+  await db
+    .insert(bankAccounts)
+    .values({
+      institutionId,
+      id: TEST_REFUND_BANK_ACCOUNT_ID,
+      bankName: 'Test Bankası',
+      iban: 'TR420001000000000000000777',
+      accountHolder: 'Test Kurumu',
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+    .onConflictDoNothing()
+}
+
+/**
+ * İade ödemesinden hemen önce ayrılışın kurumuna hesap açar. Hesap tanımlı kurumda banka havalesi
+ * tahsilatı hesap seçimi ister (DOM-FIN-032); tahsilat fikstürleri hesapsız kurumla yazıldığı için
+ * hesap kurum kurulurken değil, iade ödenirken eklenir. Kayıt yoksa (404 testi) bir şey yapmaz.
+ */
+export async function ensureRefundBankAccount(db: Database, withdrawalId: string): Promise<void> {
+  if (!/^[0-9a-f-]{36}$/i.test(withdrawalId)) return
+  const [row] = await db
+    .select({ institutionId: studentWithdrawals.institutionId })
+    .from(studentWithdrawals)
+    .where(eq(studentWithdrawals.id, withdrawalId))
+    .limit(1)
+  if (row !== undefined) await insertRefundBankAccount(db, row.institutionId)
 }

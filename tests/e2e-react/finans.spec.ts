@@ -46,6 +46,24 @@ async function invoice(client: ApiClient, id: string): Promise<InvoiceRecord> {
 }
 
 /** Arayüzden geçmeden ödeme (başka bir kullanıcının aynı anda tahsilatı). */
+/**
+ * İadenin çıktığı kurum hesabı (M-13, DOM-FIN-032). Hesap tanımlı kurumda banka havalesi tahsilatı
+ * hesap ister; bu yüzden tahsilatlardan sonra, iade ödenmeden hemen önce eklenir. Kimliği döner.
+ */
+async function addRefundBankAccount(client: ApiClient): Promise<string> {
+  const account = await client.post(
+    '/api/v1/bank-accounts',
+    {
+      bankName: 'Örnek Bankası',
+      iban: 'TR320010009999901234567890',
+      accountHolder: 'Akademi Özel Okulları',
+    },
+    { 'idempotency-key': randomUUID() },
+  )
+  expect(account.status, 'kurum hesabı').toBe(201)
+  return (account.body as { data: { id: string } }).data.id
+}
+
 async function payThroughApi(client: ApiClient, id: string, method: string) {
   const record = await invoice(client, id)
   const response = await client.context.fetch('/api/v1/payments', {
@@ -861,8 +879,11 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('dialog', { name: /İade hesap kırılımı/ })).toBeVisible()
     await page.keyboard.press('Escape')
 
+    // M-13: iade kurumun bildirilmiş hesabından ödenir; hesap tanımlıysa ilk hesap öntanımlıdır.
+    const accountId = await addRefundBankAccount(client)
     await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
     const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
+    await expect(refund.getByLabel('Kurum banka hesabı')).toHaveValue(accountId)
     await refund.getByLabel('IBAN').fill('TR330006100519786457841326')
     await refund.getByLabel('Hesap sahibi').fill('Başka Kişi')
     await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
@@ -891,6 +912,17 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByText('İade ödendi olarak kaydedildi.')).toBeVisible()
     await expect(table).toContainText('Ödendi')
     await expect(table).not.toContainText('TR330006100519786457841326')
+
+    // M-13, DOM-FIN-036: ödenen iade bugünün gün sonuna banka satırında ayrı girer.
+    await page.goto(`${ADMIN_URL}?gorunum=gunsonu`)
+    const refunds = page.getByRole('table', { name: 'Günün iade ödemeleri' })
+    await expect(refunds).toContainText(name)
+    await expect(refunds).toContainText('Örnek Bankası · 7890')
+    await expect(
+      page
+        .getByRole('table', { name: 'Ödeme yöntemine göre gün özeti' })
+        .getByRole('row', { name: /Banka havalesi/ }),
+    ).toContainText('/ 1')
 
     await loginAs(school.user('onburo'))
     await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
@@ -1036,6 +1068,7 @@ test.describe('Finans: tahsilat', () => {
     await expect(breakdown).toContainText('Tahsilat velinin hesabından yapıldı')
     await page.keyboard.press('Escape')
 
+    await addRefundBankAccount(client)
     await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
     const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
     await refund.getByLabel('IBAN').fill('TR330006100519786457841326')

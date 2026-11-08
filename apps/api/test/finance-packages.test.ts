@@ -33,7 +33,11 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
-import { contractTerms } from './support/finance-terms.ts'
+import {
+  contractTerms,
+  insertRefundBankAccount,
+  TEST_REFUND_BANK_ACCOUNT_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Dil okulu paket ve ders saati satışı uçları (IST-078; DOM-DIL-006, -050, -051; DOM-FIN-002, -010).
@@ -1392,11 +1396,17 @@ describe('IST-078: paket ve ders saati satışı uçları', () => {
         breakdown.contracts[0].balanceCents + breakdown.contracts[1].balanceCents,
       )
       const student = await findRecord(db, a.id, 'students', 's3')
+      await insertRefundBankAccount(db, a.id)
       const refund = (accountHolder: unknown) =>
         post(
           `/api/v1/withdrawals/${String(id)}/pay-refund`,
           a.admin,
-          { paidDate: '2026-10-06', iban: 'TR330006100519786457841326', accountHolder },
+          {
+            paidDate: '2026-10-06',
+            iban: 'TR330006100519786457841326',
+            accountHolder,
+            bankAccountId: TEST_REFUND_BANK_ACCOUNT_ID,
+          },
           { ...key(), ...version(rowVersion as number) },
         )
       assertError(await refund('Başka Kişi'), 422, 'refund_holder_mismatch')

@@ -124,6 +124,8 @@ export const payRefundSchema = z.strictObject({
     .refine(isValidTurkishIban, 'Geçerli bir IBAN girin.'),
   // kvkk: K
   accountHolder: requiredText.max(120),
+  /** İadenin çıktığı kurum hesabı (DOM-FIN-032, M-13): kurumun arşivlenmemiş bildirilmiş hesabı. */
+  bankAccountId: z.uuid('İadenin ödendiği kurum banka hesabını seçin.'),
 })
 export type PayRefundInput = z.input<typeof payRefundSchema>
 export type PayRefundOutput = z.output<typeof payRefundSchema>
@@ -798,9 +800,19 @@ function requirePayerDecision(
 
 const normalizedName = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr')
 
+export interface RefundPaymentContext {
+  today: string
+  /** Kurumun arşivlenmemiş bildirilmiş banka hesapları (`DOM-FIN-032`). */
+  bankAccountIds: readonly string[]
+  /** Ödeme günü kapatılmış mı (`DOM-FIN-036`). */
+  dayClosed: boolean
+}
+
 /**
  * İade ödemesi (DOM-FIN-041): hesap sahibi ödeyici olmalıdır; ödenen iade değiştirilemez. İade
- * ayrılıştan doğar, ödeme günü ayrılış gününden önce olamaz. Saf denetimdir, yazımı servis yapar.
+ * ayrılıştan doğar, ödeme günü ayrılış gününden önce olamaz. İade kurumun bildirilmiş banka
+ * hesabından çıkar ve o günün gün sonuna "iade ödemesi" olarak girer; kapatılmış güne yazılmaz
+ * (M-13, DOM-FIN-036). Saf denetimdir, yazımı servis yapar.
  */
 export function planRefundPayment(
   withdrawal: {
@@ -810,14 +822,14 @@ export function planRefundPayment(
     withdrawalDate: string
   },
   input: unknown,
-  today: string,
-): { paidDate: string; iban: string; accountHolder: string } {
+  context: RefundPaymentContext,
+): PayRefundOutput {
   const data = payRefundSchema.parse(input)
   if (withdrawal.refundCents === 0)
     throw new DomainError('refund_not_due', 'Bu ayrılışta iade tutarı yok.', { kind: 'conflict' })
   if (withdrawal.refundPaidDate !== null)
     throw new DomainError('refund_already_paid', 'Bu iade zaten ödenmiş.', { kind: 'conflict' })
-  if (data.paidDate > today)
+  if (data.paidDate > context.today)
     throw new DomainError('refund_date_in_future', 'Ödeme tarihi ileri bir gün olamaz.', {
       path: ['paidDate'],
     })
@@ -832,6 +844,20 @@ export function planRefundPayment(
       'refund_holder_mismatch',
       'Hesap sahibi sözleşmedeki ödeyici olmalıdır.',
       { path: ['accountHolder'] },
+    )
+  if (!context.bankAccountIds.includes(data.bankAccountId))
+    throw new DomainError(
+      'refund_bank_account_invalid',
+      context.bankAccountIds.length === 0
+        ? 'Kurumun bildirilmiş banka hesabı yok; önce Ayarlar’dan hesap ekleyin.'
+        : 'Banka hesabı bulunamadı; kurumun tanımlı hesaplarından birini seçin.',
+      { path: ['bankAccountId'] },
+    )
+  if (context.dayClosed)
+    throw new DomainError(
+      'finance_day_closed',
+      'Bu günün kasası kapatılmış; bu güne iade ödemesi girilemez. Yöneticinin günü yeniden açması gerekir.',
+      { path: ['paidDate'] },
     )
   return data
 }

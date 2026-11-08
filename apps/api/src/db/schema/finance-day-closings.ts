@@ -17,20 +17,26 @@ import {
 import { institutions } from './auth.ts'
 import { requiredColumns } from './columns.ts'
 
-/** Yöntem özeti satırı; `method` `payments.method` anahtarıdır (core etiketi depoda çevrilir). */
+/**
+ * Yöntem özeti satırı; `method` `payments.method` anahtarıdır (core etiketi depoda çevrilir).
+ * İade alanları migration 0083'ten önceki kapanışta yoktur ve sıfır okunur (M-13).
+ */
 export interface StoredDayMethodTotal {
   method: string
   collectedCount: number
   collectedCents: number
   reversedCount: number
   reversedCents: number
+  refundPaidCount?: number
+  refundPaidCents?: number
   netCents: number
 }
 
 /**
  * Gün kapanışı (IST-113, DOM-FIN-036). Satır kapanış anının özetini taşır ve silinmez: yeniden açma
  * aynı satıra gerekçeyle yazılır, yeni kapanış yeni satırdır; tetikleyici bunun dışındaki değişikliği
- * reddeder (migration). Günde en çok bir geçerli kapanış vardır.
+ * reddeder (migration). Günde en çok bir geçerli kapanış vardır. O gün ödenen ayrılış iadesi ayrı
+ * sayılır ve netten düşer (M-13).
  */
 export const financeDayClosings = pgTable(
   'finance_day_closings',
@@ -46,6 +52,8 @@ export const financeDayClosings = pgTable(
     collectedCents: bigint('collected_cents', { mode: 'number' }).notNull(),
     reversedCount: integer('reversed_count').notNull(),
     reversedCents: bigint('reversed_cents', { mode: 'number' }).notNull(),
+    refundPaidCount: integer('refund_paid_count').notNull().default(0),
+    refundPaidCents: bigint('refund_paid_cents', { mode: 'number' }).notNull().default(0),
     netCents: bigint('net_cents', { mode: 'number' }).notNull(),
     openingCashCents: bigint('opening_cash_cents', { mode: 'number' }),
     countedCashCents: bigint('counted_cash_cents', { mode: 'number' }),
@@ -76,7 +84,7 @@ export const financeDayClosings = pgTable(
     check('finance_day_closings_currency_check', sql`${table.currency} = 'TRY'`),
     check(
       'finance_day_closings_net_check',
-      sql`${table.netCents} = ${table.collectedCents} - ${table.reversedCents}`,
+      sql`${table.netCents} = ${table.collectedCents} - ${table.reversedCents} - ${table.refundPaidCents}`,
     ),
     check(
       'finance_day_closings_cash_check',

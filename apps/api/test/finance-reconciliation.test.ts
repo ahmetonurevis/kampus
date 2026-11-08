@@ -29,6 +29,8 @@ import {
   insertTestScholarshipProgram,
   insertTestTariff,
   TEST_SCHOLARSHIP_PROGRAM_ID,
+  ensureRefundBankAccount,
+  TEST_REFUND_BANK_ACCOUNT_ID,
 } from './support/finance-terms.ts'
 
 /**
@@ -70,6 +72,7 @@ const REFUND = {
   paidDate: '2026-10-05',
   iban: 'TR330006100519786457841326',
   accountHolder: PARENT_NAME,
+  bankAccountId: TEST_REFUND_BANK_ACCOUNT_ID,
 }
 
 type Amounts = {
@@ -198,11 +201,13 @@ describe('yıl sonu mutabakatı', () => {
     )
   const withdraw = (cookie: string) =>
     send('POST', `/api/v1/students/${STUDENT?.id ?? ''}/withdraw`, cookie, WITHDRAW, key())
-  const payRefund = (cookie: string, id: string, version: number) =>
-    send('POST', `/api/v1/withdrawals/${id}/pay-refund`, cookie, REFUND, {
+  const payRefund = async (cookie: string, id: string, version: number) => {
+    await ensureRefundBankAccount(db, id)
+    return send('POST', `/api/v1/withdrawals/${id}/pay-refund`, cookie, REFUND, {
       'if-match': `"${String(version)}"`,
       ...key(),
     })
+  }
   function assertError(
     response: Awaited<ReturnType<typeof send>>,
     statusCode: number,

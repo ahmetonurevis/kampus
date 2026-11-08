@@ -41,7 +41,12 @@ const summarySchema = z.object({
         collectedCents: z.number().int().describe('Tahsilat toplamı (kuruş)'),
         reversedCount: z.number().int().describe('O gün yapılan iptal adedi'),
         reversedCents: z.number().int().describe('O gün yapılan iptal toplamı (kuruş)'),
-        netCents: z.number().int().describe('Tahsilat eksi iptal (kuruş)'),
+        refundPaidCount: z
+          .number()
+          .int()
+          .describe('O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)'),
+        refundPaidCents: z.number().int().describe('O gün ödenen ayrılış iadesi toplamı (kuruş)'),
+        netCents: z.number().int().describe('Tahsilat eksi iptal eksi iade ödemesi (kuruş)'),
       }),
     )
     .describe('Her yöntem hareket olmasa da yer alır'),
@@ -49,7 +54,9 @@ const summarySchema = z.object({
   collectedCents: z.number().int(),
   reversedCount: z.number().int(),
   reversedCents: z.number().int(),
-  netCents: z.number().int(),
+  refundPaidCount: z.number().int().describe('O gün ödenen ayrılış iadesi adedi'),
+  refundPaidCents: z.number().int().describe('O gün ödenen ayrılış iadesi toplamı (kuruş)'),
+  netCents: z.number().int().describe('Tahsilat eksi iptal eksi iade ödemesi (kuruş)'),
 })
 
 const closingSchema = z.object({
@@ -88,6 +95,17 @@ const lineSchema = z.object({
   reversalReason: z.string().nullable(),
 })
 
+const refundLineSchema = z.object({
+  withdrawalId: z.string(),
+  studentName: z.string().nullable(),
+  amountCents: z.number().int().describe('Ödenen iade (kuruş)'),
+  paidDate: z.string().describe('İadenin ödeme günü (`YYYY-MM-DD`)'),
+  bankAccountLabel: z
+    .string()
+    .nullable()
+    .describe('İadenin ödendiği kurum hesabı; hesap seçimi zorunlu olmadan önce ödenmişse boş'),
+})
+
 const reportSchema = dataResponse(
   z.object({
     closingDate: z.string(),
@@ -107,6 +125,11 @@ const reportSchema = dataResponse(
     reversed: z
       .array(lineSchema)
       .describe('O gün yapılan iptaller; tahsilatın günü başka olabilir'),
+    refunds: z
+      .array(refundLineSchema)
+      .describe(
+        'O gün ödenen ayrılış iadeleri (M-13); IBAN ve hesap sahibi yok. Kapalı günde de güncel liste',
+      ),
     closing: closingSchema.nullable().describe('Geçerli kapanış; gün açıksa boş'),
     history: z.array(closingSchema).describe('Yeniden açılmış eski kapanışlar, en yeni önce'),
   }),
@@ -134,7 +157,7 @@ export function registerFinanceDayClosingRoutes(app: FastifyInstance) {
         tags: ['finance-day-closings'],
         summary: 'Gün sonu raporu',
         description:
-          'Günün tahsilatları yöntem bazında, iptaller, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe yazılır; geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.',
+          'Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.',
         params: paramsSchema,
         response: { 200: reportSchema, ...commandErrors },
       },
@@ -159,7 +182,7 @@ export function registerFinanceDayClosingRoutes(app: FastifyInstance) {
         tags: ['finance-day-closings'],
         summary: 'Günü kapat',
         description:
-          'Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.',
+          'Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat ve iade ödemesi girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: paramsSchema,
         body: closeFinanceDaySchema,

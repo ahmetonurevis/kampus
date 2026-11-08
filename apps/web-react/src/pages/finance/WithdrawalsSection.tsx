@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import { bankAccountLabel } from '@kampus/school-core/lib/payments.ts'
 import {
   contractLineRows,
   contractLinesToShow,
@@ -24,6 +25,7 @@ import {
   type WithdrawalReason,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import { useBankAccounts } from '@kampus/react-shared/use-payment-commands.ts'
 import {
   REAUTHENTICATION_CODE,
   usePayRefund,
@@ -731,13 +733,41 @@ function StartModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function RefundModal({ row, onClose }: { row: WithdrawalRow; onClose: () => void }) {
+type RefundModalProps = { row: WithdrawalRow; onClose: () => void }
+type BankAccountOption = { id: string; bankName: string; iban: string }
+
+/**
+ * İade ödemesi (DOM-FIN-041, M-13): iade kurumun bildirilmiş banka hesabından çıkar ve ödeme
+ * gününün gün sonuna girer; kapatılmış güne yazılmaz. Hesaplar yüklenince form açılır, ilk hesap
+ * öntanımlıdır.
+ */
+function RefundModal(props: RefundModalProps) {
+  const accounts = useBankAccounts()
+  if (accounts.isPending)
+    return (
+      <Modal open onOpenChange={(open) => (open ? undefined : props.onClose())} title="İadeyi öde">
+        <SummaryLoading />
+      </Modal>
+    )
+  return <RefundFormModal {...props} accounts={accounts.data?.data ?? []} />
+}
+
+function RefundFormModal({
+  row,
+  onClose,
+  accounts,
+}: RefundModalProps & { accounts: readonly BankAccountOption[] }) {
   const pay = usePayRefund()
   const today = dayKey()
   const [reauth, setReauth] = useState(false)
   const form = useForm<PayRefundInput, unknown, PayRefundOutput>({
     resolver: zodResolver(payRefundSchema),
-    defaultValues: { paidDate: today, iban: '', accountHolder: '' },
+    defaultValues: {
+      paidDate: today,
+      iban: '',
+      accountHolder: '',
+      bankAccountId: accounts[0]?.id ?? '',
+    },
   })
   const busy = pay.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -747,7 +777,12 @@ function RefundModal({ row, onClose }: { row: WithdrawalRow; onClose: () => void
       { withdrawalId: row.id, version: row.version, body: values },
       {
         setError: (name, error) => {
-          if (name === 'iban' || name === 'accountHolder' || name === 'paidDate')
+          if (
+            name === 'iban' ||
+            name === 'accountHolder' ||
+            name === 'paidDate' ||
+            name === 'bankAccountId'
+          )
             form.setError(name, error)
           else form.setError('root.server', error)
         },
@@ -768,7 +803,7 @@ function RefundModal({ row, onClose }: { row: WithdrawalRow; onClose: () => void
       open
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="İadeyi öde"
-      description={`${row.studentName} · ${money(row.refundCents)}. Ödenen iade değiştirilemez.`}
+      description={`${row.studentName} · ${money(row.refundCents)}. Ödenen iade değiştirilemez; ödeme gününün gün sonuna iade ödemesi olarak girer.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
@@ -795,6 +830,32 @@ function RefundModal({ row, onClose }: { row: WithdrawalRow; onClose: () => void
               max={today}
               disabled={busy}
             />
+          )}
+        </FormField>
+        <FormField
+          id="iade-hesap"
+          label="Kurum banka hesabı"
+          error={errors.bankAccountId}
+          description={
+            accounts.length === 0
+              ? 'Tanımlı banka hesabı yok; Ayarlar’dan hesap ekleyin.'
+              : 'İadenin çıktığı bildirilmiş hesap.'
+          }
+        >
+          {(control) => (
+            <NativeSelect
+              {...control}
+              {...form.register('bankAccountId')}
+              className="w-full"
+              disabled={busy}
+            >
+              <NativeSelectOption value="">Hesap seçin</NativeSelectOption>
+              {accounts.map((account) => (
+                <NativeSelectOption key={account.id} value={account.id}>
+                  {bankAccountLabel(account)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
           )}
         </FormField>
         <FormField id="iade-iban" label="IBAN" error={errors.iban}>

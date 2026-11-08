@@ -35,6 +35,13 @@ const summaryOf = (count: number) =>
     Array.from({ length: count }, (_, index) => line(index)),
     DAY,
   )
+const refund = (index: number) => ({
+  withdrawalId: `w${String(index)}`,
+  studentName: 'Ece Yılmaz',
+  amountCents: 12_500,
+  paidDate: DAY,
+  bankAccountLabel: 'Örnek Bankası · 7890',
+})
 const closing = (overrides: Partial<NonNullable<FinanceDayReport['closing']>> = {}) => ({
   id: 'k1',
   closingDate: DAY,
@@ -58,12 +65,13 @@ const report = (overrides: Partial<FinanceDayReport> = {}): FinanceDayReport => 
   closingDate: DAY,
   status: 'open',
   summary: summaryOf(1),
-  reportStamp: '1:0:30000',
+  reportStamp: '1:0:0:30000',
   cashNetCents: 30_000,
   cashCountRequired: true,
   suggestedOpeningCents: null,
   collected: [line(1)],
   reversed: [],
+  refunds: [],
   closing: null,
   history: [],
   ...overrides,
@@ -121,6 +129,33 @@ test('DOM-FIN-036: iptal satırı gerekçeyi, önceki kapanış yeniden açma ge
     assert.ok(all.includes(text), text)
 })
 
+test('M-13, DOM-FIN-036: iade ödemesi özet ve yöntem tablosunda ayrı sütun, satırda kurum hesabıyla yazılır', () => {
+  const summary = financeDaySummary([line(1, { method: 'Banka havalesi' })], DAY, [
+    { amountCents: 12_500, paidDate: DAY },
+  ])
+  const all = allTexts(
+    financeDayClosingDocument(
+      measurer,
+      report({ summary, collected: [line(1)], refunds: [refund(1)] }),
+      OPTIONS,
+    ),
+  )
+  for (const text of [
+    'İADE ÖDEMESİ',
+    'İade ödemeleri',
+    'Ece Yılmaz',
+    'Örnek Bankası · 7890',
+    money(12_500),
+    money(30_000 - 12_500),
+    '1/0/1',
+  ])
+    assert.ok(all.includes(text), text)
+  // İade ödenmeyen günde bölüm yoktur; tutar özette sıfır görünür.
+  const empty = allTexts(financeDayClosingDocument(measurer, report(), OPTIONS))
+  assert.ok(empty.includes('İADE ÖDEMESİ'))
+  assert.equal(empty.includes('İade ödemeleri'), false)
+})
+
 test('DOM-FIN-032: nakit sayılmayan kapanış bunu açıkça yazar; boş gün bildirilir', () => {
   const all = allTexts(
     financeDayClosingDocument(
@@ -150,15 +185,18 @@ test('DOM-FIN-036: fark etiketi ve dosya adı', () => {
 })
 
 test('ADR 0008, DOM-KAY-012: dil okulunda gün sonu tablolarının sütunu "Kursiyer"; okulda "Öğrenci"', () => {
-  const day = report({ reversed: [line(2, { reversalReason: 'Yanlış kayıt' })] })
+  const day = report({
+    reversed: [line(2, { reversalReason: 'Yanlış kayıt' })],
+    refunds: [refund(1)],
+  })
   for (const options of [OPTIONS, { ...OPTIONS, institutionType: 'school' as const }]) {
     const school = allTexts(financeDayClosingDocument(measurer, day, options))
-    assert.equal(school.filter((text) => text === 'Öğrenci').length, 2)
+    assert.equal(school.filter((text) => text === 'Öğrenci').length, 3)
     assert.equal(school.includes('Kursiyer'), false)
   }
   for (const institutionType of INSTITUTION_TYPES.filter((type) => type !== 'school')) {
     const all = allTexts(financeDayClosingDocument(measurer, day, { ...OPTIONS, institutionType }))
-    assert.equal(all.filter((text) => text === 'Kursiyer').length, 2, institutionType)
+    assert.equal(all.filter((text) => text === 'Kursiyer').length, 3, institutionType)
     assert.equal(all.includes('Öğrenci'), false, institutionType)
   }
 })
@@ -197,25 +235,28 @@ test('ON-322, IST-113, DOM-FIN-036: imza alanı hiçbir gün sonunda tek başın
   ]
   for (const variant of variants)
     for (let collected = 0; collected <= 45; collected += 1)
-      for (const reversed of [0, 1, 2, 6]) {
-        const day = report({
-          ...variant,
-          collected: Array.from({ length: collected }, (_, index) => line(index)),
-          reversed: Array.from({ length: reversed }, (_, index) =>
-            line(100 + index, { reversalReason: 'Yanlış kayıt' }),
-          ),
-        })
-        const document = financeDayClosingDocument(measurer, day, OPTIONS)
-        const last = bodyTexts(document.pages.at(-1)!)
-        const name = `${JSON.stringify(Object.keys(variant))} ${String(collected)}/${String(reversed)}`
-        assert.deepEqual(last.slice(-2), SIGNATURE, name)
-        assert.ok(last.length > SIGNATURE.length, name)
-        // Belge içeriği kaybolmaz: her tahsilat ve iptal satırı yazılır.
-        const all = allTexts(document)
-        assert.equal(
-          all.filter((text) => text === 'Deniz Yılmaz').length,
-          collected + reversed,
-          name,
-        )
-      }
+      for (const reversed of [0, 1, 2, 6])
+        for (const refunds of [0, 1, 3]) {
+          const day = report({
+            ...variant,
+            collected: Array.from({ length: collected }, (_, index) => line(index)),
+            reversed: Array.from({ length: reversed }, (_, index) =>
+              line(100 + index, { reversalReason: 'Yanlış kayıt' }),
+            ),
+            refunds: Array.from({ length: refunds }, (_, index) => refund(index)),
+          })
+          const document = financeDayClosingDocument(measurer, day, OPTIONS)
+          const last = bodyTexts(document.pages.at(-1)!)
+          const name = `${JSON.stringify(Object.keys(variant))} ${String(collected)}/${String(reversed)}/${String(refunds)}`
+          assert.deepEqual(last.slice(-2), SIGNATURE, name)
+          assert.ok(last.length > SIGNATURE.length, name)
+          // Belge içeriği kaybolmaz: her tahsilat, iptal ve iade satırı yazılır.
+          const all = allTexts(document)
+          assert.equal(
+            all.filter((text) => text === 'Deniz Yılmaz').length,
+            collected + reversed,
+            name,
+          )
+          assert.equal(all.filter((text) => text === 'Ece Yılmaz').length, refunds, name)
+        }
 })

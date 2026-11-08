@@ -31,7 +31,13 @@ import type { CommandResponse } from '../../src/services/operation-runner.ts'
 import { recordPaymentCommand, reversePaymentCommand } from '../../src/services/payments.ts'
 import { payRefundCommand, withdrawStudentCommand } from '../../src/services/withdrawals.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from '../support/app.ts'
-import { contractTerms, insertTestTariff, TEST_TARIFF_ID } from '../support/finance-terms.ts'
+import {
+  contractTerms,
+  insertRefundBankAccount,
+  insertTestTariff,
+  TEST_REFUND_BANK_ACCOUNT_ID,
+  TEST_TARIFF_ID,
+} from '../support/finance-terms.ts'
 import { createPgDatabase, PG_SKIP } from '../support/pg.ts'
 
 /**
@@ -63,6 +69,7 @@ const REFUND = {
   paidDate: '2026-10-05',
   iban: 'TR330006100519786457841326',
   accountHolder: PARENT_NAME,
+  bankAccountId: TEST_REFUND_BANK_ACCOUNT_ID,
 }
 
 /** Dışarıdan çözülen söz: kilit sahibini test adımlarına göre bekletmek için. */
@@ -561,6 +568,7 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
   test('DOM-FIN-041: aynı iadenin eşzamanlı iki ödemesi: biri 200, öteki 409 version_conflict; iade bir kez ödenir', async () => {
     const ctx = await context()
     const withdrawal = await pendingRefund(ctx)
+    await insertRefundBankAccount(db, ctx.institutionId)
     const pay = () => payRefundCommand(ctx, withdrawal.id, REFUND, withdrawal.version, keyed())
     assertSingleWinner(await raceUnderInstitutionLock(ctx, [pay, pay]), 'version_conflict')
 
@@ -604,6 +612,7 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
   test('DOM-FIN-041: kurum kilidi atlansa da aynı iadeyi iki transaction ödeyemez', async () => {
     const ctx = await context()
     const withdrawal = await pendingRefund(ctx)
+    await insertRefundBankAccount(db, ctx.institutionId)
     const [first, second] = await locklessPair((tx) =>
       markRefundPaid(tx, ctx.institutionId, {
         id: withdrawal.id,
@@ -611,6 +620,7 @@ describe('PostgreSQL 16: finans komutlarının eşzamanlılığı', { skip: PG_S
         paidDate: REFUND.paidDate,
         iban: REFUND.iban,
         accountHolder: REFUND.accountHolder,
+        bankAccountId: REFUND.bankAccountId,
         paidByUserId: ctx.actor.userId,
         now: FIXED_NOW,
       }),

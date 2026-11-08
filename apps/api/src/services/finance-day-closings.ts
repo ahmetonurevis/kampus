@@ -26,6 +26,7 @@ import {
 import type { Database } from '../db/client.ts'
 import { loadPaymentSettings, paymentsTouchingDay, type StoredPayment } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
+import { refundsPaidOnDay, type StoredDayRefund } from '../db/withdrawals.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { dayRange } from './list-filters.ts'
@@ -40,7 +41,8 @@ import {
  * Kasa ve gün sonu servisi (IST-113, DOM-FIN-036). Kural core `lib/finance-day-closings.ts`'tedir.
  * Kapanış kurum kilidi altında okunan tahsilatlardan kurulur; aynı kilit tahsilat ve iptali de
  * sıraya sokar, kapanışla aynı anda güne yazılamaz. Tutar, sayım, açıklama ve gerekçe loglanmaz;
- * denetime yalnız alan adları düşer. Rapor içeriği `paymentsTouchingDay` satırlarından gelir.
+ * denetime yalnız alan adları düşer. Rapor içeriği `paymentsTouchingDay` ve o gün ödenen iadelerden
+ * (`refundsPaidOnDay`, M-13) gelir; iade ödemesi de aynı kurum kilidiyle kapanışla sıraya girer.
  */
 
 const ENTITY = 'finance_day_closings'
@@ -73,6 +75,9 @@ export interface FinanceDayLine {
   reversalReason: string | null
 }
 
+/** O gün ödenen ayrılış iadesi (M-13); IBAN ve hesap sahibi yoktur. */
+export type FinanceDayRefundLine = StoredDayRefund
+
 export interface FinanceDayReport {
   closingDate: string
   status: 'open' | 'closed'
@@ -86,6 +91,8 @@ export interface FinanceDayReport {
   suggestedOpeningCents: number | null
   collected: FinanceDayLine[]
   reversed: FinanceDayLine[]
+  /** O gün ödenen iadeler; banka yönteminin iade ödemesi satırıdır. */
+  refunds: FinanceDayRefundLine[]
   /** Geçerli kapanış; gün açıksa boş. */
   closing: FinanceDayClosingView | null
   /** Yeniden açılmış eski kapanışlar, en yeni önce. */
@@ -197,6 +204,7 @@ export function financeDayReportFor(
     collections: [],
     load: async (tx) => {
       const payments = summaryPayments(await dayPayments(tx, ctx, closingDate))
+      const refunds = await refundsPaidOnDay(tx, ctx.institutionId, closingDate)
       const closings = await closingViews(
         tx,
         ctx,
@@ -208,7 +216,7 @@ export function financeDayReportFor(
         run: (): FinanceDayReport => {
           assertFinanceDayReportable(closingDate, dayKey(ctx.now))
           const closing = closings.find((item) => item.reopenedAt === null) ?? null
-          const summary = closing?.summary ?? financeDaySummary(payments, closingDate)
+          const summary = closing?.summary ?? financeDaySummary(payments, closingDate, refunds)
           const { collected, reversed } = financeDayLines(payments, closingDate)
           return {
             closingDate,
@@ -225,6 +233,7 @@ export function financeDayReportFor(
               reversalReason: null,
             })),
             reversed: reversed.map(lineOf),
+            refunds,
             closing,
             history: closings.filter((item) => item.reopenedAt !== null),
           }
@@ -251,6 +260,7 @@ export function closeFinanceDayCommand(
       entity: { type: ENTITY, id },
       load: async (tx) => {
         const payments = summaryPayments(await dayPayments(tx, ctx, closingDate))
+        const refunds = await refundsPaidOnDay(tx, ctx.institutionId, closingDate)
         const alreadyClosed = await isFinanceDayClosed(tx, ctx.institutionId, closingDate)
         const { cashPaymentsEnabled: cashEnabled } = await loadPaymentSettings(
           tx,
@@ -259,12 +269,17 @@ export function closeFinanceDayCommand(
         const suggestedOpeningCents = await lastCountedCash(tx, ctx.institutionId, closingDate)
         return {
           run: () =>
-            planFinanceDayClosing(closingDate, financeDaySummary(payments, closingDate), input, {
-              today: dayKey(ctx.now),
-              alreadyClosed,
-              cashEnabled,
-              suggestedOpeningCents,
-            }),
+            planFinanceDayClosing(
+              closingDate,
+              financeDaySummary(payments, closingDate, refunds),
+              input,
+              {
+                today: dayKey(ctx.now),
+                alreadyClosed,
+                cashEnabled,
+                suggestedOpeningCents,
+              },
+            ),
         }
       },
       after: async (tx, plan) => {

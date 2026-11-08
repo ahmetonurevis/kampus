@@ -2373,7 +2373,7 @@ export interface paths {
         };
         /**
          * Gün sonu raporu
-         * @description Günün tahsilatları yöntem bazında, iptaller, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe yazılır; geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.
+         * @description Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.
          */
         get: operations["getFinanceDayReport"];
         put?: never;
@@ -2395,7 +2395,7 @@ export interface paths {
         put?: never;
         /**
          * Günü kapat
-         * @description Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.
+         * @description Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat ve iade ödemesi girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.
          */
         post: operations["closeFinanceDay"];
         delete?: never;
@@ -3523,7 +3523,7 @@ export interface paths {
         put?: never;
         /**
          * İadeyi ödenmiş işaretle
-         * @description Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur; anahtar kaydı yanıtı 24 saat saklar ama maskeli IBAN ve hesap sahibini saklamaz, tekrar yanıtı bunları iade kaydından ekler. Rol: `yonetici`.
+         * @description Ödeme tarihi, IBAN, hesap sahibi ve iadenin çıktığı kurum banka hesabını yazar; ödenen iade değiştirilemez (DOM-FIN-041). İade ödeme gününün gün sonuna banka havalesi satırında girer (M-13). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; `bankAccountId` kurumun arşivlenmemiş hesabı değilse (başka kurumun hesabı dahil) 422 `refund_bank_account_invalid`; ödeme günü kapatılmışsa 422 `finance_day_closed`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur; anahtar kaydı yanıtı 24 saat saklar ama maskeli IBAN ve hesap sahibini saklamaz, tekrar yanıtı bunları iade kaydından ekler. Rol: `yonetici`.
          */
         post: operations["payRefund"];
         delete?: never;
@@ -30840,13 +30840,22 @@ export interface operations {
                                     reversedCount: number;
                                     /** @description O gün yapılan iptal toplamı (kuruş) */
                                     reversedCents: number;
-                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    /** @description O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13) */
+                                    refundPaidCount: number;
+                                    /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                    refundPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                     netCents: number;
                                 }[];
                                 collectedCount: number;
                                 collectedCents: number;
                                 reversedCount: number;
                                 reversedCents: number;
+                                /** @description O gün ödenen ayrılış iadesi adedi */
+                                refundPaidCount: number;
+                                /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                refundPaidCents: number;
+                                /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                 netCents: number;
                             };
                             /** @description Kapatırken geri gönderilir; rapor değiştiyse 409 */
@@ -30887,6 +30896,17 @@ export interface operations {
                                 reversedAt: string | null;
                                 reversalReason: string | null;
                             }[];
+                            /** @description O gün ödenen ayrılış iadeleri (M-13); IBAN ve hesap sahibi yok. Kapalı günde de güncel liste */
+                            refunds: {
+                                withdrawalId: string;
+                                studentName: string | null;
+                                /** @description Ödenen iade (kuruş) */
+                                amountCents: number;
+                                /** @description İadenin ödeme günü (`YYYY-MM-DD`) */
+                                paidDate: string;
+                                /** @description İadenin ödendiği kurum hesabı; hesap seçimi zorunlu olmadan önce ödenmişse boş */
+                                bankAccountLabel: string | null;
+                            }[];
                             /** @description Geçerli kapanış; gün açıksa boş */
                             closing: {
                                 id: string;
@@ -30905,13 +30925,22 @@ export interface operations {
                                         reversedCount: number;
                                         /** @description O gün yapılan iptal toplamı (kuruş) */
                                         reversedCents: number;
-                                        /** @description Tahsilat eksi iptal (kuruş) */
+                                        /** @description O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13) */
+                                        refundPaidCount: number;
+                                        /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                        refundPaidCents: number;
+                                        /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                         netCents: number;
                                     }[];
                                     collectedCount: number;
                                     collectedCents: number;
                                     reversedCount: number;
                                     reversedCents: number;
+                                    /** @description O gün ödenen ayrılış iadesi adedi */
+                                    refundPaidCount: number;
+                                    /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                    refundPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                     netCents: number;
                                 };
                                 /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -30958,13 +30987,22 @@ export interface operations {
                                         reversedCount: number;
                                         /** @description O gün yapılan iptal toplamı (kuruş) */
                                         reversedCents: number;
-                                        /** @description Tahsilat eksi iptal (kuruş) */
+                                        /** @description O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13) */
+                                        refundPaidCount: number;
+                                        /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                        refundPaidCents: number;
+                                        /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                         netCents: number;
                                     }[];
                                     collectedCount: number;
                                     collectedCents: number;
                                     reversedCount: number;
                                     reversedCents: number;
+                                    /** @description O gün ödenen ayrılış iadesi adedi */
+                                    refundPaidCount: number;
+                                    /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                    refundPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                     netCents: number;
                                 };
                                 /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -31119,13 +31157,22 @@ export interface operations {
                                     reversedCount: number;
                                     /** @description O gün yapılan iptal toplamı (kuruş) */
                                     reversedCents: number;
-                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    /** @description O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13) */
+                                    refundPaidCount: number;
+                                    /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                    refundPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                     netCents: number;
                                 }[];
                                 collectedCount: number;
                                 collectedCents: number;
                                 reversedCount: number;
                                 reversedCents: number;
+                                /** @description O gün ödenen ayrılış iadesi adedi */
+                                refundPaidCount: number;
+                                /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                refundPaidCents: number;
+                                /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                 netCents: number;
                             };
                             /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -31278,13 +31325,22 @@ export interface operations {
                                     reversedCount: number;
                                     /** @description O gün yapılan iptal toplamı (kuruş) */
                                     reversedCents: number;
-                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    /** @description O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13) */
+                                    refundPaidCount: number;
+                                    /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                    refundPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                     netCents: number;
                                 }[];
                                 collectedCount: number;
                                 collectedCents: number;
                                 reversedCount: number;
                                 reversedCents: number;
+                                /** @description O gün ödenen ayrılış iadesi adedi */
+                                refundPaidCount: number;
+                                /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
+                                refundPaidCents: number;
+                                /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
                                 netCents: number;
                             };
                             /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -40111,6 +40167,10 @@ export interface operations {
                             /** @description Yalnız son dört hane */
                             maskedIban: string | null;
                             refundAccountHolder: string | null;
+                            /** @description İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş */
+                            refundBankAccountId: string | null;
+                            /** @description Kurum hesabının kısa adı */
+                            refundBankAccountLabel: string | null;
                             /** @enum {string} */
                             refundStatus: "none" | "pending" | "paid";
                             /** @description `If-Match` için kayıt sürümü */
@@ -40306,6 +40366,10 @@ export interface operations {
                             /** @description Yalnız son dört hane */
                             maskedIban: string | null;
                             refundAccountHolder: string | null;
+                            /** @description İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş */
+                            refundBankAccountId: string | null;
+                            /** @description Kurum hesabının kısa adı */
+                            refundBankAccountLabel: string | null;
                             /** @enum {string} */
                             refundStatus: "none" | "pending" | "paid";
                             /** @description `If-Match` için kayıt sürümü */
@@ -40495,6 +40559,10 @@ export interface operations {
                             /** @description Yalnız son dört hane */
                             maskedIban: string | null;
                             refundAccountHolder: string | null;
+                            /** @description İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş */
+                            refundBankAccountId: string | null;
+                            /** @description Kurum hesabının kısa adı */
+                            refundBankAccountLabel: string | null;
                             /** @enum {string} */
                             refundStatus: "none" | "pending" | "paid";
                             /** @description `If-Match` için kayıt sürümü */
@@ -40597,6 +40665,8 @@ export interface operations {
                     paidDate: string;
                     iban: string;
                     accountHolder: string;
+                    /** Format: uuid */
+                    bankAccountId: string;
                 };
             };
         };
@@ -40696,6 +40766,10 @@ export interface operations {
                             /** @description Yalnız son dört hane */
                             maskedIban: string | null;
                             refundAccountHolder: string | null;
+                            /** @description İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş */
+                            refundBankAccountId: string | null;
+                            /** @description Kurum hesabının kısa adı */
+                            refundBankAccountLabel: string | null;
                             /** @enum {string} */
                             refundStatus: "none" | "pending" | "paid";
                             /** @description `If-Match` için kayıt sürümü */

@@ -10,6 +10,7 @@ import {
   financeDayFormSchema,
   financeDayLines,
   financeDayStamp,
+  financeDayRefunds,
   financeDaySummary,
   FINANCE_DAY_CLOSE_ROLES,
   FINANCE_DAY_REOPEN_ROLES,
@@ -17,6 +18,7 @@ import {
   parseCashCountInput,
   planFinanceDayClosing,
   planFinanceDayReopen,
+  REFUND_PAYMENT_METHOD,
   type FinanceDayPayment,
 } from '../packages/school-core/src/lib/finance-day-closings.ts'
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
@@ -67,6 +69,8 @@ test('DOM-FIN-036: özet yöntem bazındadır; hareketi olmayan yöntem de sıf�
     collectedCents: 20_050,
     reversedCount: 0,
     reversedCents: 0,
+    refundPaidCount: 0,
+    refundPaidCents: 0,
     netCents: 20_050,
   })
   assert.equal(summary.methods.find((item) => item.method === 'Senet')?.collectedCount, 0)
@@ -101,6 +105,70 @@ test('DOM-FIN-036: aynı gün alınıp iptal edilen tahsilat iki listede görün
   const { collected, reversed } = financeDayLines([both], DAY)
   assert.deepEqual([collected.length, reversed.length], [1, 1])
   assert.equal(financeDaySummary([both], DAY).netCents, 0)
+})
+
+test('M-13, DOM-FIN-036: ödenen iade banka satırında ayrı sayılır, netten düşer; nakit ve kasa değişmez', () => {
+  const payments = [
+    payment({ method: 'Banka havalesi', amountCents: 50_000 }),
+    payment({ amountCents: 20_000 }),
+  ]
+  const refunds = [
+    { amountCents: 30_000, paidDate: DAY },
+    { amountCents: 7_000, paidDate: DAY },
+    { amountCents: 99_000, paidDate: '2026-10-05' },
+  ]
+  assert.equal(REFUND_PAYMENT_METHOD, 'Banka havalesi')
+  assert.equal(financeDayRefunds(refunds, DAY).length, 2)
+  const summary = financeDaySummary(payments, DAY, refunds)
+  assert.deepEqual(
+    summary.methods.find((item) => item.method === 'Banka havalesi'),
+    {
+      method: 'Banka havalesi',
+      collectedCount: 1,
+      collectedCents: 50_000,
+      reversedCount: 0,
+      reversedCents: 0,
+      refundPaidCount: 2,
+      refundPaidCents: 37_000,
+      netCents: 13_000,
+    },
+  )
+  for (const item of summary.methods.filter((line) => line.method !== 'Banka havalesi'))
+    assert.deepEqual([item.refundPaidCount, item.refundPaidCents], [0, 0])
+  assert.deepEqual(
+    [summary.refundPaidCount, summary.refundPaidCents, summary.netCents],
+    [2, 37_000, 70_000 - 37_000],
+  )
+  assert.equal(financeDayCashNet(summary), 20_000)
+  // İadenin günü başka günse bu günün özetine girmez; iadesiz özet eski hâlindedir.
+  assert.equal(financeDaySummary(payments, '2026-10-05', refunds).refundPaidCents, 99_000)
+  assert.equal(financeDaySummary(payments, DAY).refundPaidCount, 0)
+})
+
+test('M-13, DOM-FIN-036: iade ödemesi damgayı değiştirir; net eşit kalsa da görülmemiş iade mühürlenmez', () => {
+  const payments = [payment({ method: 'Banka havalesi', amountCents: 30_000 })]
+  const before = financeDaySummary(payments, DAY)
+  const after = financeDaySummary(
+    [...payments, payment({ method: 'Banka havalesi', amountCents: 30_000 })],
+    DAY,
+    [{ amountCents: 30_000, paidDate: DAY }],
+  )
+  assert.equal(before.netCents, after.netCents)
+  assert.notEqual(financeDayStamp(before), financeDayStamp(after))
+  rejects(
+    () =>
+      planFinanceDayClosing(
+        DAY,
+        after,
+        { reportStamp: financeDayStamp(before) },
+        {
+          ...today,
+          cashEnabled: false,
+        },
+      ),
+    'finance_day_report_changed',
+    'conflict',
+  )
 })
 
 test('DOM-FIN-036: kasa farkı açılış + net nakde göre hesaplanır', () => {

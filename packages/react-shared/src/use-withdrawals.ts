@@ -27,6 +27,8 @@ export const WITHDRAWAL_CHANGED_MESSAGE =
   'Kayıt başka biri tarafından değiştirildi. Liste güncellendi.'
 
 const WITHDRAWALS_KEY = ['withdrawals'] as const
+/** Gün sonu raporu tahsilat önekinin altındadır; ödenen iade o günün raporuna girer (M-13). */
+const DAY_CLOSING_KEY = ['payments', 'day-closing'] as const
 
 export function useWithdrawals(query: {
   page: number
@@ -84,7 +86,7 @@ export function usePayRefund() {
         },
         body: input.body,
       }),
-    invalidates: [WITHDRAWALS_KEY],
+    invalidates: [WITHDRAWALS_KEY, DAY_CLOSING_KEY],
     version: (input) => input.version,
     messages: { version_conflict: WITHDRAWAL_CHANGED_MESSAGE },
     exclusive: true,

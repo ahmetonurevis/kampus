@@ -23,7 +23,12 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
-import { contractTerms, insertTestTariff } from './support/finance-terms.ts'
+import {
+  contractTerms,
+  ensureRefundBankAccount,
+  insertTestTariff,
+  TEST_REFUND_BANK_ACCOUNT_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Tahsilat alındı ve iade ödendi bildirimleri (ON-027; IST-106, IST-110; docs/domain/finans.md
@@ -41,7 +46,12 @@ const PARENT_NAME = 'Test Ödeyici Veli'
 const NET = 10_000_000
 const REFERENCE = 'TR-BILDIRIM-1'
 const IBAN = 'TR330006100519786457841326'
-const REFUND = { paidDate: '2026-10-05', iban: IBAN, accountHolder: PARENT_NAME }
+const REFUND = {
+  paidDate: '2026-10-05',
+  iban: IBAN,
+  accountHolder: PARENT_NAME,
+  bankAccountId: TEST_REFUND_BANK_ACCOUNT_ID,
+}
 const WITHDRAW = {
   withdrawalDate: '2026-10-01',
   termStartDate: '2026-09-07',
@@ -160,17 +170,19 @@ describe('tahsilat ve iade bildirimleri', () => {
     )
   const withdraw = (cookie: string) =>
     post(`/api/v1/students/${SID}/withdraw`, cookie, WITHDRAW, { 'idempotency-key': key() })
-  const payRefund = (
+  const payRefund = async (
     cookie: string,
     id: string,
     version: number,
     body: unknown = REFUND,
     idempotencyKey = key(),
-  ) =>
-    post(`/api/v1/withdrawals/${id}/pay-refund`, cookie, body, {
+  ) => {
+    await ensureRefundBankAccount(db, id)
+    return post(`/api/v1/withdrawals/${id}/pay-refund`, cookie, body, {
       'if-match': `"${String(version)}"`,
       'idempotency-key': idempotencyKey,
     })
+  }
   /** Ödenmiş ve ayrılmış öğrenci; iade ödenmeye hazır ayrılış. */
   async function withdrawn(cookie: string) {
     const paid = await pay(cookie)

@@ -123278,6 +123278,330 @@
         }
       }
     },
+    "/api/v1/finance/stock-items/critical": {
+      "get": {
+        "operationId": "listCriticalStockItems",
+        "summary": "Kritik stok listesi",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201) ve son alış fiyatı (K-202). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep `POST /finance/purchase-requests` ile açılır (K-203). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kodda ve adda arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "stationery",
+                "cleaning",
+                "food",
+                "it",
+                "maintenance",
+                "furniture",
+                "educational",
+                "services",
+                "transport",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Kategori"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Stok kartı kimliği"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "stationery",
+                              "cleaning",
+                              "food",
+                              "it",
+                              "maintenance",
+                              "furniture",
+                              "educational",
+                              "services",
+                              "transport",
+                              "other"
+                            ]
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "piece",
+                              "pack",
+                              "box",
+                              "kilogram",
+                              "liter",
+                              "meter"
+                            ]
+                          },
+                          "minQuantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kritik seviye"
+                          },
+                          "quantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kurum toplamı: etkin ve pasif bütün depolar (K-200)"
+                          },
+                          "shortage": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kritik seviye eksi toplam, en az sıfır"
+                          },
+                          "suggestedQuantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201)"
+                          },
+                          "lastUnitPriceCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Son alış fiyatı: iptal edilmemiş en son mal kabul girişinin sipariş birim fiyatı, KDV hariç, kuruş (K-202); yoksa boş"
+                          },
+                          "lastReceiptDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Son alış fiyatının mal kabul günü"
+                          },
+                          "lastOrderNumber": {
+                            "description": "Son alış fiyatının siparişi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "warehouses": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "warehouseId": {
+                                  "type": "string"
+                                },
+                                "warehouseName": {
+                                  "type": "string"
+                                },
+                                "campusName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "isActive": {
+                                  "type": "boolean"
+                                },
+                                "quantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Bu depodaki miktar"
+                                }
+                              },
+                              "required": [
+                                "warehouseId",
+                                "warehouseName",
+                                "campusName",
+                                "isActive",
+                                "quantity"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Depo kırılımı: etkin depolar ve miktarı olan pasif depolar, ada göre"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "name",
+                          "category",
+                          "unit",
+                          "minQuantity",
+                          "quantity",
+                          "shortage",
+                          "suggestedQuantity",
+                          "lastUnitPriceCents",
+                          "lastReceiptDate",
+                          "lastOrderNumber",
+                          "warehouses"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/stock-items/{itemId}": {
       "get": {
         "operationId": "getStockItem",

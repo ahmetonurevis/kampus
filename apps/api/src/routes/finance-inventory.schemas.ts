@@ -68,6 +68,48 @@ export const stockItemListQuery = z.strictObject({
   warehouseId: z.uuid('Depo geçersiz.').optional().describe('Miktar yalnız bu depodan'),
 })
 
+/** Kritik stok satırı (DOM-FIN-079; ON-230). `id` stok kartının kimliğidir. */
+const criticalStockRowSchema = z.object({
+  id: z.string().describe('Stok kartı kimliği'),
+  code: z.string(),
+  name: z.string(),
+  category: z.enum(STOCK_CATEGORIES),
+  unit: z.enum(STOCK_UNITS),
+  minQuantity: quantity('Kritik seviye'),
+  quantity: quantity('Kurum toplamı: etkin ve pasif bütün depolar (K-200)'),
+  shortage: quantity('Kritik seviye eksi toplam, en az sıfır'),
+  suggestedQuantity: quantity('Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201)'),
+  lastUnitPriceCents: z
+    .number()
+    .int()
+    .nullable()
+    .describe(
+      'Son alış fiyatı: iptal edilmemiş en son mal kabul girişinin sipariş birim fiyatı, KDV hariç, kuruş (K-202); yoksa boş',
+    ),
+  lastReceiptDate: daySchema.nullable().describe('Son alış fiyatının mal kabul günü'),
+  lastOrderNumber: z.string().nullable().describe('Son alış fiyatının siparişi'),
+  warehouses: z
+    .array(
+      z.object({
+        warehouseId: z.string(),
+        warehouseName: z.string(),
+        campusName: z.string().nullable(),
+        isActive: z.boolean(),
+        quantity: quantity('Bu depodaki miktar'),
+      }),
+    )
+    .describe('Depo kırılımı: etkin depolar ve miktarı olan pasif depolar, ada göre'),
+})
+export const criticalStockListResponse = z.object({
+  data: z.array(criticalStockRowSchema),
+  meta: pageMetaSchema,
+})
+export const criticalStockListQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  q: search,
+  category: z.enum(STOCK_CATEGORIES).optional().describe('Kategori'),
+})
+
 const stockWarehouseSchema = z.object({
   id: z.string(),
   name: z.string(),

@@ -32,6 +32,7 @@ import {
 const SEED = createSeed(FIXED_NOW)
 const FINANCE = '/api/v1/finance'
 const ITEMS = `${FINANCE}/stock-items`
+const CRITICAL = `${ITEMS}/critical`
 const WAREHOUSES = `${FINANCE}/stock-warehouses`
 const MOVEMENTS = `${FINANCE}/stock-movements`
 const ENTRIES = `${FINANCE}/stock-entries`
@@ -413,22 +414,121 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
     )
   })
 
+  test('DOM-FIN-079, K-200, K-201: kritik stok listesi kurum toplamına göre, aciliyet sırasında; depo kırılımı ve öneri miktarı verir', async () => {
+    const t = await institution()
+    const card = async (body: Json) => ok(await call('POST', ITEMS, t.admin, body), 201)
+    const toner = await card({
+      code: 'TONER',
+      name: 'Yazıcı toneri',
+      category: 'it',
+      unit: 'piece',
+      minQuantity: 4,
+    })
+    const soap = await card({
+      code: 'SABUN',
+      name: 'Sıvı sabun',
+      category: 'cleaning',
+      unit: 'liter',
+      minQuantity: 10,
+    })
+    const chalk = await card({
+      code: 'TEBESIR',
+      name: 'Tebeşir',
+      category: 'stationery',
+      unit: 'box',
+      minQuantity: 2,
+    })
+    await card({ code: 'SERBEST', name: 'Sınırsız kart', category: 'other', unit: 'piece' })
+    // Kâğıt: ana depoda 3, Beşiktaş'ta 2 → toplam 5 = kritik seviye 5 (kritik, oran 1).
+    ok(await entry(t.admin, t, { quantity: 3 }), 201)
+    ok(await entry(t.admin, t, { quantity: 2, warehouseId: t.annex.id }), 201)
+    // Sabun: 2 / 10 litre (oran 0,2). Toner: 0 (tükendi). Tebeşir: 9 > 2 (kritik değil).
+    ok(await entry(t.admin, t, { itemId: soap.id, quantity: 2 }), 201)
+    ok(await entry(t.admin, t, { itemId: chalk.id, quantity: 9 }), 201)
+    // Pasif kart listelenmez: stoksuz pasif kart.
+    const old = await card({
+      code: 'ESKI',
+      name: 'Eski ürün',
+      category: 'other',
+      unit: 'piece',
+      minQuantity: 1,
+    })
+    ok(
+      await call(
+        'PATCH',
+        `${ITEMS}/${String(old.id)}`,
+        t.admin,
+        { isActive: false },
+        ifMatch(old.version),
+      ),
+    )
+
+    const front = await member(t.id, 'onburo')
+    const response = await get(CRITICAL, front)
+    const list = response.json()
+    assert.equal(list.meta.total, 3)
+    assert.deepEqual(
+      (list.data as Json[]).map((row) => [
+        row.code,
+        row.quantity,
+        row.minQuantity,
+        row.shortage,
+        row.suggestedQuantity,
+      ]),
+      [
+        ['TONER', 0, 4, 4, 8],
+        ['SABUN', 2, 10, 8, 18],
+        ['KAG-A4', 5, 5, 0, 5],
+      ],
+    )
+    const paper = (list.data as Json[])[2] as Json
+    assert.equal(paper.id, t.paper.id)
+    assert.equal(paper.unit, 'pack')
+    assert.equal(paper.lastUnitPriceCents, null)
+    assert.equal(paper.lastReceiptDate, null)
+    assert.deepEqual(
+      (paper.warehouses as Json[]).map((row) => [row.warehouseName, row.campusName, row.quantity]),
+      [
+        ['Ana depo', SEED.branches[0]?.name, 3],
+        ['Beşiktaş deposu', SEED.branches[1]?.name, 2],
+      ],
+    )
+    assert.equal(toner.id, (list.data as Json[])[0]?.id)
+
+    // Arama, kategori ve sayfa; bilinmeyen parametre 400.
+    const codes = async (query: string) =>
+      ((await get(`${CRITICAL}?${query}`, t.admin)).json().data as Json[]).map((row) => row.code)
+    assert.deepEqual(await codes('q=sabun'), ['SABUN'])
+    assert.deepEqual(await codes('category=it'), ['TONER'])
+    assert.deepEqual(await codes('page=2&pageSize=2'), ['KAG-A4'])
+    assertError(await get(`${CRITICAL}?critical=true`, t.admin), 400, 'validation_failed')
+
+    // Giriş kartı kritik seviyenin üstüne çıkarınca listeden düşer; okuma kayıt değiştirmez.
+    ok(await entry(t.admin, t, { itemId: toner.id, quantity: 5 }), 201)
+    const before = await rows(t.id)
+    assert.deepEqual(await codes(''), ['SABUN', 'KAG-A4'])
+    assert.deepEqual(await rows(t.id), before)
+  })
+
   test('K-180: oturumsuz 401; öğretmen, veli ve öğrenci 403; ön büro okur ve çıkış yazar, gerisi 403', async () => {
     const t = await institution()
     assertError(await get(ITEMS, null), 401)
     assertError(await get(MOVEMENTS, null), 401)
+    assertError(await get(CRITICAL, null), 401)
     assertError(await entry('', t), 401)
     for (const role of ['ogretmen', 'veli', 'ogrenci'] as const) {
       const cookie = await member(t.id, role)
       assertError(await get(ITEMS, cookie), 403, 'forbidden')
       assertError(await get(WAREHOUSES, cookie), 403, 'forbidden')
       assertError(await get(MOVEMENTS, cookie), 403, 'forbidden')
+      assertError(await get(CRITICAL, cookie), 403, 'forbidden')
       assertError(await issue(cookie, t), 403, 'forbidden')
     }
     const front = await member(t.id, 'onburo')
     ok(await get(ITEMS, front))
     ok(await get(`${ITEMS}/${String(t.paper.id)}`, front))
     ok(await get(WAREHOUSES, front))
+    ok(await get(CRITICAL, front))
     const entered = ok(await entry(t.admin, t), 201)
     const before = await rows(t.id)
     assertError(
@@ -479,6 +579,7 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
     assertError(await get(ITEMS, closed.admin), 403, 'module_disabled')
     assertError(await get(WAREHOUSES, closed.admin), 403, 'module_disabled')
     assertError(await get(MOVEMENTS, closed.admin), 403, 'module_disabled')
+    assertError(await get(CRITICAL, closed.admin), 403, 'module_disabled')
     assertError(await call('POST', ISSUES, closed.admin, {}, key()), 403, 'module_disabled')
   })
 
@@ -486,6 +587,17 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
     const a = await institution()
     const b = await institution()
     const bEntry = ok(await entry(b.admin, b), 201)
+    // B'nin stoksuz kartı kritik listededir (DOM-FIN-079); A'nın listesinde görünmez.
+    const bCritical = ok(
+      await call('POST', ITEMS, b.admin, {
+        code: 'KALEM',
+        name: 'Tükenmez kalem',
+        category: 'stationery',
+        unit: 'piece',
+        minQuantity: 3,
+      }),
+      201,
+    )
     const bItemUrl = `${ITEMS}/${String(b.paper.id)}`
     const bWarehouseUrl = `${WAREHOUSES}/${String(b.main.id)}`
     const before = await rows(b.id)
@@ -533,6 +645,13 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
     assert.equal((await listOf(ITEMS)).includes(String(b.paper.id)), false)
     assert.equal((await listOf(WAREHOUSES)).includes(String(b.main.id)), false)
     assert.equal((await listOf(MOVEMENTS)).includes(String(bEntry.id)), false)
+    const critical = await listOf(CRITICAL)
+    assert.deepEqual(critical, [a.paper.id])
+    assert.equal(critical.includes(String(bCritical.id)), false)
+    assert.deepEqual(
+      ((await get(CRITICAL, b.admin)).json().data as Json[]).map((row) => row.id),
+      [bCritical.id],
+    )
     // Kod kurum içinde tekildir: A ve B aynı kodu taşır.
     assert.equal(a.paper.code, b.paper.code)
   })

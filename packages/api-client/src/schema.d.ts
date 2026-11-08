@@ -5280,6 +5280,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/stock-items/critical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kritik stok listesi
+         * @description Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201) ve son alış fiyatı (K-202). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep `POST /finance/purchase-requests` ile açılır (K-203). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listCriticalStockItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/stock-items/{itemId}": {
         parameters: {
             query?: never;
@@ -56530,6 +56550,142 @@ export interface operations {
                                 quantity: number;
                             }[];
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCriticalStockItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Kategori */
+                category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Stok kartı kimliği */
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye */
+                            minQuantity: number;
+                            /** @description Kurum toplamı: etkin ve pasif bütün depolar (K-200) */
+                            quantity: number;
+                            /** @description Kritik seviye eksi toplam, en az sıfır */
+                            shortage: number;
+                            /** @description Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201) */
+                            suggestedQuantity: number;
+                            /** @description Son alış fiyatı: iptal edilmemiş en son mal kabul girişinin sipariş birim fiyatı, KDV hariç, kuruş (K-202); yoksa boş */
+                            lastUnitPriceCents: number | null;
+                            /** @description Son alış fiyatının mal kabul günü */
+                            lastReceiptDate: string | null;
+                            /** @description Son alış fiyatının siparişi */
+                            lastOrderNumber: string | null;
+                            /** @description Depo kırılımı: etkin depolar ve miktarı olan pasif depolar, ada göre */
+                            warehouses: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
                     };
                 };
             };

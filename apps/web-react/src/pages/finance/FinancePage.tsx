@@ -14,6 +14,7 @@ import { FinanceBoardReportSection } from './FinanceBoardReportSection.tsx'
 import { BOARD_REPORT_VIEW } from './finance-board-report.ts'
 import { CourseOffersSection } from './CourseOffersSection.tsx'
 import { EOzelSection } from './EOzelSection.tsx'
+import { FinanceBankMatchingSection } from './FinanceBankMatchingSection.tsx'
 import { FinanceBudgetSection } from './FinanceBudgetSection.tsx'
 import { FinanceCostReportsSection } from './FinanceCostReportsSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
@@ -42,6 +43,7 @@ const VIEWS = {
   openingWatch: { label: 'Açılış nöbeti', param: OPENING_WATCH_VIEW },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
   dayClosing: { label: 'Gün sonu', param: 'gunsonu' },
+  bankMatching: { label: 'Banka eşleştirme', param: 'banka' },
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
   packages: { label: 'Paketler', param: 'paket' },
@@ -66,11 +68,17 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
  * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008); bütçe (DOM-FIN-062, K-60), maliyet
  * raporları (DOM-FIN-065), gelir ve nakit akışı tahmini (DOM-FIN-063) ile yönetim kurulu raporu
- * (DOM-FIN-064, K-80) yalnız yöneticidedir: kapalı sekme gizlenir, adresi taksitlere düşer.
+ * (DOM-FIN-064, K-80) ve banka eşleştirme (DOM-FIN-069, K-105) yalnız yöneticidedir: kapalı sekme gizlenir, adresi taksitlere düşer.
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
-    if (value === 'budget' || value === 'costs' || value === 'forecast' || value === 'boardReport')
+    if (
+      value === 'budget' ||
+      value === 'costs' ||
+      value === 'forecast' ||
+      value === 'boardReport' ||
+      value === 'bankMatching'
+    )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
@@ -147,6 +155,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'openingWatch' ? <FinanceOpeningWatchSection onOpenInvoice={openInvoice} /> : null}
       {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
       {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
+      {tab === 'bankMatching' ? <FinanceBankMatchingSection /> : null}
       {tab === 'contracts' ? <ContractsSection /> : null}
       {tab === 'tariffs' ? (
         <FeeTariffsSection

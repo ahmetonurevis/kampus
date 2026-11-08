@@ -386,6 +386,13 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-51   | 2026-11-08 | `DOM-FIN-060` | Toplu faturayı yönetici ve ön büro keser; iptal yalnız yöneticidedir (tahsilat iptali gibi).                                                 | Rol dizileri (`CORPORATE_*_ROLES`) değişir.                                    |
 | K-52   | 2026-11-08 | `DOM-FIN-060` | Faturalanmış taksit ek protokolle değişirse yeni taksit yeniden faturalanmaz; fark için toplu fatura iptal edilip yeniden kesilir.           | Fark faturası (ek döküm) üretilir.                                             |
 | K-53   | 2026-11-08 | `DOM-FIN-060` | Toplu fatura numarası `KF-<yıl>-<sıra>`; yıl Europe/Istanbul, sıra kurumda yıl içinde ardışık, iptal edilen numara boşta kalır.              | `corporateInvoiceNumber` biçimi değişir.                                       |
+| K-65   | 2026-11-08 | `DOM-FIN-063` | Huni dönüşüm oranı son 24 ayda açılıp kapanmış adaylardan hesaplanır; açık adaylardan da yalnız son 24 ayda açılanlar sayılır.               | Pencere değişir ya da kurum ayarı olur (`FORECAST_HISTORY_MONTHS`).            |
+| K-66   | 2026-11-08 | `DOM-FIN-063` | Örneklemi boş adımın adayları beklentiye girmez, sayısı ayrıca verilir; az örneklemli adımda da adımın kendi oranı kullanılır.               | Örneklemi 10'dan az adımda kurum geneli oran kullanılır, işaretlenir.          |
+| K-67   | 2026-11-08 | `DOM-FIN-063` | Vadesinde tahsil vadeden sonraki 30 gün içinde tam ödemedir; örneklem son 12 ayda vadesi gelen taksitlerdir, kısmi ödeme sayılmaz.           | Sabitler (`COLLECTION_*`) değişir; kısmi ödeme dağılım günüyle sayılır.        |
+| K-68   | 2026-11-08 | `DOM-FIN-063` | Bugün gecikmiş açık tutarın geç tahsil beklentisi tamamen ilk aya yazılır.                                                                   | Geç tahsil geçmiş gecikme süresine göre aylara yayılır.                        |
+| K-69   | 2026-11-08 | `DOM-FIN-063` | Bütçe yokken gider tek, saklanmayan elle aylık tutardır; girilmezse gider boştur ve "gider verisi yok" yazar.                                | Bütçe kalemleri (`DOM-FIN-062`, ON-241) ay ay okunur.                          |
+| K-70   | 2026-11-08 | `DOM-FIN-063` | Yenilemesini yapmamış öğrencinin olasılıklı geliri tahmine girmez; yalnız yapılmış yenileme kesin gelirdedir.                                | Geçen yılın yenileme oranıyla "yenileme beklentisi" kalemi eklenir.            |
+| K-71   | 2026-11-08 | `DOM-FIN-063` | Tahmini yönetici görür; CSV tarayıcıda yanıttan üretilir, kişi verisi taşımadığı için taze oturum ve denetim istemez.                        | CSV sunucuda `Accept: text/csv` ile, taze oturumlu ve denetimli olur.          |
 
 #### M-13 · Ödenen iadenin gün sonu ve kapalı gün kuralı
 
@@ -396,15 +403,6 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 - **Öneri:** İade ödemesine kurumun bildirilmiş banka hesabı seçilsin (`DOM-FIN-032`); gün sonu raporu banka yönteminde ayrı "iade ödemesi" adedi ve tutarı göstersin, net bundan düşsün; kapalı güne iade ödemesi `finance_day_closed` ile reddedilsin. Nakit iade kapsam dışı kalsın. Rapor damgası ve kapanış satırı yeni alanı taşıyacağı için migration gerekir.
 - **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
 - **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
-
-#### M-16 · Gelir ve nakit akışı tahmininin varsayımları
-
-- **Kural:** `DOM-FIN-063`; IST-105, IST-117; ON-246, ON-247.
-- **Soru (ürün kararı):** Tahminin pencere ve oranları kurumun beklentisine uyuyor mu? (1) Dönüşüm oranı son 24 ayda açılıp kapanmış adaylardan hesaplanıyor; açık adaylardan da yalnız son 24 ayda açılanlar sayılıyor. (2) Örneklemi boş adımın adayları beklentiye girmiyor; az örneklemli (ör. 10'dan az) adımda kurum geneli oranı kullanılmalı mı? (3) Vadesinde tahsil "vadeden sonraki 30 gün içinde tam ödeme" sayılıyor, örneklem son 12 ay; kısmi ödeme sayılmıyor. (4) Gecikmiş açık tutarın geç tahsil beklentisi tamamen ilk aya yazılıyor. (5) Gider tarafında kullanıcı yalnız tek bir aylık tutar girebiliyor. (6) Yenilemesini henüz yapmamış mevcut öğrencinin olasılıklı yenileme geliri tahmine girmiyor.
-- **Öneri:** (1) 24 ay kalsın, kurum ayarına taşınması sonraya; (2) 10'dan az örneklemli adımda kurum geneli (adaydan kesin kayda) oran kullanılsın ve işaretlensin; (3) ve (4) kalsın; (5) bütçe kalemleri (`DOM-FIN-062`, ON-241) gelince aylık tutar yerine bütçe dönemindeki gider kalemleri ay ay okunsun, elle tutar yalnız bütçe yokken kalsın; (6) geçen yılın yenileme oranıyla (önceki yıl sözleşmesi olup bu yıl sözleşmesi olan öğrenci payı) ayrı "yenileme beklentisi" kalemi eklensin, son sınıflar hariç.
-- **Kodda:** `lib/finance-forecast.ts` (`FORECAST_HISTORY_MONTHS`, `COLLECTION_GRACE_DAYS`, `COLLECTION_HISTORY_MONTHS`), `GET /api/v1/finance/forecasts/cash-flow` (`monthlyExpenseCents`).
-- **Cevap değişirse:** Sabitler ve hesap `lib/finance-forecast.ts`'te değişir; yanıt varsayım alanları aynı kalır, yenileme beklentisi yeni kalem olarak eklenir.
-- **Cevap:** bekleniyor (ürün kararı)
 
 ## Kararlaştırılanlar
 

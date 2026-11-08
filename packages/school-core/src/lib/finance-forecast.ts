@@ -31,9 +31,9 @@ import { OPEN_PROSPECT_STAGES } from './prospects.ts'
  */
 export const FINANCE_FORECAST_ROLES = ['yonetici'] as const satisfies readonly Role[]
 
-/** Huni örneklemi ve sayılan açık adaylar: son 24 ayda açılmış adaylar (M-16). */
+/** Huni örneklemi ve sayılan açık adaylar: son 24 ayda açılmış adaylar (K-65). */
 export const FORECAST_HISTORY_MONTHS = 24
-/** Tahsil oranı örneklemi: son 12 ayda vadesi gelmiş taksitler (M-16). */
+/** Tahsil oranı örneklemi: son 12 ayda vadesi gelmiş taksitler (K-67). */
 export const COLLECTION_HISTORY_MONTHS = 12
 /** Vadeden sonra bu kadar gün içinde tam ödenen taksit vadesinde tahsil edilmiş sayılır. */
 export const COLLECTION_GRACE_DAYS = 30

@@ -408,6 +408,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Hizmet dönemine yayma seçilirse üçüncü esas (`service`) eklenir ve taksit tutarı sözleşmenin eğitim aylarına bölünür; iade kalem dağıtımı ayrılış dökümündeki ek hizmet satırlarından (`extras`) yapılır; KDV hariç tutar kalem oranından (IST-104) hesaplanır.
 - **Cevap:** bekleniyor
 
+#### M-18 · Öğrenci başı maliyet ve ortak gider bölüşümü
+
+- **Kural:** `DOM-FIN-065`; ON-249, ON-250, K24.
+- **Soru:** Okulda ve dil okulunda öğrenci başı maliyet hesaplanırken ortak (idari, destek) giderin kampüs ve programlara bölüşüm anahtarı ne olmalı: öğrenci sayısı mı, eşit pay mı, alan (m²) ya da ders saati gibi başka bir ölçü mü? Maliyet yalnız bütçe gideriyle mi, yoksa gerçekleşen giderle (amortisman dahil) mi raporlanmalı? Kampüsler arası karşılaştırmada gelir tahakkuk esasıyla mı, tahsilat esasıyla mı gösterilmeli; tutarlar KDV dahil mi okunmalı?
+- **Bugünkü varsayım:** Rapor yönetim muhasebesidir, muhasebe kaydı değildir. Maliyet bütçe dönemindeki gider satırlarıdır; ortak gider öğrenci sayısıyla (seçenek: eşit) yukarıdan aşağıya paylaştırılır. Konsolide raporda tahakkuk, tahsilat, iptal ve iade yan yana verilir; tutarlar saklandığı gibi (KDV ayrımı yok) okunur.
+- **Kodda:** `lib/finance-cost-per-student.ts` (`costPerStudent`, `COST_ALLOCATION_KEYS`), `lib/finance-campus-consolidation.ts`; `GET /api/v1/finance/cost-per-student`, `GET /api/v1/finance/campus-consolidation`.
+- **Cevap değişirse:** Anahtara alan ya da ders saati eklenir (merkez başına ölçü alanı, migration); gerçekleşen gider kaydı (satın alma) gelince rapor bütçe ile gerçekleşeni ayrı sütunda verir; KDV hariç sütun kalem oranından hesaplanır.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -455,6 +464,11 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-87   | 2026-11-08 | `DOM-FIN-066` | Ayrılış düzeltmesi ve ödenen iade öğrenime yazılır. Taksite dağıtılmamış ya da iptal edilmiş taksite alınmış tahsilat "kalemi belirsiz"dir. Dosyadan aktarılan geçmiş ödeme tahsilat esasında ödeme gününde sayılır, ayrıca gösterilir.                                              | İade ek hizmet satırlarına (`extras`) bölünür; açılış aktarımı tahsilattan çıkar.                          |
 | K-88   | 2026-11-08 | `DOM-FIN-066` | Ücret türü önce etkin gelir kalemine, yoksa dönemde satırı olan pasif kaleme eşlenir; eşlenmeyen tutar "eşlenmemiş gelir"dir. Gelmemiş ayın gerçekleşeni ve dağılımsız satırın aylık planı boştur (K-64).                                                                            | Dağılımsız satır ay karşılaştırmasında aylara eşit bölünür.                                                |
 | K-89   | 2026-11-08 | `DOM-FIN-066` | Raporu yalnız yönetici görür; CSV kişi verisi taşımaz, tarayıcıda üretilir, taze oturum ve denetim istemez. Gider kaynağı yoktur, gider satırı "gerçekleşen verisi yok" der; satın alma (K23) `BudgetExpenseActual` ile besler.                                                      | Muhasebe rolü `BUDGET_ROLES`a girer; gider `loadExpenseActuals`tan okunur.                                 |
+| K-100  | 2026-11-08 | `DOM-FIN-065` | Ortak (birim) gider varsayılan olarak öğrenci sayısıyla, seçenekle eşit paylaştırılır; birim saydamdır, pay yukarıdan aşağıya yalnız öğrencili kampüs ve program merkezlerine düşer, kalan kuruş en büyük kesre.                                                                     | Anahtara alan ya da ders saati eklenir; merkez başına anahtar seçilir (`COST_ALLOCATION_KEYS`).            |
+| K-101  | 2026-11-08 | `DOM-FIN-065` | Öğrenci dönemde kayıtlıysa sayılır (kayıt günü ≤ dönem sonu; pasifse ayrılış ya da mezuniyet günü ≥ dönem başı). Kampüs ve sınıf düzeyi güncel sınıftan okunur; konsolide raporda hareket de güncel sınıfın kampüsüne yazılır.                                                       | Sınıf geçmişi (yenileme kaydı) dönem başındaki sınıfa göre okunur (`periodStudents`).                      |
+| K-102  | 2026-11-08 | `DOM-FIN-065` | Öğrencisi 5'ten az merkez, kampüs ve kurum toplamında öğrenci başı değer gizlenir; tutar ve öğrenci sayısı görünür kalır (`DOM-YTK-024` eşiği, K-77 ile aynı; ortak bastırma kuralı OG-766 gelince ona bağlanır).                                                                    | Eşik ya da gizlenen alanlar değişir (`COST_REPORT_MIN_GROUP`).                                             |
+| K-103  | 2026-11-08 | `DOM-FIN-065` | Maliyet yalnız bütçe gideridir; gerçekleşen gider kaydı (satın alma) yoktur, gelir satırı maliyete girmez.                                                                                                                                                                           | Gerçekleşen gider modülü gelince ayrı sütun olur.                                                          |
+| K-104  | 2026-11-08 | `DOM-FIN-065` | Raporları bütçeyi gören rol görür (bugün yönetici); CSV tarayıcıda yanıttan üretilir, kişi verisi taşımadığı için taze oturum ve denetim istemez. Konsolide rapor kampüsleri kapsar; kurum grubu (ON-278) kapsam dışıdır.                                                            | Rol listesi (`BUDGET_ROLES`) değişir ya da CSV sunucuda denetimli üretilir.                                |
 
 ## Kararlaştırılanlar
 

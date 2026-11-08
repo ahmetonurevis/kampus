@@ -4292,6 +4292,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/cost-per-student": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrenci başı maliyet
+         * @description Seçilen bütçe döneminin gider satırları maliyet merkezlerine dağıtılır (ON-249; DOM-FIN-065). Birim merkezlerinin (ortak) gideri yukarıdan aşağıya, kapsamındaki öğrencili kampüs ve program merkezlerine `key` anahtarıyla paylaştırılır: `students` (varsayılan) öğrenci sayısıyla orantılı, `equal` eşit; kalan kuruş en büyük kesre. Öğrenci dönemde kayıtlıysa sayılır (kayıt günü dönem bitişinden sonra değil; pasifse ayrılış ya da mezuniyet günü dönem başından önce değil); kampüs ve sınıf düzeyi güncel sınıftan, kur bağı dönemle kesişen grup üyeliğinden okunur. Öğrencisi `minGroupSize`'dan (5) az merkezde öğrenci başı değer boştur ve `suppressed` işaretlidir. Gelir satırı girmez. Tutarlar kuruş. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun dönemi 404. Bilinmeyen parametre 400. Yanıt kişi verisi taşımaz.
+         */
+        get: operations["getFinanceCostPerStudent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/campus-consolidation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çok kampüslü konsolide rapor
+         * @description Kampüsler bazında seçilen bütçe döneminin tahakkuk, tahsilat, tahsilat iptali, iade, net tahsilat, öğrenci sayısı ve bütçe gideri; kampüsler toplamı ve paylar (ON-250; DOM-FIN-065). Gelir dönemi bütçe döneminin günleridir; tahakkuk vade gününde, tahsilat ödeme gününde, iptal iptal gününde, iade ödeme gününde sayılır, toplam aynı dönemin `/finance/summary` toplamına eşittir. Öğrencinin kampüsü güncel sınıfının kampüsüdür; kampüssüz öğrencinin hareketi ve kampüs merkezine bağlanmamış gider `campusId: null` satırına yazılır. Bütçe gideri öğrenci başı maliyet raporundaki kampüs merkezinin toplamıdır (`key` ile aynı paylaştırma). Küçük grupta öğrenci başı değerler boştur. Kurum grubu konsolidasyonu kapsam dışıdır. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun dönemi 404. Bilinmeyen parametre 400. Yanıt kişi verisi taşımaz.
+         */
+        get: operations["getFinanceCampusConsolidation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -44903,6 +44943,290 @@ export interface operations {
                                 };
                             };
                             openingImportCents: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceCostPerStudent: {
+        parameters: {
+            query: {
+                periodId: string;
+                key?: "students" | "equal";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            /** @enum {string} */
+                            key: "students" | "equal";
+                            /** @description Öğrenci başı değerin gösterildiği en küçük grup */
+                            minGroupSize: number;
+                            centers: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "campus" | "unit" | "program";
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                /** @description Kökten düzey, 1 kök */
+                                depth: number;
+                                isActive: boolean;
+                                /** @description Merkezin ya da en yakın üst kampüs merkezinin kampüsü */
+                                campusId: string | null;
+                                /** @description Merkeze doğrudan yazılmış gider */
+                                directCents: number;
+                                /** @description Birim: gideri kapsamındaki merkezlere paylaştırıldı */
+                                shared: boolean;
+                                /** @description Yukarıdaki ortak giderden gelen pay */
+                                sharedInCents: number;
+                                /** @description Merkez ve altındaki giderler artı gelen pay; birimde kendi gideri */
+                                totalCents: number;
+                                /** @description Dönemde sayılan öğrenci; birimde boş */
+                                studentCount: number | null;
+                                /** @description Öğrenci başı maliyet; öğrencisiz ya da küçük grupta boş */
+                                perStudentCents: number | null;
+                                /** @description Öğrenci sayısı eşiğin altında, değer gizlendi */
+                                suppressed: boolean;
+                            }[];
+                            totals: {
+                                /** @description Dönemin gider satırları toplamı */
+                                expenseCents: number;
+                                studentCount: number;
+                                /** @description Kurum geneli öğrenci başı maliyet */
+                                perStudentCents: number | null;
+                                suppressed: boolean;
+                                /** @description Öğrencili merkez olmadığı için paylaştırılamayan ortak gider */
+                                unallocatedCents: number;
+                                /** @description Sınıfı ya da sınıf kampüsü olmayan */
+                                studentsWithoutCampus: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceCampusConsolidation: {
+        parameters: {
+            query: {
+                periodId: string;
+                key?: "students" | "equal";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            /** @enum {string} */
+                            key: "students" | "equal";
+                            from: string;
+                            to: string;
+                            minGroupSize: number;
+                            campuses: {
+                                /** @description Kampüse bağlı olmayan satırda boş */
+                                campusId: string | null;
+                                name: string;
+                                isActive: boolean;
+                                /** @description Kampüse bağlı maliyet merkezi var */
+                                hasCostCenter: boolean;
+                                studentCount: number;
+                                /** @description Vadesi dönemde olan taksitler (tahakkuk) */
+                                accruedCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar */
+                                collectedCents: number;
+                                /** @description İptal günü dönemde olan tahsilat iptalleri */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Tahsilat − iptal − iade */
+                                netCollectedCents: number;
+                                /** @description Bütçe gideri (ortak giderden pay dahil) */
+                                budgetExpenseCents: number;
+                                /** @description Bütçe giderinin ortak giderden gelen kısmı */
+                                budgetSharedCents: number;
+                                /** @description Öğrenci başı tahakkuk; küçük grupta boş */
+                                accruedPerStudentCents: number | null;
+                                /** @description Öğrenci başı bütçe gideri; küçük grupta boş */
+                                budgetExpensePerStudentCents: number | null;
+                                suppressed: boolean;
+                                /** @description Öğrenci payı, on binde bir; toplam sıfırsa boş */
+                                studentShareBasisPoints: number | null;
+                                /** @description Tahakkuk payı, on binde bir; toplam sıfırsa boş */
+                                accruedShareBasisPoints: number | null;
+                                /** @description Net tahsilat payı, on binde bir; toplam sıfırsa boş */
+                                netCollectedShareBasisPoints: number | null;
+                                /** @description Bütçe gideri payı, on binde bir; toplam sıfırsa boş */
+                                budgetExpenseShareBasisPoints: number | null;
+                            }[];
+                            /** @description Kampüsler toplamı */
+                            totals: {
+                                studentCount: number;
+                                /** @description Vadesi dönemde olan taksitler (tahakkuk) */
+                                accruedCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar */
+                                collectedCents: number;
+                                /** @description İptal günü dönemde olan tahsilat iptalleri */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Tahsilat − iptal − iade */
+                                netCollectedCents: number;
+                                /** @description Bütçe gideri (ortak giderden pay dahil) */
+                                budgetExpenseCents: number;
+                                /** @description Bütçe giderinin ortak giderden gelen kısmı */
+                                budgetSharedCents: number;
+                                /** @description Öğrenci başı tahakkuk; küçük grupta boş */
+                                accruedPerStudentCents: number | null;
+                                /** @description Öğrenci başı bütçe gideri; küçük grupta boş */
+                                budgetExpensePerStudentCents: number | null;
+                                suppressed: boolean;
+                            };
                         };
                     };
                 };

@@ -1181,6 +1181,19 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'başka kurumun dönemi 404, taksiti ve tahsilatı raporda yok',
     "send('GET', b.url, a.cookie)",
   ),
+  // Onur: öğrenci başı maliyet ve kampüs konsolidasyonu (ON-249, ON-250; DOM-FIN-065).
+  ...Object.fromEntries(
+    ['GET /api/v1/finance/cost-per-student', 'GET /api/v1/finance/campus-consolidation'].map(
+      (key) => [
+        key,
+        liste(
+          'finance-cost-reports.test.ts',
+          'DOM-FIN-065: başka kurumun dönemi 404; başka kurumun satırı ve öğrencisi raporda yok',
+          'query(b)',
+        ),
+      ],
+    ),
+  ),
 }
 
 /**

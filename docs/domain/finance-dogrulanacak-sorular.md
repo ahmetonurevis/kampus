@@ -362,21 +362,38 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Toplu fatura entegratöre (IST-112) gönderilir, KDV kırılımı ve hizmet dönemi eklenir; satırdaki kişi adı kaldırılabilir.
 - **Cevap:** bekleniyor
 
+#### M-15 · Bütçe kalemlerinin hesap planına eşlenmesi
+
+- **Kural:** `DOM-FIN-062`; ON-241.
+- **Soru:** Kurum içi bütçe kalemleri (gelir ve gider) Tek Düzen Hesap Planı'nın gelir ve gider hesaplarına (6 ve 7 grubu) eşlenmeli mi; eşlenirse bütçe–gerçekleşen raporu muhasebe programındaki hesap bakiyesiyle mi karşılaştırılır? Özel okulda ve dil okulunda bütçe dönemi takvim yılı (mali yıl) mı, eğitim yılı mı olmalıdır?
+- **Bugünkü varsayım:** Bütçe yönetim muhasebesidir; kalemin hesap kodu yoktur, dönem eğitim yılı ya da serbest gün aralığıdır. Gelir kalemi yalnız ücret türüne eşlenir.
+- **Kodda:** `lib/finance-budget.ts` (`budgetItemSchema`), `budget_items` tablosu (migration 0075).
+- **Cevap değişirse:** Kaleme isteğe bağlı hesap kodu eklenir (migration) ve muhasebe aktarım profili (`DOM-FIN-055`) bu kodu kullanır; mali yıl gerekiyorsa dönem önerisi takvim yılına göre yapılır.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
 
-| Kimlik | Tarih      | Kural         | Uygulanan öneri                                                                                                                              | Değişirse                                                                      |
-| ------ | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| K-45   | 2026-11-08 | `DOM-FIN-060` | Şirket bağı sözleşmenin ödeyici alanını değiştirmez; toplu fatura taksitleri bağ günlerinden seçer. Sözleşmede `corporate` ödeyici türü yok. | Sözleşme ödeyicisine şirket türü eklenir (`contracts_payer_check`, migration). |
-| K-46   | 2026-11-08 | `DOM-FIN-060` | Dönemde vadesi gelen taksit ödenmiş olsa da toplu faturaya girer; satırda ödeme durumu görünür.                                              | `billableLines` ödenmiş taksiti dışlar.                                        |
-| K-47   | 2026-11-08 | `DOM-FIN-060` | Bütün kalem türleri (öğrenim, kitap, materyal) toplu faturaya girer.                                                                         | `billableLines` kalem türü süzer.                                              |
-| K-48   | 2026-11-08 | `DOM-FIN-060` | Şirketin tek ödemesi taksitlere otomatik dağıtılmaz; tahsilat her kursiyerin taksitine mevcut ekrandan girilir.                              | Toplu tahsilat ayrı görev olur (ödeme dağıtımı, `DOM-FIN-030`).                |
-| K-49   | 2026-11-08 | `DOM-FIN-060` | Katılım özeti yalnız bugün etkin bağlı kursiyerleri gösterir; bağı biten çalışan rapordan çıkar.                                             | Rapor dönem alır, bağın içindeki kayıtları da gösterir.                        |
-| K-50   | 2026-11-08 | `DOM-FIN-060` | Şirket bağı kursiyerin yaşını denetlemez; işveren eğitimi yetişkine yöneliktir.                                                              | 18 yaş altı kursiyer bağlanamaz (`planEmployeeLink`).                          |
-| K-51   | 2026-11-08 | `DOM-FIN-060` | Toplu faturayı yönetici ve ön büro keser; iptal yalnız yöneticidedir (tahsilat iptali gibi).                                                 | Rol dizileri (`CORPORATE_*_ROLES`) değişir.                                    |
-| K-52   | 2026-11-08 | `DOM-FIN-060` | Faturalanmış taksit ek protokolle değişirse yeni taksit yeniden faturalanmaz; fark için toplu fatura iptal edilip yeniden kesilir.           | Fark faturası (ek döküm) üretilir.                                             |
-| K-53   | 2026-11-08 | `DOM-FIN-060` | Toplu fatura numarası `KF-<yıl>-<sıra>`; yıl Europe/Istanbul, sıra kurumda yıl içinde ardışık, iptal edilen numara boşta kalır.              | `corporateInvoiceNumber` biçimi değişir.                                       |
+| Kimlik | Tarih      | Kural         | Uygulanan öneri                                                                                                                                              | Değişirse                                                                                 |
+| ------ | ---------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| K-45   | 2026-11-08 | `DOM-FIN-060` | Şirket bağı sözleşmenin ödeyici alanını değiştirmez; toplu fatura taksitleri bağ günlerinden seçer. Sözleşmede `corporate` ödeyici türü yok.                 | Sözleşme ödeyicisine şirket türü eklenir (`contracts_payer_check`, migration).            |
+| K-46   | 2026-11-08 | `DOM-FIN-060` | Dönemde vadesi gelen taksit ödenmiş olsa da toplu faturaya girer; satırda ödeme durumu görünür.                                                              | `billableLines` ödenmiş taksiti dışlar.                                                   |
+| K-47   | 2026-11-08 | `DOM-FIN-060` | Bütün kalem türleri (öğrenim, kitap, materyal) toplu faturaya girer.                                                                                         | `billableLines` kalem türü süzer.                                                         |
+| K-48   | 2026-11-08 | `DOM-FIN-060` | Şirketin tek ödemesi taksitlere otomatik dağıtılmaz; tahsilat her kursiyerin taksitine mevcut ekrandan girilir.                                              | Toplu tahsilat ayrı görev olur (ödeme dağıtımı, `DOM-FIN-030`).                           |
+| K-49   | 2026-11-08 | `DOM-FIN-060` | Katılım özeti yalnız bugün etkin bağlı kursiyerleri gösterir; bağı biten çalışan rapordan çıkar.                                                             | Rapor dönem alır, bağın içindeki kayıtları da gösterir.                                   |
+| K-50   | 2026-11-08 | `DOM-FIN-060` | Şirket bağı kursiyerin yaşını denetlemez; işveren eğitimi yetişkine yöneliktir.                                                                              | 18 yaş altı kursiyer bağlanamaz (`planEmployeeLink`).                                     |
+| K-51   | 2026-11-08 | `DOM-FIN-060` | Toplu faturayı yönetici ve ön büro keser; iptal yalnız yöneticidedir (tahsilat iptali gibi).                                                                 | Rol dizileri (`CORPORATE_*_ROLES`) değişir.                                               |
+| K-52   | 2026-11-08 | `DOM-FIN-060` | Faturalanmış taksit ek protokolle değişirse yeni taksit yeniden faturalanmaz; fark için toplu fatura iptal edilip yeniden kesilir.                           | Fark faturası (ek döküm) üretilir.                                                        |
+| K-53   | 2026-11-08 | `DOM-FIN-060` | Toplu fatura numarası `KF-<yıl>-<sıra>`; yıl Europe/Istanbul, sıra kurumda yıl içinde ardışık, iptal edilen numara boşta kalır.                              | `corporateInvoiceNumber` biçimi değişir.                                                  |
+| K-54   | 2026-11-08 | `DOM-FIN-062` | Bütçe ayrı modül değildir, `finance` modülüne bağlıdır; finans kapanınca bütçe uçları ve sekmesi de kapanır.                                                 | Yeni `budget` modül anahtarı; Oğuzhan'ın modül envanterinde Onur modül listesine eklenir. |
+| K-55   | 2026-11-08 | `DOM-FIN-062` | Bütçeyi bugün yalnız yönetici yönetir; muhasebe rolü açılınca (OG-110) dönem açma ve kapama dışındaki işleri de yapar. Ön büro görmez.                       | `BUDGET_ROLES` (`lib/finance-budget.ts`) değişir.                                         |
+| K-56   | 2026-11-08 | `DOM-FIN-062` | Dönemi açmak ve kapamak yalnız yöneticidedir; kapalı dönem yeniden açılmaz, değişiklik revizyonla yapılır (ON-243).                                          | Yeniden açma komutu eklenir (gerekçeli, gün sonu gibi).                                   |
+| K-57   | 2026-11-08 | `DOM-FIN-062` | Açık bütçe dönemleri örtüşmez; taslak dönemler örtüşebilir.                                                                                                  | `assertNoOpenOverlap` kaldırılır ya da kampüs bazında uygulanır.                          |
+| K-58   | 2026-11-08 | `DOM-FIN-062` | Eğitim yılına bağlı dönemin günleri oluşturulurken yılın kaydından (yoksa 1 Eylül – 31 Ağustos) kopyalanır; yılın günleri sonradan değişirse dönem değişmez. | Dönem günleri okumada eğitim yılından hesaplanır.                                         |
+| K-59   | 2026-11-08 | `DOM-FIN-062` | Aylık dağılım isteğe bağlıdır; verilirse dönemin değdiği her ay için tutar taşır, toplamı planlanan tutara eşittir. Dağılımsız satır eşit bölünmez.          | Dağılımsız satır aylara eşit bölünür ya da dağılım zorunlu olur.                          |
+| K-60   | 2026-11-08 | `DOM-FIN-062` | Gelir kalemi en çok bir ücret türüne eşlenir; bir ücret türüne tek etkin gelir kalemi eşlenir. Gider kalemi eşlenmez.                                        | Eşleme çoklu olur; ON-244 dağıtım kuralı ister.                                           |
+| K-61   | 2026-11-08 | `DOM-FIN-062` | Maliyet merkezi hiyerarşisi en çok 4 düzeydir; türler birbirinin altına serbestçe girer. Kampüse, sınıf düzeyine ya da kura tek etkin merkez bağlanır.       | `COST_CENTER_MAX_DEPTH` ve tür kuralı değişir.                                            |
 
 #### M-13 · Ödenen iadenin gün sonu ve kapalı gün kuralı
 

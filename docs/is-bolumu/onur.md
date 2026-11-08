@@ -377,19 +377,19 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ### K24 · Bütçe, maliyet merkezi ve konsolide rapor
 
-| ID     | Görev                                                                   | Boyut | Durum    | Dal / commit | Not                               |
-| ------ | ----------------------------------------------------------------------- | ----- | -------- | ------------ | --------------------------------- |
-| ON-241 | Bütçe dönemi ve kalemleri: gelir ve gider kalemleri, dönem              | S     | bekliyor |              | bağımlılık: IST-011               |
-| ON-242 | Maliyet merkezi: kampüs, birim, program                                 | S     | bekliyor |              | bağımlılık: IST-010               |
-| ON-243 | Bütçe hazırlama ve onay: birim taslakları, revizyon, onay               | S     | bekliyor |              | bağımlılık: K27 iş akışı motoru   |
-| ON-244 | Bütçe–gerçekleşen raporu: tahsilat ve satın alma verisinden             | S     | bekliyor |              | bağımlılık: K2, K23               |
-| ON-245 | Bütçe aşımı denetimi: talep anında kalan bütçe uyarısı                  | S     | bekliyor |              | bağımlılık: K23 satın alma talebi |
-| ON-246 | Gelir tahmini: kayıt hunisi ve fiyat listesinden                        | S     | bekliyor |              | bağımlılık: IST-117, IST-104      |
-| ON-247 | Nakit akışı tahmini: taksit vadeleri ve gider planından                 | S     | bekliyor |              | bağımlılık: IST-105               |
-| ON-248 | Senaryo analizi: öğrenci sayısı, fiyat artışı ve burs oranı senaryoları | M     | bekliyor |              | bağımlılık: gelir tahmini         |
-| ON-249 | Öğrenci başı maliyet: maliyet merkezi bölüşümüyle                       | S     | bekliyor |              | bağımlılık: maliyet merkezi       |
-| ON-250 | Çok kampüslü konsolide rapor: kampüsler toplamı ve karşılaştırması      | S     | bekliyor |              | bağımlılık: maliyet merkezi       |
-| ON-251 | Yönetim kurulu raporu PDF'i: dönemlik finans ve kayıt özeti             | S     | bekliyor |              | bağımlılık: PDF motoru            |
+| ID     | Görev                                                                   | Boyut | Durum       | Dal / commit             | Not                                                       |
+| ------ | ----------------------------------------------------------------------- | ----- | ----------- | ------------------------ | --------------------------------------------------------- |
+| ON-241 | Bütçe dönemi ve kalemleri: gelir ve gider kalemleri, dönem              | S     | çalışılıyor | onur/butce-maliyet       | bağımlılık: IST-011; Migration 0075 (ON-242 ile aynı dal) |
+| ON-242 | Maliyet merkezi: kampüs, birim, program                                 | S     | çalışılıyor | onur/butce-maliyet       | bağımlılık: IST-010; ON-241 ile aynı dal                  |
+| ON-243 | Bütçe hazırlama ve onay: birim taslakları, revizyon, onay               | S     | bekliyor    |                          | bağımlılık: K27 iş akışı motoru                           |
+| ON-244 | Bütçe–gerçekleşen raporu: tahsilat ve satın alma verisinden             | S     | bekliyor    |                          | bağımlılık: K2, K23                                       |
+| ON-245 | Bütçe aşımı denetimi: talep anında kalan bütçe uyarısı                  | S     | bekliyor    |                          | bağımlılık: K23 satın alma talebi                         |
+| ON-246 | Gelir tahmini: kayıt hunisi ve fiyat listesinden                        | S     | çalışılıyor | onur/gelir-nakit-tahmini | bağımlılık: IST-117, IST-104; ON-247 ile aynı dal         |
+| ON-247 | Nakit akışı tahmini: taksit vadeleri ve gider planından                 | S     | çalışılıyor | onur/gelir-nakit-tahmini | bağımlılık: IST-105; ON-246 ile aynı dal                  |
+| ON-248 | Senaryo analizi: öğrenci sayısı, fiyat artışı ve burs oranı senaryoları | M     | bekliyor    |                          | bağımlılık: gelir tahmini                                 |
+| ON-249 | Öğrenci başı maliyet: maliyet merkezi bölüşümüyle                       | S     | bekliyor    |                          | bağımlılık: maliyet merkezi                               |
+| ON-250 | Çok kampüslü konsolide rapor: kampüsler toplamı ve karşılaştırması      | S     | bekliyor    |                          | bağımlılık: maliyet merkezi                               |
+| ON-251 | Yönetim kurulu raporu PDF'i: dönemlik finans ve kayıt özeti             | S     | bekliyor    |                          | bağımlılık: PDF motoru                                    |
 
 ### K26 · Mezunlar ve kurumsal ilişkiler
 
@@ -457,8 +457,8 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ## Sonra · Faz 3
 
-| ID     | Görev                                             | Boyut | Durum       | Dal / commit          | Not                                                       |
-| ------ | ------------------------------------------------- | ----- | ----------- | --------------------- | --------------------------------------------------------- |
-| ON-099 | Banka hareketi eşleştirme (IST-115)               | L     | bekliyor    |                       | Dış servis: banka hareket servisi                         |
-| ON-100 | Kurumsal müşteri grupları, toplu fatura (IST-089) | M     | çalışılıyor | onur/kurumsal-musteri | Migration gerekirse sıradaki numara (ON-087 dalında 0074) |
-| ON-101 | Revir ve ilaç onayı (IST-102)                     | M     | bekliyor    |                       | Kullanıcı kararı, 2 Kasım (K9); Oğuzhan'daki OG-195 iptal |
+| ID     | Görev                                             | Boyut | Durum    | Dal / commit | Not                                                                                                                                   |
+| ------ | ------------------------------------------------- | ----- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| ON-099 | Banka hareketi eşleştirme (IST-115)               | L     | bekliyor |              | Dış servis: banka hareket servisi                                                                                                     |
+| ON-100 | Kurumsal müşteri grupları, toplu fatura (IST-089) | M     | bitti    | 3e515405     | Migration gerekirse sıradaki numara (ON-087 dalında 0074); Migration 0074; şirket yetkilisi girişi #65 bekliyor; K-45…K-53 varsayılan |
+| ON-101 | Revir ve ilaç onayı (IST-102)                     | M     | bekliyor |              | Kullanıcı kararı, 2 Kasım (K9); Oğuzhan'daki OG-195 iptal                                                                             |

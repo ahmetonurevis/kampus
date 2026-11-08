@@ -1169,6 +1169,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yönetim kurulu raporu (ON-251, DOM-FIN-064).
+  'GET /api/v1/finance/board-report': liste(
+    'finance-board-report.test.ts',
+    'başka kurumun kayıtları raporda sayılmaz',
+    'URL_BASE',
+  ),
 }
 
 /**

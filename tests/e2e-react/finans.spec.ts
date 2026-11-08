@@ -913,6 +913,17 @@ test.describe('Finans: tahsilat', () => {
     await expect(table).toContainText('Ödendi')
     await expect(table).not.toContainText('TR330006100519786457841326')
 
+    // M-13, DOM-FIN-036: ödenen iade bugünün gün sonuna banka satırında ayrı girer.
+    await page.goto(`${ADMIN_URL}?gorunum=gunsonu`)
+    const refunds = page.getByRole('table', { name: 'Günün iade ödemeleri' })
+    await expect(refunds).toContainText(name)
+    await expect(refunds).toContainText('Örnek Bankası · 7890')
+    await expect(
+      page
+        .getByRole('table', { name: 'Ödeme yöntemine göre gün özeti' })
+        .getByRole('row', { name: /Banka havalesi/ }),
+    ).toContainText('/ 1')
+
     await loginAs(school.user('onburo'))
     await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
     await expect(page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })).toContainText(name)

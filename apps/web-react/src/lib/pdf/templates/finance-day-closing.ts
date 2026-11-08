@@ -1,5 +1,6 @@
 // Gün sonu raporu (IST-113, DOM-FIN-036): rakamlar API raporundan gelir, burada yeniden hesaplanmaz.
-// Kapalı günde kapanış anının özeti yazılır; belge kurum içi özettir.
+// Kapalı günde kapanış anının özeti yazılır; belge kurum içi özettir. O gün ödenen ayrılış iadesi
+// banka satırında ayrı sütundur ve netten düşer (M-13).
 import type { FinanceDayReport } from '@kampus/react-shared/use-finance-day-closings.ts'
 import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money, timeLabel } from '@kampus/school-core/lib/format.ts'
@@ -11,12 +12,19 @@ import type { TemplateOptions } from './shared.ts'
 export const DAY_CLOSING_TITLE = 'Gün sonu raporu'
 
 const METHOD_COLUMNS = [
-  { header: 'Yöntem', width: 54 },
-  { header: 'Adet', width: 18 },
-  { header: 'Tahsilat', width: 34 },
-  { header: 'İptal', width: 34 },
-  { header: 'Net', width: 34 },
+  { header: 'Yöntem', width: 34 },
+  { header: 'Adet', width: 20 },
+  { header: 'Tahsilat', width: 30 },
+  { header: 'İptal', width: 30 },
+  { header: 'İade', width: 30 },
+  { header: 'Net', width: 30 },
 ] as const
+/** Tahsilat / iptal / iade adedi; sütun dar olduğu için boşluksuz yazılır. */
+const countsOf = (item: {
+  collectedCount: number
+  reversedCount: number
+  refundPaidCount: number
+}) => [item.collectedCount, item.reversedCount, item.refundPaidCount].join('/')
 // Kayıtlı kişi sütunu kurum türüne göre adlandırılır: okulda öğrenci, dil okulu ve kursta kursiyer.
 const lineColumns = (learner: LearnerTerm) =>
   [
@@ -24,6 +32,12 @@ const lineColumns = (learner: LearnerTerm) =>
     { header: learner, width: 46 },
     { header: 'Yöntem', width: 30 },
     { header: 'Referans', width: 44 },
+    { header: 'Tutar', width: 30 },
+  ] as const
+const refundColumns = (learner: LearnerTerm) =>
+  [
+    { header: learner, width: 70 },
+    { header: 'Kurum banka hesabı', width: 74 },
     { header: 'Tutar', width: 30 },
   ] as const
 const reversalColumns = (learner: LearnerTerm) =>
@@ -66,7 +80,7 @@ function table(doc: DocumentLayout, columns: Columns, rows: Rows, keepLastRow: b
 }
 
 /** İmza alanından önceki son bölüm. */
-type Tail = 'reversals' | 'closing' | 'history'
+type Tail = 'reversals' | 'refunds' | 'closing' | 'history'
 
 /**
  * Raporu yazar. `keepTail` ise imzadan önceki son içerik birimi (son tablo satırı, son paragraf ya
@@ -80,7 +94,14 @@ function writeDayClosing(
 ): { document: PdfDocument; signatureAlone: boolean } {
   const { summary, closing } = report
   const learner = learnerTerm(options.institutionType)
-  const tail: Tail = report.history.length > 0 ? 'history' : closing ? 'closing' : 'reversals'
+  const tail: Tail =
+    report.history.length > 0
+      ? 'history'
+      : closing
+        ? 'closing'
+        : report.refunds.length > 0
+          ? 'refunds'
+          : 'reversals'
   const keep = (block: Tail) => keepTail && tail === block
   const doc = new DocumentLayout(measurer, {
     label: 'GÜN SONU RAPORU',
@@ -94,6 +115,7 @@ function writeDayClosing(
   doc.metrics([
     ['TAHSİLAT', money(summary.collectedCents)],
     ['İPTAL', money(summary.reversedCents)],
+    ['İADE ÖDEMESİ', money(summary.refundPaidCents)],
     ['NET', money(summary.netCents)],
   ])
   if (!closing) doc.paragraph('Bu gün henüz kapatılmadı; rakamlar kesinleşmemiştir.')
@@ -104,16 +126,18 @@ function writeDayClosing(
     [
       ...summary.methods.map((item) => [
         PAYMENT_METHOD_LABELS[item.method],
-        `${String(item.collectedCount)} / ${String(item.reversedCount)}`,
+        countsOf(item),
         money(item.collectedCents),
         money(item.reversedCents),
+        money(item.refundPaidCents),
         money(item.netCents),
       ]),
       [
         'Toplam',
-        `${String(summary.collectedCount)} / ${String(summary.reversedCount)}`,
+        countsOf(summary),
         money(summary.collectedCents),
         money(summary.reversedCents),
+        money(summary.refundPaidCents),
         money(summary.netCents),
       ],
     ],
@@ -151,6 +175,22 @@ function writeDayClosing(
       ]),
       keep('reversals'),
     )
+
+  // İade bölümü yalnız iade ödenen günde yazılır; tutarı özette ve yöntem tablosunda her gün vardır.
+  if (report.refunds.length > 0) {
+    if (keep('refunds') && report.refunds.length < 2) doc.newPage()
+    doc.section('İade ödemeleri')
+    table(
+      doc,
+      refundColumns(learner),
+      report.refunds.map((line) => [
+        line.studentName ?? '—',
+        line.bankAccountLabel ?? '—',
+        money(line.amountCents),
+      ]),
+      keep('refunds'),
+    )
+  }
 
   if (closing) {
     doc.section('Kasa sayımı')

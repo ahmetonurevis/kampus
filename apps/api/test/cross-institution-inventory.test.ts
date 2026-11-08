@@ -1381,6 +1381,28 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: mal kabul (ON-226; DOM-FIN-074).
+  'GET /api/v1/finance/purchase-orders/:orderId/receipts': kayit(
+    'finance-purchase-receipts.test.ts',
+    'başka kurumun siparişi ve kabulü 404 ve B değişmez',
+    'get(receiptsUrl(b), a.admin)',
+  ),
+  'POST /api/v1/finance/purchase-orders/:orderId/receipts': kayit(
+    'finance-purchase-receipts.test.ts',
+    'başka kurumun siparişi ve kabulü 404 ve B değişmez',
+    'receive(a.admin, b,',
+  ),
+  'POST /api/v1/finance/purchase-orders/:orderId/receipts/:receiptId/cancel': kayit(
+    'finance-purchase-receipts.test.ts',
+    'başka kurumun siparişi ve kabulü 404 ve B değişmez',
+    'cancel(a.admin, b, bReceipt)',
+  ),
+  // Onur: satın alma raporu (ON-227; DOM-FIN-075).
+  'GET /api/v1/finance/purchase-report': liste(
+    'finance-purchase-report.test.ts',
+    'DOM-FIN-075: başka kurumun dönemi 404; başka kurumun siparişi raporda yok',
+    'periodId=${String(b.period.id)}',
+  ),
   // Onur: tedarikçi carisi ve ödeme planı (ON-143; DOM-FIN-076).
   ...Object.fromEntries(
     (

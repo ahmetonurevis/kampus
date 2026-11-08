@@ -1,5 +1,5 @@
 {
-  "id": "8dc29042-72cb-4eb6-b5bd-0a7459b4f244",
+  "id": "74d1e644-bf7b-4d5f-9507-fd02bbb2ae59",
   "prevId": "a4d0089c-a596-4218-a19e-3aa5c5fe10d5",
   "version": "7",
   "dialect": "postgresql",
@@ -10190,6 +10190,409 @@
       },
       "isRLSEnabled": false
     },
+    "public.purchase_receipt_items": {
+      "name": "purchase_receipt_items",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "receipt_id": {
+          "name": "receipt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_item_id": {
+          "name": "order_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_quantity": {
+          "name": "accepted_quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rejected_quantity": {
+          "name": "rejected_quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reject_reason": {
+          "name": "reject_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "purchase_receipt_items_order_item_key": {
+          "name": "purchase_receipt_items_order_item_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "receipt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "purchase_receipt_items_receipt_idx": {
+          "name": "purchase_receipt_items_receipt_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "receipt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "purchase_receipt_items_order_item_idx": {
+          "name": "purchase_receipt_items_order_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "purchase_receipt_items_institution_id_institutions_id_fk": {
+          "name": "purchase_receipt_items_institution_id_institutions_id_fk",
+          "tableFrom": "purchase_receipt_items",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_receipt_items_receipt_fkey": {
+          "name": "purchase_receipt_items_receipt_fkey",
+          "tableFrom": "purchase_receipt_items",
+          "tableTo": "purchase_receipts",
+          "columnsFrom": [
+            "institution_id",
+            "receipt_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "purchase_receipt_items_order_item_fkey": {
+          "name": "purchase_receipt_items_order_item_fkey",
+          "tableFrom": "purchase_receipt_items",
+          "tableTo": "purchase_order_items",
+          "columnsFrom": [
+            "institution_id",
+            "order_item_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "purchase_receipt_items_pkey": {
+          "name": "purchase_receipt_items_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "purchase_receipt_items_quantity_check": {
+          "name": "purchase_receipt_items_quantity_check",
+          "value": "\"purchase_receipt_items\".\"accepted_quantity\" between 0 and 1000000\n        and \"purchase_receipt_items\".\"rejected_quantity\" between 0 and 1000000\n        and \"purchase_receipt_items\".\"accepted_quantity\" + \"purchase_receipt_items\".\"rejected_quantity\" > 0"
+        },
+        "purchase_receipt_items_reject_check": {
+          "name": "purchase_receipt_items_reject_check",
+          "value": "((\"purchase_receipt_items\".\"rejected_quantity\" > 0) = (\"purchase_receipt_items\".\"reject_reason\" is not null))\n        and (\"purchase_receipt_items\".\"reject_reason\" is null or char_length(\"purchase_receipt_items\".\"reject_reason\") <= 300)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.purchase_receipts": {
+      "name": "purchase_receipts",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "receipt_date": {
+          "name": "receipt_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_by": {
+          "name": "received_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inspection_note": {
+          "name": "inspection_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "purchase_receipts_order_idx": {
+          "name": "purchase_receipts_order_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "purchase_receipts_date_idx": {
+          "name": "purchase_receipts_date_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "receipt_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "purchase_receipts_institution_id_institutions_id_fk": {
+          "name": "purchase_receipts_institution_id_institutions_id_fk",
+          "tableFrom": "purchase_receipts",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_receipts_order_fkey": {
+          "name": "purchase_receipts_order_fkey",
+          "tableFrom": "purchase_receipts",
+          "tableTo": "purchase_orders",
+          "columnsFrom": [
+            "institution_id",
+            "order_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "purchase_receipts_pkey": {
+          "name": "purchase_receipts_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "purchase_receipts_text_check": {
+          "name": "purchase_receipts_text_check",
+          "value": "char_length(\"purchase_receipts\".\"received_by\") between 2 and 120\n        and (\"purchase_receipts\".\"inspection_note\" is null or char_length(\"purchase_receipts\".\"inspection_note\") <= 1000)\n        and (\"purchase_receipts\".\"cancel_reason\" is null or char_length(\"purchase_receipts\".\"cancel_reason\") <= 500)"
+        },
+        "purchase_receipts_cancel_check": {
+          "name": "purchase_receipts_cancel_check",
+          "value": "((\"purchase_receipts\".\"cancelled_at\" is null) = (\"purchase_receipts\".\"cancelled_by_user_id\" is null))\n        and ((\"purchase_receipts\".\"cancelled_at\" is null) = (\"purchase_receipts\".\"cancel_reason\" is null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.purchase_request_items": {
       "name": "purchase_request_items",
       "schema": "",
@@ -12031,854 +12434,6 @@
         "scholarship_programs_capacity_check": {
           "name": "scholarship_programs_capacity_check",
           "value": "\"scholarship_programs\".\"capacity\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.supplier_invoice_installments": {
-      "name": "supplier_invoice_installments",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "due_date": {
-          "name": "due_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "supplier_invoice_installments_position_key": {
-          "name": "supplier_invoice_installments_position_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"supplier_invoice_installments\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoice_installments_invoice_idx": {
-          "name": "supplier_invoice_installments_invoice_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "supplier_invoice_installments_institution_id_institutions_id_fk": {
-          "name": "supplier_invoice_installments_institution_id_institutions_id_fk",
-          "tableFrom": "supplier_invoice_installments",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "supplier_invoice_installments_invoice_fkey": {
-          "name": "supplier_invoice_installments_invoice_fkey",
-          "tableFrom": "supplier_invoice_installments",
-          "tableTo": "supplier_invoices",
-          "columnsFrom": [
-            "institution_id",
-            "invoice_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "supplier_invoice_installments_pkey": {
-          "name": "supplier_invoice_installments_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "supplier_invoice_installments_position_check": {
-          "name": "supplier_invoice_installments_position_check",
-          "value": "\"supplier_invoice_installments\".\"position\" >= 0"
-        },
-        "supplier_invoice_installments_amount_check": {
-          "name": "supplier_invoice_installments_amount_check",
-          "value": "\"supplier_invoice_installments\".\"amount_cents\" between 1 and 100000000000"
-        },
-        "supplier_invoice_installments_currency_check": {
-          "name": "supplier_invoice_installments_currency_check",
-          "value": "\"supplier_invoice_installments\".\"currency\" = 'TRY'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.supplier_invoices": {
-      "name": "supplier_invoices",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "supplier_id": {
-          "name": "supplier_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_number": {
-          "name": "invoice_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_date": {
-          "name": "invoice_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "net_cents": {
-          "name": "net_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vat_cents": {
-          "name": "vat_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "gross_cents": {
-          "name": "gross_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_includes_vat": {
-          "name": "amount_includes_vat",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "purchase_order_id": {
-          "name": "purchase_order_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "supplier_invoices_number_key": {
-          "name": "supplier_invoices_number_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "supplier_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"supplier_invoices\".\"cancelled_at\" is null and \"supplier_invoices\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoices_supplier_idx": {
-          "name": "supplier_invoices_supplier_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "supplier_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoices_purchase_order_idx": {
-          "name": "supplier_invoices_purchase_order_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "purchase_order_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoices_date_idx": {
-          "name": "supplier_invoices_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "supplier_invoices_institution_id_institutions_id_fk": {
-          "name": "supplier_invoices_institution_id_institutions_id_fk",
-          "tableFrom": "supplier_invoices",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "supplier_invoices_supplier_fkey": {
-          "name": "supplier_invoices_supplier_fkey",
-          "tableFrom": "supplier_invoices",
-          "tableTo": "suppliers",
-          "columnsFrom": [
-            "institution_id",
-            "supplier_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "supplier_invoices_purchase_order_fkey": {
-          "name": "supplier_invoices_purchase_order_fkey",
-          "tableFrom": "supplier_invoices",
-          "tableTo": "purchase_orders",
-          "columnsFrom": [
-            "institution_id",
-            "purchase_order_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "supplier_invoices_pkey": {
-          "name": "supplier_invoices_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "supplier_invoices_number_check": {
-          "name": "supplier_invoices_number_check",
-          "value": "char_length(\"supplier_invoices\".\"invoice_number\") between 1 and 50"
-        },
-        "supplier_invoices_amount_check": {
-          "name": "supplier_invoices_amount_check",
-          "value": "\"supplier_invoices\".\"net_cents\" >= 0 and \"supplier_invoices\".\"vat_cents\" >= 0\n        and \"supplier_invoices\".\"gross_cents\" between 1 and 100000000000\n        and \"supplier_invoices\".\"gross_cents\" = \"supplier_invoices\".\"net_cents\" + \"supplier_invoices\".\"vat_cents\""
-        },
-        "supplier_invoices_currency_check": {
-          "name": "supplier_invoices_currency_check",
-          "value": "\"supplier_invoices\".\"currency\" = 'TRY'"
-        },
-        "supplier_invoices_text_check": {
-          "name": "supplier_invoices_text_check",
-          "value": "(\"supplier_invoices\".\"note\" is null or char_length(\"supplier_invoices\".\"note\") <= 500)\n        and (\"supplier_invoices\".\"cancel_reason\" is null or char_length(\"supplier_invoices\".\"cancel_reason\") <= 500)"
-        },
-        "supplier_invoices_cancel_check": {
-          "name": "supplier_invoices_cancel_check",
-          "value": "((\"supplier_invoices\".\"cancelled_at\" is null) = (\"supplier_invoices\".\"cancelled_by_user_id\" is null))\n        and ((\"supplier_invoices\".\"cancelled_at\" is null) = (\"supplier_invoices\".\"cancel_reason\" is null))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.supplier_payments": {
-      "name": "supplier_payments",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "supplier_id": {
-          "name": "supplier_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "installment_id": {
-          "name": "installment_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_date": {
-          "name": "paid_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "method": {
-          "name": "method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bank_account_id": {
-          "name": "bank_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "instruction_exported_at": {
-          "name": "instruction_exported_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "instruction_exported_by_user_id": {
-          "name": "instruction_exported_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "instruction_export_count": {
-          "name": "instruction_export_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "supplier_payments_supplier_idx": {
-          "name": "supplier_payments_supplier_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "supplier_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_payments_invoice_idx": {
-          "name": "supplier_payments_invoice_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_payments_installment_idx": {
-          "name": "supplier_payments_installment_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "installment_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_payments_bank_account_idx": {
-          "name": "supplier_payments_bank_account_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bank_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_payments_paid_date_idx": {
-          "name": "supplier_payments_paid_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "paid_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "supplier_payments_institution_id_institutions_id_fk": {
-          "name": "supplier_payments_institution_id_institutions_id_fk",
-          "tableFrom": "supplier_payments",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "supplier_payments_supplier_fkey": {
-          "name": "supplier_payments_supplier_fkey",
-          "tableFrom": "supplier_payments",
-          "tableTo": "suppliers",
-          "columnsFrom": [
-            "institution_id",
-            "supplier_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "supplier_payments_invoice_fkey": {
-          "name": "supplier_payments_invoice_fkey",
-          "tableFrom": "supplier_payments",
-          "tableTo": "supplier_invoices",
-          "columnsFrom": [
-            "institution_id",
-            "invoice_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "supplier_payments_installment_fkey": {
-          "name": "supplier_payments_installment_fkey",
-          "tableFrom": "supplier_payments",
-          "tableTo": "supplier_invoice_installments",
-          "columnsFrom": [
-            "institution_id",
-            "installment_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "supplier_payments_bank_account_fkey": {
-          "name": "supplier_payments_bank_account_fkey",
-          "tableFrom": "supplier_payments",
-          "tableTo": "bank_accounts",
-          "columnsFrom": [
-            "institution_id",
-            "bank_account_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "supplier_payments_pkey": {
-          "name": "supplier_payments_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "supplier_payments_amount_check": {
-          "name": "supplier_payments_amount_check",
-          "value": "\"supplier_payments\".\"amount_cents\" between 1 and 100000000000"
-        },
-        "supplier_payments_currency_check": {
-          "name": "supplier_payments_currency_check",
-          "value": "\"supplier_payments\".\"currency\" = 'TRY'"
-        },
-        "supplier_payments_method_check": {
-          "name": "supplier_payments_method_check",
-          "value": "\"supplier_payments\".\"method\" in ('transfer', 'eft', 'cash', 'cheque')"
-        },
-        "supplier_payments_bank_account_check": {
-          "name": "supplier_payments_bank_account_check",
-          "value": "(\"supplier_payments\".\"method\" = 'cash') = (\"supplier_payments\".\"bank_account_id\" is null)"
-        },
-        "supplier_payments_text_check": {
-          "name": "supplier_payments_text_check",
-          "value": "(\"supplier_payments\".\"description\" is null or char_length(\"supplier_payments\".\"description\") <= 140)\n        and (\"supplier_payments\".\"cancel_reason\" is null or char_length(\"supplier_payments\".\"cancel_reason\") <= 500)"
-        },
-        "supplier_payments_lifecycle_check": {
-          "name": "supplier_payments_lifecycle_check",
-          "value": "((\"supplier_payments\".\"cancelled_at\" is null) = (\"supplier_payments\".\"cancelled_by_user_id\" is null))\n        and ((\"supplier_payments\".\"cancelled_at\" is null) = (\"supplier_payments\".\"cancel_reason\" is null))\n        and ((\"supplier_payments\".\"instruction_exported_at\" is null) = (\"supplier_payments\".\"instruction_exported_by_user_id\" is null))\n        and ((\"supplier_payments\".\"instruction_exported_at\" is null) = (\"supplier_payments\".\"instruction_export_count\" = 0))"
         }
       },
       "isRLSEnabled": false

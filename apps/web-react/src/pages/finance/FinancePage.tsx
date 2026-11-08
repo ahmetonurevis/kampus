@@ -50,6 +50,8 @@ const FinancePurchaseRequestsSection = lazy(async () => ({
 const FinancePurchaseOrdersSection = lazy(async () => ({
   default: (await import('./FinancePurchaseOrdersSection.tsx')).FinancePurchaseOrdersSection,
 }))
+const FinancePurchaseReportSection = lazy(async () => ({
+  default: (await import('./FinancePurchaseReportSection.tsx')).FinancePurchaseReportSection,
 const FinanceSupplierLedgerSection = lazy(async () => ({
   default: (await import('./FinanceSupplierLedgerSection.tsx')).FinanceSupplierLedgerSection,
 }))
@@ -76,6 +78,7 @@ const VIEWS = {
   suppliers: { label: 'Tedarikçiler', param: 'tedarikci' },
   purchaseRequests: { label: 'Satın alma talepleri', param: 'satin-alma' },
   purchaseOrders: { label: 'Siparişler', param: 'siparis' },
+  purchaseReport: { label: 'Satın alma raporu', param: 'satin-alma-raporu' },
   supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
@@ -94,6 +97,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Tedarikçiler (DOM-FIN-070) ve satın alma talepleri (DOM-FIN-071) yönetici ve ön büroya açıktır;
  * ön büro tedarikçiyi salt okur (K-126), yalnız kendi talebini değiştirir (K-128).
  * Siparişler (DOM-FIN-073) de ikisine açıktır; siparişi yönetici açar ve iptal eder (K-141).
+ * Satın alma raporu (DOM-FIN-075) yalnız yöneticidedir; ön büro görmez (K-155).
  * Tedarikçi carisi (DOM-FIN-076) yalnız yöneticidedir; ön büro görmez (K-160).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
@@ -104,6 +108,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'forecast' ||
       value === 'boardReport' ||
       value === 'bankMatching' ||
+      value === 'purchaseReport' ||
       value === 'supplierLedger'
     )
       return isManager
@@ -234,11 +239,13 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'suppliers' ||
       tab === 'purchaseRequests' ||
       tab === 'purchaseOrders' ||
+      tab === 'purchaseReport' ||
       tab === 'supplierLedger' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
           {tab === 'purchaseOrders' ? <FinancePurchaseOrdersSection /> : null}
+          {tab === 'purchaseReport' ? <FinancePurchaseReportSection /> : null}
           {tab === 'supplierLedger' ? <FinanceSupplierLedgerSection /> : null}
         </Suspense>
       ) : null}

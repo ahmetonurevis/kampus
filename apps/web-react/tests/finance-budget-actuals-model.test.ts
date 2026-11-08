@@ -109,4 +109,10 @@ test('DOM-FIN-066: açıklamalar esası, son günü, gider ve eşleme eksiğini 
   assert.ok(cash.some((note) => note.includes('800,00 ₺')))
   const notStarted = actualsNotes({ ...report(), asOfDate: null })
   assert.equal(notStarted[1], 'Dönem henüz başlamadı; gerçekleşen yok.')
+  // Gider kaynağı mal kabuldür (DOM-FIN-074, K-151): tahakkukta kabul günü, tahsilatta ödeme.
+  const purchase = actualsNotes({ ...report(), expenseData: 'available' })
+  assert.ok(purchase.some((note) => note.includes('mal kabulündendir')))
+  assert.ok(!purchase.some((note) => note.startsWith('Gider gerçekleşeni yok')))
+  const purchaseCash = actualsNotes({ ...report('cash'), expenseData: 'available' })
+  assert.ok(purchaseCash.some((note) => note.includes('tedarikçi ödemesiyle')))
 })

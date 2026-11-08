@@ -4,8 +4,10 @@ import type {
   BudgetActualsLine,
   BudgetExpenseActual,
 } from '@kampus/school-core/lib/finance-budget-actuals.ts'
+import { receiptExpenseActuals } from '@kampus/school-core/lib/finance-purchase-receipts.ts'
 
 import type { Database } from './client.ts'
+import { loadReceiptExpenseRows } from './finance-purchase-receipts.ts'
 import { budgetLines } from './schema/finance-budget.ts'
 import { lessonPackageSales } from './schema/finance-packages.ts'
 import { languageGroupMembers, languageGroups } from './schema/language-groups.ts'
@@ -100,9 +102,10 @@ export async function loadStudentCourses(
 }
 
 /**
- * Gider gerçekleşeni kaynağı (DOM-FIN-066). Satın alma (K23) ve elle gider kaydı tabloları henüz
- * yoktur; `null` "gerçekleşen verisi yok" demektir. Kaynak eklenince bu fonksiyon dönemin
- * kayıtlarını `BudgetExpenseActual` biçiminde döndürür; hesap ve ekran değişmez.
+ * Gider gerçekleşeni kaynağı (DOM-FIN-066). `null` "gerçekleşen verisi yok" demektir; bugünkü kaynak
+ * satın alma mal kabulüdür (DOM-FIN-074, K-151): dönem günlerindeki iptal edilmemiş kabullerde kabul
+ * edilen miktar × sipariş birim fiyatı, KDV hariç, kabul gününde tahakkuk eder. Elle gider kaydı
+ * ve tedarikçi ödemesi (ON-143) geldiğinde aynı biçimde eklenir; hesap ve ekran değişmez.
  */
 export type ExpenseActualsSource = (
   db: Database,
@@ -110,4 +113,5 @@ export type ExpenseActualsSource = (
   period: { startDate: string; endDate: string },
 ) => Promise<BudgetExpenseActual[] | null>
 
-export const loadExpenseActuals: ExpenseActualsSource = () => Promise.resolve(null)
+export const loadExpenseActuals: ExpenseActualsSource = async (db, institutionId, period) =>
+  receiptExpenseActuals(await loadReceiptExpenseRows(db, institutionId, period))

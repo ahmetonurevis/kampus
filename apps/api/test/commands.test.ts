@@ -84,6 +84,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/stock-entries',
   'POST /api/v1/finance/stock-issues',
   'POST /api/v1/finance/stock-transfers',
+  // Materyal seti teslimi stok çıkışı yazar; çift tıklama ikinci teslim ve çıkış açmaz
+  // (routes/finance-material-sets.ts; DOM-FIN-080).
+  'POST /api/v1/finance/material-sets/{setId}/deliveries',
 ]
 // Onur: kayıt ve finans sonu
 

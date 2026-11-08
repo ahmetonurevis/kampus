@@ -248,6 +248,7 @@ export const MOVEMENT_TYPE_VIEW: Readonly<
   out: { label: STOCK_MOVEMENT_TYPE_LABELS.out, tone: 'red', sign: -1 },
   transfer_in: { label: STOCK_MOVEMENT_TYPE_LABELS.transfer_in, tone: 'purple', sign: 1 },
   transfer_out: { label: STOCK_MOVEMENT_TYPE_LABELS.transfer_out, tone: 'purple', sign: -1 },
+  delivery: { label: STOCK_MOVEMENT_TYPE_LABELS.delivery, tone: 'amber', sign: -1 },
 }
 
 /** İşaretli miktar metni: `+20 paket`, `−5 adet`. */

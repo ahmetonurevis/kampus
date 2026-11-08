@@ -372,7 +372,7 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         operationId: 'cancelStockMovement',
         tags,
         summary: 'Stok hareketini iptal et',
-        description: `Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 \`stock_cancel_negative\`; mal kabul girişi yalnız kabul iptaliyle geri alınır (422 \`stock_movement_from_receipt\`); zaten iptal edilmiş 422 \`stock_movement_already_cancelled\` (K-183). \`If-Match\` hareketin sürümüdür. İptal edilen hareketler döner. ${MANAGER}`,
+        description: `Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 \`stock_cancel_negative\`; mal kabul girişi yalnız kabul iptaliyle (422 \`stock_movement_from_receipt\`), materyal seti teslimi çıkışı yalnız teslim iptaliyle (422 \`stock_movement_from_delivery\`, DOM-FIN-080) geri alınır; zaten iptal edilmiş 422 \`stock_movement_already_cancelled\` (K-183). \`If-Match\` hareketin sürümüdür. İptal edilen hareketler döner. ${MANAGER}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: stockMovementParams,
         body: cancelStockMovementSchema,

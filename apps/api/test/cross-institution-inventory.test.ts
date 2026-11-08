@@ -1110,6 +1110,17 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gelir ve nakit akışı tahmini (ON-246, ON-247; DOM-FIN-063).
+  'GET /api/v1/finance/forecasts/revenue': liste(
+    'finance-forecasts.test.ts',
+    'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
+    'REVENUE',
+  ),
+  'GET /api/v1/finance/forecasts/cash-flow': liste(
+    'finance-forecasts.test.ts',
+    'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
+    'CASH_FLOW',
+  ),
 }
 
 /**

@@ -3968,6 +3968,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/forecasts/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gelir tahmini
+         * @description Seçilen eğitim yılının gelir tahmini (ON-246; IST-104, IST-117; DOM-FIN-063). `year` verilmezse kurumun kayıt yılı. Kesin gelir yılın iptal edilmemiş taksitlerinin toplamıdır (yeni kayıt ve yenileme ayrı). `contracts` yılın yürürlükteki sözleşmelerindeki liste fiyatı, indirim ve bursu bilgi olarak verir. Huni beklentisi son 24 ayda açılmış açık adayların ulaştıkları adıma göre, son 24 ayda kapanmış adaylardan hesaplanan dönüşüm oranı ile tarife fiyatı (yoksa önceki yılın tarifesi, o da yoksa sözleşme ortalaması) çarpımıdır; indirim ve burs aynı sözleşmelerin oranıyla düşülür. Huni geçmiş yılda ve `crm` modülü kapalıyken `null`dır. Varsayımlar `assumptions` alanındadır. Tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Bilinmeyen parametre 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFinanceRevenueForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/forecasts/cash-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nakit akışı tahmini
+         * @description Bu aydan başlayarak `months` ay (1–24, varsayılan 12) için aylık nakit akışı tahmini (ON-247; IST-105; DOM-FIN-063). Ay Europe/Istanbul ayıdır. Planlanan tahsilat vadesi bugün ya da sonra olan taksitlerin kalan tutarıdır; beklenen tahsilat son 12 ayın vadesinde (30 gün içinde) tahsil oranıyla düzeltilir, fark tahsil riskidir. Bugün gecikmiş açık tutar geç tahsil oranıyla ilk aya yazılır. Ödenmemiş ayrılış iadesi vadesinin ayına (geçmişse ilk aya) çıkış olarak yazılır. Gider planı yoktur: `monthlyExpenseCents` verilirse her aya aynı gider yazılır, verilmezse `expenseCents` `null` ve `assumptions.expenseSource` `none`dır. Örneklem boşsa oran varsayılandır (`default`). Tutarlar kuruş, oranlar on binde bir. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFinanceCashFlowForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -41747,6 +41787,280 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceRevenueForecast: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            /** @description Kesin kaydın yazıldığı eğitim yılı (kurum ayarı) */
+                            enrollmentYear: number;
+                            /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                            today: string;
+                            /** @description Kesin gelir: yılın iptal edilmemiş taksitleri */
+                            committed: {
+                                totalCents: number;
+                                newEnrollmentCents: number;
+                                renewalCents: number;
+                                students: number;
+                                newStudents: number;
+                                renewalStudents: number;
+                            };
+                            /** @description Yılın yürürlükteki sözleşmeleri: liste fiyatı, indirim ve burs (bilgi) */
+                            contracts: {
+                                count: number;
+                                listCents: number;
+                                discountCents: number;
+                                scholarshipCents: number;
+                                netCents: number;
+                            };
+                            /** @description Huni beklentisi; geçmiş yılda ve `crm` kapalıyken `null` */
+                            pipeline: {
+                                prospects: number;
+                                steps: {
+                                    /** @enum {string} */
+                                    step: "prospect" | "meeting" | "trial";
+                                    /** @description Bu adımda bekleyen açık aday */
+                                    prospects: number;
+                                    /** @description Örneklemde bu adıma ulaşan kapanmış aday */
+                                    sampleSize: number;
+                                    /** @description Adımdan kesin kayda dönüşüm oranı (on binde bir); örneklem boşsa `null` */
+                                    rateBasisPoints: number | null;
+                                    grossCents: number;
+                                    discountCents: number;
+                                    netCents: number;
+                                }[];
+                                grossCents: number;
+                                discountCents: number;
+                                netCents: number;
+                                unpricedProspects: number;
+                                unratedProspects: number;
+                            } | null;
+                            expectedTotalCents: number;
+                            assumptions: {
+                                /** @enum {string} */
+                                pipelineStatus: "included" | "crm_disabled" | "past_year";
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyFrom: string;
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyTo: string;
+                                historyClosedProspects: number;
+                                tariffYear: number | null;
+                                tariffCarriedOver: boolean;
+                                discountReferenceYear: number | null;
+                                discountRateBasisPoints: number;
+                                contractAverageCents: number | null;
+                                priceSources: {
+                                    tariffLevel: number;
+                                    tariffAverage: number;
+                                    contractAverage: number;
+                                    none: number;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceCashFlowForecast: {
+        parameters: {
+            query?: {
+                months?: number;
+                monthlyExpenseCents?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                            today: string;
+                            /** @description `YYYY-MM`, Europe/Istanbul */
+                            from: string;
+                            /** @description `YYYY-MM`, Europe/Istanbul */
+                            to: string;
+                            months: {
+                                /** @description `YYYY-MM`, Europe/Istanbul */
+                                month: string;
+                                /** @description Vadesi bugün ya da sonra olan kalan taksit tutarı */
+                                scheduledCents: number;
+                                /** @description Planlanan × vadesinde tahsil oranı */
+                                expectedCollectionCents: number;
+                                /** @description Planlanan eksi beklenen */
+                                atRiskCents: number;
+                                /** @description Gecikmiş alacaktan beklenen (yalnız ilk ay) */
+                                overdueRecoveryCents: number;
+                                /** @description Ödenmemiş ayrılış iadesi */
+                                refundCents: number;
+                                /** @description Elle girilen gider; verilmediyse `null` */
+                                expenseCents: number | null;
+                                netCents: number;
+                                cumulativeNetCents: number;
+                            }[];
+                            totals: {
+                                /** @description Vadesi bugün ya da sonra olan kalan taksit tutarı */
+                                scheduledCents: number;
+                                /** @description Planlanan × vadesinde tahsil oranı */
+                                expectedCollectionCents: number;
+                                /** @description Planlanan eksi beklenen */
+                                atRiskCents: number;
+                                /** @description Gecikmiş alacaktan beklenen (yalnız ilk ay) */
+                                overdueRecoveryCents: number;
+                                /** @description Ödenmemiş ayrılış iadesi */
+                                refundCents: number;
+                                /** @description Elle girilen gider; verilmediyse `null` */
+                                expenseCents: number | null;
+                                netCents: number;
+                            };
+                            overdueOpenCents: number;
+                            beyondHorizonCents: number;
+                            pendingRefundCents: number;
+                            assumptions: {
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyFrom: string;
+                                /** @description `YYYY-MM-DD`, Europe/Istanbul */
+                                historyTo: string;
+                                historyInvoices: number;
+                                historyAmountCents: number;
+                                graceDays: number;
+                                onTimeRateBasisPoints: number;
+                                /** @enum {string} */
+                                onTimeRateSource: "history" | "default";
+                                lateRecoveryRateBasisPoints: number;
+                                /** @enum {string} */
+                                lateRecoveryRateSource: "history" | "default";
+                                /** @enum {string} */
+                                expenseSource: "manual" | "none";
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

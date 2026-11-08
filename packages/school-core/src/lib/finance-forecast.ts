@@ -178,8 +178,17 @@ export interface RevenueForecastInput {
 export type ForecastPriceSource = 'tariffLevel' | 'tariffAverage' | 'contractAverage' | 'none'
 export type PipelineStatus = 'included' | 'crm_disabled' | 'past_year'
 
+/** Huni beklentisinin adımları: kesin kayıt adımı beklenti değil, sonuçtur. */
+export type PipelineStep = Exclude<FunnelStep, 'enrolled'>
+export const PIPELINE_STEPS = [
+  'prospect',
+  'meeting',
+  'trial',
+] as const satisfies readonly PipelineStep[]
+const isPipelineStep = (step: FunnelStep): step is PipelineStep => step !== 'enrolled'
+
 export interface PipelineStepForecast {
-  step: FunnelStep
+  step: PipelineStep
   /** Bu adımda bekleyen açık aday sayısı. */
   prospects: number
   /** Örneklemde bu adıma ulaşan kapanmış aday sayısı. */
@@ -392,7 +401,7 @@ export function revenueForecast(input: RevenueForecastInput): RevenueForecast {
     let unpriced = 0
     let unrated = 0
     const steps = funnelSteps(input.institutionType)
-      .filter((step) => step !== 'enrolled')
+      .filter(isPipelineStep)
       .map((step): PipelineStepForecast => {
         const index = FUNNEL_STEPS.indexOf(step)
         const reached = closed.filter((prospect) => stepIndex(prospect) >= index)

@@ -362,6 +362,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Toplu fatura entegratöre (IST-112) gönderilir, KDV kırılımı ve hizmet dönemi eklenir; satırdaki kişi adı kaldırılabilir.
 - **Cevap:** bekleniyor
 
+#### M-15 · Gelir tahmininin dönem ve tanıma esası
+
+- **Kural:** `DOM-FIN-063`; IST-104, IST-105, K24.
+- **Soru:** Yeni eğitim yılının gelir tahmini hangi esasla raporlanmalı: eğitim yılı (Eylül–Ağustos) mı, mali yıl (Ocak–Aralık) mı? Kesin gelir sözleşme ve taksit netinden mi (indirim ve burs düşülmüş), yoksa brüt liste fiyatı ve ayrı indirim gideri olarak mı gösterilmeli? Tahmin tutarı KDV dahil mi, hariç mi okunmalı?
+- **Bugünkü varsayım:** Tahmin eğitim yılı esaslıdır; kesin gelir yılın iptal edilmemiş taksit toplamıdır (net, KDV dahil tutar olarak saklanan ücret); indirim ve burs bilgi kalemidir. Tahmin muhasebe kaydı değildir, gelir tanımaz (paket gelir tanıma M-12'dedir).
+- **Kodda:** `lib/finance-forecast.ts` (`revenueForecast`), `GET /api/v1/finance/forecasts/revenue`.
+- **Cevap değişirse:** Dönem seçeneğine mali yıl eklenir; KDV hariç tutar kalem bazındaki orandan (IST-104) hesaplanarak ayrı sütun olur.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -387,6 +396,15 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 - **Öneri:** İade ödemesine kurumun bildirilmiş banka hesabı seçilsin (`DOM-FIN-032`); gün sonu raporu banka yönteminde ayrı "iade ödemesi" adedi ve tutarı göstersin, net bundan düşsün; kapalı güne iade ödemesi `finance_day_closed` ile reddedilsin. Nakit iade kapsam dışı kalsın. Rapor damgası ve kapanış satırı yeni alanı taşıyacağı için migration gerekir.
 - **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
 - **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
+
+#### M-16 · Gelir ve nakit akışı tahmininin varsayımları
+
+- **Kural:** `DOM-FIN-063`; IST-105, IST-117; ON-246, ON-247.
+- **Soru (ürün kararı):** Tahminin pencere ve oranları kurumun beklentisine uyuyor mu? (1) Dönüşüm oranı son 24 ayda açılıp kapanmış adaylardan hesaplanıyor; açık adaylardan da yalnız son 24 ayda açılanlar sayılıyor. (2) Örneklemi boş adımın adayları beklentiye girmiyor; az örneklemli (ör. 10'dan az) adımda kurum geneli oranı kullanılmalı mı? (3) Vadesinde tahsil "vadeden sonraki 30 gün içinde tam ödeme" sayılıyor, örneklem son 12 ay; kısmi ödeme sayılmıyor. (4) Gecikmiş açık tutarın geç tahsil beklentisi tamamen ilk aya yazılıyor. (5) Gider tarafında kullanıcı yalnız tek bir aylık tutar girebiliyor. (6) Yenilemesini henüz yapmamış mevcut öğrencinin olasılıklı yenileme geliri tahmine girmiyor.
+- **Öneri:** (1) 24 ay kalsın, kurum ayarına taşınması sonraya; (2) 10'dan az örneklemli adımda kurum geneli (adaydan kesin kayda) oran kullanılsın ve işaretlensin; (3) ve (4) kalsın; (5) bütçe kalemleri (`DOM-FIN-062`, ON-241) gelince aylık tutar yerine bütçe dönemindeki gider kalemleri ay ay okunsun, elle tutar yalnız bütçe yokken kalsın; (6) geçen yılın yenileme oranıyla (önceki yıl sözleşmesi olup bu yıl sözleşmesi olan öğrenci payı) ayrı "yenileme beklentisi" kalemi eklensin, son sınıflar hariç.
+- **Kodda:** `lib/finance-forecast.ts` (`FORECAST_HISTORY_MONTHS`, `COLLECTION_GRACE_DAYS`, `COLLECTION_HISTORY_MONTHS`), `GET /api/v1/finance/forecasts/cash-flow` (`monthlyExpenseCents`).
+- **Cevap değişirse:** Sabitler ve hesap `lib/finance-forecast.ts`'te değişir; yanıt varsayım alanları aynı kalır, yenileme beklentisi yeni kalem olarak eklenir.
+- **Cevap:** bekleniyor (ürün kararı)
 
 ## Kararlaştırılanlar
 

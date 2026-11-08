@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
+  createPurchaseReceiptSchema,
   planPurchaseReceipt,
   planPurchaseReceiptCancel,
   purchaseReceiptActions,
@@ -27,6 +28,13 @@ import {
 import { purchaseActorNames } from '../db/finance-purchase-requests.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import {
+  cancelReceiptStock,
+  planReceiptStock,
+  planReceiptStockCancellation,
+  receiptStockLinks,
+  writeReceiptStock,
+} from './finance-inventory.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -35,7 +43,8 @@ import { auditWork } from './task-work.ts'
  * kilidi altında siparişi, kalemlerini, bütün kabullerini ve kapalı bütçe dönemlerini yükler, kabulü
  * yazar ve sipariş durumunu kabul edilen toplamdan yeniden hesaplayıp siparişe yazar (sipariş sürümü
  * her kabulde artar). Kurum kilidi eşzamanlı iki kabulün aynı kalanı birlikte tüketmesini önler.
- * Rol ve modül denetimi rotadadır.
+ * Stok kartı seçilen kalemin kabul edilen miktarı seçilen depoya giriş yazar; kabul iptali bu
+ * girişleri de iptal eder (DOM-FIN-078, K-184). Rol ve modül denetimi rotadadır.
  */
 
 const RECEIPT = 'purchase_receipts'
@@ -57,6 +66,7 @@ function boardView(
   items: readonly StoredOrderItem[],
   receipts: readonly StoredReceipt[],
   names: ReadonlyMap<string, string>,
+  stock: Awaited<ReturnType<typeof receiptStockLinks>>,
 ) {
   const progress = receiptProgress(items, receipts)
   const actions = purchaseReceiptActions(order, ctx.actor)
@@ -83,47 +93,64 @@ function boardView(
       (total, receipt) => total + receiptNetCents(receipt.lines, items),
       0,
     ),
-    receipts: receipts.map((receipt) => ({
-      id: receipt.id,
-      receiptDate: receipt.receiptDate,
-      receivedBy: receipt.receivedBy,
-      inspectionNote: receipt.inspectionNote,
-      netCents: receiptNetCents(receipt.lines, items),
-      lines: receipt.lines.map((line) => {
-        const item = itemById.get(line.orderItemId)
-        return {
-          orderItemId: line.orderItemId,
-          name: item?.name ?? '',
-          unit: item?.unit ?? 'piece',
-          acceptedQuantity: line.acceptedQuantity,
-          rejectedQuantity: line.rejectedQuantity,
-          rejectReason: line.rejectReason,
-        }
-      }),
-      createdAt: receipt.createdAt,
-      createdByName: nameOf(receipt.createdByUserId),
-      cancelledAt: receipt.cancelledAt,
-      cancelledByName: nameOf(receipt.cancelledByUserId),
-      cancelReason: receipt.cancelReason,
-      actions: { cancel: actions.cancel && receipt.cancelledAt === null },
-      version: receipt.version,
-    })),
+    receipts: receipts.map((receipt) => {
+      const linked = receipt.lines.flatMap((line) => {
+        const link = stock.get(line.id)
+        return link === undefined ? [] : [link]
+      })
+      return {
+        id: receipt.id,
+        receiptDate: receipt.receiptDate,
+        warehouseId: linked[0]?.warehouseId ?? null,
+        warehouseName: linked[0]?.warehouseName ?? null,
+        receivedBy: receipt.receivedBy,
+        inspectionNote: receipt.inspectionNote,
+        netCents: receiptNetCents(receipt.lines, items),
+        lines: receipt.lines.map((line) => {
+          const item = itemById.get(line.orderItemId)
+          return {
+            orderItemId: line.orderItemId,
+            name: item?.name ?? '',
+            unit: item?.unit ?? 'piece',
+            acceptedQuantity: line.acceptedQuantity,
+            rejectedQuantity: line.rejectedQuantity,
+            rejectReason: line.rejectReason,
+            stockItemId: stock.get(line.id)?.stockItemId ?? null,
+            stockItemName: stock.get(line.id)?.stockItemName ?? null,
+          }
+        }),
+        createdAt: receipt.createdAt,
+        createdByName: nameOf(receipt.createdByUserId),
+        cancelledAt: receipt.cancelledAt,
+        cancelledByName: nameOf(receipt.cancelledByUserId),
+        cancelReason: receipt.cancelReason,
+        actions: { cancel: actions.cancel && receipt.cancelledAt === null },
+        version: receipt.version,
+      }
+    }),
     actions: { receive: actions.receive },
   }
 }
 
 async function board(db: Database, ctx: ServiceContext, orderId: string) {
   const { order, items, receipts } = await loadOrder(db, ctx, orderId)
-  const names = await purchaseActorNames(
-    db,
-    ctx.institutionId,
-    receipts.flatMap((receipt) =>
-      receipt.cancelledByUserId === null
-        ? [receipt.createdByUserId]
-        : [receipt.createdByUserId, receipt.cancelledByUserId],
+  const [names, stock] = await Promise.all([
+    purchaseActorNames(
+      db,
+      ctx.institutionId,
+      receipts.flatMap((receipt) =>
+        receipt.cancelledByUserId === null
+          ? [receipt.createdByUserId]
+          : [receipt.createdByUserId, receipt.cancelledByUserId],
+      ),
     ),
-  )
-  return boardView(ctx, order, items, receipts, names)
+    receiptStockLinks(
+      db,
+      ctx,
+      receipts.map((receipt) => receipt.id),
+    ),
+  ])
+  return boardView(ctx, order, items, receipts, names, stock)
 }
 
 export const getPurchaseReceiptBoardFor = (ctx: ServiceContext, orderId: string) =>
@@ -176,21 +203,30 @@ export function createPurchaseReceiptCommand(
       entity,
       load: async (tx) => {
         const { order, items, receipts, closedPeriods } = await contextOf(tx, ctx, orderId)
+        const parsed = createPurchaseReceiptSchema.safeParse(input)
+        const stockPlan = parsed.success
+          ? await planReceiptStock(
+              tx,
+              ctx,
+              parsed.data,
+              new Map(items.map((item) => [item.id, item.unit])),
+            )
+          : () => []
         return {
-          run: () => ({
-            order,
-            ...planPurchaseReceipt(input, {
+          run: () => {
+            const planned = planPurchaseReceipt(input, {
               order,
               items,
               receipts,
               closedPeriods,
               today: dayKey(ctx.now),
-            }),
-          }),
+            })
+            return { order, ...planned, stock: stockPlan() }
+          },
         }
       },
-      after: async (tx, { order, data, status }) => {
-        await insertReceipt(tx, ctx.institutionId, {
+      after: async (tx, { order, data, status, stock }) => {
+        const lineIds = await insertReceipt(tx, ctx.institutionId, {
           id,
           orderId,
           receiptDate: data.receiptDate,
@@ -206,7 +242,9 @@ export function createPurchaseReceiptCommand(
           'receivedBy',
           'lines',
           ...(data.inspectionNote === null ? [] : ['inspectionNote']),
+          ...(stock.length === 0 ? [] : ['warehouseId', 'stockItemId']),
         ])
+        await writeReceiptStock(tx, ctx, { id, receiptDate: data.receiptDate, lineIds }, stock)
         await writeOrderStatus(tx, ctx, order, status)
         body = { data: await board(tx, ctx, orderId) }
       },
@@ -238,14 +276,20 @@ export function cancelPurchaseReceiptCommand(
         const receipt = receipts.find((item) => item.id === receiptId)
         if (receipt === undefined) throw new NotFoundError()
         if (receipt.version !== expectedVersion) throw new ConflictError()
+        const stockPlan = await planReceiptStockCancellation(tx, ctx, receiptId)
         return {
-          run: () => ({
-            order,
-            ...planPurchaseReceiptCancel(receipt, input, { order, items, receipts, closedPeriods }),
-          }),
+          run: () => {
+            const planned = planPurchaseReceiptCancel(receipt, input, {
+              order,
+              items,
+              receipts,
+              closedPeriods,
+            })
+            return { order, ...planned, stock: stockPlan() }
+          },
         }
       },
-      after: async (tx, { order, reason, status }) => {
+      after: async (tx, { order, reason, status, stock }) => {
         const saved = await cancelReceipt(tx, ctx.institutionId, {
           id: receiptId,
           expectedVersion,
@@ -255,6 +299,7 @@ export function cancelPurchaseReceiptCommand(
         })
         if (!saved) throw new ConflictError()
         await auditWork(tx, ctx, 'purchase_receipt.cancel', entity, ['cancelledAt', 'cancelReason'])
+        await cancelReceiptStock(tx, ctx, stock, reason)
         await writeOrderStatus(tx, ctx, order, status)
         body = { data: await board(tx, ctx, orderId) }
       },

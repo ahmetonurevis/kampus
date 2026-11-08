@@ -5,10 +5,11 @@ import { expect, test } from './support/fixtures.ts'
 import type { Tenant } from './support/tenant.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
-// Satın alma raporu ekranı (ON-227; DOM-FIN-075, K-155…K-158). Kural dalları birim ve API
-// testlerindedir (`tests/finance-purchase-report.test.ts`,
-// `apps/api/test/finance-purchase-report.test.ts`); burada yönetici iki siparişin dökümünü tarih
-// aralığı ve bütçe dönemiyle görür ve CSV indirir; ön büro sekmeyi görmez.
+// Satın alma raporu ekranı (ON-227, ON-336; DOM-FIN-075, K-155…K-158, K-195…K-199). Kural dalları
+// birim ve API testlerindedir (`tests/finance-purchase-report.test.ts`,
+// `apps/api/test/finance-purchase-report.test.ts`); burada yönetici iki siparişin dökümünü teslim,
+// fatura ve ödeme sütunlarıyla tarih aralığı ve bütçe dönemine göre görür ve CSV indirir; ön büro
+// sekmeyi görmez.
 
 const ADMIN = '/yonetici/finans?gorunum=satin-alma-raporu'
 const DESK = '/onburo/tahsilat-takip?gorunum=satin-alma-raporu'
@@ -24,7 +25,9 @@ const dayFromNow = (days: number) =>
 
 /**
  * Bütçe dönemi ve satırı, şirket (Bilişim) ve şahıs (Hizmet) tedarikçi, ikisine birer sipariş:
- * Alfa 10 × 190,00 %20 (brüt 2.280,00), Ayla 1 × 500,00 %0.
+ * Alfa 10 × 190,00 %20 (brüt 2.280,00), Ayla 1 × 500,00 %0. Alfa'nın siparişi gönderilir, 5 adedi
+ * teslim alınır (950,00 KDV hariç), 1.140,00'lık bağlı faturasına 400,00 ödenir; Alfa'nın 250,00'lık
+ * siparişsiz faturası ödenmemiştir.
  */
 async function seedOrders(school: Tenant) {
   const api = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
@@ -84,6 +87,7 @@ async function seedOrders(school: Tenant) {
         categories: ['services'],
       }),
     )
+    const orders: (Record<string, unknown> & { id: string; version: number })[] = []
     for (const [supplier, quantity, price, vatRate] of [
       [alpha, 10, 19_000, 20],
       [person, 1, 50_000, 0],
@@ -114,21 +118,77 @@ async function seedOrders(school: Tenant) {
       )
       const [quote] = board.quotes as { id: string; version: number }[]
       ok(await api.post(`${url}/quotes/${quote?.id}/select`, {}, ifMatch(quote?.version ?? 0)), 200)
-      ok(
-        await api.post(
-          '/api/v1/finance/purchase-orders',
-          { quoteId: quote?.id },
-          { 'idempotency-key': crypto.randomUUID() },
+      orders.push(
+        ok(
+          await api.post(
+            '/api/v1/finance/purchase-orders',
+            { quoteId: quote?.id },
+            { 'idempotency-key': crypto.randomUUID() },
+          ),
         ),
       )
     }
+    const [order] = orders
+    if (!order) throw new Error('Sipariş açılamadı.')
+    const orderUrl = `/api/v1/finance/purchase-orders/${order.id}`
+    const sent = ok(await api.post(`${orderUrl}/send`, undefined, ifMatch(order.version)), 200)
+    const [orderItem] = sent.items as { id: string }[]
+    ok(
+      await api.post(
+        `${orderUrl}/receipts`,
+        {
+          receiptDate: dayFromNow(0),
+          receivedBy: 'Hasan Usta',
+          lines: [{ orderItemId: orderItem?.id, acceptedQuantity: 5 }],
+        },
+        { 'idempotency-key': crypto.randomUUID() },
+      ),
+    )
+    const invoice = async (
+      number: string,
+      amountCents: number,
+      vatCents: number,
+      linked: boolean,
+    ) =>
+      ok(
+        await api.post(
+          '/api/v1/finance/supplier-invoices',
+          {
+            supplierId: alpha.id,
+            invoiceNumber: number,
+            invoiceDate: dayFromNow(0),
+            dueDate: dayFromNow(30),
+            amountCents,
+            amountIncludesVat: true,
+            vatCents,
+            ...(linked ? { purchaseOrderId: order.id } : {}),
+          },
+          { 'idempotency-key': crypto.randomUUID() },
+        ),
+      )
+    const linked = await invoice('ALF-1', 114_000, 19_000, true)
+    await invoice('ALF-2', 25_000, 0, false)
+    const [installment] = linked.installments as { id: string }[]
+    ok(
+      await api.post(
+        '/api/v1/finance/supplier-payments',
+        {
+          installmentId: installment?.id,
+          paidDate: dayFromNow(0),
+          amountCents: 40_000,
+          method: 'cash',
+          bankAccountId: null,
+        },
+        { 'idempotency-key': crypto.randomUUID() },
+      ),
+    )
   } finally {
     await api.dispose()
   }
 }
 
 test.describe('DOM-FIN-075: satın alma raporu ekranı', () => {
-  test('DOM-FIN-075: yönetici aralık ve bütçe dönemiyle dökümü görür, CSV indirir (K-155…K-158)', async ({
+  test('DOM-FIN-075: yönetici aralık ve bütçe dönemiyle dökümü teslim, fatura ve ödemeyle görür, CSV indirir (K-155…K-158, K-195…K-199)', async ({
     loginAs,
     tenant,
   }) => {
@@ -140,12 +200,25 @@ test.describe('DOM-FIN-075: satın alma raporu ekranı', () => {
     const report = page.getByRole('region', { name: 'Satın alma raporu' })
     const summary = report.getByRole('definition').filter({ hasText: '2.780,00 ₺' })
     await expect(summary).toBeVisible()
-    await expect(report.getByLabel('Satın alma özeti')).toContainText('380,00 ₺')
+    const overview = report.getByLabel('Satın alma özeti')
+    await expect(overview).toContainText('380,00 ₺')
+    await expect(overview).toContainText('Teslim alınan (KDV hariç)950,00 ₺')
+    await expect(overview).toContainText('Faturalanan (KDV dahil)1.140,00 ₺')
+    await expect(overview).toContainText('Ödenen 400,00 ₺, açık 740,00 ₺')
     const top = report.getByRole('table', { name: 'En çok harcama yapılan tedarikçiler' })
     await expect(
       top.getByRole('row', { name: /1\. Alfa Bilişim A\.Ş\..*2\.280,00 ₺/ }),
     ).toBeVisible()
     await expect(top.getByRole('row', { name: /2\. Ayla Örnek · Şahıs.*500,00 ₺/ })).toBeVisible()
+    await expect(top.getByRole('columnheader', { name: 'Teslim alınan (KDV hariç)' })).toBeVisible()
+    await expect(top.getByRole('row', { name: /1\. Alfa/ })).toContainText(
+      '950,00 ₺1.140,00 ₺400,00 ₺740,00 ₺',
+    )
+    await expect(
+      report
+        .getByRole('table', { name: 'Siparişsiz faturalar' })
+        .getByRole('row', { name: /1 fatura/ }),
+    ).toContainText('250,00 ₺0,00 ₺250,00 ₺')
     const categories = report.getByRole('table', { name: 'Tedarikçi kategorisine göre' })
     await expect(categories.getByRole('row', { name: /Bilişim/ })).toContainText('82,0')
     await expect(
@@ -159,7 +232,15 @@ test.describe('DOM-FIN-075: satın alma raporu ekranı', () => {
     await report.getByRole('button', { name: 'CSV indir' }).click()
     const csv = await readFile(await (await downloading).path(), 'utf8')
     expect(csv).toContain('"Tedarikçi";"Ayla Örnek";"";"Şahıs";"Hizmet";1;500,00;0,00;500,00')
-    expect(csv).toContain('"Toplam";"";"";"";"";2;2400,00;380,00;2780,00')
+    expect(csv).toContain(
+      '"Sipariş tutarı (KDV dahil)";"Pay (%)";"Teslim alınan (KDV hariç)";"Faturalanan (KDV dahil)";"Ödenen (KDV dahil)";"Açık (KDV dahil)"',
+    )
+    expect(csv).toContain(
+      '"Toplam";"";"";"";"";2;2400,00;380,00;2780,00;"";950,00;1140,00;400,00;740,00',
+    )
+    expect(csv).toContain(
+      '"Siparişsiz fatura";"1 fatura";"";"";"";"";"";"";"";"";"";250,00;0,00;250,00',
+    )
     expect(csv).not.toContain(TCKN)
 
     await report.getByLabel('Kapsam').selectOption('period')

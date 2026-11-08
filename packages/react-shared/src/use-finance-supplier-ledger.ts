@@ -5,6 +5,7 @@ import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 import { PROCUREMENT_CHANGED_MESSAGE, PROCUREMENT_KEY } from './use-finance-procurement.ts'
+import { PURCHASE_REPORT_KEY } from './use-finance-purchase-report.ts'
 
 // Tedarikçi carisi kancaları (`/finance/supplier-invoices`, `/finance/supplier-payments`,
 // `/finance/supplier-ledger`; DOM-FIN-076, ON-143). Anahtar satın alma anahtarının altındadır:
@@ -116,7 +117,7 @@ export function useCreateSupplierInvoice() {
         params: { header: keyOnly(headers) },
         body,
       }),
-    invalidates: [LEDGER_KEY],
+    invalidates: [LEDGER_KEY, PURCHASE_REPORT_KEY],
     exclusive: true,
   })
 }
@@ -142,7 +143,7 @@ export function useTransitionSupplierInvoice() {
             body: { reason: input.reason },
           })
     },
-    invalidates: [LEDGER_KEY],
+    invalidates: [LEDGER_KEY, PURCHASE_REPORT_KEY],
     version: (input) => input.version,
     messages: MESSAGES,
     exclusive: true,
@@ -157,7 +158,7 @@ export function useCreateSupplierPayment() {
         params: { header: keyOnly(headers) },
         body,
       }),
-    invalidates: [LEDGER_KEY, DAY_CLOSING_KEY],
+    invalidates: [LEDGER_KEY, DAY_CLOSING_KEY, PURCHASE_REPORT_KEY],
     exclusive: true,
   })
 }
@@ -173,7 +174,7 @@ export function useCancelSupplierPayment() {
         params: { path: { paymentId: input.paymentId }, header: versioned(headers) },
         body: { reason: input.reason },
       }),
-    invalidates: [LEDGER_KEY, DAY_CLOSING_KEY],
+    invalidates: [LEDGER_KEY, DAY_CLOSING_KEY, PURCHASE_REPORT_KEY],
     version: (input) => input.version,
     messages: MESSAGES,
     exclusive: true,

@@ -18,6 +18,7 @@ import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import { addDays } from '../academic/academic-rows.ts'
 import { MeetingPlanPanel } from './MeetingPlanPanel.tsx'
 import { MeetingWeekView } from './MeetingWeekView.tsx'
+import { ProspectSeasonWatchSection } from './ProspectSeasonWatchSection.tsx'
 import {
   MEETING_DAY_FILTER,
   MEETING_KIND_FILTER,
@@ -50,7 +51,9 @@ const PLAN_MEETING = 'gorusme'
  * sınırlıdır, bu yüzden liste açık adayları bir kez çeker. Haftalık takvim yalnız o haftayı okur:
  * `trialAt` ve (dil okulunda) `trialLesson.date` gün aralığı sunucuda süzülür, iki sorgu birleşir
  * (`meetingWeekQueries`, ON-111). Sunucu bir sorguda tek tarih alanı süzdüğü için iki türü bir
- * arada sıralayıp sayfalayan liste ucu yoktur; liste tarayıcıda süzülür.
+ * arada sıralayıp sayfalayan liste ucu yoktur; liste tarayıcıda süzülür. Üçüncü görünüm kayıt
+ * sezonu nöbetidir (`?gorunum=nobet`, DOM-KAY-037, ON-077): görüşmeler, deneme dersleri ve geciken
+ * takipler kendi ucundan (`GET /prospects/season-watch`) okunur, aday listesi çekilmez.
  */
 export function MeetingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -185,21 +188,25 @@ export function MeetingsPage({ page }: { page: NavPage }) {
         }
       />
       <section
-        aria-labelledby="gorusme-tablosu"
+        aria-labelledby={view === 'nobet' ? 'sezon-nobeti-baslik' : 'gorusme-tablosu'}
         className="panel overflow-hidden rounded-card border bg-surface"
       >
-        <header className="panel-heading px-6 pt-6 pb-2">
-          <h2 id="gorusme-tablosu" className="text-lg font-semibold">
-            Planlanan görüşmeler
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {rows.length} kayıt · {upcoming} yaklaşan
-          </p>
-        </header>
-        <div className="px-6 max-[650px]:px-4">
+        {view === 'nobet' ? null : (
+          <header className="panel-heading px-6 pt-6 pb-2">
+            <h2 id="gorusme-tablosu" className="text-lg font-semibold">
+              Planlanan görüşmeler
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {rows.length} kayıt · {upcoming} yaklaşan
+            </p>
+          </header>
+        )}
+        <div className={view === 'nobet' ? 'px-6 pt-6 max-[650px]:px-4' : 'px-6 max-[650px]:px-4'}>
           <LineTabs label="Görünüm" value={view} options={MEETING_VIEWS} onChange={changeView} />
         </div>
-        {source.error ? (
+        {view === 'nobet' ? (
+          <ProspectSeasonWatchSection role={role} type={type} />
+        ) : source.error ? (
           <div role="alert" className="p-6">
             <QueryError error={source.error} onRetry={() => void source.refetch()} />
           </div>

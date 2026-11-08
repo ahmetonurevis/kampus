@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import type { Download, Locator, Page, Request } from '@playwright/test'
 
 import { readWorkbook } from '../../apps/api/test/support/finance-workbook.ts'
-import type { ApiClient } from './support/api.ts'
+import { createApiClient, switchInstitutionApi, type ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
 import { pdfText } from './support/finance-pdf-text.ts'
 import { seedScholarshipContract, seedStudentPayerContract } from './support/finance-terms.ts'
@@ -2059,5 +2059,82 @@ test.describe('Finans: gelir ve nakit akışı tahmini', () => {
     await page.reload()
     await expect(section.getByLabel('Senaryo 2 fiyat değişimi (%)')).toHaveValue('20')
     await expect(comparison.getByRole('columnheader', { name: 'Zamlı' })).toBeVisible()
+  })
+})
+
+test.describe('Finans: stok', () => {
+  test('DOM-FIN-077, DOM-FIN-078: yönetici depoya giriş yazar; ön büro çıkış yazar, miktarı aşan çıkış reddedilir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'onburo'], students: [] })
+    // Depo ve stok kartı API'den kurulur; giriş ve çıkış arayüzden yazılır.
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const warehouse = await client.post('/api/v1/finance/stock-warehouses', {
+        name: 'Ana depo',
+        campusId: 'b1',
+      })
+      expect(warehouse.status, JSON.stringify(warehouse.body)).toBe(201)
+      const item = await client.post('/api/v1/finance/stock-items', {
+        code: 'KAG-A4',
+        name: 'A4 kâğıt',
+        category: 'stationery',
+        unit: 'pack',
+        minQuantity: 5,
+      })
+      expect(item.status, JSON.stringify(item.body)).toBe(201)
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=stok`)
+    await page.getByRole('button', { name: 'Stok girişi' }).click()
+    const entry = page.getByRole('dialog', { name: 'Stok girişi' })
+    await entry.getByLabel('Stok kartı').selectOption({ label: 'KAG-A4 · A4 kâğıt (0 paket)' })
+    await entry
+      .getByLabel('Depo', { exact: true })
+      .selectOption({ label: 'Ana depo · Kadıköy Kampüsü' })
+    await entry.getByLabel('Miktar').fill('20')
+    await entry.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Stok girişi kaydedildi.')).toBeVisible()
+    const items = page.getByRole('table', { name: 'Stok kartları' })
+    const row = items.locator('tbody tr').filter({ hasText: 'KAG-A4' })
+    await expect(row).toContainText('20 paket')
+    await expect(row).toContainText('Etkin')
+
+    await page.context().clearCookies()
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=stok`)
+    await expect(page.getByRole('button', { name: 'Stok girişi' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Transfer' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Stok çıkışı' }).click()
+    const issue = page.getByRole('dialog', { name: 'Stok çıkışı' })
+    await issue.getByLabel('Stok kartı').selectOption({ label: 'KAG-A4 · A4 kâğıt (20 paket)' })
+    await issue
+      .getByLabel('Depo', { exact: true })
+      .selectOption({ label: 'Ana depo · Kadıköy Kampüsü' })
+    await issue.getByLabel('Miktar').fill('25')
+    await issue.getByRole('button', { name: 'Kaydet' }).click()
+    // K-181: miktarı aşan çıkış alanda Türkçe mesajla reddedilir, pencere açık kalır.
+    await expect(issue.getByText(/çıkılabilecek en çok 20 paket/)).toBeVisible()
+    await issue.getByLabel('Miktar').fill('16')
+    await issue.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Stok çıkışı kaydedildi.')).toBeVisible()
+    const deskRow = page
+      .getByRole('table', { name: 'Stok kartları' })
+      .locator('tbody tr')
+      .filter({ hasText: 'KAG-A4' })
+    await expect(deskRow).toContainText('4 paket')
+    await expect(deskRow).toContainText('Kritik')
+
+    await page.getByRole('button', { name: 'Hareketler' }).click()
+    const movements = page.getByRole('table', { name: 'Stok hareketleri' })
+    await expect(movements.locator('tbody tr').first()).toContainText('−16 paket')
+    await expect(movements).toContainText('+20 paket')
+    await expect(movements.getByRole('button', { name: /hareketini iptal et/ })).toHaveCount(0)
   })
 })

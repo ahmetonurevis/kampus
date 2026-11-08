@@ -942,6 +942,10 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'enrollment-funnel.test.ts',
     'başka kurumun adayı huniye girmez',
   ),
+  'GET /api/v1/prospects/season-watch': liste(
+    'prospect-season-watch.test.ts',
+    'başka kurumun adayı, dersi ve adları nöbete girmez',
+  ),
   ...Object.fromEntries(
     (
       [
@@ -1440,6 +1444,68 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)(
         'finance-supplier-ledger.test.ts',
         'başka kurumun faturası, ödemesi ve carisi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: demirbaş kaydı (ON-235; DOM-FIN-085).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/fixed-assets', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/fixed-assets/receipt-items', 'get(RECEIPT_ITEMS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/fixed-assets', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/fixed-assets/:assetId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/fixed-assets/:assetId', "call('PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/fixed-assets/:assetId/scrap', '`${bUrl}/scrap`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-fixed-assets.test.ts',
+        'başka kurumun demirbaşı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: stok kartı, depo ve hareket (ON-228, ON-229; DOM-FIN-077, DOM-FIN-078).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/stock-items', 'listOf(ITEMS)'],
+        ['gövde', 'POST /api/v1/finance/stock-items', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/stock-items/:itemId', 'get(bItemUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/stock-items/:itemId', 'patchB(bItemUrl, b.paper.version)'],
+        ['liste', 'GET /api/v1/finance/stock-warehouses', 'listOf(WAREHOUSES)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/stock-warehouses',
+          "'Sızma deposu', campusId: 'b1', institutionId: b.id",
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stock-warehouses/:warehouseId',
+          'patchB(bWarehouseUrl, b.main.version)',
+        ],
+        ['liste', 'GET /api/v1/finance/stock-movements', 'listOf(MOVEMENTS)'],
+        ['gövde', 'POST /api/v1/finance/stock-entries', 'itemId: b.paper.id, institutionId: b.id'],
+        [
+          'gövde',
+          'POST /api/v1/finance/stock-issues',
+          'issue(a.admin, a, { warehouseId: b.main.id })',
+        ],
+        ['gövde', 'POST /api/v1/finance/stock-transfers', '{ toWarehouseId: b.main.id }'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-movements/:movementId/cancel',
+          'cancel(a.admin, bEntry)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-inventory.test.ts',
+        'başka kurumun kartı, deposu ve hareketi 404 ve B değişmez',
         marker,
       ),
     ]),

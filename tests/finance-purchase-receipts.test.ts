@@ -61,8 +61,15 @@ test('DOM-FIN-074: kısmi kabul siparişi kısmen teslim, kalanın kabulü tamam
     receiptDate: '2026-10-05',
     receivedBy: 'Hasan Usta',
     inspectionNote: null,
+    warehouseId: null,
     lines: [
-      { orderItemId: KEYBOARD, acceptedQuantity: 6, rejectedQuantity: 2, rejectReason: 'Kırık' },
+      {
+        orderItemId: KEYBOARD,
+        acceptedQuantity: 6,
+        rejectedQuantity: 2,
+        rejectReason: 'Kırık',
+        stockItemId: null,
+      },
     ],
   })
   const receipts = [receipt('r1', first.data.lines)]

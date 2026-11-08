@@ -1,0 +1,90 @@
+import { z } from 'zod'
+
+import {
+  FIXED_ASSET_CATEGORIES,
+  FIXED_ASSET_STATUSES,
+} from '@kampus/school-core/lib/finance-fixed-assets.ts'
+
+import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+
+/** Demirbaş şemaları (DOM-FIN-085; ON-235). */
+
+const version = z.number().int().describe('`If-Match` için kayıt sürümü')
+
+const fixedAssetListItemSchema = z.object({
+  id: z.string(),
+  tagNumber: z.string().describe('Kurumda tekil etiket (ör. `DB-2026-0001`)'),
+  name: z.string(),
+  category: z.enum(FIXED_ASSET_CATEGORIES).describe('Sabit kategori (K-186)'),
+  campusId: z.string().nullable(),
+  campusName: z.string().nullable().describe('Kampüs adı; kampüs yoksa ya da arşivlendiyse boş'),
+  location: z.string().describe('Oda ya da yer'),
+  acquisitionValueCents: z.number().int().describe('KDV hariç alım değeri, kuruş'),
+  acquisitionDate: z.string().describe('Alım günü (YYYY-MM-DD)'),
+  supplierId: z.string().nullable(),
+  supplierName: z.string().nullable(),
+  receiptItemId: z.string().nullable().describe('Bağlı mal kabul kalemi'),
+  status: z.enum(FIXED_ASSET_STATUSES),
+  scrapDate: z.string().nullable().describe('Hurdaya ayırma günü'),
+  version,
+})
+export const fixedAssetListResponse = z.object({
+  data: z.array(fixedAssetListItemSchema),
+  meta: pageMetaSchema,
+})
+
+const fixedAssetDetailSchema = fixedAssetListItemSchema.extend({
+  receipt: z
+    .object({
+      receiptId: z.string(),
+      receiptDate: z.string(),
+      receiptCancelled: z.boolean().describe('Kabul sonradan iptal edildiyse `true`'),
+      orderId: z.string(),
+      orderNumber: z.string(),
+      itemName: z.string(),
+      unitPriceCents: z.number().int().describe('Sipariş birim fiyatı, KDV hariç, kuruş'),
+      acceptedQuantity: z.number().int(),
+      linkedAssetCount: z.number().int().describe('Kaleme bağlı demirbaş sayısı (bu kayıt dahil)'),
+    })
+    .nullable()
+    .describe('Mal kabul bağı (DOM-FIN-074)'),
+  scrappedAt: z.string().nullable(),
+  scrapReason: z.string().nullable(),
+  createdAt: z.string(),
+})
+export const fixedAssetResponse = dataResponse(fixedAssetDetailSchema)
+
+const receiptItemSchema = z.object({
+  receiptItemId: z.string(),
+  receiptId: z.string(),
+  receiptDate: z.string(),
+  orderId: z.string(),
+  orderNumber: z.string(),
+  supplierId: z.string(),
+  supplierName: z.string().describe('Siparişteki tedarikçi unvanı'),
+  itemName: z.string(),
+  unitPriceCents: z.number().int().describe('Sipariş birim fiyatı, KDV hariç, kuruş'),
+  acceptedQuantity: z.number().int(),
+  linkedAssetCount: z.number().int().describe('Kaleme bağlı demirbaş sayısı'),
+})
+export const fixedAssetReceiptItemsResponse = z.object({
+  data: z.array(receiptItemSchema),
+  meta: pageMetaSchema,
+})
+
+export const fixedAssetParams = z.object({ assetId: z.uuid('Demirbaş geçersiz.') })
+
+const search = z.string().trim().min(2).max(100).optional()
+
+export const fixedAssetListQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  q: search.describe('Etiket, ad ve konumda arama, Türkçe harf duyarsız'),
+  status: z.enum(FIXED_ASSET_STATUSES).optional().describe('Durum'),
+  category: z.enum(FIXED_ASSET_CATEGORIES).optional().describe('Kategori'),
+  campusId: z.string().trim().min(1).max(100).optional().describe('Kampüs'),
+  supplierId: z.uuid().optional().describe('Tedarikçi'),
+})
+export const fixedAssetReceiptItemsQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  q: search.describe('Kalem adı, sipariş numarası ve tedarikçi unvanında arama'),
+})

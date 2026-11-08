@@ -3852,6 +3852,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/season-watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt sezonu nöbeti: görüşmeler, deneme dersleri, geciken takipler
+         * @description Açık adayların bugün ve yakın günlerde ilgilenilmesi gerekenleri (DOM-KAY-037). Pencere bugünden başlar, bugün dahil `days` gün (1–14, varsayılan 7; Europe/Istanbul). `meetings`: penceredeki tanışma görüşmeleri, saat sırasıyla (bitişi geçen `held`). `trials`: yalnız dil okulunda penceredeki deneme dersleri; gün dersin güncel kaydından, iptal edilen ya da programdan kalkan derse bağlı deneme yok. `followUps`: şu andan sonra başlayan görüşmesi ya da denemesi olmayan açık aday, ilk tutan nedenle bir kez (`first_contact`: açılışın ertesi gününe giren `Yeni aday`; `meeting_outcome`/`trial_outcome`: önceki bir gün yapılmış, aşaması hâlâ `Görüşme planlandı` ve sonrasında not yok; `stale`: son işlem 7 gün ya da daha eski); en çok gecikenler önce. Her bölüm toplamla birlikte en çok 50 satır döner. Satır aday kimliği, adı, aşaması ve kampüsünü taşır; telefon, e-posta, veli, not, ilgi ve kaynak dönmez. Arşivlenen aday sayılmaz. Bilinmeyen parametre ya da aralık dışı `days` 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectSeasonWatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
         parameters: {
             query?: never;
@@ -4999,7 +5019,7 @@ export interface paths {
         put?: never;
         /**
          * Mal kabul kaydet
-         * @description Gönderilmiş ya da kısmen teslim alınmış siparişe kalem bazında kabul: kabul günü, teslim alan personel, muayene notu, kabul edilen ve reddedilen miktar (ret nedeniyle). Kalemde kabul edilen toplam sipariş miktarını aşamaz (422 `purchase_receipt_quantity_exceeded`; kurum kilidi altında denetlenir); reddedilen miktar karşılanmış sayılmaz (K-150). Sipariş durumu yeniden hesaplanır: hiç kabul yok gönderildi, kısmen kısmen teslim, tamamı tamamlandı. Taslak sipariş 422 `purchase_receipt_order_not_sent`, iptal edilmiş 422 `purchase_receipt_order_cancelled`, tamamlanmış 422 `purchase_receipt_order_completed`; gelecek gün 422 `purchase_receipt_date_future`, sipariş açılışından önce 422 `purchase_receipt_date_before_order`, kapalı bütçe dönemi 422 `purchase_receipt_period_closed`; siparişte olmayan kalem 422 `purchase_receipt_item_not_found`. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.
+         * @description Gönderilmiş ya da kısmen teslim alınmış siparişe kalem bazında kabul: kabul günü, teslim alan personel, muayene notu, kabul edilen ve reddedilen miktar (ret nedeniyle). Kalemde kabul edilen toplam sipariş miktarını aşamaz (422 `purchase_receipt_quantity_exceeded`; kurum kilidi altında denetlenir); reddedilen miktar karşılanmış sayılmaz (K-150). Sipariş durumu yeniden hesaplanır: hiç kabul yok gönderildi, kısmen kısmen teslim, tamamı tamamlandı. Taslak sipariş 422 `purchase_receipt_order_not_sent`, iptal edilmiş 422 `purchase_receipt_order_cancelled`, tamamlanmış 422 `purchase_receipt_order_completed`; gelecek gün 422 `purchase_receipt_date_future`, sipariş açılışından önce 422 `purchase_receipt_date_before_order`, kapalı bütçe dönemi 422 `purchase_receipt_period_closed`; siparişte olmayan kalem 422 `purchase_receipt_item_not_found`. Stok kartı (`lines[].stockItemId`) seçilen kalemin kabul edilen miktarı `warehouseId` deposuna kabul gününde giriş yazar (DOM-FIN-078, K-184): kart ve depo etkin, kartın birimi sipariş kalemininkiyle aynı (422 `stock_unit_mismatch`); kart seçilip depo seçilmezse 400. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-153). Modül `finance`.
          */
         post: operations["createPurchaseReceipt"];
         delete?: never;
@@ -5019,7 +5039,7 @@ export interface paths {
         put?: never;
         /**
          * Mal kabulü iptal et
-         * @description Kabulü gerekçeyle iptal eder; kayıt silinmez, iptal izi tutulur. Sipariş durumu kalan kabullerden yeniden hesaplanır ve iptal edilen kabul gider gerçekleşeninden düşer. Zaten iptal edilmiş 422 `purchase_receipt_already_cancelled`, kapalı bütçe dönemindeki kabul 422 `purchase_receipt_period_closed`. `If-Match` kabulün sürümüdür; tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-153). Modül `finance`.
+         * @description Kabulü gerekçeyle iptal eder; kayıt silinmez, iptal izi tutulur. Sipariş durumu kalan kabullerden yeniden hesaplanır ve iptal edilen kabul gider gerçekleşeninden düşer. Zaten iptal edilmiş 422 `purchase_receipt_already_cancelled`, kapalı bütçe dönemindeki kabul 422 `purchase_receipt_period_closed`. Kabulün stok girişleri de iptal edilir; giriş sonraki çıkışlarla kullanıldıysa ve iptal stoku eksiye düşürecekse 422 `stock_cancel_negative` (K-184). `If-Match` kabulün sürümüdür; tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-153). Modül `finance`.
          */
         post: operations["cancelPurchaseReceipt"];
         delete?: never;
@@ -5037,7 +5057,7 @@ export interface paths {
         };
         /**
          * Satın alma raporu
-         * @description Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.
+         * @description Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Her satırda ve toplamda ayrıca teslim alınan (iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı, **KDV hariç**), faturalanan (siparişe bağlı iptal edilmemiş faturalar, **KDV dahil**), ödenen (bu faturalara iptal edilmemiş ödemeler, **KDV dahil**) ve açık tutar (faturalanan eksi ödenen, **KDV dahil**) döner; kabul, fatura ve ödeme günü süzülmez, kapsamdaki siparişlerinkidir (K-195, K-196). Siparişe bağlı olmayan faturalar `unlinkedInvoices` satırındadır: fatura tarihi aralıkta (bütçe döneminde dönemin günlerinde); toplamlara girmez (K-197). İptal edilen siparişin faturası ve ödemesi `cancelled` altındadır (K-198). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner (sütun başlıkları KDV hariç/dahil esasını yazar, siparişsiz fatura toplamın altında ayrı satırdır; K-199): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.
          */
         get: operations["getFinancePurchaseReport"];
         put?: never;
@@ -5230,6 +5250,286 @@ export interface paths {
         get: operations["getSupplierStatement"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok kartlarını listele
+         * @description Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); `warehouseId` verilirse yalnız o depodaki miktar. `critical=true` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları verir. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listStockItems"];
+        put?: never;
+        /**
+         * Stok kartı ekle
+         * @description Kod (büyük harfe çevrilir), ad, kategori (tedarikçi kategorileri), birim (`piece`, `pack`, `box`, `kilogram`, `liter`, `meter`; K-182) ve isteğe bağlı kritik seviye. Kod kurumda tekil: 409 `stock_item_code_exists` (DOM-FIN-077). Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok kartı ayrıntısı
+         * @description Kart, toplam miktar ve depo başına miktar. Olmayan ya da başka kurumun kartı 404. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["getStockItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Stok kartını düzelt ya da pasifleştir
+         * @description Kısmi düzeltme. Hareketi olan kartın birimi değişmez (422 `stock_item_unit_locked`); miktarı olan kart pasifleşmez (422 `stock_item_has_stock`); başka kartın kodu 409 `stock_item_code_exists`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        patch: operations["updateStockItem"];
+        trace?: never;
+    };
+    "/api/v1/finance/stock-warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Depoları listele
+         * @description Ada göre; pasifler dahil, kampüs adı ve stoklu ürün çeşidi sayısıyla (DOM-FIN-077). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listStockWarehouses"];
+        put?: never;
+        /**
+         * Depo ekle
+         * @description Ad, kurumun etkin kampüsü ve isteğe bağlı not. Kampüs yoksa ya da pasifse 422 `stock_warehouse_campus_not_found`; ad kurumda tekil (Türkçe harf duyarsız): 409 `stock_warehouse_name_exists` (DOM-FIN-077, K-180). Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockWarehouse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-warehouses/{warehouseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Depoyu düzelt ya da pasifleştir
+         * @description Kısmi düzeltme. Stoku olan depo başka kampüse bağlanmaz ve pasifleşmez (422 `stock_warehouse_has_stock`); ad tekil (409 `stock_warehouse_name_exists`); sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        patch: operations["updateStockWarehouse"];
+        trace?: never;
+    };
+    "/api/v1/finance/stock-movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok hareketlerini listele
+         * @description En yeni gün önce; iptal edilenler dahil. Kart, depo, tür ve gün aralığıyla süzülür (DOM-FIN-078). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listStockMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok girişi yaz
+         * @description Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok çıkışı yaz
+         * @description Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 `stock_insufficient`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        post: operations["createStockIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Depolar arası transfer
+         * @description Tek işlemde iki hareket: çıkış deposundan transfer çıkışı, giriş deposuna transfer girişi; aynı `transferId`. Depolar farklı ve etkin; kampüsleri farklı olabilir. Çıkış deposunun miktarı aşılamaz (422 `stock_insufficient`). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["createStockTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-movements/{movementId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok hareketini iptal et
+         * @description Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle geri alınır (422 `stock_movement_from_receipt`); zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.
+         */
+        post: operations["cancelStockMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demirbaşları listele
+         * @description Hurdaya ayrılmamışlar önce, etiket numarasına göre; `q` etiket, ad ve konumda arar, `status`, `category`, `campusId` ve `supplierId` ile süzülür (DOM-FIN-085). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssets"];
+        put?: never;
+        /**
+         * Demirbaş kaydet
+         * @description Etiket (boşsa kayıt yılının sıradaki `DB-<yıl>-<sıra>` etiketi; elle girilen büyük harfe çevrilir, K-185), ad, kategori (K-186), isteğe bağlı kampüs, konum, KDV hariç alım değeri (kuruş), alım günü, isteğe bağlı tedarikçi ve mal kabul kalemi, durum (`in_use`, `in_storage`, `broken`). Etiket kurumda tekil: 409 `fixed_asset_tag_exists`. Gelecek gün 422 `fixed_asset_date_in_future`; olmayan kampüs 422 `fixed_asset_campus_not_found`, tedarikçi 422 `fixed_asset_supplier_not_found`, kabul kalemi 422 `fixed_asset_receipt_item_not_found`; iptal edilmiş kabul 422 `fixed_asset_receipt_cancelled`; kalemin bütün adedine demirbaş bağlıysa 422 `fixed_asset_receipt_quantity_exceeded` (K-187); siparişten başka tedarikçi 422 `fixed_asset_supplier_mismatch`; kabul gününden önceki alım günü 422 `fixed_asset_date_before_receipt`. Kabule bağlı kayıtta tedarikçi boşsa siparişin tedarikçisi yazılır. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["createFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-assets/receipt-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demirbaş bağlanabilecek mal kabul kalemleri
+         * @description İptal edilmemiş kabullerde kabul edilen miktarı, bağlı demirbaş sayısından büyük olan kalemler; yeni kabul önce. Her demirbaş bir adettir (K-187). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssetReceiptItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demirbaş ayrıntısı
+         * @description Kampüs adı, tedarikçi, mal kabul bağı (sipariş numarası, kalem, kabul günü, iptal edildi mi) ve hurdaya ayırma izi. Olmayan ya da başka kurumun demirbaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["getFixedAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Demirbaşı düzelt ya da durumunu değiştir
+         * @description Kısmi düzeltme; durum kullanımda, depoda ve arızalı arasında değişir, hurdaya ayırma ayrı uçtur. Hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`. Yalnız değişen bağ yeniden denetlenir; kurallar ve kodlar kayıttakiyle aynıdır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        patch: operations["updateFixedAsset"];
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-assets/{assetId}/scrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demirbaşı hurdaya ayır
+         * @description Gerekçe (5–500 karakter) ve gün ister; kayıt silinmez, geri alınmaz (K-188). Zaten hurdaya ayrılmış 422 `fixed_asset_scrapped`, gelecek gün 422 `fixed_asset_date_in_future`, alım gününden önceki gün 422 `fixed_asset_scrap_before_acquisition`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["scrapFixedAsset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12504,6 +12804,113 @@ export interface components {
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRowInput"][];
         };
+        SeasonWatchMeetingInput: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Görüşmenin başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            /** @description Dakika; süresi saklanmamış eski görüşmede 30 */
+            duration: number;
+            room: string | null;
+            /** @description Görevli öğretmen; yoksa `null` */
+            teacherName: string | null;
+            /** @description Bitişi geçmiş mi */
+            held: boolean;
+        };
+        SeasonWatchTrialInput: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Dersin güncel başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            duration: number;
+            groupName: string | null;
+            held: boolean;
+            /** @description Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031) */
+            resultRecorded: boolean;
+        };
+        SeasonWatchFollowUpInput: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /**
+             * @description `first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi
+             * @enum {string}
+             */
+            reason: "first_contact" | "meeting_outcome" | "trial_outcome" | "stale";
+            /** @description Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem) */
+            sinceDate: string;
+            /** @description Dayanak günden bugüne geçen gün */
+            days: number;
+            /** @description Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null` */
+            trialResultRecorded: boolean | null;
+        };
+        ProspectSeasonWatchInput: {
+            window: {
+                /** @description Bugün */
+                from: string;
+                /** @description Pencerenin son günü (dahil) */
+                to: string;
+                days: number;
+            };
+            /** @description Deneme dersi bölümü var mı (yalnız dil okulu) */
+            trialsEnabled: boolean;
+            summary: {
+                meetingsToday: number;
+                meetingsInWindow: number;
+                trialsToday: number;
+                trialsInWindow: number;
+                followUps: number;
+                followUpsByReason: {
+                    first_contact: number;
+                    meeting_outcome: number;
+                    trial_outcome: number;
+                    stale: number;
+                };
+                /** @description Bugün açılan açık aday */
+                newToday: number;
+            };
+            meetings: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchMeetingInput"][];
+            };
+            trials: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchTrialInput"][];
+            };
+            followUps: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchFollowUpInput"][];
+            };
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -17013,6 +17420,113 @@ export interface components {
             paidCents: number;
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRow"][];
+        };
+        SeasonWatchMeeting: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Görüşmenin başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            /** @description Dakika; süresi saklanmamış eski görüşmede 30 */
+            duration: number;
+            room: string | null;
+            /** @description Görevli öğretmen; yoksa `null` */
+            teacherName: string | null;
+            /** @description Bitişi geçmiş mi */
+            held: boolean;
+        };
+        SeasonWatchTrial: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /** @description Dersin güncel başlangıç anı (ISO 8601 UTC) */
+            date: string;
+            duration: number;
+            groupName: string | null;
+            held: boolean;
+            /** @description Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031) */
+            resultRecorded: boolean;
+        };
+        SeasonWatchFollowUp: {
+            prospectId: string;
+            /** @description Aday adı */
+            name: string;
+            /**
+             * @description Açık aşama
+             * @enum {string}
+             */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi";
+            /** @description Kampüs adı; kampüs kaydı yoksa `null` */
+            branchName: string | null;
+            /**
+             * @description `first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi
+             * @enum {string}
+             */
+            reason: "first_contact" | "meeting_outcome" | "trial_outcome" | "stale";
+            /** @description Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem) */
+            sinceDate: string;
+            /** @description Dayanak günden bugüne geçen gün */
+            days: number;
+            /** @description Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null` */
+            trialResultRecorded: boolean | null;
+        };
+        ProspectSeasonWatch: {
+            window: {
+                /** @description Bugün */
+                from: string;
+                /** @description Pencerenin son günü (dahil) */
+                to: string;
+                days: number;
+            };
+            /** @description Deneme dersi bölümü var mı (yalnız dil okulu) */
+            trialsEnabled: boolean;
+            summary: {
+                meetingsToday: number;
+                meetingsInWindow: number;
+                trialsToday: number;
+                trialsInWindow: number;
+                followUps: number;
+                followUpsByReason: {
+                    first_contact: number;
+                    meeting_outcome: number;
+                    trial_outcome: number;
+                    stale: number;
+                };
+                /** @description Bugün açılan açık aday */
+                newToday: number;
+            };
+            meetings: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchMeeting"][];
+            };
+            trials: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchTrial"][];
+            };
+            followUps: {
+                /** @description Bölümdeki bütün satırlar */
+                total: number;
+                /** @description En çok 50 satır */
+                rows: components["schemas"]["SeasonWatchFollowUp"][];
+            };
         };
     };
     responses: never;
@@ -42705,6 +43219,85 @@ export interface operations {
             };
         };
     };
+    getProspectSeasonWatch: {
+        parameters: {
+            query?: {
+                /** @description Bugün dahil pencere uzunluğu (gün, 1–14); verilmezse 7 */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectSeasonWatch"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getEnrollmentCertificate: {
         parameters: {
             query?: never;
@@ -53174,6 +53767,9 @@ export interface operations {
                                 id: string;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
+                                /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
                                 /** @description Teslim alan personel (K-152) */
                                 receivedBy: string;
                                 inspectionNote: string | null;
@@ -53189,6 +53785,9 @@ export interface operations {
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
+                                    stockItemId: string | null;
+                                    stockItemName: string | null;
                                 }[];
                                 createdAt: string;
                                 createdByName: string | null;
@@ -53303,6 +53902,8 @@ export interface operations {
                     receivedBy: string;
                     /** @default null */
                     inspectionNote?: string | null;
+                    /** @default null */
+                    warehouseId?: string | null;
                     lines: {
                         /** Format: uuid */
                         orderItemId: string;
@@ -53311,6 +53912,8 @@ export interface operations {
                         rejectedQuantity?: number;
                         /** @default null */
                         rejectReason?: string | null;
+                        /** @default null */
+                        stockItemId?: string | null;
                     }[];
                 };
             };
@@ -53358,6 +53961,9 @@ export interface operations {
                                 id: string;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
+                                /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
                                 /** @description Teslim alan personel (K-152) */
                                 receivedBy: string;
                                 inspectionNote: string | null;
@@ -53373,6 +53979,9 @@ export interface operations {
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
+                                    stockItemId: string | null;
+                                    stockItemName: string | null;
                                 }[];
                                 createdAt: string;
                                 createdByName: string | null;
@@ -53533,6 +54142,9 @@ export interface operations {
                                 id: string;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
+                                /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
+                                warehouseId: string | null;
+                                warehouseName: string | null;
                                 /** @description Teslim alan personel (K-152) */
                                 receivedBy: string;
                                 inspectionNote: string | null;
@@ -53548,6 +54160,9 @@ export interface operations {
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
+                                    stockItemId: string | null;
+                                    stockItemName: string | null;
                                 }[];
                                 createdAt: string;
                                 createdByName: string | null;
@@ -53685,20 +54300,42 @@ export interface operations {
                             totals: {
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Siparişi olan tedarikçi sayısı */
                                 supplierCount: number;
                             };
-                            /** @description Kapsamda iptal edilen siparişler; toplamlara girmez */
+                            /** @description Kapsamda iptal edilen siparişler; faturaları ve ödemeleriyle toplamlara girmez (K-198) */
                             cancelled: {
                                 orderCount: number;
                                 /** @description İptal edilen KDV dahil tutar */
                                 grossCents: number;
+                                /** @description İptal edilen siparişlere bağlı etkin faturalar, KDV dahil */
+                                invoicedGrossCents: number;
+                                /** @description Bu faturalara iptal edilmemiş ödemeler, KDV dahil */
+                                paidCents: number;
+                            };
+                            /** @description Siparişe bağlı olmayan etkin faturalar: fatura tarihi kapsamın günlerinde (bütçe döneminde dönemin günleri); toplamlara ve kırılımlara girmez (K-197) */
+                            unlinkedInvoices: {
+                                invoiceCount: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                             };
                             leadTime: {
                                 orderCount: number;
@@ -53714,12 +54351,20 @@ export interface operations {
                                 supplierCount: number;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                             }[];
@@ -53736,12 +54381,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                                 /** @description Talepten siparişe ortalama takvim günü, bir ondalık (K-158) */
@@ -53760,12 +54413,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                                 /** @description Talepten siparişe ortalama takvim günü, bir ondalık (K-158) */
@@ -53779,12 +54440,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                             }[];
@@ -53796,12 +54465,20 @@ export interface operations {
                                 isActive: boolean;
                                 /** @description İptal edilmemiş sipariş sayısı */
                                 orderCount: number;
-                                /** @description KDV hariç tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV hariç, kuruş */
                                 netCents: number;
-                                /** @description KDV, kuruş; kalemde yuvarlanır (K-138) */
+                                /** @description Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138) */
                                 vatCents: number;
-                                /** @description KDV dahil tutar, kuruş */
+                                /** @description Sipariş tutarı, KDV dahil, kuruş */
                                 grossCents: number;
+                                /** @description Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151) */
+                                receivedNetCents: number;
+                                /** @description Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı */
+                                invoicedGrossCents: number;
+                                /** @description Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler */
+                                paidCents: number;
+                                /** @description Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen */
+                                openCents: number;
                                 /** @description Brüt tutarın toplam brüte oranı, on binde bir; toplam sıfırsa boş */
                                 shareBasisPoints: number | null;
                             }[];
@@ -55588,6 +56265,2525 @@ export interface operations {
                             }[];
                         };
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Kategori */
+                category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                /** @description `active` etkin, `inactive` pasif kayıtlar */
+                status?: "active" | "inactive";
+                /** @description `true`: yalnız kritik seviyedeki etkin kartlar */
+                critical?: "true";
+                /** @description Miktar yalnız bu depodan */
+                warehouseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                    /** @enum {string} */
+                    unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                    /** @default null */
+                    minQuantity?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStockItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStockItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code?: string;
+                    name?: string;
+                    /** @enum {string} */
+                    category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                    /** @enum {string} */
+                    unit?: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                    minQuantity?: number | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockWarehouses: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `active` etkin, `inactive` pasif kayıtlar */
+                status?: "active" | "inactive";
+                /** @description Kampüs */
+                campusId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            campusId: string;
+                            /** @description Kampüs adı; kampüs arşivlendiyse boş */
+                            campusName: string | null;
+                            note: string | null;
+                            isActive: boolean;
+                            /** @description Miktarı sıfırdan farklı ürün çeşidi sayısı */
+                            itemCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockWarehouse: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    campusId: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            campusId: string;
+                            /** @description Kampüs adı; kampüs arşivlendiyse boş */
+                            campusName: string | null;
+                            note: string | null;
+                            isActive: boolean;
+                            /** @description Miktarı sıfırdan farklı ürün çeşidi sayısı */
+                            itemCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStockWarehouse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                warehouseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    campusId?: string;
+                    note?: string | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            campusId: string;
+                            /** @description Kampüs adı; kampüs arşivlendiyse boş */
+                            campusName: string | null;
+                            note: string | null;
+                            isActive: boolean;
+                            /** @description Miktarı sıfırdan farklı ürün çeşidi sayısı */
+                            itemCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockMovements: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Stok kartı */
+                itemId?: string;
+                /** @description Depo */
+                warehouseId?: string;
+                /** @description Hareket türü */
+                type?: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                /** @description Bu günden (dahil) */
+                from?: string;
+                /** @description Bu güne kadar (dahil) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    quantity: number;
+                    movementDate: string;
+                    note?: string | null;
+                    /** Format: uuid */
+                    warehouseId: string;
+                    /** @enum {string} */
+                    reason: "opening" | "donation" | "count_surplus" | "returned" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockIssue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    quantity: number;
+                    movementDate: string;
+                    note?: string | null;
+                    /** Format: uuid */
+                    warehouseId: string;
+                    /** @enum {string} */
+                    reason: "usage" | "damage" | "loss" | "count_shortage" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockTransfer: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    quantity: number;
+                    movementDate: string;
+                    note?: string | null;
+                    /** Format: uuid */
+                    fromWarehouseId: string;
+                    /** Format: uuid */
+                    toWarehouseId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            transferId: string;
+                            /** @description Çıkış ve giriş hareketi */
+                            movements: {
+                                id: string;
+                                /** @enum {string} */
+                                type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                                /** @description Hareket günü `YYYY-MM-DD` */
+                                movementDate: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                                quantity: number;
+                                /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                                reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                                note: string | null;
+                                transferId: string | null;
+                                /** @description Transferde karşı depo */
+                                counterpartWarehouseName: string | null;
+                                /** @description Mal kabul girişinde sipariş */
+                                orderId: string | null;
+                                orderNumber: string | null;
+                                createdAt: string;
+                                createdByName: string | null;
+                                cancelledAt: string | null;
+                                cancelledByName: string | null;
+                                cancelReason: string | null;
+                                /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStockMovement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                movementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt";
+                            /** @description Hareket günü `YYYY-MM-DD` */
+                            movementDate: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
+                            quantity: number;
+                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
+                            note: string | null;
+                            transferId: string | null;
+                            /** @description Transferde karşı depo */
+                            counterpartWarehouseName: string | null;
+                            /** @description Mal kabul girişinde sipariş */
+                            orderId: string | null;
+                            orderNumber: string | null;
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcı bu hareketi iptal edebilir mi (K-183) */
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssets: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Etiket, ad ve konumda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Durum */
+                status?: "in_use" | "in_storage" | "broken" | "scrapped";
+                /** @description Kategori */
+                category?: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                /** @description Kampüs */
+                campusId?: string;
+                /** @description Tedarikçi */
+                supplierId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurumda tekil etiket (ör. `DB-2026-0001`) */
+                            tagNumber: string;
+                            name: string;
+                            /**
+                             * @description Sabit kategori (K-186)
+                             * @enum {string}
+                             */
+                            category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description KDV hariç alım değeri, kuruş */
+                            acquisitionValueCents: number;
+                            /** @description Alım günü (YYYY-MM-DD) */
+                            acquisitionDate: string;
+                            supplierId: string | null;
+                            supplierName: string | null;
+                            /** @description Bağlı mal kabul kalemi */
+                            receiptItemId: string | null;
+                            /** @enum {string} */
+                            status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Hurdaya ayırma günü */
+                            scrapDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kurumda tekil etiket; boşsa `DB-<yıl>-<sıra>` verilir */
+                    tagNumber?: string | null;
+                    name: string;
+                    /** @enum {string} */
+                    category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                    /**
+                     * @description Kampüs (branches kaydı); tek kampüslü kurumda boş
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /** @description Oda ya da yer, serbest metin */
+                    location: string;
+                    /** @description KDV hariç alım değeri, kuruş (M-30) */
+                    acquisitionValueCents: number;
+                    /** @description Alım günü; bugünden sonra olamaz */
+                    acquisitionDate: string;
+                    /** @default null */
+                    supplierId?: string | null;
+                    /**
+                     * @description Mal kabul kalemi (DOM-FIN-074)
+                     * @default null
+                     */
+                    receiptItemId?: string | null;
+                    /**
+                     * @default in_use
+                     * @enum {string}
+                     */
+                    status?: "in_use" | "in_storage" | "broken";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurumda tekil etiket (ör. `DB-2026-0001`) */
+                            tagNumber: string;
+                            name: string;
+                            /**
+                             * @description Sabit kategori (K-186)
+                             * @enum {string}
+                             */
+                            category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description KDV hariç alım değeri, kuruş */
+                            acquisitionValueCents: number;
+                            /** @description Alım günü (YYYY-MM-DD) */
+                            acquisitionDate: string;
+                            supplierId: string | null;
+                            supplierName: string | null;
+                            /** @description Bağlı mal kabul kalemi */
+                            receiptItemId: string | null;
+                            /** @enum {string} */
+                            status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Hurdaya ayırma günü */
+                            scrapDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Mal kabul bağı (DOM-FIN-074) */
+                            receipt: {
+                                receiptId: string;
+                                receiptDate: string;
+                                /** @description Kabul sonradan iptal edildiyse `true` */
+                                receiptCancelled: boolean;
+                                orderId: string;
+                                orderNumber: string;
+                                itemName: string;
+                                /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                unitPriceCents: number;
+                                acceptedQuantity: number;
+                                /** @description Kaleme bağlı demirbaş sayısı (bu kayıt dahil) */
+                                linkedAssetCount: number;
+                            } | null;
+                            scrappedAt: string | null;
+                            scrapReason: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssetReceiptItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kalem adı, sipariş numarası ve tedarikçi unvanında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            receiptItemId: string;
+                            receiptId: string;
+                            receiptDate: string;
+                            orderId: string;
+                            orderNumber: string;
+                            supplierId: string;
+                            /** @description Siparişteki tedarikçi unvanı */
+                            supplierName: string;
+                            itemName: string;
+                            /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                            unitPriceCents: number;
+                            acceptedQuantity: number;
+                            /** @description Kaleme bağlı demirbaş sayısı */
+                            linkedAssetCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurumda tekil etiket (ör. `DB-2026-0001`) */
+                            tagNumber: string;
+                            name: string;
+                            /**
+                             * @description Sabit kategori (K-186)
+                             * @enum {string}
+                             */
+                            category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description KDV hariç alım değeri, kuruş */
+                            acquisitionValueCents: number;
+                            /** @description Alım günü (YYYY-MM-DD) */
+                            acquisitionDate: string;
+                            supplierId: string | null;
+                            supplierName: string | null;
+                            /** @description Bağlı mal kabul kalemi */
+                            receiptItemId: string | null;
+                            /** @enum {string} */
+                            status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Hurdaya ayırma günü */
+                            scrapDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Mal kabul bağı (DOM-FIN-074) */
+                            receipt: {
+                                receiptId: string;
+                                receiptDate: string;
+                                /** @description Kabul sonradan iptal edildiyse `true` */
+                                receiptCancelled: boolean;
+                                orderId: string;
+                                orderNumber: string;
+                                itemName: string;
+                                /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                unitPriceCents: number;
+                                acceptedQuantity: number;
+                                /** @description Kaleme bağlı demirbaş sayısı (bu kayıt dahil) */
+                                linkedAssetCount: number;
+                            } | null;
+                            scrappedAt: string | null;
+                            scrapReason: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateFixedAsset: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    tagNumber?: string;
+                    name?: string;
+                    /** @enum {string} */
+                    category?: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                    campusId?: string | null;
+                    location?: string;
+                    acquisitionValueCents?: number;
+                    acquisitionDate?: string;
+                    supplierId?: string | null;
+                    receiptItemId?: string | null;
+                    /** @enum {string} */
+                    status?: "in_use" | "in_storage" | "broken";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurumda tekil etiket (ör. `DB-2026-0001`) */
+                            tagNumber: string;
+                            name: string;
+                            /**
+                             * @description Sabit kategori (K-186)
+                             * @enum {string}
+                             */
+                            category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description KDV hariç alım değeri, kuruş */
+                            acquisitionValueCents: number;
+                            /** @description Alım günü (YYYY-MM-DD) */
+                            acquisitionDate: string;
+                            supplierId: string | null;
+                            supplierName: string | null;
+                            /** @description Bağlı mal kabul kalemi */
+                            receiptItemId: string | null;
+                            /** @enum {string} */
+                            status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Hurdaya ayırma günü */
+                            scrapDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Mal kabul bağı (DOM-FIN-074) */
+                            receipt: {
+                                receiptId: string;
+                                receiptDate: string;
+                                /** @description Kabul sonradan iptal edildiyse `true` */
+                                receiptCancelled: boolean;
+                                orderId: string;
+                                orderNumber: string;
+                                itemName: string;
+                                /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                unitPriceCents: number;
+                                acceptedQuantity: number;
+                                /** @description Kaleme bağlı demirbaş sayısı (bu kayıt dahil) */
+                                linkedAssetCount: number;
+                            } | null;
+                            scrappedAt: string | null;
+                            scrapReason: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scrapFixedAsset: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                    /** @description Hurdaya ayırma günü; alım gününden önce, bugünden sonra olamaz */
+                    scrapDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurumda tekil etiket (ör. `DB-2026-0001`) */
+                            tagNumber: string;
+                            name: string;
+                            /**
+                             * @description Sabit kategori (K-186)
+                             * @enum {string}
+                             */
+                            category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description KDV hariç alım değeri, kuruş */
+                            acquisitionValueCents: number;
+                            /** @description Alım günü (YYYY-MM-DD) */
+                            acquisitionDate: string;
+                            supplierId: string | null;
+                            supplierName: string | null;
+                            /** @description Bağlı mal kabul kalemi */
+                            receiptItemId: string | null;
+                            /** @enum {string} */
+                            status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Hurdaya ayırma günü */
+                            scrapDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Mal kabul bağı (DOM-FIN-074) */
+                            receipt: {
+                                receiptId: string;
+                                receiptDate: string;
+                                /** @description Kabul sonradan iptal edildiyse `true` */
+                                receiptCancelled: boolean;
+                                orderId: string;
+                                orderNumber: string;
+                                itemName: string;
+                                /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                unitPriceCents: number;
+                                acceptedQuantity: number;
+                                /** @description Kaleme bağlı demirbaş sayısı (bu kayıt dahil) */
+                                linkedAssetCount: number;
+                            } | null;
+                            scrappedAt: string | null;
+                            scrapReason: string | null;
+                            createdAt: string;
+                        };
                     };
                 };
             };

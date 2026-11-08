@@ -12,6 +12,7 @@ import {
   purchaseReportRangeIssue,
   purchaseReportScope,
   type PurchaseReportInput,
+  type PurchaseReportInvoice,
   type PurchaseReportOrder,
   type PurchaseReportSupplier,
 } from '../packages/school-core/src/lib/finance-purchase-report.ts'
@@ -71,13 +72,36 @@ function order(overrides: Partial<PurchaseReportOrder> = {}): PurchaseReportOrde
 const input = (
   orders: PurchaseReportOrder[],
   scope: PurchaseReportInput['scope'] = { kind: 'range', from: '2026-10-01', to: '2026-10-31' },
+  extra: Partial<PurchaseReportInput> = {},
 ): PurchaseReportInput => ({
   scope,
   orders,
   suppliers: SUPPLIERS,
   costCenters: CENTERS,
   budgetItems: ITEMS,
+  receiptLines: [],
+  invoices: [],
+  payments: [],
+  invoiceDays: { from: '2026-10-01', to: '2026-10-31' },
+  ...extra,
 })
+
+const NO_SETTLEMENT = { receivedNetCents: 0, invoicedGrossCents: 0, paidCents: 0, openCents: 0 }
+const NO_UNLINKED = { invoiceCount: 0, invoicedGrossCents: 0, paidCents: 0, openCents: 0 }
+
+let invoiceCounter = 0
+function invoice(overrides: Partial<PurchaseReportInvoice> = {}): PurchaseReportInvoice {
+  invoiceCounter += 1
+  return {
+    id: `f-${String(invoiceCounter)}`,
+    supplierId: 's-alfa',
+    purchaseOrderId: null,
+    invoiceDate: '2026-10-10',
+    grossCents: 0,
+    cancelledAt: null,
+    ...overrides,
+  }
+}
 
 test('DOM-FIN-075: raporu bütçeyi gören rol okur, ön büro okumaz (K-155)', () => {
   assert.deepEqual([...PURCHASE_REPORT_ROLES], ['yonetici'])
@@ -222,9 +246,16 @@ test('DOM-FIN-075: kategori, tedarikçi, merkez ve kalem bazında net, KDV ve br
     netCents: 100_000 + 15_025 + 50_000,
     vatCents: 20_000 + 1_503,
     grossCents: 120_000 + 16_528 + 50_000,
+    ...NO_SETTLEMENT,
     supplierCount: 3,
   })
-  assert.deepEqual(report.cancelled, { orderCount: 1, grossCents: 119_880 })
+  assert.deepEqual(report.cancelled, {
+    orderCount: 1,
+    grossCents: 119_880,
+    invoicedGrossCents: 0,
+    paidCents: 0,
+  })
+  assert.deepEqual(report.unlinkedInvoices, NO_UNLINKED)
   // Kategori: Bilişim Alfa + Beta, Kırtasiye yalnız Beta; toplamı genel toplamı aşar (K-157).
   assert.deepEqual(
     report.categories.map((row) => [
@@ -356,6 +387,7 @@ test('DOM-FIN-075: boş raporda oran ve süre boş; bilinmeyen kayıt adı açı
     netCents: 0,
     vatCents: 0,
     grossCents: 0,
+    ...NO_SETTLEMENT,
     supplierCount: 0,
   })
   assert.deepEqual(empty.leadTime, {
@@ -380,7 +412,7 @@ test('DOM-FIN-075: boş raporda oran ve süre boş; bilinmeyen kayıt adı açı
   assert.equal(free.suppliers[0]?.shareBasisPoints, 10_000)
 })
 
-test('DOM-FIN-075: CSV tek tablo, formül kaçışlı, vergi numarası yok (K-155)', () => {
+test('DOM-FIN-075: CSV tek tablo, formül kaçışlı, vergi numarası yok; başlıkta KDV esası (K-155, K-199)', () => {
   const report = purchaseReport(
     input([
       order(),
@@ -399,23 +431,198 @@ test('DOM-FIN-075: CSV tek tablo, formül kaçışlı, vergi numarası yok (K-15
   const lines = csv.split('\r\n')
   assert.equal(
     lines[0],
-    '"Kırılım";"Ad";"Kod";"Tür";"Kategoriler";"Sipariş";"Net";"KDV";"Brüt";"Pay (%)"',
+    '"Kırılım";"Ad";"Kod";"Tür";"Kategoriler";"Sipariş sayısı";"Sipariş tutarı (KDV hariç)";"Sipariş KDV";"Sipariş tutarı (KDV dahil)";"Pay (%)";"Teslim alınan (KDV hariç)";"Faturalanan (KDV dahil)";"Ödenen (KDV dahil)";"Açık (KDV dahil)"',
   )
-  assert.equal(lines[1], '"Toplam";"";"";"";"";2;1050,00;200,50;1250,50;""')
-  assert.equal(lines[2], '"Tedarikçi kategorisi";"Bilişim";"";"";"";1;1000,00;200,00;1200,00;95,96')
+  const none = '0,00;0,00;0,00;0,00'
+  assert.equal(lines[1], `"Toplam";"";"";"";"";2;1050,00;200,50;1250,50;"";${none}`)
+  assert.equal(lines[2], '"Siparişsiz fatura";"0 fatura";"";"";"";"";"";"";"";"";"";0,00;0,00;0,00')
+  assert.equal(
+    lines[3],
+    `"Tedarikçi kategorisi";"Bilişim";"";"";"";1;1000,00;200,00;1200,00;95,96;${none}`,
+  )
   assert.ok(
     lines.includes(
-      '"Tedarikçi";"Alfa Bilişim A.Ş.";"";"Şirket";"Bilişim";1;1000,00;200,00;1200,00;95,96',
+      `"Tedarikçi";"Alfa Bilişim A.Ş.";"";"Şirket";"Bilişim";1;1000,00;200,00;1200,00;95,96;${none}`,
     ),
   )
   assert.ok(
-    lines.includes('"Tedarikçi";"\'=HYPERLINK(""x"")";"";"Şirket";"";1;50,00;0,50;50,50;4,04'),
+    lines.includes(
+      `"Tedarikçi";"'=HYPERLINK(""x"")";"";"Şirket";"";1;50,00;0,50;50,50;4,04;${none}`,
+    ),
   )
   assert.ok(
-    lines.includes('"Maliyet merkezi";"Bilgi İşlem";"BT";"";"";2;1050,00;200,50;1250,50;100,00'),
+    lines.includes(
+      `"Maliyet merkezi";"Bilgi İşlem";"BT";"";"";2;1050,00;200,50;1250,50;100,00;${none}`,
+    ),
   )
   assert.ok(
-    lines.includes('"Gider kalemi";"Malzeme";"G-200";"";"";2;1050,00;200,50;1250,50;100,00'),
+    lines.includes(
+      `"Gider kalemi";"Malzeme";"G-200";"";"";2;1050,00;200,50;1250,50;100,00;${none}`,
+    ),
   )
-  assert.equal(lines.length, 7)
+  assert.equal(lines.length, 8)
+})
+
+test('DOM-FIN-075: teslim alınan KDV hariç kabul; faturalanan, ödenen ve açık KDV dahil; iptaller sayılmaz (K-195, K-196)', () => {
+  const alfa = order({ id: 'o-alfa' })
+  // Beta iki kategorili; teslim yok, fatura ödenmemiş.
+  const beta = order({
+    id: 'o-beta',
+    supplierId: 's-beta',
+    costCenterId: 'c-idari',
+    lines: [{ requestItemId: 'r-2', quantity: 5, unitPriceCents: 3_005, vatRate: 10 }],
+  })
+  const report = purchaseReport(
+    input([alfa, beta], undefined, {
+      receiptLines: [
+        // Kabul günü kapsam dışında olsa da siparişin kabulüdür (K-196).
+        { orderId: 'o-alfa', cancelledAt: null, acceptedQuantity: 4, unitPriceCents: 10_000 },
+        { orderId: 'o-alfa', cancelledAt: null, acceptedQuantity: 2, unitPriceCents: 10_000 },
+        {
+          orderId: 'o-alfa',
+          cancelledAt: '2026-10-08T09:00:00.000Z',
+          acceptedQuantity: 3,
+          unitPriceCents: 10_000,
+        },
+        // Kapsamda olmayan siparişin kabulü yok sayılır.
+        { orderId: 'o-yok', cancelledAt: null, acceptedQuantity: 1, unitPriceCents: 99_999 },
+      ],
+      invoices: [
+        invoice({
+          id: 'f-alfa-1',
+          purchaseOrderId: 'o-alfa',
+          grossCents: 60_000,
+          invoiceDate: '2026-12-01',
+        }),
+        invoice({ id: 'f-alfa-2', purchaseOrderId: 'o-alfa', grossCents: 12_000 }),
+        invoice({
+          id: 'f-alfa-iptal',
+          purchaseOrderId: 'o-alfa',
+          grossCents: 50_000,
+          cancelledAt: '2026-10-09T09:00:00.000Z',
+        }),
+        invoice({
+          id: 'f-beta',
+          supplierId: 's-beta',
+          purchaseOrderId: 'o-beta',
+          grossCents: 16_528,
+        }),
+      ],
+      payments: [
+        { invoiceId: 'f-alfa-1', amountCents: 30_000, cancelledAt: null },
+        { invoiceId: 'f-alfa-1', amountCents: 10_000, cancelledAt: '2026-10-11T09:00:00.000Z' },
+        { invoiceId: 'f-alfa-2', amountCents: 12_000, cancelledAt: null },
+        // İptal edilmiş faturanın ödemesi sayılmaz.
+        { invoiceId: 'f-alfa-iptal', amountCents: 5_000, cancelledAt: null },
+      ],
+    }),
+  )
+  const alfaSettlement = {
+    receivedNetCents: 60_000,
+    invoicedGrossCents: 72_000,
+    paidCents: 42_000,
+    openCents: 30_000,
+  }
+  const betaSettlement = {
+    receivedNetCents: 0,
+    invoicedGrossCents: 16_528,
+    paidCents: 0,
+    openCents: 16_528,
+  }
+  const settlementOf = (row: Record<string, unknown>) => ({
+    receivedNetCents: row.receivedNetCents,
+    invoicedGrossCents: row.invoicedGrossCents,
+    paidCents: row.paidCents,
+    openCents: row.openCents,
+  })
+  assert.deepEqual(settlementOf({ ...report.totals }), {
+    receivedNetCents: 60_000,
+    invoicedGrossCents: 88_528,
+    paidCents: 42_000,
+    openCents: 46_528,
+  })
+  // Sipariş tutarı ve pay değişmez.
+  assert.equal(report.totals.grossCents, 136_528)
+  assert.deepEqual(
+    report.suppliers.map((row) => [row.supplierId, settlementOf({ ...row })]),
+    [
+      ['s-alfa', alfaSettlement],
+      ['s-beta', betaSettlement],
+    ],
+  )
+  // Çok kategorili Beta her kategorisinde sayılır (K-157).
+  assert.deepEqual(
+    report.categories.map((row) => [row.category, row.invoicedGrossCents, row.receivedNetCents]),
+    [
+      ['it', 88_528, 60_000],
+      ['stationery', 16_528, 0],
+    ],
+  )
+  assert.deepEqual(
+    report.costCenters.map((row) => [row.id, settlementOf({ ...row })]),
+    [
+      ['c-bt', alfaSettlement],
+      ['c-idari', betaSettlement],
+    ],
+  )
+  assert.deepEqual(settlementOf({ ...report.budgetItems[0] }), settlementOf({ ...report.totals }))
+  assert.deepEqual(report.unlinkedInvoices, NO_UNLINKED)
+})
+
+test('DOM-FIN-075: siparişsiz faturalar fatura günüyle ayrı satırda, toplamlara girmez (K-197)', () => {
+  const report = purchaseReport(
+    input([order({ id: 'o-1' })], undefined, {
+      invoiceDays: { from: '2026-10-01', to: '2026-10-31' },
+      invoices: [
+        invoice({ id: 'f-1', invoiceDate: '2026-10-01', grossCents: 10_000 }),
+        invoice({ id: 'f-2', invoiceDate: '2026-10-31', grossCents: 5_000, supplierId: 's-ayla' }),
+        invoice({ id: 'f-once', invoiceDate: '2026-09-30', grossCents: 7_000 }),
+        invoice({ id: 'f-sonra', invoiceDate: '2026-11-01', grossCents: 7_000 }),
+        invoice({
+          id: 'f-iptal',
+          invoiceDate: '2026-10-15',
+          grossCents: 7_000,
+          cancelledAt: '2026-10-16T09:00:00.000Z',
+        }),
+      ],
+      payments: [
+        // Ödeme günü süzülmez; fatura kapsamdaysa ödemesi sayılır (K-196).
+        { invoiceId: 'f-1', amountCents: 4_000, cancelledAt: null },
+        { invoiceId: 'f-2', amountCents: 5_000, cancelledAt: '2026-11-02T09:00:00.000Z' },
+        { invoiceId: 'f-once', amountCents: 7_000, cancelledAt: null },
+      ],
+    }),
+  )
+  assert.deepEqual(report.unlinkedInvoices, {
+    invoiceCount: 2,
+    invoicedGrossCents: 15_000,
+    paidCents: 4_000,
+    openCents: 11_000,
+  })
+  assert.equal(report.totals.invoicedGrossCents, 0)
+  assert.equal(report.totals.paidCents, 0)
+  const csv = purchaseReportCsv(report).split('\r\n')
+  assert.equal(
+    csv[2],
+    '"Siparişsiz fatura";"2 fatura";"";"";"";"";"";"";"";"";"";150,00;40,00;110,00',
+  )
+})
+
+test('DOM-FIN-075: iptal edilen siparişin faturası ve ödemesi toplamlara girmez, iptal bloğundadır (K-198)', () => {
+  const report = purchaseReport(
+    input([order({ id: 'o-ok' }), order({ id: 'o-iptal', status: 'cancelled' })], undefined, {
+      invoices: [
+        invoice({ id: 'f-iptal-siparis', purchaseOrderId: 'o-iptal', grossCents: 120_000 }),
+      ],
+      payments: [{ invoiceId: 'f-iptal-siparis', amountCents: 20_000, cancelledAt: null }],
+    }),
+  )
+  assert.deepEqual(report.cancelled, {
+    orderCount: 1,
+    grossCents: 120_000,
+    invoicedGrossCents: 120_000,
+    paidCents: 20_000,
+  })
+  assert.equal(report.totals.invoicedGrossCents, 0)
+  assert.equal(report.totals.openCents, 0)
 })

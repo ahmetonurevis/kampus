@@ -202,12 +202,13 @@ export const MEETING_DAY_FILTER: FilterField = {
 export const MEETING_VIEWS = [
   { value: 'liste', label: 'Liste' },
   { value: 'hafta', label: 'Haftalık takvim' },
+  { value: 'nobet', label: 'Sezon nöbeti' },
 ] as const
 export type MeetingView = (typeof MEETING_VIEWS)[number]['value']
 
-/** Adresteki görünüm (`?gorunum=`); bilinmeyen değer listedir. */
+/** Adresteki görünüm (`?gorunum=`); bilinmeyen değer listedir. `nobet` kayıt sezonu nöbetidir (DOM-KAY-037). */
 export const meetingView = (value: string | null): MeetingView =>
-  value === 'hafta' ? 'hafta' : 'liste'
+  MEETING_VIEWS.find((view) => view.value === value)?.value ?? 'liste'
 
 /** Adresteki hafta (`?hafta=`) ya da bugünün haftası; her gün kendi haftasının pazartesisine iner. */
 export const meetingWeekStart = (value: string | null, today: string): string =>

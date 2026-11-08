@@ -46,8 +46,15 @@ test('DOM-FIN-074: form yalnız kalanı olan kalemleri açar; gövdeye miktar gi
       receiptDate: '2026-10-06',
       receivedBy: 'Hasan Usta',
       inspectionNote: null,
+      warehouseId: null,
       lines: [
-        { orderItemId: 'k3', acceptedQuantity: 3, rejectedQuantity: 2, rejectReason: 'Kırık' },
+        {
+          orderItemId: 'k3',
+          acceptedQuantity: 3,
+          rejectedQuantity: 2,
+          rejectReason: 'Kırık',
+          stockItemId: null,
+        },
       ],
     },
     formIndexes: [1],
@@ -67,6 +74,33 @@ test('DOM-FIN-074: kalanı aşan, nedensiz ret ve boş kabul formda reddedilir (
   assert.deepEqual(paths(withLine({ rejected: '1' })), ['lines.0.rejectReason'])
   assert.deepEqual(paths(withLine({})), ['root.server'])
   assert.deepEqual(paths(withLine({ accepted: '1,5' })), ['lines.0.accepted', 'root.server'])
+  // Stok kartı seçilen kabul depo ister (DOM-FIN-078, K-184).
+  assert.deepEqual(paths(withLine({ accepted: '2', stockItemId: 'kart' })), ['warehouseId'])
+  assert.equal(
+    paths({ ...withLine({ accepted: '2', stockItemId: 'kart' }), warehouseId: 'd1' }),
+    undefined,
+  )
+})
+
+test('DOM-FIN-078, K-184: seçilen depo ve stok kartı gövdeye gider; boş seçim null', () => {
+  const defaults = receiptDefaults(BOARD, '2026-10-06')
+  const values = {
+    ...defaults,
+    receivedBy: 'Hasan Usta',
+    warehouseId: 'd1',
+    lines: [
+      { ...defaults.lines[0]!, accepted: '2', stockItemId: 'kart' },
+      { ...defaults.lines[1]!, accepted: '1' },
+    ],
+  }
+  const { body } = receiptBody(values)
+  assert.equal(body.warehouseId, 'd1')
+  assert.deepEqual(
+    body.lines.map((line) => line.stockItemId),
+    ['kart', null],
+  )
+  assert.equal(receiptFormField('warehouseId', []), 'warehouseId')
+  assert.equal(receiptFormField('lines.1.stockItemId', [0, 1]), 'lines.1.stockItemId')
 })
 
 test('DOM-FIN-074: sunucu alan yolu gövde sırasından form satırına çevrilir', () => {

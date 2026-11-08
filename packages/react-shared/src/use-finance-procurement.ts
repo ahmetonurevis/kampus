@@ -39,6 +39,9 @@ export type PurchaseRequestDetail =
 export type PurchaseRequestOptions =
   operations['getPurchaseRequestOptions']['responses'][200]['content']['application/json']['data']
 export type PurchaseRequestQuery = Query<'listPurchaseRequests'>
+export type PurchaseBudgetStatus =
+  operations['getPurchaseBudgetStatus']['responses'][200]['content']['application/json']['data']
+export type PurchaseBudgetStatusQuery = Query<'getPurchaseBudgetStatus'>
 export type PurchaseRequestTransition = 'submit' | 'approve' | 'reject' | 'cancel'
 
 export const PROCUREMENT_CHANGED_MESSAGE =
@@ -132,6 +135,22 @@ export function usePurchaseRequestOptions(enabled = true) {
   })
 }
 
+/**
+ * Talep formunda seçilen dönem × birim × gider kalemi satırının plan, taahhüt ve kalanı (ON-245,
+ * K-148). Üç seçim de yapılmadan sorgu çalışmaz.
+ */
+export function usePurchaseBudgetStatus(query: PurchaseBudgetStatusQuery | null) {
+  return useApiQuery({
+    key: [...PROCUREMENT_KEY, 'budget-status', query],
+    enabled: query !== null,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/purchase-requests/budget-status', {
+        params: { query: query ?? { periodId: '', costCenterId: '', budgetItemId: '' } },
+        signal,
+      }),
+  })
+}
+
 export function useCreatePurchaseRequest() {
   return useApiCommand({
     request: (client, body: CreatePurchaseRequestBody, headers: CommandHeaders) =>
@@ -162,7 +181,10 @@ export function useUpdatePurchaseRequest() {
   })
 }
 
-/** Gönder, onayla, reddet, iptal et; onay ve ret yalnız yönetici (K-129). */
+/**
+ * Gönder, onayla, reddet, iptal et; onay ve ret yalnız yönetici (K-129). Gönderim ve onayda bütçe
+ * uyarısı 409 döner; ekran uyarıyı gösterip `confirmOverBudget` ile yeniden gönderir (ON-245, K-146).
+ */
 export function useTransitionPurchaseRequest() {
   return useApiCommand({
     request: (
@@ -173,17 +195,23 @@ export function useTransitionPurchaseRequest() {
         action: PurchaseRequestTransition
         note?: string | null
         reason?: string
+        /** Bütçe uyarısının (409 `budget_exceeded_warning` / `budget_line_missing_warning`) açık onayı. */
+        confirmOverBudget?: boolean
       },
       headers: CommandHeaders,
     ) => {
       const params = { path: { requestId: input.requestId }, header: versioned(headers) }
+      const confirm = input.confirmOverBudget === true ? { confirmOverBudget: true } : {}
       switch (input.action) {
         case 'submit':
-          return client.POST('/api/v1/finance/purchase-requests/{requestId}/submit', { params })
+          return client.POST('/api/v1/finance/purchase-requests/{requestId}/submit', {
+            params,
+            body: confirm,
+          })
         case 'approve':
           return client.POST('/api/v1/finance/purchase-requests/{requestId}/approve', {
             params,
-            body: { note: input.note ?? null },
+            body: { note: input.note ?? null, ...confirm },
           })
         case 'reject':
           return client.POST('/api/v1/finance/purchase-requests/{requestId}/reject', {

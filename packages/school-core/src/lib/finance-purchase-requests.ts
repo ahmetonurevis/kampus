@@ -2,14 +2,16 @@ import { z } from 'zod'
 
 import { DomainError } from './errors.ts'
 import { BUDGET_AMOUNT_MAX_CENTS, type BudgetItemKind } from './finance-budget.ts'
+import { money } from './format.ts'
 
 /**
  * Satın alma talebi (docs/domain/finans.md DOM-FIN-071; ON-222, K23 satın alma). Talep eden birim
  * bir maliyet merkezidir, talep bir bütçe dönemine ve gider kalemine yazılır (DOM-FIN-062).
  * Durum taslak → gönderildi → onaylandı ya da reddedildi; taslak ve gönderilmiş talep iptal edilir.
  * Onay bugün yöneticinin tek adımlı kararıdır: kademeli eşik ve iş akışı motoru (K27) yoktur,
- * ON-223 ile gelir (K-129). Bütçenin kalanı bilgidir, aşım engellenmez (ON-245). Fonksiyonlar saftır;
- * servis bağlı kayıtları yükler, karar burada verilir.
+ * ON-223 ile gelir (K-129). Gönderim ve onayda bütçe kalanını aşan ya da bütçe satırı olmayan talep
+ * açık onay ister (ON-245, K-145…K-148). Fonksiyonlar saftır; servis bağlı kayıtları yükler, karar
+ * burada verilir.
  */
 
 /** Talebi açan, düzelten, gönderen ve iptal eden roller (K-128). */
@@ -146,8 +148,21 @@ const reasonSchema = (empty: string) =>
     .min(5, 'Gerekçeyi en az 5 karakterle yazın.')
     .max(PURCHASE_REASON_MAX, `En fazla ${String(PURCHASE_REASON_MAX)} karakter girebilirsiniz.`)
 
-/** Onay notu isteğe bağlıdır. */
+/**
+ * Bütçe uyarısının açık onayı (ON-245, K-146): kalanı aşan ya da bütçe satırı olmayan talep ancak
+ * yetkili `confirmOverBudget: true` ile yeniden gönderince geçer.
+ */
+const confirmOverBudgetSchema = z.boolean('Bütçe onayı geçersiz.').optional()
+
+/** Gönderim gövdesi isteğe bağlıdır; yalnız bütçe uyarısının onayını taşır. */
+export const submitPurchaseRequestSchema = z.strictObject({
+  confirmOverBudget: confirmOverBudgetSchema,
+})
+export type SubmitPurchaseRequestInput = z.input<typeof submitPurchaseRequestSchema>
+
+/** Onay notu isteğe bağlıdır; bütçe uyarısında `confirmOverBudget` istenir. */
 export const approvePurchaseRequestSchema = z.strictObject({
+  confirmOverBudget: confirmOverBudgetSchema,
   note: z
     .string()
     .trim()
@@ -189,32 +204,87 @@ export interface PurchaseBudgetFigures {
   plannedCents: number | null
   /** Aynı satıra yazılmış onaylanmış taleplerin toplamı (bu talep hariç). */
   approvedCents: number
-  /** Aynı satıra yazılmış, kararı bekleyen taleplerin toplamı (bu talep hariç). */
+  /** Aynı satıra yazılmış, kararı bekleyen (gönderilmiş) taleplerin toplamı (bu talep hariç). */
   pendingCents: number
 }
 
 export interface PurchaseBudgetInfo extends PurchaseBudgetFigures {
-  /** Plan eksi onaylanmış talepler; plan yoksa `null`. Eksi olabilir. */
+  /** Taahhüt: onaylanmış ve kararı bekleyen taleplerin toplamı (K-145). */
+  committedCents: number
+  /** Plan eksi taahhüt; plan yoksa `null`. Eksi olabilir. */
   remainingCents: number | null
-  /** Bu talep kalanı aşıyor mu; yalnız bilgidir, gönderim ve onay engellenmez (ON-245). */
+  /** Bu talep kalanı aşıyor mu (K-145); kalana eşit talep aşmaz. */
   exceedsRemaining: boolean
+  /** Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0. */
+  overrunCents: number
 }
 
 /**
- * Bütçe kalanı bilgisi (DOM-FIN-071, K-131): gider gerçekleşeni kaynağı (DOM-FIN-066) bugün yoktur;
- * kalan, satırın planından aynı dönem, merkez ve kalemdeki onaylanmış taleplerin düşülmesiyle bulunur.
+ * Bütçe kalanı (DOM-FIN-071, ON-245, K-145): dönem × merkez × kalem satırının planından aynı
+ * satırdaki taahhüt düşülür. Taahhüt gönderilmiş ve onaylanmış taleplerin tahmini toplamıdır; taslak,
+ * reddedilen ve iptal edilen talep sayılmaz. Gider gerçekleşeni (DOM-FIN-066) ve sipariş (ON-225)
+ * bugün yoktur; geldiklerinde onaylanmış talebin yerine sayılırlar. Denetim dönem toplamı
+ * üzerindendir: aylık dağılım ve üst merkezin satırı hesaba girmez (K-147).
  */
 export function purchaseBudgetInfo(
   figures: PurchaseBudgetFigures,
   requestCents: number,
 ): PurchaseBudgetInfo {
+  const committedCents = figures.approvedCents + figures.pendingCents
   const remainingCents =
-    figures.plannedCents === null ? null : figures.plannedCents - figures.approvedCents
+    figures.plannedCents === null ? null : figures.plannedCents - committedCents
+  const overrunCents = remainingCents === null ? 0 : Math.max(requestCents - remainingCents, 0)
   return {
     ...figures,
+    committedCents,
     remainingCents,
-    exceedsRemaining: remainingCents !== null && requestCents > remainingCents,
+    exceedsRemaining: overrunCents > 0,
+    overrunCents,
   }
+}
+
+/** Bütçe uyarısı: `over` kalan aşılıyor, `unplanned` dönem × merkez × kalem için satır yok. */
+export type PurchaseBudgetWarning = 'over' | 'unplanned'
+export const BUDGET_EXCEEDED_WARNING = 'budget_exceeded_warning'
+export const BUDGET_LINE_MISSING_WARNING = 'budget_line_missing_warning'
+/** İstemcinin açık onay isteyen uyarı kodları (409). */
+export const PURCHASE_BUDGET_WARNING_CODES = [
+  BUDGET_EXCEEDED_WARNING,
+  BUDGET_LINE_MISSING_WARNING,
+] as const
+
+export function purchaseBudgetWarning(info: PurchaseBudgetInfo): PurchaseBudgetWarning | null {
+  if (info.plannedCents === null) return 'unplanned'
+  return info.exceedsRemaining ? 'over' : null
+}
+
+/** Uyarının kullanıcı metni; aşım tutarı ve kalan Türkçe biçimle yazılır. */
+export function purchaseBudgetWarningMessage(info: PurchaseBudgetInfo): string | null {
+  const warning = purchaseBudgetWarning(info)
+  if (warning === 'unplanned')
+    return 'Bu dönemde talep eden birim ve gider kalemi için bütçe satırı yok; talep bütçesizdir. Sürdürmek için bütçesiz olduğunu açıkça onaylayın.'
+  if (warning === 'over')
+    return `Bu talep bütçe kalanını ${money(info.overrunCents)} aşıyor (plan ${money(info.plannedCents)}, gönderilmiş ve onaylanmış talepler ${money(info.committedCents)}, kalan ${money(info.remainingCents)}). Sürdürmek için aşımı açıkça onaylayın.`
+  return null
+}
+
+/**
+ * Gönderim ve onayda bütçe denetimi (ON-245, K-146): kalanı aşan ya da satırı olmayan talep açık
+ * onay olmadan 409 alır (`budget_exceeded_warning`, `budget_line_missing_warning`); onaylanırsa geçer.
+ * Dönen uyarı onaylanarak geçildiğini gösterir (denetim kaydına yazılır), uyarı yoksa `null`.
+ * Servis girdileri kurum kilidi altında yükler: eşzamanlı iki talep aynı kalanı ikisi birden almaz.
+ */
+export function confirmPurchaseBudget(
+  info: PurchaseBudgetInfo,
+  confirmOverBudget: boolean | undefined,
+): PurchaseBudgetWarning | null {
+  const warning = purchaseBudgetWarning(info)
+  if (warning === null || confirmOverBudget === true) return warning
+  throw new DomainError(
+    warning === 'over' ? BUDGET_EXCEEDED_WARNING : BUDGET_LINE_MISSING_WARNING,
+    purchaseBudgetWarningMessage(info) ?? '',
+    { kind: 'conflict' },
+  )
 }
 
 // --- Kurallar ------------------------------------------------------------------------------------
@@ -339,12 +409,18 @@ export function planPurchaseRequestUpdate(
   return changes
 }
 
-/** Gönderim: taslak, bağlı kayıtlar geçerli ve dönem açık olmalıdır (taslak dönem henüz yürürlükte değil). */
+/**
+ * Gönderim: taslak, bağlı kayıtlar geçerli ve dönem açık olmalıdır (taslak dönem henüz yürürlükte
+ * değil; kapalı dönem 422 `purchase_request_period_closed`). Bütçe uyarısı bu kurallardan sonra
+ * `confirmPurchaseBudget` ile denetlenir; gövde yalnız onu taşır.
+ */
 export function planPurchaseRequestSubmit(
   request: PurchaseRequestState,
   refs: PurchaseRequestRefs,
   actor: PurchaseActor,
-): void {
+  input?: unknown,
+): z.output<typeof submitPurchaseRequestSchema> {
+  const data = submitPurchaseRequestSchema.parse(input ?? {})
   assertOwner(request, actor)
   assertStatus(
     request,
@@ -359,6 +435,7 @@ export function planPurchaseRequestSubmit(
       'Talep yalnız açık bütçe dönemine gönderilir; dönemi önce yönetici açar.',
       'periodId',
     )
+  return data
 }
 
 /** Onay: gönderilmiş talep, dönem hâlâ açık. Yönetici kendi açtığı talebi de onaylar (K-129). */

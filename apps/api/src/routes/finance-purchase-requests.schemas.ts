@@ -14,6 +14,25 @@ const cents = (description: string) => z.number().int().describe(description)
 const version = z.number().int().describe('`If-Match` için kayıt sürümü')
 const ref = z.object({ id: z.string(), code: z.string(), name: z.string() })
 
+const budgetStatusShape = {
+  plannedCents: cents('Dönem × merkez × kalem satırının planı; satır yoksa boş').nullable(),
+  approvedCents: cents('Aynı satırdaki onaylanmış talepler (bu talep hariç)'),
+  pendingCents: cents('Aynı satırdaki kararı bekleyen talepler (bu talep hariç)'),
+  committedCents: cents('Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)'),
+  remainingCents: cents('Plan eksi taahhüt; plan yoksa boş, eksi olabilir').nullable(),
+}
+
+/** Bütçe kalanı ve aşım bilgisi (DOM-FIN-071, ON-245, K-145). */
+const budgetInfoSchema = z
+  .object({
+    ...budgetStatusShape,
+    exceedsRemaining: z
+      .boolean()
+      .describe('Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)'),
+    overrunCents: cents('Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0'),
+  })
+  .describe('Bütçe kalanı ve aşım bilgisi (K-145)')
+
 const summaryShape = {
   id: z.string(),
   number: z.string().describe('Kurum içi talep numarası, ör. `ST-0001`'),
@@ -55,15 +74,7 @@ const detailSchema = z.object({
       totalCents: cents('Miktar × birim fiyat, kuruş'),
     }),
   ),
-  budget: z
-    .object({
-      plannedCents: cents('Dönem × merkez × kalem satırının planı; satır yoksa boş').nullable(),
-      approvedCents: cents('Aynı satırdaki onaylanmış talepler (bu talep hariç)'),
-      pendingCents: cents('Aynı satırdaki kararı bekleyen talepler (bu talep hariç)'),
-      remainingCents: cents('Plan eksi onaylanmış talepler; plan yoksa boş').nullable(),
-      exceedsRemaining: z.boolean().describe('Talep kalanı aşıyor mu; yalnız bilgi (ON-245)'),
-    })
-    .describe('Bütçe kalanı bilgisi (K-131)'),
+  budget: budgetInfoSchema,
   submittedByName: z.string().nullable(),
   decidedByName: z.string().nullable(),
   decisionNote: z.string().nullable().describe('Onay notu ya da ret gerekçesi'),
@@ -100,6 +111,15 @@ export const purchaseRequestOptionsResponse = dataResponse(
       .describe('Etkin tedarikçiler'),
   }),
 )
+
+export const purchaseBudgetStatusResponse = dataResponse(
+  z.object(budgetStatusShape).describe('Talep formunun bütçe durumu (K-148)'),
+)
+export const purchaseBudgetStatusQuery = z.strictObject({
+  periodId: z.uuid('Bütçe dönemini seçin.').describe('Bütçe dönemi'),
+  costCenterId: z.uuid('Talep eden birimi seçin.').describe('Talep eden birim'),
+  budgetItemId: z.uuid('Gider kalemini seçin.').describe('Gider kalemi'),
+})
 
 export const purchaseRequestParams = z.object({ requestId: z.uuid('Talep geçersiz.') })
 export const purchaseRequestListQuery = z.strictObject({

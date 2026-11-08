@@ -4708,6 +4708,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/purchase-requests/budget-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma talebi formunun bütçe durumu
+         * @description Seçilen bütçe dönemi × talep eden birim × gider kalemi satırının planı, onaylanmış ve kararı bekleyen taleplerin toplamı (taahhüt) ve kalan (plan eksi taahhüt; K-145). Talep formunda tahmini toplamın kalanı aşıp aşmadığını göstermek içindir; ön büro yalnız bu satırı görür, bütçenin geri kalanını görmez (K-148, K-60). Satır yoksa plan ve kalan boş; bilinmeyen ya da başka kurumun kimliği de böyle döner. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        get: operations["getPurchaseBudgetStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/purchase-requests/{requestId}": {
         parameters: {
             query?: never;
@@ -4717,7 +4737,7 @@ export interface paths {
         };
         /**
          * Satın alma talebi ayrıntısı
-         * @description Kalemler, bütçe kalanı bilgisi (plan, onaylanmış ve bekleyen talepler, kalan; K-131), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         get: operations["getPurchaseRequest"];
         put?: never;
@@ -4743,7 +4763,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini gönder
-         * @description Taslak talebi onaya gönderir. Bütçe dönemi açık olmalıdır: 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Yanıt bütçe kalanını bilgi olarak taşır, aşım engellenmez (K-131, ON-245). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["submitPurchaseRequest"];
         delete?: never;
@@ -4763,7 +4783,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini onayla
-         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
          */
         post: operations["approvePurchaseRequest"];
         delete?: never;
@@ -49435,16 +49455,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;
@@ -49658,6 +49682,117 @@ export interface operations {
             };
         };
     };
+    getPurchaseBudgetStatus: {
+        parameters: {
+            query: {
+                /** @description Bütçe dönemi */
+                periodId: string;
+                /** @description Talep eden birim */
+                costCenterId: string;
+                /** @description Gider kalemi */
+                budgetItemId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Talep formunun bütçe durumu (K-148) */
+                        data: {
+                            plannedCents: number | null;
+                            /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                            approvedCents: number;
+                            /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                            pendingCents: number;
+                            /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                            committedCents: number;
+                            remainingCents: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getPurchaseRequest: {
         parameters: {
             query?: never;
@@ -49728,16 +49863,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;
@@ -49925,16 +50064,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;
@@ -50041,7 +50184,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirmOverBudget?: boolean;
+                } | null;
+            };
+        };
         responses: {
             /** @description Default Response */
             200: {
@@ -50102,16 +50251,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;
@@ -50221,6 +50374,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    confirmOverBudget?: boolean;
                     /** @default null */
                     note?: string | null;
                 };
@@ -50286,16 +50440,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;
@@ -50469,16 +50627,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;
@@ -50652,16 +50814,20 @@ export interface operations {
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
                             }[];
-                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
                                 plannedCents: number | null;
                                 /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
                                 approvedCents: number;
                                 /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
                                 pendingCents: number;
+                                /** @description Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145) */
+                                committedCents: number;
                                 remainingCents: number | null;
-                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
                                 exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
                             };
                             submittedByName: string | null;
                             decidedByName: string | null;

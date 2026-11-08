@@ -105694,13 +105694,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -105709,18 +105715,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [
@@ -106125,6 +106139,207 @@
         }
       }
     },
+    "/api/v1/finance/purchase-requests/budget-status": {
+      "get": {
+        "operationId": "getPurchaseBudgetStatus",
+        "summary": "Satın alma talebi formunun bütçe durumu",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Seçilen bütçe dönemi × talep eden birim × gider kalemi satırının planı, onaylanmış ve kararı bekleyen taleplerin toplamı (taahhüt) ve kalan (plan eksi taahhüt; K-145). Talep formunda tahmini toplamın kalanı aşıp aşmadığını göstermek içindir; ön büro yalnız bu satırı görür, bütçenin geri kalanını görmez (K-148, K-60). Satır yoksa plan ve kalan boş; bilinmeyen ya da başka kurumun kimliği de böyle döner. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "periodId",
+            "required": true,
+            "description": "Bütçe dönemi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "costCenterId",
+            "required": true,
+            "description": "Talep eden birim"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "budgetItemId",
+            "required": true,
+            "description": "Gider kalemi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "plannedCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem × merkez × kalem satırının planı; satır yoksa boş"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "approvedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aynı satırdaki onaylanmış talepler (bu talep hariç)"
+                        },
+                        "pendingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
+                        },
+                        "committedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                        },
+                        "remainingCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "plannedCents",
+                        "approvedCents",
+                        "pendingCents",
+                        "committedCents",
+                        "remainingCents"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Talep formunun bütçe durumu (K-148)"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/purchase-requests/{requestId}": {
       "get": {
         "operationId": "getPurchaseRequest",
@@ -106132,7 +106347,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Kalemler, bütçe kalanı bilgisi (plan, onaylanmış ve bekleyen talepler, kalan; K-131), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -106395,13 +106610,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -106410,18 +106631,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [
@@ -106981,13 +107210,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -106996,18 +107231,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [
@@ -107194,7 +107437,30 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Taslak talebi onaya gönderir. Bütçe dönemi açık olmalıdır: 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Yanıt bütçe kalanını bilgi olarak taşır, aşım engellenmez (K-131, ON-245). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "confirmOverBudget": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "schema": {
@@ -107477,13 +107743,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -107492,18 +107764,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [
@@ -107690,7 +107970,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.",
+        "description": "Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -107698,6 +107978,9 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "confirmOverBudget": {
+                    "type": "boolean"
+                  },
                   "note": {
                     "default": null,
                     "anyOf": [
@@ -107998,13 +108281,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -108013,18 +108302,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [
@@ -108515,13 +108812,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -108530,18 +108833,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [
@@ -109032,13 +109343,19 @@
                               "maximum": 9007199254740991,
                               "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
                             },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: onaylanmış ve kararı bekleyen talepler (K-145)"
+                            },
                             "remainingCents": {
                               "anyOf": [
                                 {
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "Plan eksi onaylanmış talepler; plan yoksa boş"
+                                  "description": "Plan eksi taahhüt; plan yoksa boş, eksi olabilir"
                                 },
                                 {
                                   "type": "null"
@@ -109047,18 +109364,26 @@
                             },
                             "exceedsRemaining": {
                               "type": "boolean",
-                              "description": "Talep kalanı aşıyor mu; yalnız bilgi (ON-245)"
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
                             }
                           },
                           "required": [
                             "plannedCents",
                             "approvedCents",
                             "pendingCents",
+                            "committedCents",
                             "remainingCents",
-                            "exceedsRemaining"
+                            "exceedsRemaining",
+                            "overrunCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Bütçe kalanı bilgisi (K-131)"
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
                         },
                         "submittedByName": {
                           "type": [

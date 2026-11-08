@@ -536,37 +536,17 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
     assert.equal((await get(CUSTOMERS, t.admin)).json().meta.total, 1)
   })
 
-  /** Etkin kur ve bir grubu; `enroll` kursiyeri verilen anda gruba yazar, kur kaydı kimliğini döner. */
-  async function courseGroup(t: Tenant, courseName: string, room = 'A1') {
+  /** Kurun bir grubu (kendi öğretmeniyle); `enroll` kursiyeri verilen anda gruba yazar. */
+  async function addGroup(t: Tenant, courseId: string, name: string, room: string) {
     const teacher = await createMember(app, t.id, 'ogretmen')
-    const course = await ok(
-      await call(
-        'POST',
-        '/api/v1/courses',
-        t.admin,
-        {
-          name: courseName,
-          level: 'B1',
-          totalHours: 8,
-          weeklyHours: 2,
-          minLearners: 1,
-          maxLearners: 12,
-        },
-        key(),
-      ),
-      201,
-    )
-    await ok(
-      await call('POST', `/api/v1/courses/${String(course.id)}/activate`, t.admin, {}, ifMatch(1)),
-    )
     const group = await ok(
       await call(
         'POST',
         '/api/v1/groups',
         t.admin,
         {
-          courseId: course.id,
-          name: `${courseName} grubu`,
+          courseId,
+          name,
           ageBand: 'adult',
           teacherMembershipId: teacher.membershipId,
           delivery: 'in_person',
@@ -596,6 +576,33 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
       return enrollmentId
     }
     return { teacher, groupId, enroll }
+  }
+
+  /** Etkin kur ve bir grubu; `sibling` aynı kura ikinci grup açar (birleştirme için). */
+  async function courseGroup(t: Tenant, courseName: string, room = 'A1') {
+    const course = await ok(
+      await call(
+        'POST',
+        '/api/v1/courses',
+        t.admin,
+        {
+          name: courseName,
+          level: 'B1',
+          totalHours: 8,
+          weeklyHours: 2,
+          minLearners: 1,
+          maxLearners: 12,
+        },
+        key(),
+      ),
+      201,
+    )
+    const courseId = String(course.id)
+    await ok(await call('POST', `/api/v1/courses/${courseId}/activate`, t.admin, {}, ifMatch(1)))
+    const group = await addGroup(t, courseId, `${courseName} grubu`, room)
+    const sibling = (siblingRoom: string) =>
+      addGroup(t, courseId, `${courseName} grubu ${siblingRoom}`, siblingRoom)
+    return { ...group, sibling }
   }
 
   test('DOM-DIL-093: katılım özeti yalnız etkin bağlı kursiyerin devamını ve kur sonucunu verir', async () => {
@@ -707,6 +714,37 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
     assert.equal(file.statusCode, 200, file.body)
     assert.equal(file.body.includes('Kendi ödediği kur'), false)
     assert.equal(file.body.split('\r\n').length, 3)
+  })
+
+  test('DOM-FIN-060, DOM-DIL-093: grup birleştirmesi bağdan önce başlayan kur kaydını özete sokmaz', async () => {
+    const t = await institution()
+    const customerId = String((await createCustomer(t)).id)
+    await ok(await link(t, customerId, 's3'), 201)
+    await ok(await link(t, customerId, OTHER), 201)
+    // s3 kura bağdan önce (20 Ağustos) kendi ödeyerek, OTHER bağdan sonra katıldı.
+    const target = await courseGroup(t, 'Birleşen kur', 'B1')
+    const source = await target.sibling('B2')
+    await source.enroll('s3', new Date('2026-08-20T09:00:00.000Z'))
+    await source.enroll(OTHER, new Date('2026-09-15T09:00:00.000Z'))
+    // Birleştirme kaynak kaydı arşivler, hedefe katılma anı "şimdi" olan yeni kayıt yazar.
+    const merged = await call(
+      'POST',
+      `/api/v1/groups/${target.groupId}/merge`,
+      t.admin,
+      { sourceGroupId: source.groupId, sourceVersion: 1 },
+      ifMatch(1),
+    )
+    assert.equal(merged.statusCode, 200, merged.body)
+
+    const report = await ok(await get(`${CUSTOMERS}/${customerId}/attendance-report`, t.admin))
+    const courses = new Map(
+      (report.employees as Json[]).map((employee) => [
+        employee.studentId,
+        (employee.enrollments as Json[]).map((row) => row.courseName),
+      ]),
+    )
+    assert.deepEqual(courses.get('s3'), [])
+    assert.deepEqual(courses.get(OTHER), ['Birleşen kur'])
   })
 
   test('IST-002: başka kurumun şirketi, bağı ve faturası 404, listede yok, B değişmez', async () => {

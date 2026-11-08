@@ -602,8 +602,9 @@ export function cancelCorporateInvoiceCommand(
 /**
  * Şirkete bugün etkin bağlı kursiyerlerin kur kayıtları (DOM-FIN-060, DOM-DIL-093, K-49): yalnız devam
  * saatleri, oran, devam şartı ve onaylı kur sonucu. Bağ bugünü kapsamalıdır (başlangıcı ya da bitişi
- * ileri tarihli olabilir); kur kaydı bağın içinde başlamalıdır ki bağdan önceki, kursiyerin kendi
- * ödediği kur işverene gitmesin. Gerekçe, puan ve özür bilgisi okunsa da satıra girmez.
+ * ileri tarihli olabilir); kur kaydı bağın içinde başlamalıdır (ilk katılma günü; grup birleştirmesi
+ * başlangıcı değiştirmez) ki bağdan önceki, kursiyerin kendi ödediği kur işverene gitmesin.
+ * Gerekçe, puan ve özür bilgisi okunsa da satıra girmez.
  */
 async function attendanceReport(ctx: ServiceContext, customerId: string) {
   const customer = await customerOf(ctx.db, ctx, customerId)
@@ -617,7 +618,7 @@ async function attendanceReport(ctx: ServiceContext, customerId: string) {
     await loadEnrollmentsOfStudents(ctx.db, ctx.institutionId, studentIds)
   ).filter((row) => {
     const link = linkOf.get(row.studentId)
-    return link !== undefined && linkCovers(link, dayKey(row.joinedAt))
+    return link !== undefined && linkCovers(link, dayKey(row.startedAt))
   })
   const enrollmentIds = enrollments.map((row) => row.enrollmentId)
   const [attendance, decisions, names] = await Promise.all([

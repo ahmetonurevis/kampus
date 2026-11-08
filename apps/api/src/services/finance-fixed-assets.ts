@@ -14,6 +14,11 @@ import {
 
 import type { Database } from '../db/client.ts'
 import {
+  loadAssignmentState,
+  loadOpenAssignments,
+  type StoredAssignment,
+} from '../db/finance-fixed-asset-assignments.ts'
+import {
   findFixedAsset,
   insertFixedAsset,
   isFixedAssetTagTaken,
@@ -58,7 +63,11 @@ const draftOf = (asset: StoredFixedAsset): FixedAssetDraft =>
   Object.fromEntries(DRAFT_KEYS.map((key) => [key, asset[key]])) as FixedAssetDraft
 
 /** Kampüs adları (`branches` kaydı); arşivlenen kampüs adsız (`null`) döner. */
-async function campusNames(db: Database, institutionId: string, ids: readonly (string | null)[]) {
+export async function campusNames(
+  db: Database,
+  institutionId: string,
+  ids: readonly (string | null)[],
+) {
   const wanted = [...new Set(ids.filter((id): id is string => id !== null))]
   const rows = await loadRecordsByIds(db, institutionId, 'branches', wanted)
   return new Map(
@@ -66,7 +75,48 @@ async function campusNames(db: Database, institutionId: string, ids: readonly (s
   )
 }
 
-function listView(asset: StoredFixedAsset, campuses: ReadonlyMap<string, string>) {
+/** Açık zimmetin özeti (DOM-FIN-086): teslim alan personel ya da konum; zimmetsizse `null`. */
+function holderView(
+  assignment: StoredAssignment | undefined,
+  campuses: ReadonlyMap<string, string>,
+) {
+  if (assignment === undefined) return null
+  return {
+    id: assignment.id,
+    assigneeType: assignment.assigneeType,
+    membershipId: assignment.membershipId,
+    staffName: assignment.staffName,
+    staffActive: assignment.staffActive,
+    campusId: assignment.campusId,
+    campusName: assignment.campusId === null ? null : (campuses.get(assignment.campusId) ?? null),
+    location: assignment.location,
+    assignedDate: assignment.assignedDate,
+  }
+}
+
+/** Demirbaşların açık zimmetleri ve listede geçen bütün kampüslerin adları. */
+async function holdersAndCampuses(
+  db: Database,
+  institutionId: string,
+  assets: readonly StoredFixedAsset[],
+) {
+  const holders = await loadOpenAssignments(
+    db,
+    institutionId,
+    assets.map((asset) => asset.id),
+  )
+  const campuses = await campusNames(db, institutionId, [
+    ...assets.map((asset) => asset.campusId),
+    ...[...holders.values()].map((holder) => holder.campusId),
+  ])
+  return { holders, campuses }
+}
+
+function listView(
+  asset: StoredFixedAsset,
+  campuses: ReadonlyMap<string, string>,
+  holders: ReadonlyMap<string, StoredAssignment>,
+) {
   return {
     id: asset.id,
     tagNumber: asset.tagNumber,
@@ -82,13 +132,14 @@ function listView(asset: StoredFixedAsset, campuses: ReadonlyMap<string, string>
     receiptItemId: asset.receiptItemId,
     status: asset.status,
     scrapDate: asset.scrapDate,
+    assignment: holderView(holders.get(asset.id), campuses),
     version: asset.version,
   }
 }
 
 async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedAsset) {
-  const [campuses, receipts] = await Promise.all([
-    campusNames(db, ctx.institutionId, [asset.campusId]),
+  const [{ campuses, holders }, receipts] = await Promise.all([
+    holdersAndCampuses(db, ctx.institutionId, [asset]),
     loadReceiptItemViews(
       db,
       ctx.institutionId,
@@ -97,7 +148,7 @@ async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedA
   ])
   const receipt = asset.receiptItemId === null ? null : receipts.get(asset.receiptItemId)
   return {
-    ...listView(asset, campuses),
+    ...listView(asset, campuses, holders),
     receipt:
       receipt === undefined || receipt === null
         ? null
@@ -130,12 +181,8 @@ const assetBody = async (tx: Database, ctx: ServiceContext, id: string) => ({
 
 export async function listFixedAssetsFor(ctx: ServiceContext, query: FixedAssetQuery) {
   const { items, total } = await listFixedAssets(ctx.db, ctx.institutionId, query)
-  const campuses = await campusNames(
-    ctx.db,
-    ctx.institutionId,
-    items.map((item) => item.campusId),
-  )
-  return { items: items.map((item) => listView(item, campuses)), total }
+  const { campuses, holders } = await holdersAndCampuses(ctx.db, ctx.institutionId, items)
+  return { items: items.map((item) => listView(item, campuses, holders)), total }
 }
 
 export async function getFixedAssetFor(ctx: ServiceContext, id: string) {
@@ -310,9 +357,11 @@ export function scrapFixedAssetCommand(
         const parsed = scrapFixedAssetSchema.parse(input)
         const current = await assetOf(tx, ctx, id)
         if (current.version !== expectedVersion) throw new ConflictError()
+        // Açık zimmetli demirbaş hurdaya ayrılmaz (DOM-FIN-086, K-213).
+        const assignments = await loadAssignmentState(tx, ctx.institutionId, id)
         return {
           run: () => {
-            planFixedAssetScrap(current, parsed, dayKey(ctx.now))
+            planFixedAssetScrap(current, parsed, dayKey(ctx.now), assignments)
             return parsed
           },
         }

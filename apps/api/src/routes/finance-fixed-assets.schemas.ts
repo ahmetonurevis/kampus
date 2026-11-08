@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { FIXED_ASSET_ASSIGNEE_TYPES } from '@kampus/school-core/lib/finance-fixed-asset-assignments.ts'
 import {
   FIXED_ASSET_CATEGORIES,
   FIXED_ASSET_STATUSES,
@@ -26,6 +27,20 @@ const fixedAssetListItemSchema = z.object({
   receiptItemId: z.string().nullable().describe('Bağlı mal kabul kalemi'),
   status: z.enum(FIXED_ASSET_STATUSES),
   scrapDate: z.string().nullable().describe('Hurdaya ayırma günü'),
+  assignment: z
+    .object({
+      id: z.string(),
+      assigneeType: z.enum(FIXED_ASSET_ASSIGNEE_TYPES),
+      membershipId: z.string().nullable(),
+      staffName: z.string().nullable().describe('Teslim alan personelin adı (yalnız yönetici)'),
+      staffActive: z.boolean().nullable().describe('Personel pasifleştirildiyse `false`'),
+      campusId: z.string().nullable(),
+      campusName: z.string().nullable(),
+      location: z.string().nullable(),
+      assignedDate: z.string().describe('Zimmet günü (YYYY-MM-DD)'),
+    })
+    .nullable()
+    .describe('Açık zimmet (DOM-FIN-086); zimmetsizse boş'),
   version,
 })
 export const fixedAssetListResponse = z.object({

@@ -45,12 +45,19 @@ type MethodRow = {
   collectedCents: number
   reversedCents: number
   refundCents: number
+  supplierCents: number
   netCents: number
 }
 type RefundRow = {
   id: string
   studentName: string
   bankAccount: string
+  amountCents: number
+}
+type SupplierRow = {
+  id: string
+  supplierName: string
+  invoiceNumber: string
   amountCents: number
 }
 type LineRow = {
@@ -67,15 +74,25 @@ type LineRow = {
 
 const METHOD_COLUMNS: readonly DataColumn<MethodRow>[] = [
   { key: 'label', label: 'Yöntem' },
-  { key: 'count', label: 'Tahsilat / iptal / iade adedi' },
+  { key: 'count', label: 'Tahsilat / iptal / iade / tedarikçi adedi' },
   { key: 'collectedCents', label: 'Tahsilat', cell: (row) => money(row.collectedCents) },
   { key: 'reversedCents', label: 'İptal', cell: (row) => money(row.reversedCents) },
   { key: 'refundCents', label: 'İade ödemesi', cell: (row) => money(row.refundCents) },
+  {
+    key: 'supplierCents',
+    label: 'Tedarikçi ödemesi',
+    cell: (row) => money(row.supplierCents),
+  },
   { key: 'netCents', label: 'Net', cell: (row) => money(row.netCents) },
 ]
 const REFUND_COLUMNS: readonly DataColumn<RefundRow>[] = [
   { key: 'studentName', label: 'Öğrenci' },
   { key: 'bankAccount', label: 'Kurum banka hesabı' },
+  { key: 'amountCents', label: 'Tutar', cell: (row) => money(row.amountCents) },
+]
+const SUPPLIER_COLUMNS: readonly DataColumn<SupplierRow>[] = [
+  { key: 'supplierName', label: 'Tedarikçi' },
+  { key: 'invoiceNumber', label: 'Fatura no' },
   { key: 'amountCents', label: 'Tutar', cell: (row) => money(row.amountCents) },
 ]
 const COLLECTED_COLUMNS: readonly DataColumn<LineRow>[] = [
@@ -106,12 +123,25 @@ const COLLECTED_NO_FILTERS = COLLECTED_COLUMNS.map((column) => column.key)
 const REVERSED_NO_FILTERS = REVERSED_COLUMNS.map((column) => column.key)
 const REFUND_NO_FILTERS = REFUND_COLUMNS.map((column) => column.key)
 const REFUND_MOBILE = ['studentName', 'amountCents']
+const SUPPLIER_NO_FILTERS = SUPPLIER_COLUMNS.map((column) => column.key)
+const SUPPLIER_MOBILE = ['supplierName', 'amountCents']
 /** Kayıtlı kişi sütunu kurum türünün terimini taşır: okulda öğrenci, dil okulu ve kursta kursiyer (DOM-KAY-012). */
 const withLearner = <Row extends { id: string; studentName: string }>(
   columns: readonly DataColumn<Row>[],
   learner: string,
 ) =>
   columns.map((column) => (column.key === 'studentName' ? { ...column, label: learner } : column))
+
+/** Tahsilat / iptal / iade / tedarikçi ödemesi adedi. */
+const countsOf = (item: {
+  collectedCount: number
+  reversedCount: number
+  refundPaidCount: number
+  supplierPaidCount: number
+}) =>
+  [item.collectedCount, item.reversedCount, item.refundPaidCount, item.supplierPaidCount]
+    .map(String)
+    .join(' / ')
 
 const validDay = (value: string | null, today: string) =>
   value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= today ? value : today
@@ -121,6 +151,15 @@ const refundRow = (line: FinanceDayReport['refunds'][number]): RefundRow => ({
   id: line.withdrawalId,
   studentName: line.studentName ?? '—',
   bankAccount: line.bankAccountLabel ?? '—',
+  amountCents: line.amountCents,
+})
+
+const supplierRow = (
+  line: NonNullable<FinanceDayReport['supplierPayments']>[number],
+): SupplierRow => ({
+  id: line.paymentId,
+  supplierName: line.supplierName,
+  invoiceNumber: line.invoiceNumber,
   amountCents: line.amountCents,
 })
 
@@ -140,7 +179,9 @@ function lineRow(line: FinanceDayReport['collected'][number]): LineRow {
 
 /**
  * Gün sonu (IST-113, DOM-FIN-036; Finans & Tahsilat `?gorunum=gunsonu`). O gün ödenen ayrılış
- * iadesi banka havalesi satırında ayrı sayılır ve netten düşer (M-13). Seçili gün adreste
+ * iadesi banka havalesi satırında ayrı sayılır ve netten düşer (M-13); kasadan ödenen tedarikçi
+ * ödemesi nakit satırında ayrı sayılır, netten ve beklenen nakitten düşer (K-166). Tedarikçi
+ * satırlarını yalnız tedarikçi carisini gören rol görür (K-191). Seçili gün adreste
  * (`?gun=`) durur. Rapor sunucudan gelir, rakam burada hesaplanmaz; yalnız kapanış penceresindeki
  * beklenen ve fark önizlemedir, kesin değeri sunucu yazar. Kapatma yönetici ve ön büro, yeniden
  * açma yalnız yönetici; kapatılan günün kaydı değişmez.
@@ -172,8 +213,8 @@ export function FinanceDayClosingSection({ canReopen }: { canReopen: boolean }) 
             Gün sonu
           </h2>
           <p className="text-sm text-muted-foreground">
-            Günün tahsilatları, iptaller, iade ödemeleri ve kasa sayımı. Kapatılan güne tahsilat ve
-            iade ödemesi girilemez.
+            Günün tahsilatları, iptaller, iade ve tedarikçi ödemeleri ve kasa sayımı. Kapatılan güne
+            tahsilat, iade ödemesi ve nakit tedarikçi ödemesi girilemez.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -259,19 +300,21 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
       ...summary.methods.map((item) => ({
         id: item.method,
         label: PAYMENT_METHOD_LABELS[item.method],
-        count: `${String(item.collectedCount)} / ${String(item.reversedCount)} / ${String(item.refundPaidCount)}`,
+        count: countsOf(item),
         collectedCents: item.collectedCents,
         reversedCents: item.reversedCents,
         refundCents: item.refundPaidCents,
+        supplierCents: item.supplierPaidCents,
         netCents: item.netCents,
       })),
       {
         id: 'toplam',
         label: 'Toplam',
-        count: `${String(summary.collectedCount)} / ${String(summary.reversedCount)} / ${String(summary.refundPaidCount)}`,
+        count: countsOf(summary),
         collectedCents: summary.collectedCents,
         reversedCents: summary.reversedCents,
         refundCents: summary.refundPaidCents,
+        supplierCents: summary.supplierPaidCents,
         netCents: summary.netCents,
       },
     ],
@@ -280,6 +323,10 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
   const collectedRows = useMemo(() => report.collected.map(lineRow), [report.collected])
   const reversedRows = useMemo(() => report.reversed.map(lineRow), [report.reversed])
   const refundRows = useMemo(() => report.refunds.map(refundRow), [report.refunds])
+  const supplierRows = useMemo(
+    () => report.supplierPayments?.map(supplierRow) ?? null,
+    [report.supplierPayments],
+  )
   const learner = useEnrollmentLearner()
   const collectedColumns = useMemo(() => withLearner(COLLECTED_COLUMNS, learner.title), [learner])
   const reversedColumns = useMemo(() => withLearner(REVERSED_COLUMNS, learner.title), [learner])
@@ -304,7 +351,16 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
             value: money(summary.refundPaidCents),
             note: `${String(summary.refundPaidCount)} işlem`,
           },
-          { label: 'Net', value: money(summary.netCents), note: 'Tahsilat − iptal − iade' },
+          {
+            label: 'Tedarikçi ödemesi',
+            value: money(summary.supplierPaidCents),
+            note: `${String(summary.supplierPaidCount)} işlem, kasadan`,
+          },
+          {
+            label: 'Net',
+            value: money(summary.netCents),
+            note: 'Tahsilat − iptal − iade − tedarikçi',
+          },
           { label: 'Net nakit', value: money(report.cashNetCents) },
         ]}
       />
@@ -366,6 +422,31 @@ function DayReport({ report, canReopen }: { report: FinanceDayReport; canReopen:
           excludeFilters={REFUND_NO_FILTERS}
           empty="Bu gün iade ödemesi yok."
         />
+      </div>
+      <div className="grid gap-2">
+        <h3 className="text-base font-semibold">Tedarikçi ödemeleri</h3>
+        <p className="text-sm text-muted-foreground">
+          Kasadan nakit ödenen tedarikçi ödemesi ödeme gününe yazılır, netten ve beklenen nakitten
+          düşer; iptal edilen ödeme bu listeden çıkar.
+        </p>
+        {supplierRows === null ? (
+          <p className="text-sm text-muted-foreground">
+            {summary.supplierPaidCount > 0
+              ? `${String(summary.supplierPaidCount)} nakit tedarikçi ödemesi var. Ayrıntısı tedarikçi carisini yöneten yöneticide görünür.`
+              : 'Bu gün nakit tedarikçi ödemesi yok.'}
+          </p>
+        ) : (
+          <DataTable
+            listKey={`gun-sonu-tedarikci-${closingDate}`}
+            rows={supplierRows}
+            columns={SUPPLIER_COLUMNS}
+            mobileColumns={SUPPLIER_MOBILE}
+            caption="Günün nakit tedarikçi ödemeleri"
+            search={false}
+            excludeFilters={SUPPLIER_NO_FILTERS}
+            empty="Bu gün nakit tedarikçi ödemesi yok."
+          />
+        )}
       </div>
       {report.history.length > 0 ? <ClosingHistory history={report.history} /> : null}
     </>
@@ -546,7 +627,7 @@ function CloseDayModal({ report, onClose }: { report: FinanceDayReport; onClose:
       open
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Günü kapat"
-      description={`${dateLabel(`${report.closingDate}T09:00:00.000Z`, { year: 'numeric' })} · Net ${money(report.summary.netCents)}. Kapatılan güne tahsilat ve iade ödemesi girilemez; yalnız yönetici yeniden açabilir.`}
+      description={`${dateLabel(`${report.closingDate}T09:00:00.000Z`, { year: 'numeric' })} · Net ${money(report.summary.netCents)}. Kapatılan güne tahsilat, iade ödemesi ve nakit tedarikçi ödemesi girilemez; yalnız yönetici yeniden açabilir.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>

@@ -42,6 +42,13 @@ const refund = (index: number) => ({
   paidDate: DAY,
   bankAccountLabel: 'Örnek Bankası · 7890',
 })
+const supplierLine = (index: number) => ({
+  paymentId: `s${String(index)}`,
+  supplierName: 'Alfa Bilişim A.Ş.',
+  invoiceNumber: `ABC${String(index)}`,
+  amountCents: 8_000,
+  paidDate: DAY,
+})
 const closing = (overrides: Partial<NonNullable<FinanceDayReport['closing']>> = {}) => ({
   id: 'k1',
   closingDate: DAY,
@@ -148,13 +155,62 @@ test('M-13, DOM-FIN-036: iade ödemesi özet ve yöntem tablosunda ayrı sütun,
     'Örnek Bankası · 7890',
     money(12_500),
     money(30_000 - 12_500),
-    '1/0/1',
+    '1/0/1/0',
   ])
     assert.ok(all.includes(text), text)
   // İade ödenmeyen günde bölüm yoktur; tutar özette sıfır görünür.
   const empty = allTexts(financeDayClosingDocument(measurer, report(), OPTIONS))
   assert.ok(empty.includes('İADE ÖDEMESİ'))
   assert.equal(empty.includes('İade ödemeleri'), false)
+})
+
+test('K-166, DOM-FIN-036: nakit tedarikçi ödemesi özette ve nakit satırında ayrı sütun, satırda tedarikçi ve faturayla yazılır', () => {
+  const summary = financeDaySummary(
+    [line(1)],
+    DAY,
+    [],
+    [{ amountCents: 8_000, paidDate: DAY, method: 'cash', cancelledAt: null }],
+  )
+  const all = allTexts(
+    financeDayClosingDocument(
+      measurer,
+      report({ summary, supplierPayments: [supplierLine(1)] }),
+      OPTIONS,
+    ),
+  )
+  for (const text of [
+    'TEDARİKÇİ ÖDEMESİ',
+    'Tedarikçi',
+    'Tedarikçi ödemeleri (nakit)',
+    'Alfa Bilişim A.Ş.',
+    'ABC1',
+    money(8_000),
+    money(30_000 - 8_000),
+    '1/0/0/1',
+  ])
+    assert.ok(all.includes(text), text)
+  // Ödemesiz günde bölüm yoktur; tutar özette sıfır görünür.
+  const empty = allTexts(financeDayClosingDocument(measurer, report(), OPTIONS))
+  assert.ok(empty.includes('TEDARİKÇİ ÖDEMESİ'))
+  assert.equal(empty.includes('Tedarikçi ödemeleri (nakit)'), false)
+})
+
+test('K-191: tedarikçi satırı gelmeyen rolde PDF yalnız adedi yazar, tedarikçi adı yoktur', () => {
+  const summary = financeDaySummary(
+    [line(1)],
+    DAY,
+    [],
+    [
+      { amountCents: 8_000, paidDate: DAY, method: 'cash', cancelledAt: null },
+      { amountCents: 2_000, paidDate: DAY, method: 'cash', cancelledAt: null },
+    ],
+  )
+  const all = allTexts(
+    financeDayClosingDocument(measurer, report({ summary, supplierPayments: null }), OPTIONS),
+  ).join(' ')
+  assert.ok(all.includes('Tedarikçi ödemeleri (nakit)'))
+  assert.ok(all.includes('2 nakit tedarikçi ödemesi var'))
+  assert.equal(all.includes('Alfa'), false)
 })
 
 test('DOM-FIN-032: nakit sayılmayan kapanış bunu açıkça yazar; boş gün bildirilir', () => {
@@ -237,7 +293,13 @@ test('ON-322, IST-113, DOM-FIN-036: imza alanı hiçbir gün sonunda tek başın
   for (const variant of variants)
     for (let collected = 0; collected <= 45; collected += 1)
       for (const reversed of [0, 1, 2, 6])
-        for (const refunds of [0, 1, 3]) {
+        for (const [refunds, suppliers] of [
+          [0, 0],
+          [1, 0],
+          [3, 0],
+          [0, 1],
+          [1, 3],
+        ] as const) {
           const day = report({
             ...variant,
             collected: Array.from({ length: collected }, (_, index) => line(index)),
@@ -245,10 +307,11 @@ test('ON-322, IST-113, DOM-FIN-036: imza alanı hiçbir gün sonunda tek başın
               line(100 + index, { reversalReason: 'Yanlış kayıt' }),
             ),
             refunds: Array.from({ length: refunds }, (_, index) => refund(index)),
+            supplierPayments: Array.from({ length: suppliers }, (_, index) => supplierLine(index)),
           })
           const document = financeDayClosingDocument(measurer, day, OPTIONS)
           const last = bodyTexts(document.pages.at(-1)!)
-          const name = `${JSON.stringify(Object.keys(variant))} ${String(collected)}/${String(reversed)}/${String(refunds)}`
+          const name = `${JSON.stringify(Object.keys(variant))} ${String(collected)}/${String(reversed)}/${String(refunds)}/${String(suppliers)}`
           assert.deepEqual(last.slice(-2), SIGNATURE, name)
           assert.ok(last.length > SIGNATURE.length, name)
           // Belge içeriği kaybolmaz: her tahsilat, iptal ve iade satırı yazılır.
@@ -259,5 +322,6 @@ test('ON-322, IST-113, DOM-FIN-036: imza alanı hiçbir gün sonunda tek başın
             name,
           )
           assert.equal(all.filter((text) => text === 'Ece Yılmaz').length, refunds, name)
+          assert.equal(all.filter((text) => text === 'Alfa Bilişim A.Ş.').length, suppliers, name)
         }
 })

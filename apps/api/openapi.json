@@ -99182,7 +99182,7 @@
         "tags": [
           "finance-board-report"
         ],
-        "description": "Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.",
+        "description": "Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Bütçe bölümleri (ON-329): `budgetPeriodId` bütçe dönemini seçer; verilmezse rapor dönemiyle en çok gün örtüşen açık ya da kapalı dönem, yoksa taslak dönem alınır (`budgetPeriod.selection`), uyan yoksa `budgetPeriod`, `budget` ve `costs` `null` gelir. `budget` dönemin bütçe–gerçekleşen özetidir (DOM-FIN-066, tahakkuk esası): gelir ve gider toplamı, gerçekleşme oranı ve en çok sapan beş kalem; gider gerçekleşeni kaynağı yoksa `expenseData` `none`, gider gerçekleşeni `null`. `costs` kampüs konsolide özet ve öğrenci başı maliyettir (DOM-FIN-065); 1–4 kişilik kampüsün sayısı ve tutarları `null`, `suppressed: true` gelir, toplamdan geri hesaplanmasın diye en küçük görünür kampüs de gizlenir, gerekirse kırılımın tamamı (K-116); kurum toplamı gizlenmez. `forecast` bugün itibarıyla gelecek eğitim yılının gelir tahmini ve 12 aylık nakit akışıdır (DOM-FIN-063). Kurumda olmayan bütçe dönemi 422 `board_report_budget_period_not_found`. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -99225,6 +99225,17 @@
             "name": "to",
             "required": false,
             "description": "Elle dönem bitişi (YYYY-MM-DD)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "budgetPeriodId",
+            "required": false,
+            "description": "Bütçe ve maliyet bölümlerinin bütçe dönemi; verilmezse rapor dönemine uyan dönem"
           }
         ],
         "responses": {
@@ -99904,6 +99915,868 @@
                             }
                           ],
                           "description": "Dönemde açılan adayların hunisi (DOM-KAY-040); `crm` kapalıysa `null`"
+                        },
+                        "budgetPeriods": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "open",
+                                  "closed"
+                                ]
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "status",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kurumun arşivlenmemiş bütçe dönemleri (seçim için), yeniden eskiye"
+                        },
+                        "budgetPeriod": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "open",
+                                    "closed"
+                                  ]
+                                },
+                                "startDate": {
+                                  "type": "string"
+                                },
+                                "endDate": {
+                                  "type": "string"
+                                },
+                                "selection": {
+                                  "type": "string",
+                                  "enum": [
+                                    "chosen",
+                                    "matched"
+                                  ],
+                                  "description": "`chosen`: `budgetPeriodId` ile seçildi; `matched`: rapor dönemine göre bulundu"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "status",
+                                "startDate",
+                                "endDate",
+                                "selection"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bütçe ve maliyet bölümlerinin dönemi; uyan dönem yoksa `null`"
+                        },
+                        "budget": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "type": "string",
+                                  "enum": [
+                                    "accrual",
+                                    "cash"
+                                  ]
+                                },
+                                "asOfDate": {
+                                  "description": "Hareketlerin sayıldığı son gün; başlamadıysa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "expenseData": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "available"
+                                  ],
+                                  "description": "`none`: gider gerçekleşeni kaynağı yok (veri yok)"
+                                },
+                                "income": {
+                                  "type": "object",
+                                  "properties": {
+                                    "plannedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dönem planı"
+                                    },
+                                    "plannedToDateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Bugüne kadarki ayların planı; dağılımsız satır varken dönem bitmediyse `null`"
+                                    },
+                                    "actualCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen; hesaplanmıyorsa (veri yok) `null`"
+                                    },
+                                    "varianceCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen − dönem planı"
+                                    },
+                                    "realizationBasisPoints": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen ÷ dönem planı, on binde bir"
+                                    },
+                                    "unmatchedCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Kaleme eşlenmemiş gelir"
+                                    }
+                                  },
+                                  "required": [
+                                    "plannedCents",
+                                    "plannedToDateCents",
+                                    "actualCents",
+                                    "varianceCents",
+                                    "realizationBasisPoints",
+                                    "unmatchedCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "expense": {
+                                  "type": "object",
+                                  "properties": {
+                                    "plannedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dönem planı"
+                                    },
+                                    "plannedToDateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Bugüne kadarki ayların planı; dağılımsız satır varken dönem bitmediyse `null`"
+                                    },
+                                    "actualCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen; hesaplanmıyorsa (veri yok) `null`"
+                                    },
+                                    "varianceCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen − dönem planı"
+                                    },
+                                    "realizationBasisPoints": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen ÷ dönem planı, on binde bir"
+                                    }
+                                  },
+                                  "required": [
+                                    "plannedCents",
+                                    "plannedToDateCents",
+                                    "actualCents",
+                                    "varianceCents",
+                                    "realizationBasisPoints"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "net": {
+                                  "type": "object",
+                                  "properties": {
+                                    "plannedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "actualCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "plannedCents",
+                                    "actualCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "topVariances": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemCode": {
+                                        "type": "string"
+                                      },
+                                      "itemName": {
+                                        "type": "string"
+                                      },
+                                      "itemKind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "income",
+                                          "expense"
+                                        ]
+                                      },
+                                      "plannedCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "plannedToDateCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "actualCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "varianceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Gerçekleşen − karşılaştırma planı"
+                                      },
+                                      "realizationBasisPoints": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "On binde bir; payda sıfırsa `null`"
+                                      },
+                                      "comparedTo": {
+                                        "type": "string",
+                                        "enum": [
+                                          "to_date",
+                                          "period"
+                                        ],
+                                        "description": "`to_date`: bugüne kadarki plan; `period`: dönem planı"
+                                      }
+                                    },
+                                    "required": [
+                                      "itemCode",
+                                      "itemName",
+                                      "itemKind",
+                                      "plannedCents",
+                                      "plannedToDateCents",
+                                      "actualCents",
+                                      "varianceCents",
+                                      "realizationBasisPoints",
+                                      "comparedTo"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "En çok sapan kalemler (merkezler toplanır), en çok 5"
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "asOfDate",
+                                "expenseData",
+                                "income",
+                                "expense",
+                                "net",
+                                "topVariances"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bütçe–gerçekleşen özeti (DOM-FIN-066, tahakkuk esası); bütçe dönemi yoksa `null`"
+                        },
+                        "costs": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string"
+                                },
+                                "to": {
+                                  "type": "string"
+                                },
+                                "minGroupSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "campuses": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "campusId": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "studentCount": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "accruedCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "netCollectedCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "budgetExpenseCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli hücrede `null`"
+                                      },
+                                      "accruedPerStudentCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gizli, 5 kişiden az ya da öğrencisiz `null`"
+                                      },
+                                      "budgetExpensePerStudentCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Öğrenci başı maliyet; gizli, 5 kişiden az ya da öğrencisiz `null`"
+                                      },
+                                      "suppressed": {
+                                        "type": "boolean",
+                                        "description": "Küçük grup (K-116): 1–4 kişilik kampüs, toplamdan geri hesaplanmasın diye ikincil gizlenen ya da tamamı gizli kırılım; sayı ve tutarlar `null`"
+                                      }
+                                    },
+                                    "required": [
+                                      "campusId",
+                                      "name",
+                                      "studentCount",
+                                      "accruedCents",
+                                      "netCollectedCents",
+                                      "budgetExpenseCents",
+                                      "accruedPerStudentCents",
+                                      "budgetExpensePerStudentCents",
+                                      "suppressed"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Kampüs satırları; kişi sayısı kurul raporunun küçük grup kuralıyla gizlenir"
+                                },
+                                "totals": {
+                                  "type": "object",
+                                  "properties": {
+                                    "studentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "accruedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "netCollectedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tahsilat − iptal − iade"
+                                    },
+                                    "budgetExpenseCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Bütçe gideri (ortak gider payı dahil)"
+                                    },
+                                    "accruedPerStudentCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "5 kişiden az ya da öğrencisiz `null`"
+                                    },
+                                    "budgetExpensePerStudentCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Öğrenci başı maliyet; 5 kişiden az ya da öğrencisiz `null`"
+                                    },
+                                    "suppressed": {
+                                      "type": "boolean",
+                                      "description": "Küçük grup: öğrenci başı değer gizli (K-102)"
+                                    }
+                                  },
+                                  "required": [
+                                    "studentCount",
+                                    "accruedCents",
+                                    "netCollectedCents",
+                                    "budgetExpenseCents",
+                                    "accruedPerStudentCents",
+                                    "budgetExpensePerStudentCents",
+                                    "suppressed"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Kurum geneli toplam; gizlenmez"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to",
+                                "minGroupSize",
+                                "campuses",
+                                "totals"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kampüs konsolide özet ve öğrenci başı maliyet (DOM-FIN-065); bütçe dönemi yoksa `null`"
+                        },
+                        "forecast": {
+                          "type": "object",
+                          "properties": {
+                            "today": {
+                              "type": "string"
+                            },
+                            "revenue": {
+                              "type": "object",
+                              "properties": {
+                                "year": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Tahmin yılı: bugünün eğitim yılından sonraki yıl"
+                                },
+                                "committedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "newEnrollmentCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "renewalCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "pipelineNetCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Huni beklentisi; huni yoksa `null`"
+                                },
+                                "pipelineStatus": {
+                                  "type": "string",
+                                  "enum": [
+                                    "included",
+                                    "crm_disabled",
+                                    "past_year"
+                                  ]
+                                },
+                                "expectedTotalCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "discountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "scholarshipCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "tariffYear": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "year",
+                                "committedCents",
+                                "newEnrollmentCents",
+                                "renewalCents",
+                                "pipelineNetCents",
+                                "pipelineStatus",
+                                "expectedTotalCents",
+                                "discountCents",
+                                "scholarshipCents",
+                                "tariffYear"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "cashFlow": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string"
+                                },
+                                "to": {
+                                  "type": "string"
+                                },
+                                "months": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "month": {
+                                        "type": "string",
+                                        "description": "`YYYY-MM`"
+                                      },
+                                      "expectedInCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Beklenen tahsilat + gecikmişten geç tahsil"
+                                      },
+                                      "refundCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "expenseCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gider verisi yoksa `null`"
+                                      },
+                                      "netCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "cumulativeNetCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "month",
+                                      "expectedInCents",
+                                      "refundCents",
+                                      "expenseCents",
+                                      "netCents",
+                                      "cumulativeNetCents"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "totals": {
+                                  "type": "object",
+                                  "properties": {
+                                    "scheduledCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "expectedInCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "atRiskCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "refundCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "expenseCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "netCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "scheduledCents",
+                                    "expectedInCents",
+                                    "atRiskCents",
+                                    "refundCents",
+                                    "expenseCents",
+                                    "netCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "overdueOpenCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "pendingRefundCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "onTimeRateBasisPoints": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "expenseSource": {
+                                  "type": "string",
+                                  "enum": [
+                                    "manual",
+                                    "none"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to",
+                                "months",
+                                "totals",
+                                "overdueOpenCents",
+                                "pendingRefundCents",
+                                "onTimeRateBasisPoints",
+                                "expenseSource"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "today",
+                            "revenue",
+                            "cashFlow"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Gelecek yıl gelir tahmini ve 12 aylık nakit akışı (DOM-FIN-063), bugün itibarıyla"
                         }
                       },
                       "required": [
@@ -99914,7 +100787,12 @@
                         "terms",
                         "finance",
                         "enrollment",
-                        "funnel"
+                        "funnel",
+                        "budgetPeriods",
+                        "budgetPeriod",
+                        "budget",
+                        "costs",
+                        "forecast"
                       ],
                       "additionalProperties": false
                     }

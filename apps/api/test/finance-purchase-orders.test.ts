@@ -27,8 +27,8 @@ import {
 
 /**
  * Satın alma teklifi ve siparişi uçları (DOM-FIN-072, DOM-FIN-073; ON-224, ON-225). Her test kendi
- * kurumunu kurar: birim, gider kalemi, açık dönem, iki şirket ve bir şahıs tedarikçi, onaylanmış
- * iki kalemli talep (10 klavye, 3 fare). FIXED_NOW 2026-10-06.
+ * kurumunu kurar: birim, gider kalemi, açık dönem ve 10.000 TL'lik bütçe satırı, iki şirket ve bir
+ * şahıs tedarikçi, onaylanmış iki kalemli talep (10 klavye, 3 fare). FIXED_NOW 2026-10-06.
  */
 
 const FINANCE = '/api/v1/finance'
@@ -107,6 +107,13 @@ describe('DOM-FIN-072, DOM-FIN-073: teklif ve sipariş uçları', () => {
         ifMatch(period.version),
       ),
     )
+    // Talep tutarı (2.950 TL) bütçe satırının içinde kalır; gönderim ve onay bütçe uyarısı
+    // vermez (ON-245, K-145…K-148).
+    await post(`/budget-periods/${String(period.id)}/lines`, {
+      costCenterId: center.id,
+      itemId: expense.id,
+      amountCents: 1_000_000,
+    })
     const supplier = (name: string, taxNumber: string, extra: Json = {}) =>
       post('/suppliers', {
         name,

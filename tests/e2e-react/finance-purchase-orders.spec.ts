@@ -22,7 +22,7 @@ const dayFromNow = (days: number) =>
   new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 const validUntil = () => dayFromNow(30)
 
-/** Bütçe, iki tedarikçi, onaylı tek kalemli talep ve Beta'nın ucuz teklifi API'den kurulur. */
+/** Bütçe ve 10.000 TL satır, iki tedarikçi, onaylı tek kalemli talep ve Beta'nın ucuz teklifi API'den kurulur. */
 async function seedApprovedRequest(school: Tenant) {
   const api = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
   try {
@@ -56,6 +56,14 @@ async function seedApprovedRequest(school: Tenant) {
         ifMatch(period.version),
       ),
       200,
+    )
+    // Talep tutarı bütçe satırının içinde kalır; gönderim ve onay bütçe uyarısı vermez (ON-245).
+    ok(
+      await api.post(`/api/v1/finance/budget-periods/${period.id}/lines`, {
+        costCenterId: center.id,
+        itemId: item.id,
+        amountCents: 1_000_000,
+      }),
     )
     const supplier = (name: string, taxNumber: string) =>
       api.post('/api/v1/finance/suppliers', {

@@ -90,6 +90,15 @@ describe('PostgreSQL 16: satın alma siparişi eşzamanlılığı', { skip: PG_S
         ifMatch(period.version),
       ),
     )
+    // Talepler bütçe satırının içinde kalır; gönderim bütçe uyarısı vermez (ON-245).
+    await ok(
+      await post(`/budget-periods/${String(period.id)}/lines`, {
+        costCenterId: center.id,
+        itemId: item.id,
+        amountCents: 1_000_000,
+      }),
+      201,
+    )
     const supplier = await ok(
       await post('/suppliers', {
         name: 'Alfa Bilişim A.Ş.',

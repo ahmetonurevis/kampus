@@ -41896,6 +41896,8 @@ export interface operations {
                                 netCents: number;
                                 unpricedProspects: number;
                                 unratedProspects: number;
+                                /** @description Beklentiye giren adaylardan beklenen kesin kayıt (oranların toplamı; kesirli) */
+                                expectedEnrollments: number;
                             } | null;
                             expectedTotalCents: number;
                             assumptions: {

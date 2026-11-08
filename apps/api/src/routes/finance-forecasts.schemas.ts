@@ -59,6 +59,12 @@ export const revenueForecastResponseSchema = dataResponse(
         netCents: cents,
         unpricedProspects: count,
         unratedProspects: count,
+        expectedEnrollments: z
+          .number()
+          .min(0)
+          .describe(
+            'Beklentiye giren adaylardan beklenen kesin kayıt (oranların toplamı; kesirli)',
+          ),
       })
       .nullable()
       .describe('Huni beklentisi; geçmiş yılda ve `crm` kapalıyken `null`'),

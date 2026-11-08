@@ -88718,6 +88718,11 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "expectedEnrollments": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "description": "Beklentiye giren adaylardan beklenen kesin kayıt (oranların toplamı; kesirli)"
                                 }
                               },
                               "required": [
@@ -88727,7 +88732,8 @@
                                 "discountCents",
                                 "netCents",
                                 "unpricedProspects",
-                                "unratedProspects"
+                                "unratedProspects",
+                                "expectedEnrollments"
                               ],
                               "additionalProperties": false
                             },

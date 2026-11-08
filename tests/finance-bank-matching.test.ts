@@ -5,6 +5,7 @@ import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import {
   assertBankTransactionIgnored,
   assertBankTransactionOpen,
+  assertNoPossibleDuplicate,
   bankIgnoreSchema,
   bankMatchDirectory,
   bankMatchSchema,
@@ -69,6 +70,20 @@ describe('DOM-FIN-069: kimlik sinyalleri', () => {
     assert.deepEqual(top?.reasons, ['national_id', 'amount_exact'])
     assert.equal(top?.score, 90)
     assert.equal(JSON.stringify(top).includes('10000000146'), false)
+  })
+
+  test('DOM-FIN-069: boşluk, tire ya da noktayla gruplanmış kimlik no da tanınır; puan bitişik yazımla aynı', () => {
+    const contiguous = suggest('HAVALE TC 10000000146 EKIM', 2_450_000)
+    for (const written of ['100 000 001 46', '100-000-001-46', '100.000.001.46', '1000 0000 146'])
+      assert.deepEqual(suggest(`HAVALE TC ${written} EKIM`, 2_450_000), contiguous, written)
+    // Gruplanmış son haneler de son hane sinyalidir (6+ hane güçlü).
+    const [suffix] = suggest('ODEME 000 146', 2_450_000)
+    assert.deepEqual(suffix?.reasons, ['national_id_suffix', 'amount_exact'])
+    assert.equal(suffix?.score, 75)
+    // Öğrenci numarasının yanındaki tarih numarayı bozmaz; ayrı gruplar kendi başına okunur.
+    const [byNumber] = suggest('OGR NO 2026004 01.10.2026', 1_500_000)
+    assert.equal(byNumber?.studentId, 's-kaan')
+    assert.ok(byNumber?.reasons.includes('student_number'))
   })
 
   test('kimlik no son haneleri: 6+ hane güçlü, 4 hane zayıf; yıl gibi görünen dört hane sayılmaz', () => {
@@ -209,5 +224,27 @@ describe('K-109, K-111: durum geçişi, referans ve gövdeler', () => {
     )
     assert.equal(bankIgnoreSchema.safeParse({ ignoreReason: 'ab' }).success, false)
     assert.equal(bankIgnoreSchema.safeParse({ ignoreReason: 'Kira geliri' }).success, true)
+  })
+})
+
+describe('K-121: onayda olası mükerrer', () => {
+  test('aynı hesap, gün, tutar ve öğrenciye eşleşmiş başka hareket varsa açık onay ister', () => {
+    assertNoPossibleDuplicate(0, false)
+    assertNoPossibleDuplicate(1, true)
+    assert.throws(
+      () => assertNoPossibleDuplicate(1, false),
+      (error: unknown) =>
+        error instanceof DomainError &&
+        error.code === 'bank_match_possible_duplicate' &&
+        error.kind === 'conflict' &&
+        error.message.includes('mükerrer'),
+    )
+  })
+
+  test('onay gövdesi açık mükerrer onayını isteğe bağlı mantıksal değer olarak alır', () => {
+    const body = { studentId: 's1', invoiceId: 'i1' }
+    assert.deepEqual(bankMatchSchema.parse(body), body)
+    assert.equal(bankMatchSchema.parse({ ...body, confirmDuplicate: true }).confirmDuplicate, true)
+    assert.equal(bankMatchSchema.safeParse({ ...body, confirmDuplicate: 'evet' }).success, false)
   })
 })

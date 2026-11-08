@@ -26,6 +26,8 @@ export const BANK_TRANSACTION_CHANGED_MESSAGE =
   'Hareket başka biri tarafından değiştirildi. Liste güncellendi.'
 export const BANK_TRANSACTION_CLOSED_MESSAGE =
   'Bu hareket zaten eşleşmiş ya da yoksayılmış. Liste güncellendi.'
+/** Onayda olası mükerrer (K-121): panel uyarıyı gösterir, açık onayla yeniden gönderir. */
+export const BANK_MATCH_DUPLICATE_CODE = 'bank_match_possible_duplicate'
 
 const PAID_INVALIDATES = [
   BANK_TRANSACTIONS_KEY,
@@ -71,12 +73,21 @@ export function useImportBankStatement() {
   })
 }
 
-/** Öneriyi ya da seçilen taksiti onaylar: tahsilat yazılır (DOM-FIN-069). */
+/**
+ * Öneriyi ya da seçilen taksiti onaylar: tahsilat yazılır (DOM-FIN-069). `confirmDuplicate`
+ * olası mükerrer uyarısından sonra yetkilinin açık onayıdır (K-121).
+ */
 export function useMatchBankTransaction() {
   return useApiCommand({
     request: (
       client,
-      input: { transactionId: string; version: number; studentId: string; invoiceId: string },
+      input: {
+        transactionId: string
+        version: number
+        studentId: string
+        invoiceId: string
+        confirmDuplicate?: boolean
+      },
       headers,
     ) =>
       client.POST('/api/v1/finance/bank-transactions/{transactionId}/match', {
@@ -84,7 +95,11 @@ export function useMatchBankTransaction() {
           path: { transactionId: input.transactionId },
           header: { ...headers, 'if-match': requireIfMatch(headers) },
         },
-        body: { studentId: input.studentId, invoiceId: input.invoiceId },
+        body: {
+          studentId: input.studentId,
+          invoiceId: input.invoiceId,
+          ...(input.confirmDuplicate === true ? { confirmDuplicate: true } : {}),
+        },
       }),
     invalidates: PAID_INVALIDATES,
     version: (input) => input.version,

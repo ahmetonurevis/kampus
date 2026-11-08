@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { requiredText } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { foldStatementText } from './finance-bank-statement.ts'
+import { foldStatementText, statementDigitRuns } from './finance-bank-statement.ts'
 
 /**
  * Banka hareketi eşleştirme önerisi (IST-115, ON-099; docs/domain/finans.md DOM-FIN-069). Gelen
@@ -99,10 +99,15 @@ const IDENTITY_REASONS: ReadonlySet<BankMatchReason> = new Set([
 
 // --- Gövde şemaları ---------------------------------------------------------------------------
 
-/** Onay: hareket bu öğrencinin bu taksitine (önce o, artanı en eski vadeye) tahsil edilir. */
+/**
+ * Onay: hareket bu öğrencinin bu taksitine (önce o, artanı en eski vadeye) tahsil edilir.
+ * `confirmDuplicate`: olası mükerrer uyarısından (K-121) sonra yetkilinin ayrı ödeme olduğunu açıkça
+ * onayladığı ikinci gönderim.
+ */
 export const bankMatchSchema = z.strictObject({
   studentId: requiredText,
   invoiceId: requiredText,
+  confirmDuplicate: z.boolean().optional(),
 })
 export type BankMatchInput = z.input<typeof bankMatchSchema>
 
@@ -128,6 +133,25 @@ export function assertBankTransactionOpen(status: BankTransactionStatus): void {
       : 'Bu hareket yoksayılmış; önce geri alın.',
     { kind: 'conflict' },
   )
+}
+
+export const BANK_MATCH_DUPLICATE_MESSAGE =
+  'Bu kişiye aynı gün aynı tutarda kaydedilmiş bir banka havalesi tahsilatı var; hareket mükerrer olabilir. Ayrı bir ödemeyse açıkça onaylayın.'
+
+/**
+ * Olası mükerrer (K-121): aynı hesaba aynı gün aynı tutarda gelen başka bir hareket aynı öğrenciye
+ * eşleşmişse ya da aynı gün aynı tutarda elle girilmiş banka havalesi tahsilatı varsa (`twins`)
+ * onay yetkilinin açık onayını ister; 409 `bank_match_possible_duplicate`. Aynı havale iki biçimde
+ * (CSV ve MT940) aktarılınca ya da önce elle girilip sonra ekstreden onaylanınca çift tahsilatı
+ * durdurur.
+ * Denetim taksite değil öğrenciye bakar: ilk onay taksiti kapattığı için ikiz hareketin önerisi
+ * sonraki taksite kayar.
+ */
+export function assertNoPossibleDuplicate(twins: number, confirmed: boolean): void {
+  if (twins === 0 || confirmed) return
+  throw new DomainError('bank_match_possible_duplicate', BANK_MATCH_DUPLICATE_MESSAGE, {
+    kind: 'conflict',
+  })
 }
 
 /** Yoksayılan hareket geri alınır; eşleşme yalnız tahsilat iptaliyle açılır (K-111). */
@@ -340,8 +364,8 @@ function addSignal(
 /** Açıklamadaki kimlik sinyalleri: öğrenci → puan ve gerekçe. */
 function identitySignals(directory: BankMatchDirectory, text: string): Map<string, Signals> {
   const found = new Map<string, Signals>()
-  const digitRuns = text.match(/\d+/g) ?? []
-  for (const digits of new Set(digitRuns)) {
+  // Gruplanmış yazım ("123 456 789 01") birleşik dizi olarak da okunur; puanlar aynıdır.
+  for (const digits of statementDigitRuns(text)) {
     for (const id of directory.byNationalId.get(digits) ?? [])
       addSignal(found, id, 'national_id', BANK_MATCH_POINTS.national_id)
     for (const id of directory.byNumber.get(digits) ?? [])

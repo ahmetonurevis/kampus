@@ -26,7 +26,9 @@ import { bankAccounts, payments } from './payments.ts'
  * gelen (alacak) hareket satırı yazılır (K-106). Tutar, gün, açıklama ve referans değişmez; yalnız
  * durum değişir: `unmatched` → `matched` (onayla aynı transaction'da tahsilat yazılır) ya da
  * `ignored` (gerekçeli). Eşleşme tahsilat iptaliyle geri açılır (K-111). Parmak izi hesap, gün,
- * tutar, katlanmış açıklama ve referansın sha256 özetidir (K-107); aynı hareket ikinci kez yazılmaz.
+ * tutar ile banka referansının, referans yoksa normalleştirilmiş açıklamanın sha256 özetidir
+ * (K-107, K-120); aynı hareket ikinci kez yazılmaz. Aynı havalenin biçimden biçime farklı açıklamalı
+ * ikizi onayda olası mükerrer denetimine takılır (K-121).
  */
 export const bankTransactions = pgTable(
   'bank_transactions',

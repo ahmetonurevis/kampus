@@ -4507,7 +4507,7 @@ export interface paths {
         put?: never;
         /**
          * Banka ekstresini aktar
-         * @description Seçilen kurum banka hesabının (`bankAccountId`, DOM-FIN-032) hareket dökümünü yükler (IST-115, DOM-FIN-069). `fileBase64`: CSV, Excel (.xlsx, ilk sayfa) ya da MT940 dosyasının base64'ü, en çok 5 MB; tür içerikten anlaşılır, dosya saklanmaz. CSV başlık satırı ilk 30 satırda aranır; yaygın banka başlıkları (tarih/işlem tarihi, açıklama, tutar ya da alacak/borç, bakiye, referans/dekont no, gönderen) tanınır, `columns` ile alan → başlık adı elle eşlenir. En çok 5.000 satır. Yalnız gelen (alacak) hareket yazılır; giden hareket (`outgoing`) ve tarihi ya da tutarı boş satır (`ignored`) yazılmaz (K-106). Aynı hesapta daha önce aktarılmış hareket atlanır (`skipped`, K-107): ikinci yükleme mükerrer kayıt açmaz. `dryRun: true` önizlemedir: 200 ve satır bazında durum, açıklama maskeli; hiçbir şey yazmaz. Onay 201; hatalı satır varsa 422 `bank_statement_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir hareket yazılmaz. Arşivli ya da başka kurumun hesabı 422 `bank_account_invalid`; MT940 hesabı seçilen hesap değilse 422 `bank_statement_account_mismatch`. Başlık bulunamazsa 422 `bank_statement_header_missing`. Aktarım tahsilat oluşturmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         * @description Seçilen kurum banka hesabının (`bankAccountId`, DOM-FIN-032) hareket dökümünü yükler (IST-115, DOM-FIN-069). `fileBase64`: CSV, Excel (.xlsx, ilk sayfa) ya da MT940 dosyasının base64'ü, en çok 5 MB; tür içerikten anlaşılır, dosya saklanmaz. CSV başlık satırı ilk 30 satırda aranır; yaygın banka başlıkları (tarih/işlem tarihi, açıklama, tutar ya da alacak/borç, bakiye, referans/dekont no, gönderen) tanınır, `columns` ile alan → başlık adı elle eşlenir. En çok 5.000 satır. Yalnız gelen (alacak) hareket yazılır; giden hareket (`outgoing`) ve tarihi ya da tutarı boş satır (`ignored`) yazılmaz (K-106). Aynı hesapta daha önce aktarılmış hareket atlanır (`skipped`, K-107): ikinci yükleme mükerrer kayıt açmaz. İz hesap, gün ve tutarla birlikte banka referansıdır (en az 6 harf/rakam ve rakam içerir); referans yoksa normalleştirilmiş açıklamadır, böylece aynı ekstre CSV ve MT940 olarak yüklense de referanslı hareket ikinci kez yazılmaz (K-120). `dryRun: true` önizlemedir: 200 ve satır bazında durum, açıklama ve referans maskeli (K-122); hiçbir şey yazmaz. Onay 201; hatalı satır varsa 422 `bank_statement_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir hareket yazılmaz. Arşivli ya da başka kurumun hesabı 422 `bank_account_invalid`; MT940 hesabı seçilen hesap değilse 422 `bank_statement_account_mismatch`. Başlık bulunamazsa 422 `bank_statement_header_missing`. Aktarım tahsilat oluşturmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
          */
         post: operations["importBankStatement"];
         delete?: never;
@@ -4525,7 +4525,7 @@ export interface paths {
         };
         /**
          * Banka hareketlerini listele
-         * @description Aktarılmış gelen hareketler, en yeni işlem günü önce. `status`, `bankAccountId`, `dateFrom`/`dateTo` (işlem günü, dahil) ve `q` (açıklama, gönderen, referans; Türkçe harf duyarsız) ile süzülür; sayfalıdır, `pageSize` en çok 100, bilinmeyen parametre 400. Eşleşmemiş harekette en iyi öneri (`suggestion`) ve referansı başka tahsilatta kullanılmışsa `referenceInUse` döner. Açıklamada 11+ haneli rakam dizileri maskelidir (K-112). Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         * @description Aktarılmış gelen hareketler, en yeni işlem günü önce. `status`, `bankAccountId`, `dateFrom`/`dateTo` (işlem günü, dahil) ve `q` (açıklama, gönderen, referans; Türkçe harf duyarsız) ile süzülür; sayfalıdır, `pageSize` en çok 100, bilinmeyen parametre 400. Eşleşmemiş harekette en iyi öneri (`suggestion`) ve referansı başka tahsilatta kullanılmışsa `referenceInUse` döner. Açıklama, gönderen ve referansta 11 ve daha çok haneli rakam dizileri (boşluk, tire ya da noktayla gruplanmış kimlik no ve IBAN dahil) son dört hane dışında maskelidir (K-112, K-122). Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
          */
         get: operations["listBankTransactions"];
         put?: never;
@@ -4567,7 +4567,7 @@ export interface paths {
         put?: never;
         /**
          * Eşleşmeyi onayla ve tahsilat oluştur
-         * @description Öneriyi ya da seçilen taksiti onaylar (DOM-FIN-069): tahsilat hareketin tamamıyla, `Banka havalesi` yöntemiyle, hareketin hesabına ve işlem gününe yazılır; referans hareketin banka referansıdır, yoksa `EKSTRE-…` (K-109). Dağılım tahsilat kuralıdır: önce `invoiceId`, artanı en eski vade, açık taksitleri aşanı iade alacağı (DOM-FIN-030, K-110). Hareket aynı işlemde `matched` olur; ikinci onay 409 `bank_transaction_not_open` ve tek tahsilat (DOM-FIN-031). İşlem günü kapatılmışsa 422 `finance_day_closed` (DOM-FIN-036); referans başka tahsilatta kullanılmışsa 409 `payment_reference_used`; taksit öğrencinin değilse 404, ödenmişse 409 `invoice_already_paid`; hesap arşivlenmişse 422 `bank_account_invalid`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunlu: aynı anahtar ikinci tahsilat açmaz. Başarı 201: hareket ve tahsilat. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
+         * @description Öneriyi ya da seçilen taksiti onaylar (DOM-FIN-069): tahsilat hareketin tamamıyla, `Banka havalesi` yöntemiyle, hareketin hesabına ve işlem gününe yazılır; referans hareketin banka referansıdır, yoksa `EKSTRE-…` (K-109). Dağılım tahsilat kuralıdır: önce `invoiceId`, artanı en eski vade, açık taksitleri aşanı iade alacağı (DOM-FIN-030, K-110). Hareket aynı işlemde `matched` olur; ikinci onay 409 `bank_transaction_not_open` ve tek tahsilat (DOM-FIN-031). İşlem günü kapatılmışsa 422 `finance_day_closed` (DOM-FIN-036); referans başka tahsilatta kullanılmışsa 409 `payment_reference_used`; aynı hesaba aynı gün aynı tutarda gelen başka hareket aynı öğrenciye eşleşmişse ya da öğrenciye aynı gün aynı tutarda elle girilmiş etkin banka havalesi tahsilatı varsa 409 `bank_match_possible_duplicate` (K-121), ayrı ödemeyse `confirmDuplicate: true` ile yeniden gönderilir; taksit öğrencinin değilse 404, ödenmişse 409 `invoice_already_paid`; hesap arşivlenmişse 422 `bank_account_invalid`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunlu: aynı anahtar ikinci tahsilat açmaz. Başarı 201: hareket ve tahsilat. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.
          */
         post: operations["matchBankTransaction"];
         delete?: never;
@@ -11708,6 +11708,7 @@ export interface components {
             direction: ("credit" | "debit") | null;
             /** @description Açıklama ve gönderen; uzun rakam dizileri maskeli */
             description: string;
+            /** @description Referans; uzun rakam dizileri maskeli (K-122) */
             reference: string;
             issues: {
                 field: ("date" | "description" | "amount" | "credit" | "debit" | "balance" | "reference" | "counterparty") | null;
@@ -11771,10 +11772,10 @@ export interface components {
             bookingDate: string;
             /** @description Gelen tutar, kuruş */
             amountCents: number;
-            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            /** @description Açıklama; gruplanmışlar dahil 11+ haneli rakam dizileri maskeli (K-112, K-122) */
             description: string;
             counterparty: string | null;
-            /** @description Banka referansı */
+            /** @description Banka referansı; uzun rakam dizileri maskeli (K-122) */
             reference: string | null;
             balanceCents: number | null;
             /** @enum {string} */
@@ -11807,10 +11808,10 @@ export interface components {
             bookingDate: string;
             /** @description Gelen tutar, kuruş */
             amountCents: number;
-            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            /** @description Açıklama; gruplanmışlar dahil 11+ haneli rakam dizileri maskeli (K-112, K-122) */
             description: string;
             counterparty: string | null;
-            /** @description Banka referansı */
+            /** @description Banka referansı; uzun rakam dizileri maskeli (K-122) */
             reference: string | null;
             balanceCents: number | null;
             /** @enum {string} */
@@ -16217,6 +16218,7 @@ export interface components {
             direction: ("credit" | "debit") | null;
             /** @description Açıklama ve gönderen; uzun rakam dizileri maskeli */
             description: string;
+            /** @description Referans; uzun rakam dizileri maskeli (K-122) */
             reference: string;
             issues: {
                 field: ("date" | "description" | "amount" | "credit" | "debit" | "balance" | "reference" | "counterparty") | null;
@@ -16280,10 +16282,10 @@ export interface components {
             bookingDate: string;
             /** @description Gelen tutar, kuruş */
             amountCents: number;
-            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            /** @description Açıklama; gruplanmışlar dahil 11+ haneli rakam dizileri maskeli (K-112, K-122) */
             description: string;
             counterparty: string | null;
-            /** @description Banka referansı */
+            /** @description Banka referansı; uzun rakam dizileri maskeli (K-122) */
             reference: string | null;
             balanceCents: number | null;
             /** @enum {string} */
@@ -16316,10 +16318,10 @@ export interface components {
             bookingDate: string;
             /** @description Gelen tutar, kuruş */
             amountCents: number;
-            /** @description Açıklama; 11+ haneli rakam dizileri maskeli (K-112) */
+            /** @description Açıklama; gruplanmışlar dahil 11+ haneli rakam dizileri maskeli (K-112, K-122) */
             description: string;
             counterparty: string | null;
-            /** @description Banka referansı */
+            /** @description Banka referansı; uzun rakam dizileri maskeli (K-122) */
             reference: string | null;
             balanceCents: number | null;
             /** @enum {string} */
@@ -47933,6 +47935,7 @@ export interface operations {
                 "application/json": {
                     studentId: string;
                     invoiceId: string;
+                    confirmDuplicate?: boolean;
                 };
             };
         };

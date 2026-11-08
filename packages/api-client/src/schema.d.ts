@@ -4272,6 +4272,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/budget-periods/{periodId}/actuals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe–gerçekleşen karşılaştırması
+         * @description Seçilen bütçe döneminin planı kalem × maliyet merkezi × ay bazında gerçekleşenle karşılaştırılır (ON-244; DOM-FIN-066). `basis` `accrual` (varsayılan, K-85): taksit vade gününde, ayrılışta hak edilmeyen tahakkuk ayrılış gününde düşülür; `cash`: tahsilat ödeme gününde, iptal iptal gününde, ödenen iade ödeme gününde; dosyadan aktarılan geçmiş ödeme sayılır ve `openingImportCents`te ayrıca verilir. Hareket ücret türüyle (`fee_kind`) gelir kalemine eşlenir; eşlenmeyen ya da taksite dağıtılmamış tutar `unmatched`tadır. Merkez öğrencinin kampüs ve program bağından bulunur (K-86), gerçekleşen kalem için satırı olan en yakın merkeze yazılır; bulunamazsa `costCenterId` `null` (dağıtılmamış). Hareket dönem ve bugünle sınırlıdır; gelmemiş ayın gerçekleşeni `null`. Gider gerçekleşeni kaynağı yoktur (satın alma modülü kurulmadı): `expenseData` `none`, gider satırı `status` `no_expense_data`. Ay Europe/Istanbul ayı; tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Olmayan ya da başka kurumun dönemi 404; bilinmeyen parametre 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getBudgetActuals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/cost-per-student": {
         parameters: {
             query?: never;
@@ -44796,6 +44816,166 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBudgetActuals: {
+        parameters: {
+            query?: {
+                basis?: "accrual" | "cash";
+            };
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            /** @enum {string} */
+                            basis: "accrual" | "cash";
+                            startDate: string;
+                            endDate: string;
+                            /** @description Hareketlerin sayıldığı son gün */
+                            asOfDate: string | null;
+                            months: string[];
+                            /** @enum {string} */
+                            expenseData: "none" | "available";
+                            rows: {
+                                key: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                                /** @description `null`: dağıtılmamış */
+                                costCenterId: string | null;
+                                costCenterCode: string | null;
+                                costCenterName: string | null;
+                                costCenterPath: string | null;
+                                /** @description Bu merkez ve kalem için bütçe satırı var mı */
+                                hasLine: boolean;
+                                plannedCents: number;
+                                /** @description Bugüne kadarki ayların planı; dağılımsızsa boş */
+                                plannedToDateCents: number | null;
+                                actualCents: number | null;
+                                varianceCents: number | null;
+                                /** @description Gerçekleşen ÷ plan, on binde bir */
+                                realizationBasisPoints: number | null;
+                                /** @enum {string} */
+                                status: "mapped" | "unmapped_item" | "no_expense_data" | "not_started";
+                                months: {
+                                    /** @description Takvim ayı `YYYY-MM` (Europe/Istanbul) */
+                                    month: string;
+                                    /** @description Aylık dağılım yoksa boş */
+                                    plannedCents: number | null;
+                                    /** @description Gelmemiş ayda boş */
+                                    actualCents: number | null;
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ plan, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                }[];
+                            }[];
+                            unmatched: {
+                                feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                                actualCents: number;
+                                months: {
+                                    /** @description Takvim ayı `YYYY-MM` (Europe/Istanbul) */
+                                    month: string;
+                                    actualCents: number | null;
+                                }[];
+                            }[];
+                            totals: {
+                                income: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                    /** @description Gerçekleşen − plan */
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ plan, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                    unmatchedCents: number | null;
+                                };
+                                expense: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                    /** @description Gerçekleşen − plan */
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ plan, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                };
+                                net: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                };
+                            };
+                            openingImportCents: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

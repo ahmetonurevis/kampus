@@ -14,6 +14,7 @@ import {
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -23,16 +24,23 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading, SummaryMetrics } from '../management/SummaryParts.tsx'
+import { FinanceBudgetActuals } from './FinanceBudgetActuals.tsx'
 import { BudgetLineFormModal, BudgetPeriodFormModal } from './FinanceBudgetForms.tsx'
 import { monthLabel, PERIOD_STATUS_VIEW } from './finance-budget-forms.ts'
 
 const NO_SORT: readonly string[] = []
+const PANEL_VIEWS = [
+  { value: 'plan', label: 'Plan' },
+  { value: 'actuals', label: 'Gerçekleşen' },
+] as const
+type PanelView = (typeof PANEL_VIEWS)[number]['value']
 const dayText = (day: string) => dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' })
 const filterText = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null)
 
 /**
  * Bütçe dönemi paneli (`?butce-donemi=`; DOM-FIN-062): toplamlar, durum geçişi (taslak → açık →
- * kapalı, yalnız yönetici; K-61) ve planlanan tutar satırları. Kapalı dönemde düzenleme düğmesi
+ * kapalı, yalnız yönetici; K-61), planlanan tutar satırları ve "Gerçekleşen" görünümü (ON-244,
+ * DOM-FIN-066). Kapalı dönemde düzenleme düğmesi
  * çizilmez; sunucu da reddeder.
  */
 export function FinanceBudgetPeriodPanel({
@@ -67,6 +75,7 @@ export function FinanceBudgetPeriodPanel({
 function PeriodDetail({ period, academicYear }: { period: BudgetPeriod; academicYear: number }) {
   const status = useChangeBudgetPeriodStatus()
   const [editing, setEditing] = useState(false)
+  const [panelView, setPanelView] = useState<PanelView>('plan')
   const writable = period.status !== 'closed'
   const view = PERIOD_STATUS_VIEW[period.status]
   const change = (action: 'open' | 'close') =>
@@ -112,7 +121,17 @@ function PeriodDetail({ period, academicYear }: { period: BudgetPeriod; academic
           Kapatılan dönemde satır eklenmez, düzeltilmez ve kaldırılmaz; kapanış geri alınmaz.
         </p>
       ) : null}
-      <LinesTable period={period} writable={writable} />
+      <LineTabs
+        label="Dönem görünümü"
+        value={panelView}
+        options={PANEL_VIEWS}
+        onChange={setPanelView}
+      />
+      {panelView === 'plan' ? (
+        <LinesTable period={period} writable={writable} />
+      ) : (
+        <FinanceBudgetActuals periodId={period.id} periodName={period.name} />
+      )}
       {editing ? (
         <BudgetPeriodFormModal
           period={period}

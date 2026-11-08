@@ -1175,6 +1175,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'başka kurumun kayıtları raporda sayılmaz',
     'URL_BASE',
   ),
+  // Onur: bütçe–gerçekleşen (ON-244; DOM-FIN-066).
+  'GET /api/v1/finance/budget-periods/:periodId/actuals': kayit(
+    'finance-budget-actuals.test.ts',
+    'başka kurumun dönemi 404, taksiti ve tahsilatı raporda yok',
+    "send('GET', b.url, a.cookie)",
+  ),
   // Onur: öğrenci başı maliyet ve kampüs konsolidasyonu (ON-249, ON-250; DOM-FIN-065).
   ...Object.fromEntries(
     ['GET /api/v1/finance/cost-per-student', 'GET /api/v1/finance/campus-consolidation'].map(

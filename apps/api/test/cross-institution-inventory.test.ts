@@ -1238,6 +1238,42 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: banka hareketi eşleştirme (ON-099, IST-115; DOM-FIN-069).
+  ...Object.fromEntries(
+    (
+      [
+        ['gövde', 'POST /api/v1/finance/bank-statement-imports', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/bank-transactions', "send('GET', LIST, a.adminCookie)"],
+        [
+          'kayıt',
+          'GET /api/v1/finance/bank-transactions/:transactionId/suggestions',
+          '`${url}/suggestions`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/bank-transactions/:transactionId/match',
+          'match(a.adminCookie, bRow.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/bank-transactions/:transactionId/ignore',
+          'ignore(a.adminCookie, bRow.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/bank-transactions/:transactionId/restore',
+          'restore(a.adminCookie, bRow.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-bank-matching.test.ts',
+        'başka kurumun hareketi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

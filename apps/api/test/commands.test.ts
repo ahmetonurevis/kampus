@@ -68,6 +68,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations',
   'POST /api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel',
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel',
+  // Banka ekstresi toplu aktarımı ve eşleşme onayı tahsilat yazar (IST-115, DOM-FIN-069).
+  'POST /api/v1/finance/bank-statement-imports',
+  'POST /api/v1/finance/bank-transactions/{transactionId}/match',
 ]
 // Onur: kayıt ve finans sonu
 

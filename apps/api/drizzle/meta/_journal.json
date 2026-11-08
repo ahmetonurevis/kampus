@@ -540,6 +540,13 @@
       "when": 1794107571407,
       "tag": "0076_create_scholarship_funds",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794111023743,
+      "tag": "0077_create_bank_transactions",
+      "breakpoints": true
     }
   ]
 }

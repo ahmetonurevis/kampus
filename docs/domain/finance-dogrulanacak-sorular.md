@@ -399,6 +399,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Rapora hizmet dönemine göre gelir satırı eklenir; burs ve indirimin yeri değişir. Mutabakat hesabı değişmez.
 - **Cevap:** bekleniyor
 
+#### M-19 · Bütçe–gerçekleşen raporunda gelirin tanınma esası
+
+- **Kural:** `DOM-FIN-066`; ON-244, K24.
+- **Soru:** Bütçe–gerçekleşen karşılaştırmasında okulun geliri hangi esasla gerçekleşmiş sayılmalı: taksitin vade günü (bugünkü tahakkuk esası), tahsilat günü, yoksa öğrenim hizmetinin verildiği aylara yayılarak (ör. yıllık ücretin eğitim aylarına eşit bölünmesi)? Ayrılışta hak edilmeyen tutar ve ödenen iade hangi aya ve hangi kaleme (öğrenim, yemek, servis) yazılmalı? Tutarlar KDV dahil mi karşılaştırılmalı?
+- **Bugünkü varsayım:** Varsayılan tahakkuk esasıdır: taksit vade gününde, ayrılış düzeltmesi ayrılış gününde, tamamı öğrenime yazılır; tahsilat esası seçilebilir (ödeme, iptal ve iade günü). Tutarlar taksitte saklanan KDV dahil nettir. Rapor yönetim muhasebesidir, muhasebe kaydı ve gelir tanıma değildir (paket gelir tanıma M-12'de).
+- **Kodda:** `lib/finance-budget-actuals.ts` (`budgetActuals`), `GET /api/v1/finance/budget-periods/:periodId/actuals`.
+- **Cevap değişirse:** Hizmet dönemine yayma seçilirse üçüncü esas (`service`) eklenir ve taksit tutarı sözleşmenin eğitim aylarına bölünür; iade kalem dağıtımı ayrılış dökümündeki ek hizmet satırlarından (`extras`) yapılır; KDV hariç tutar kalem oranından (IST-104) hesaplanır.
+- **Cevap:** bekleniyor
+
 ## Öneriyle uygulanan kararlar
 
 Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod öneriyle yazılmıştır. Onaylanınca "Kararlaştırılanlar" tablosuna taşınır, değişirse "Değişirse" sütunundaki yer güncellenir.
@@ -441,6 +450,11 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-79   | 2026-11-08 | `DOM-FIN-064` | Aday hunisi rapora yalnız toplam satırla girer; kaynak ve danışman kırılımı girmez (danışman adı kişi verisidir). `crm` kapalıysa bölüm yoktur.                                                                                                                                      | `financeBoardReport` (`funnel`).                                                                           |
 | K-80   | 2026-11-08 | `DOM-FIN-064` | Raporu yalnız yönetici alır; kişi verisi taşımadığı için taze oturum ve denetim kaydı istemez, PDF tarayıcıda üretilir. Muhasebe rolü açılınca okuma önerilir.                                                                                                                       | Rol dizisi (`routes/finance-board-report.ts`), `DOM-FIN-057` tablosu.                                      |
 | K-81   | 2026-11-08 | `DOM-FIN-064` | Bütçe–gerçekleşen, maliyet merkezi, gelir ve nakit tahmini (K24 diğer görevleri) ile dil okulunda kur kırılımı rapora girmez; o modüller birleşince ayrı bölüm olarak eklenir.                                                                                                       | `financeBoardReport` bölümleri, PDF şablonu.                                                               |
+| K-85   | 2026-11-08 | `DOM-FIN-066` | Bütçe–gerçekleşen varsayılan olarak tahakkuk esasıyla gösterilir: taksit vade gününde, ayrılış düzeltmesi ayrılış gününde. Tahsilat esası seçilebilir: tahsilat ödeme, iptal iptal, ödenen iade ödeme gününde.                                                                       | Varsayılan tahsilat olur ya da hizmet dönemine yayma esası eklenir (M-19).                                 |
+| K-86   | 2026-11-08 | `DOM-FIN-066` | Merkez öğrencinin bağından bulunur: sözleşmenin (yoksa bugünkü) sınıfı kampüs ve düzeyi, dil okulunda paket satışının (yoksa tek grubun) kuru verir; etkin merkezlerden en özeli seçilir, kalemde satırı olan en yakın üst merkeze yazılır. Uyan yoksa "Dağıtılmamış".               | Hareket günündeki sınıf ya da merkezler arası bölüşüm anahtarı kullanılır.                                 |
+| K-87   | 2026-11-08 | `DOM-FIN-066` | Ayrılış düzeltmesi ve ödenen iade öğrenime yazılır. Taksite dağıtılmamış ya da iptal edilmiş taksite alınmış tahsilat "kalemi belirsiz"dir. Dosyadan aktarılan geçmiş ödeme tahsilat esasında ödeme gününde sayılır, ayrıca gösterilir.                                              | İade ek hizmet satırlarına (`extras`) bölünür; açılış aktarımı tahsilattan çıkar.                          |
+| K-88   | 2026-11-08 | `DOM-FIN-066` | Ücret türü önce etkin gelir kalemine, yoksa dönemde satırı olan pasif kaleme eşlenir; eşlenmeyen tutar "eşlenmemiş gelir"dir. Gelmemiş ayın gerçekleşeni ve dağılımsız satırın aylık planı boştur (K-64).                                                                            | Dağılımsız satır ay karşılaştırmasında aylara eşit bölünür.                                                |
+| K-89   | 2026-11-08 | `DOM-FIN-066` | Raporu yalnız yönetici görür; CSV kişi verisi taşımaz, tarayıcıda üretilir, taze oturum ve denetim istemez. Gider kaynağı yoktur, gider satırı "gerçekleşen verisi yok" der; satın alma (K23) `BudgetExpenseActual` ile besler.                                                      | Muhasebe rolü `BUDGET_ROLES`a girer; gider `loadExpenseActuals`tan okunur.                                 |
 
 ## Kararlaştırılanlar
 

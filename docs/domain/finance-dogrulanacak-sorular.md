@@ -406,7 +406,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kodda:** `planRefundPayment` (`lib/withdrawals.ts`), `POST /api/v1/withdrawals/:withdrawalId/pay-refund`; gün sonu `lib/finance-day-closings.ts`.
 - **Öneri:** İade ödemesine kurumun bildirilmiş banka hesabı seçilsin (`DOM-FIN-032`); gün sonu raporu banka yönteminde ayrı "iade ödemesi" adedi ve tutarı göstersin, net bundan düşsün; kapalı güne iade ödemesi `finance_day_closed` ile reddedilsin. Nakit iade kapsam dışı kalsın. Rapor damgası ve kapanış satırı yeni alanı taşıyacağı için migration gerekir.
 - **Cevap değişirse:** Öneri uygulanır; değişmezse gün sonu bugünkü gibi yalnız tahsilattır, iade yıl sonu mutabakatında ve muhasebe aktarımında izlenir.
-- **Cevap:** bekleniyor (ürün kararı ve mali müşavir)
+- **Cevap:** Kullanıcı kararı, 2026-11-08: öneri uygulandı (ON-333); mali müşavir doğrulaması bekleniyor
 
 #### M-15 · Gelir tahmininin dönem ve tanıma esası
 

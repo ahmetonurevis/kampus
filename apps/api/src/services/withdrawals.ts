@@ -15,8 +15,9 @@ import {
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
-import { allocatedByInvoice, paymentTotal } from '../db/payments.ts'
+import { allocatedByInvoice, listBankAccounts, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
   archiveStudentIdentity,
@@ -114,6 +115,13 @@ function view(row: StoredWithdrawal): WithdrawalView {
 function readView(ctx: ServiceContext, row: StoredWithdrawal): WithdrawalView {
   const withdrawal = view(row)
   return ctx.actor.role === 'yonetici' ? withdrawal : withoutDecisionReason(withdrawal)
+}
+
+/** Gövdedeki ödeme günü; `YYYY-MM-DD` değilse boş (şema ayrıca reddeder). */
+function rawDay(input: unknown): string | null {
+  const value: unknown =
+    typeof input === 'object' && input !== null ? Reflect.get(input, 'paidDate') : undefined
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
 }
 
 async function audit(
@@ -283,7 +291,9 @@ export function withdrawStudentCommand(
 }
 
 /**
- * İadeyi ödenmiş işaretler; ödenen iade değişmez, hesap sahibi ödeyicidir (DOM-FIN-041).
+ * İadeyi ödenmiş işaretler; ödenen iade değişmez, hesap sahibi ödeyicidir (DOM-FIN-041). İade
+ * kurumun bildirilmiş hesabından çıkar ve ödeme gününün gün sonuna girer; kapanış ve ödeme kurum
+ * kilidi altında sıraya girer, kapatılmış güne iade yazılmaz (M-13, DOM-FIN-036).
  * `Idempotency-Key` kaydı yanıtı 24 saat saklar; IBAN'ın son haneleri ve hesap sahibi bu kayda
  * yazılmaz, yanıta iade kaydından eklenir (guvenlik-kvkk.md §10).
  */
@@ -307,6 +317,11 @@ export async function payRefundCommand(
         const row = await findWithdrawal(tx, ctx.institutionId, withdrawalId)
         if (row === null) throw new NotFoundError()
         if (row.version !== expectedVersion) throw new ConflictError()
+        const accounts = await listBankAccounts(tx, ctx.institutionId)
+        // Gün ham gövdeden okunur; biçimsizse şema reddeder, kilit altındaki denetim boşa gitmez.
+        const paidDay = rawDay(input)
+        const dayClosed =
+          paidDay !== null && (await isFinanceDayClosed(tx, ctx.institutionId, paidDay))
         return {
           scalars,
           run: (state, { now }) => {
@@ -319,7 +334,11 @@ export async function payRefundCommand(
                 withdrawalDate: row.withdrawalDate,
               },
               input,
-              dayKey(ctx.now),
+              {
+                today: dayKey(ctx.now),
+                bankAccountIds: accounts.map((account) => account.id),
+                dayClosed,
+              },
             )
           },
         }
@@ -331,6 +350,7 @@ export async function payRefundCommand(
           paidDate: plan.paidDate,
           iban: plan.iban,
           accountHolder: plan.accountHolder,
+          bankAccountId: plan.bankAccountId,
           paidByUserId: ctx.actor.userId,
           now: ctx.now,
         })
@@ -339,6 +359,7 @@ export async function payRefundCommand(
           'refundPaidDate',
           'refundIban',
           'refundAccountHolder',
+          'refundBankAccountId',
         ])
         const row = await findWithdrawal(tx, ctx.institutionId, withdrawalId)
         if (row === null) throw new NotFoundError()

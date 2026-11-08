@@ -27,6 +27,8 @@ export type RefundWithdrawal = {
   refundPaidDate: string | null
   maskedIban: string | null
   refundAccountHolder: string | null
+  /** İadenin ödendiği kurum hesabı (M-13); eski kayıtta ve ödenmemiş iadede yok. */
+  refundBankAccountLabel?: string | null
   breakdown: {
     baseCents: number
     deductionBasisPoints: number
@@ -134,6 +136,9 @@ export function refundStatementDocument(
     ],
     ['Hesap sahibi', withdrawal.refundAccountHolder ?? '—'],
     ['IBAN', withdrawal.maskedIban ?? '—'],
+    ...(withdrawal.refundBankAccountLabel
+      ? ([['Ödendiği kurum hesabı', withdrawal.refundBankAccountLabel]] as const)
+      : []),
   ])
   return doc.finish()
 }

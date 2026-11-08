@@ -1,14 +1,16 @@
 import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
+import type { FinanceDayRefund } from '@kampus/school-core/lib/finance-day-closings.ts'
 import type { BoardReportWithdrawal } from '@kampus/school-core/lib/finance-board-report.ts'
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
 import type { OpeningWithdrawal } from '@kampus/school-core/lib/finance-opening-watch.ts'
 import type { ReconciliationWithdrawal } from '@kampus/school-core/lib/finance-reconciliation.ts'
 import type { StatementWithdrawal } from '@kampus/school-core/lib/finance-statement.ts'
-import type { ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
+import { bankAccountLabel, type ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
+import { bankAccounts } from './schema/payments.ts'
 import { records } from './schema/records.ts'
 import { studentIdentities } from './schema/student-identities.ts'
 import { studentWithdrawals } from './schema/withdrawals.ts'
@@ -33,7 +35,17 @@ export interface StoredWithdrawal {
   refundPaidDate: string | null
   refundIban: string | null
   refundAccountHolder: string | null
+  /** İadenin ödendiği kurum hesabı (M-13); 0083 öncesi ödenmiş iadede boş. */
+  refundBankAccountId: string | null
+  refundBankAccountLabel: string | null
   version: number
+}
+
+/** Gün sonundaki iade ödemesi satırı (M-13); IBAN ve hesap sahibi seçilmez. */
+export interface StoredDayRefund extends FinanceDayRefund {
+  withdrawalId: string
+  studentName: string | null
+  bankAccountLabel: string | null
 }
 
 /** Ayrılışın öğrenci kaydı: yalnız ad içindir; kurum eşleşmesi zorunludur. */
@@ -41,6 +53,12 @@ const STUDENT_JOIN = and(
   eq(records.institutionId, studentWithdrawals.institutionId),
   eq(records.collection, 'students'),
   eq(records.id, studentWithdrawals.studentId),
+)
+
+/** İadenin ödendiği kurum hesabı; arşivlenmiş hesap da adıyla görünür. */
+const BANK_JOIN = and(
+  eq(bankAccounts.institutionId, studentWithdrawals.institutionId),
+  eq(bankAccounts.id, studentWithdrawals.refundBankAccountId),
 )
 
 const COLUMNS = {
@@ -58,13 +76,26 @@ const COLUMNS = {
   refundPaidDate: studentWithdrawals.refundPaidDate,
   refundIban: studentWithdrawals.refundIban,
   refundAccountHolder: studentWithdrawals.refundAccountHolder,
+  refundBankAccountId: studentWithdrawals.refundBankAccountId,
+  bankName: bankAccounts.bankName,
+  bankIban: bankAccounts.iban,
   version: studentWithdrawals.version,
 }
 
+type Row = Omit<StoredWithdrawal, 'reason' | 'refundBankAccountLabel'> & {
+  reason: string
+  bankName: string | null
+  bankIban: string | null
+}
+
+const labelOf = (bankName: string | null, iban: string | null) =>
+  bankName === null || iban === null ? null : bankAccountLabel({ bankName, iban })
+
 // Değerler `student_withdrawals_reason_check` ile sınırlıdır.
-const stored = (row: Omit<StoredWithdrawal, 'reason'> & { reason: string }): StoredWithdrawal => ({
+const stored = ({ bankName, bankIban, ...row }: Row): StoredWithdrawal => ({
   ...row,
   reason: row.reason as WithdrawalReason,
+  refundBankAccountLabel: labelOf(bankName, bankIban),
 })
 
 export async function findWithdrawal(
@@ -76,6 +107,7 @@ export async function findWithdrawal(
     .select(COLUMNS)
     .from(studentWithdrawals)
     .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
     .where(and(eq(studentWithdrawals.institutionId, institutionId), eq(studentWithdrawals.id, id)))
     .limit(1)
   return row ? stored(row) : null
@@ -145,6 +177,7 @@ export async function listWithdrawals(
     .select(COLUMNS)
     .from(studentWithdrawals)
     .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
     .where(where)
     .orderBy(asc(studentWithdrawals.refundDueDate), asc(studentWithdrawals.id))
     .limit(query.pageSize)
@@ -326,6 +359,43 @@ export async function withdrawalsForBoardReport(
   return rows.map((row) => ({ ...row, reason: row.reason as WithdrawalReason }))
 }
 
+/**
+ * O gün ödenen iadeler (gün sonu, M-13, DOM-FIN-036): tutar, öğrenci adı ve kurum hesabı. IBAN ve
+ * hesap sahibi seçilmez. Ödeme günü `date` kolonudur, gün eşitliğiyle süzülür.
+ */
+export async function refundsPaidOnDay(
+  db: Database,
+  institutionId: string,
+  day: string,
+): Promise<StoredDayRefund[]> {
+  const rows = await db
+    .select({
+      withdrawalId: studentWithdrawals.id,
+      studentName: sql<string | null>`${records.data} ->> 'name'`,
+      amountCents: studentWithdrawals.refundCents,
+      paidDate: studentWithdrawals.refundPaidDate,
+      bankName: bankAccounts.bankName,
+      bankIban: bankAccounts.iban,
+    })
+    .from(studentWithdrawals)
+    .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
+    .where(
+      and(
+        eq(studentWithdrawals.institutionId, institutionId),
+        eq(studentWithdrawals.refundPaidDate, day),
+        gt(studentWithdrawals.refundCents, 0),
+      ),
+    )
+    .orderBy(asc(studentWithdrawals.updatedAt), asc(studentWithdrawals.id))
+  return rows.map(({ bankName, bankIban, paidDate, ...row }) => ({
+    ...row,
+    // Süzgeç ödeme gününü eşitler; boş olamaz.
+    paidDate: paidDate ?? day,
+    bankAccountLabel: labelOf(bankName, bankIban),
+  }))
+}
+
 /** Yalnız ödenmemiş iade ve beklenen sürüm güncellenir; tutmazsa `false`. */
 export async function markRefundPaid(
   tx: Database,
@@ -336,6 +406,7 @@ export async function markRefundPaid(
     paidDate: string
     iban: string
     accountHolder: string
+    bankAccountId: string
     paidByUserId: string
     now: Date
   },
@@ -346,6 +417,7 @@ export async function markRefundPaid(
       refundPaidDate: input.paidDate,
       refundIban: input.iban,
       refundAccountHolder: input.accountHolder,
+      refundBankAccountId: input.bankAccountId,
       refundPaidByUserId: input.paidByUserId,
       version: sql`${studentWithdrawals.version} + 1`,
       updatedAt: input.now,

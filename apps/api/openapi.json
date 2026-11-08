@@ -62444,7 +62444,7 @@
         "tags": [
           "finance-day-closings"
         ],
-        "description": "Günün tahsilatları yöntem bazında, iptaller, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe yazılır; geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.",
+        "description": "Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -62519,11 +62519,23 @@
                                     "maximum": 9007199254740991,
                                     "description": "O gün yapılan iptal toplamı (kuruş)"
                                   },
+                                  "refundPaidCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)"
+                                  },
+                                  "refundPaidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                  },
                                   "netCents": {
                                     "type": "integer",
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991,
-                                    "description": "Tahsilat eksi iptal (kuruş)"
+                                    "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                   }
                                 },
                                 "required": [
@@ -62532,6 +62544,8 @@
                                   "collectedCents",
                                   "reversedCount",
                                   "reversedCents",
+                                  "refundPaidCount",
+                                  "refundPaidCents",
                                   "netCents"
                                 ],
                                 "additionalProperties": false
@@ -62558,10 +62572,23 @@
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
                             },
+                            "refundPaidCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "O gün ödenen ayrılış iadesi adedi"
+                            },
+                            "refundPaidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                            },
                             "netCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
+                              "maximum": 9007199254740991,
+                              "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                             }
                           },
                           "required": [
@@ -62570,6 +62597,8 @@
                             "collectedCents",
                             "reversedCount",
                             "reversedCents",
+                            "refundPaidCount",
+                            "refundPaidCents",
                             "netCents"
                           ],
                           "additionalProperties": false,
@@ -62768,6 +62797,49 @@
                           },
                           "description": "O gün yapılan iptaller; tahsilatın günü başka olabilir"
                         },
+                        "refunds": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "withdrawalId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen iade (kuruş)"
+                              },
+                              "paidDate": {
+                                "type": "string",
+                                "description": "İadenin ödeme günü (`YYYY-MM-DD`)"
+                              },
+                              "bankAccountLabel": {
+                                "description": "İadenin ödendiği kurum hesabı; hesap seçimi zorunlu olmadan önce ödenmişse boş",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "withdrawalId",
+                              "studentName",
+                              "amountCents",
+                              "paidDate",
+                              "bankAccountLabel"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "O gün ödenen ayrılış iadeleri (M-13); IBAN ve hesap sahibi yok. Kapalı günde de güncel liste"
+                        },
                         "closing": {
                           "anyOf": [
                             {
@@ -62820,11 +62892,23 @@
                                             "maximum": 9007199254740991,
                                             "description": "O gün yapılan iptal toplamı (kuruş)"
                                           },
+                                          "refundPaidCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)"
+                                          },
+                                          "refundPaidCents": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                          },
                                           "netCents": {
                                             "type": "integer",
                                             "minimum": -9007199254740991,
                                             "maximum": 9007199254740991,
-                                            "description": "Tahsilat eksi iptal (kuruş)"
+                                            "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                           }
                                         },
                                         "required": [
@@ -62833,6 +62917,8 @@
                                           "collectedCents",
                                           "reversedCount",
                                           "reversedCents",
+                                          "refundPaidCount",
+                                          "refundPaidCents",
                                           "netCents"
                                         ],
                                         "additionalProperties": false
@@ -62859,10 +62945,23 @@
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991
                                     },
+                                    "refundPaidCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "O gün ödenen ayrılış iadesi adedi"
+                                    },
+                                    "refundPaidCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                    },
                                     "netCents": {
                                       "type": "integer",
                                       "minimum": -9007199254740991,
-                                      "maximum": 9007199254740991
+                                      "maximum": 9007199254740991,
+                                      "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                     }
                                   },
                                   "required": [
@@ -62871,6 +62970,8 @@
                                     "collectedCents",
                                     "reversedCount",
                                     "reversedCents",
+                                    "refundPaidCount",
+                                    "refundPaidCents",
                                     "netCents"
                                   ],
                                   "additionalProperties": false,
@@ -63039,11 +63140,23 @@
                                           "maximum": 9007199254740991,
                                           "description": "O gün yapılan iptal toplamı (kuruş)"
                                         },
+                                        "refundPaidCount": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)"
+                                        },
+                                        "refundPaidCents": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                        },
                                         "netCents": {
                                           "type": "integer",
                                           "minimum": -9007199254740991,
                                           "maximum": 9007199254740991,
-                                          "description": "Tahsilat eksi iptal (kuruş)"
+                                          "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                         }
                                       },
                                       "required": [
@@ -63052,6 +63165,8 @@
                                         "collectedCents",
                                         "reversedCount",
                                         "reversedCents",
+                                        "refundPaidCount",
+                                        "refundPaidCents",
                                         "netCents"
                                       ],
                                       "additionalProperties": false
@@ -63078,10 +63193,23 @@
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991
                                   },
+                                  "refundPaidCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi adedi"
+                                  },
+                                  "refundPaidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                  },
                                   "netCents": {
                                     "type": "integer",
                                     "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
+                                    "maximum": 9007199254740991,
+                                    "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                   }
                                 },
                                 "required": [
@@ -63090,6 +63218,8 @@
                                   "collectedCents",
                                   "reversedCount",
                                   "reversedCents",
+                                  "refundPaidCount",
+                                  "refundPaidCents",
                                   "netCents"
                                 ],
                                 "additionalProperties": false,
@@ -63213,6 +63343,7 @@
                         "suggestedOpeningCents",
                         "collected",
                         "reversed",
+                        "refunds",
                         "closing",
                         "history"
                       ],
@@ -63317,7 +63448,7 @@
         "tags": [
           "finance-day-closings"
         ],
-        "description": "Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.",
+        "description": "Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat ve iade ödemesi girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -63434,11 +63565,23 @@
                                     "maximum": 9007199254740991,
                                     "description": "O gün yapılan iptal toplamı (kuruş)"
                                   },
+                                  "refundPaidCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)"
+                                  },
+                                  "refundPaidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                  },
                                   "netCents": {
                                     "type": "integer",
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991,
-                                    "description": "Tahsilat eksi iptal (kuruş)"
+                                    "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                   }
                                 },
                                 "required": [
@@ -63447,6 +63590,8 @@
                                   "collectedCents",
                                   "reversedCount",
                                   "reversedCents",
+                                  "refundPaidCount",
+                                  "refundPaidCents",
                                   "netCents"
                                 ],
                                 "additionalProperties": false
@@ -63473,10 +63618,23 @@
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
                             },
+                            "refundPaidCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "O gün ödenen ayrılış iadesi adedi"
+                            },
+                            "refundPaidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                            },
                             "netCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
+                              "maximum": 9007199254740991,
+                              "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                             }
                           },
                           "required": [
@@ -63485,6 +63643,8 @@
                             "collectedCents",
                             "reversedCount",
                             "reversedCents",
+                            "refundPaidCount",
+                            "refundPaidCents",
                             "netCents"
                           ],
                           "additionalProperties": false,
@@ -63806,11 +63966,23 @@
                                     "maximum": 9007199254740991,
                                     "description": "O gün yapılan iptal toplamı (kuruş)"
                                   },
+                                  "refundPaidCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)"
+                                  },
+                                  "refundPaidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                                  },
                                   "netCents": {
                                     "type": "integer",
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991,
-                                    "description": "Tahsilat eksi iptal (kuruş)"
+                                    "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                                   }
                                 },
                                 "required": [
@@ -63819,6 +63991,8 @@
                                   "collectedCents",
                                   "reversedCount",
                                   "reversedCents",
+                                  "refundPaidCount",
+                                  "refundPaidCents",
                                   "netCents"
                                 ],
                                 "additionalProperties": false
@@ -63845,10 +64019,23 @@
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
                             },
+                            "refundPaidCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "O gün ödenen ayrılış iadesi adedi"
+                            },
+                            "refundPaidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "O gün ödenen ayrılış iadesi toplamı (kuruş)"
+                            },
                             "netCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
+                              "maximum": 9007199254740991,
+                              "description": "Tahsilat eksi iptal eksi iade ödemesi (kuruş)"
                             }
                           },
                           "required": [
@@ -63857,6 +64044,8 @@
                             "collectedCents",
                             "reversedCount",
                             "reversedCents",
+                            "refundPaidCount",
+                            "refundPaidCents",
                             "netCents"
                           ],
                           "additionalProperties": false,
@@ -84172,6 +84361,20 @@
                             "null"
                           ]
                         },
+                        "refundBankAccountId": {
+                          "description": "İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundBankAccountLabel": {
+                          "description": "Kurum hesabının kısa adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "refundStatus": {
                           "type": "string",
                           "enum": [
@@ -84202,6 +84405,8 @@
                         "refundPaidDate",
                         "maskedIban",
                         "refundAccountHolder",
+                        "refundBankAccountId",
+                        "refundBankAccountLabel",
                         "refundStatus",
                         "version"
                       ],
@@ -84715,6 +84920,20 @@
                               "null"
                             ]
                           },
+                          "refundBankAccountId": {
+                            "description": "İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "refundBankAccountLabel": {
+                            "description": "Kurum hesabının kısa adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "refundStatus": {
                             "type": "string",
                             "enum": [
@@ -84745,6 +84964,8 @@
                           "refundPaidDate",
                           "maskedIban",
                           "refundAccountHolder",
+                          "refundBankAccountId",
+                          "refundBankAccountLabel",
                           "refundStatus",
                           "version"
                         ],
@@ -85222,6 +85443,20 @@
                             "null"
                           ]
                         },
+                        "refundBankAccountId": {
+                          "description": "İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundBankAccountLabel": {
+                          "description": "Kurum hesabının kısa adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "refundStatus": {
                           "type": "string",
                           "enum": [
@@ -85252,6 +85487,8 @@
                         "refundPaidDate",
                         "maskedIban",
                         "refundAccountHolder",
+                        "refundBankAccountId",
+                        "refundBankAccountLabel",
                         "refundStatus",
                         "version"
                       ],
@@ -85356,7 +85593,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur; anahtar kaydı yanıtı 24 saat saklar ama maskeli IBAN ve hesap sahibini saklamaz, tekrar yanıtı bunları iade kaydından ekler. Rol: `yonetici`.",
+        "description": "Ödeme tarihi, IBAN, hesap sahibi ve iadenin çıktığı kurum banka hesabını yazar; ödenen iade değiştirilemez (DOM-FIN-041). İade ödeme gününün gün sonuna banka havalesi satırında girer (M-13). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; `bankAccountId` kurumun arşivlenmemiş hesabı değilse (başka kurumun hesabı dahil) 422 `refund_bank_account_invalid`; ödeme günü kapatılmışsa 422 `finance_day_closed`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur; anahtar kaydı yanıtı 24 saat saklar ama maskeli IBAN ve hesap sahibini saklamaz, tekrar yanıtı bunları iade kaydından ekler. Rol: `yonetici`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -85375,12 +85612,18 @@
                     "type": "string",
                     "minLength": 2,
                     "maxLength": 120
+                  },
+                  "bankAccountId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
                   "paidDate",
                   "iban",
-                  "accountHolder"
+                  "accountHolder",
+                  "bankAccountId"
                 ],
                 "additionalProperties": false
               }
@@ -85774,6 +86017,20 @@
                             "null"
                           ]
                         },
+                        "refundBankAccountId": {
+                          "description": "İadenin ödendiği kurum hesabı (M-13); ödenmemiş ve 0083 öncesi ödenmiş iadede boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundBankAccountLabel": {
+                          "description": "Kurum hesabının kısa adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "refundStatus": {
                           "type": "string",
                           "enum": [
@@ -85804,6 +86061,8 @@
                         "refundPaidDate",
                         "maskedIban",
                         "refundAccountHolder",
+                        "refundBankAccountId",
+                        "refundBankAccountLabel",
                         "refundStatus",
                         "version"
                       ],

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import { money } from '../packages/school-core/src/lib/format.ts'
 import {
   contractLineRows,
@@ -9,6 +10,7 @@ import {
   isValidTurkishIban,
   paidTuitionLabel,
   payerNameOf,
+  payRefundSchema,
   planRefundPayment,
   quoteWithdrawal,
   refundDueDate,
@@ -25,6 +27,10 @@ import { isDomainError } from './support/domain-error.ts'
 
 const NOW = '2026-10-06T09:00:00.000Z'
 const IBAN = 'TR330006100519786457841326'
+/** İadenin çıktığı kurum hesabı (M-13, DOM-FIN-032). */
+const ACCOUNT_ID = '7c3e9a1b-4d2f-4e8a-b6c5-2f1e0d9c8b7a'
+const OPEN_DAY = { bankAccountIds: [ACCOUNT_ID], dayClosed: false }
+const refundContext = (today: string) => ({ today, ...OPEN_DAY })
 const NET = 10_000_000
 
 function fixture() {
@@ -360,8 +366,9 @@ test('DOM-FIN-041: iade ödemesi IBAN, ödeyici ve tekrar denetler', () => {
     paidDate: '2026-10-05',
     iban: `${IBAN.slice(0, 4)} ${IBAN.slice(4)}`,
     accountHolder: ' ayşe  yılmaz',
+    bankAccountId: ACCOUNT_ID,
   }
-  const today = '2026-10-06'
+  const today = refundContext('2026-10-06')
   assert.equal(planRefundPayment(row, input, today).iban, IBAN)
   assert.throws(() => planRefundPayment(row, { ...input, iban: 'TR1' }, today))
   assert.throws(
@@ -389,14 +396,80 @@ test('DOM-FIN-041, IST-110: iade ayrılış gününden önceki bir güne ödenmi
     payerName: 'Ayşe Yılmaz',
     withdrawalDate: '2026-10-05',
   }
-  const input = { paidDate: '2026-10-04', iban: IBAN, accountHolder: 'Ayşe Yılmaz' }
+  const input = {
+    paidDate: '2026-10-04',
+    iban: IBAN,
+    accountHolder: 'Ayşe Yılmaz',
+    bankAccountId: ACCOUNT_ID,
+  }
   assert.throws(
-    () => planRefundPayment(row, input, '2026-10-06'),
+    () => planRefundPayment(row, input, refundContext('2026-10-06')),
     isDomainError('refund_date_before_withdrawal'),
   )
   assert.equal(
-    planRefundPayment(row, { ...input, paidDate: '2026-10-05' }, '2026-10-06').paidDate,
+    planRefundPayment(row, { ...input, paidDate: '2026-10-05' }, refundContext('2026-10-06'))
+      .paidDate,
     '2026-10-05',
+  )
+})
+
+test('M-13, DOM-FIN-032: iade kurumun bildirilmiş hesabından ödenir; seçim zorunlu, hesapsız kurum ve yabancı hesap reddedilir', () => {
+  const row = {
+    refundCents: 100,
+    refundPaidDate: null,
+    payerName: 'Ayşe Yılmaz',
+    withdrawalDate: '2026-10-01',
+  }
+  const input = {
+    paidDate: '2026-10-05',
+    iban: IBAN,
+    accountHolder: 'Ayşe Yılmaz',
+    bankAccountId: ACCOUNT_ID,
+  }
+  const context = refundContext('2026-10-06')
+  assert.equal(planRefundPayment(row, input, context).bankAccountId, ACCOUNT_ID)
+  const withoutAccount = {
+    paidDate: input.paidDate,
+    iban: IBAN,
+    accountHolder: input.accountHolder,
+  }
+  assert.equal(payRefundSchema.safeParse(withoutAccount).success, false)
+  assert.equal(payRefundSchema.safeParse({ ...input, bankAccountId: '' }).success, false)
+  assert.throws(
+    () =>
+      planRefundPayment(
+        row,
+        { ...input, bankAccountId: '3f9d2c1a-8b7e-4f6d-a5c4-b3a291807f6e' },
+        context,
+      ),
+    isDomainError('refund_bank_account_invalid'),
+  )
+  assert.throws(
+    () => planRefundPayment(row, input, { ...context, bankAccountIds: [] }),
+    (error: unknown) =>
+      isDomainError('refund_bank_account_invalid')(error) &&
+      /Ayarlar/.test((error as Error).message),
+  )
+})
+
+test('M-13, DOM-FIN-036: kapatılmış güne iade ödemesi finance_day_closed ile reddedilir; hata ödeme gününe düşer', () => {
+  const row = {
+    refundCents: 100,
+    refundPaidDate: null,
+    payerName: 'Ayşe Yılmaz',
+    withdrawalDate: '2026-10-01',
+  }
+  const input = {
+    paidDate: '2026-10-05',
+    iban: IBAN,
+    accountHolder: 'Ayşe Yılmaz',
+    bankAccountId: ACCOUNT_ID,
+  }
+  assert.throws(
+    () => planRefundPayment(row, input, { ...refundContext('2026-10-06'), dayClosed: true }),
+    (error: unknown) =>
+      isDomainError('finance_day_closed')(error) &&
+      (error as DomainError).path?.join('.') === 'paidDate',
   )
 })
 
@@ -1000,10 +1073,16 @@ test('K-12: karar kayda girer, hesap değişmez; iade yalnız seçilen ödeyiciy
     payerName: refundPayerName(state, plan),
     withdrawalDate: '2026-10-01',
   }
-  const pay = { paidDate: '2026-10-05', iban: IBAN, accountHolder: studentName }
-  assert.equal(planRefundPayment(row, pay, '2026-10-06').accountHolder, studentName)
+  const pay = {
+    paidDate: '2026-10-05',
+    iban: IBAN,
+    accountHolder: studentName,
+    bankAccountId: ACCOUNT_ID,
+  }
+  assert.equal(planRefundPayment(row, pay, refundContext('2026-10-06')).accountHolder, studentName)
   assert.throws(
-    () => planRefundPayment(row, { ...pay, accountHolder: parentName }, '2026-10-06'),
+    () =>
+      planRefundPayment(row, { ...pay, accountHolder: parentName }, refundContext('2026-10-06')),
     isDomainError('refund_holder_mismatch'),
   )
 })

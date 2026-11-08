@@ -518,6 +518,52 @@ describe('kasa ve gün sonu uçları', () => {
     assert.equal((await closingRows(a.id))[0]?.reopenedAt, null)
   })
 
+  test('M-13, DOM-FIN-036: 0083 öncesi kapanış iade alanı olmadan sıfır okunur; iade kolonları da değişmez', async () => {
+    const a = await institution({}, false)
+    const id = '1b2c3d4e-5f60-4718-8a9b-0c1d2e3f4a5b'
+    // Migration 0083'ten önce yazılmış satır: yöntem özetinde iade alanı yok, kolonlar varsayılan.
+    await db.insert(financeDayClosings).values({
+      institutionId: a.id,
+      id,
+      closingDate: YESTERDAY,
+      methodTotals: ['bank_transfer', 'cash', 'card', 'promissory_note'].map((method) => ({
+        method,
+        collectedCount: method === 'bank_transfer' ? 1 : 0,
+        collectedCents: method === 'bank_transfer' ? 50_000 : 0,
+        reversedCount: 0,
+        reversedCents: 0,
+        netCents: method === 'bank_transfer' ? 50_000 : 0,
+      })),
+      collectedCount: 1,
+      collectedCents: 50_000,
+      reversedCount: 0,
+      reversedCents: 0,
+      netCents: 50_000,
+      closedAt: FIXED_NOW,
+      closedByUserId: 'eski-kullanici',
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+    const read = await report(a.adminCookie, YESTERDAY)
+    assert.equal(read.statusCode, 200, read.body)
+    const { summary } = read.json().data
+    assert.equal(read.json().data.status, 'closed')
+    assert.deepEqual(
+      [summary.refundPaidCount, summary.refundPaidCents, summary.netCents],
+      [0, 0, 50_000],
+    )
+    for (const item of summary.methods) assert.equal(item.refundPaidCents, 0)
+    assert.equal(read.json().data.reportStamp, '1:0:0:50000')
+    const where = and(eq(financeDayClosings.institutionId, a.id), eq(financeDayClosings.id, id))
+    await assert.rejects(
+      db.update(financeDayClosings).set({ refundPaidCount: 1, refundPaidCents: 1 }).where(where),
+      (error: { cause?: { code?: string }; code?: string }) => {
+        assert.equal(error.cause?.code ?? error.code, '55000')
+        return true
+      },
+    )
+  })
+
   // --- Yeniden açma ------------------------------------------------------------------------------
 
   test('DOM-FIN-036: yönetici gerekçeyle açar; eski kapanış kayıtta kalır, tahsilat girilir, yeni kapanış yeni kayıttır', async () => {

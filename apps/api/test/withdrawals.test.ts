@@ -13,7 +13,9 @@ import { MIGRATIONS_FOLDER, type Database } from '../src/db/client.ts'
 import { loadInvoices } from '../src/db/invoice-store.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { financeDayClosings } from '../src/db/schema/finance-day-closings.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
+import { bankAccounts } from '../src/db/schema/payments.ts'
 import { studentWithdrawals } from '../src/db/schema/withdrawals.ts'
 import {
   buildTestApp,
@@ -28,8 +30,12 @@ import {
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 import {
   contractTerms,
+  ensureRefundBankAccount,
+  insertRefundBankAccount,
   insertTestScholarshipProgram,
   insertTestTariff,
+  TEST_REFUND_BANK_ACCOUNT_ID,
+  TEST_REFUND_BANK_LABEL,
   TEST_SCHOLARSHIP_PROGRAM_ID,
 } from './support/finance-terms.ts'
 
@@ -61,7 +67,12 @@ const QUOTE = {
 }
 const WITHDRAW = { ...QUOTE, reason: 'relocation', targetSchool: 'Test Okulu' }
 const IBAN = 'TR330006100519786457841326'
-const REFUND = { paidDate: '2026-10-05', iban: IBAN, accountHolder: PARENT_NAME }
+const REFUND = {
+  paidDate: '2026-10-05',
+  iban: IBAN,
+  accountHolder: PARENT_NAME,
+  bankAccountId: TEST_REFUND_BANK_ACCOUNT_ID,
+}
 
 describe('ayrılış ve iade uçları', () => {
   let db: Database
@@ -150,11 +161,18 @@ describe('ayrılış ve iade uçları', () => {
     send('POST', `${studentUrl()}/withdrawal-quote`, cookie, body)
   const withdraw = (cookie: string | null, body: unknown = WITHDRAW, headers = key()) =>
     send('POST', `${studentUrl()}/withdraw`, cookie, body, headers)
-  const payRefund = (cookie: string | null, id: string, version: number, body: unknown = REFUND) =>
-    send('POST', `/api/v1/withdrawals/${id}/pay-refund`, cookie, body, {
+  const payRefund = async (
+    cookie: string | null,
+    id: string,
+    version: number,
+    body: unknown = REFUND,
+  ) => {
+    await ensureRefundBankAccount(db, id)
+    return send('POST', `/api/v1/withdrawals/${id}/pay-refund`, cookie, body, {
       'if-match': `"${String(version)}"`,
       ...key(),
     })
+  }
   const pay = (cookie: string, amountCents: number, reference: string) =>
     send(
       'POST',
@@ -628,6 +646,158 @@ describe('ayrılış ve iade uçları', () => {
     assert.equal(detail.json().data.refundCents, 3_000_000)
   })
 
+  test('M-13, DOM-FIN-032: iade ödemesi kurum hesabı ister; hesapsız kurum, başka kurumun ve arşivli hesap 422, kayıt değişmez', async () => {
+    const a = await institution()
+    assert.equal((await pay(a.cookie, NET / 2, 'TR-B1')).statusCode, 201)
+    const { id, version } = (await withdraw(a.cookie)).json().data
+    const url = `/api/v1/withdrawals/${String(id)}/pay-refund`
+    const attempt = (body: unknown) =>
+      send('POST', url, a.cookie, body, { 'if-match': `"${String(version)}"`, ...key() })
+    const withoutAccount = { paidDate: REFUND.paidDate, iban: IBAN, accountHolder: PARENT_NAME }
+    assertError(await attempt(withoutAccount), 400, 'validation_failed')
+    const none = await attempt(REFUND)
+    assertError(none, 422, 'refund_bank_account_invalid')
+    assert.match(none.json().message, /önce Ayarlar/)
+
+    // Başka kurumun hesabı: kimlik B'de var, A'da yok.
+    const b = await createInstitution(app, {})
+    const foreignId = '3f9d2c1a-8b7e-4f6d-a5c4-b3a291807f6e'
+    await db.insert(bankAccounts).values({
+      institutionId: b.id,
+      id: foreignId,
+      bankName: 'B Bankası',
+      iban: 'TR420001000000000000000777',
+      accountHolder: 'B Kurumu',
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+    await insertRefundBankAccount(db, a.id)
+    assertError(
+      await attempt({ ...REFUND, bankAccountId: foreignId }),
+      422,
+      'refund_bank_account_invalid',
+    )
+    // Arşivlenen hesap yeni ödemede seçilmez.
+    const archivedId = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+    await db.insert(bankAccounts).values({
+      institutionId: a.id,
+      id: archivedId,
+      bankName: 'Eski Banka',
+      iban: 'TR330006100519786457841326',
+      accountHolder: 'Test Kurumu',
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+      archivedAt: FIXED_NOW,
+    })
+    assertError(
+      await attempt({ ...REFUND, bankAccountId: archivedId }),
+      422,
+      'refund_bank_account_invalid',
+    )
+    const pending = await send('GET', `/api/v1/withdrawals/${String(id)}`, a.cookie)
+    assert.equal(pending.json().data.refundStatus, 'pending')
+    assert.equal(pending.json().data.refundBankAccountId, null)
+
+    const paid = await attempt(REFUND)
+    assert.equal(paid.statusCode, 200, paid.body)
+    assert.equal(paid.json().data.refundBankAccountId, TEST_REFUND_BANK_ACCOUNT_ID)
+    assert.equal(paid.json().data.refundBankAccountLabel, TEST_REFUND_BANK_LABEL)
+    const [row] = await db
+      .select({ account: studentWithdrawals.refundBankAccountId })
+      .from(studentWithdrawals)
+      .where(and(eq(studentWithdrawals.institutionId, a.id), eq(studentWithdrawals.id, id)))
+    assert.equal(row?.account, TEST_REFUND_BANK_ACCOUNT_ID)
+    const [audit] = await db
+      .select({ changes: auditLog.changes })
+      .from(auditLog)
+      .where(
+        and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student.withdraw.refund_paid')),
+      )
+    assert.deepEqual(audit?.changes, {
+      fields: ['refundPaidDate', 'refundIban', 'refundAccountHolder', 'refundBankAccountId'],
+    })
+  })
+
+  test('M-13, DOM-FIN-036: kapatılmış güne iade ödemesi finance_day_closed; gün sonu iadeyi banka satırında sayar, net düşer, damga değişir', async () => {
+    const a = await institution()
+    assert.equal((await pay(a.cookie, NET / 2, 'TR-G1')).statusCode, 201)
+    const { id, version, refundCents } = (await withdraw(a.cookie)).json().data
+    assert.equal(refundCents, 3_000_000)
+    const report = async (day: string) => {
+      const response = await send('GET', `/api/v1/finance/day-closings/${day}`, a.cookie)
+      assert.equal(response.statusCode, 200, response.body)
+      return response.json().data
+    }
+    const close = (day: string, reportStamp: string) =>
+      send('POST', `/api/v1/finance/day-closings/${day}/close`, a.cookie, { reportStamp }, key())
+    const yesterday = '2026-10-05'
+    const closed = await close(yesterday, (await report(yesterday)).reportStamp)
+    assert.equal(closed.statusCode, 201, closed.body)
+
+    const rejected = await payRefund(a.cookie, id, version, { ...REFUND, paidDate: yesterday })
+    assertError(rejected, 422, 'finance_day_closed')
+    assert.deepEqual(
+      rejected.json().issues?.map((issue: { path: string[] }) => issue.path),
+      [['paidDate']],
+    )
+    const unchanged = await send('GET', `/api/v1/withdrawals/${String(id)}`, a.cookie)
+    assert.equal(unchanged.json().data.refundStatus, 'pending')
+    assert.equal(unchanged.json().data.version, version)
+
+    const today = '2026-10-06'
+    const before = await report(today)
+    assert.equal(before.summary.refundPaidCount, 0)
+    const paid = await payRefund(a.cookie, id, version, { ...REFUND, paidDate: today })
+    assert.equal(paid.statusCode, 200, paid.body)
+
+    const after = await report(today)
+    assert.equal(after.summary.collectedCents, NET / 2)
+    assert.equal(after.summary.refundPaidCount, 1)
+    assert.equal(after.summary.refundPaidCents, 3_000_000)
+    assert.equal(after.summary.netCents, NET / 2 - 3_000_000)
+    const bank = after.summary.methods.find(
+      (item: { method: string }) => item.method === 'Banka havalesi',
+    )
+    assert.deepEqual(
+      { count: bank.refundPaidCount, cents: bank.refundPaidCents, net: bank.netCents },
+      { count: 1, cents: 3_000_000, net: NET / 2 - 3_000_000 },
+    )
+    for (const other of after.summary.methods.filter(
+      (item: { method: string }) => item.method !== 'Banka havalesi',
+    ))
+      assert.equal(other.refundPaidCount, 0)
+    assert.equal(after.cashNetCents, 0)
+    assert.deepEqual(after.refunds, [
+      {
+        withdrawalId: id,
+        studentName: STUDENT?.name,
+        amountCents: 3_000_000,
+        paidDate: today,
+        bankAccountLabel: TEST_REFUND_BANK_LABEL,
+      },
+    ])
+    assert.equal(JSON.stringify(after.refunds).includes(IBAN), false)
+    assert.equal(JSON.stringify(after.refunds).includes(PARENT_NAME), false)
+
+    // Ekran açıkken ödenen iade damgayı bozar; görülmemiş rakam mühürlenmez.
+    assertError(await close(today, before.reportStamp), 409, 'finance_day_report_changed')
+    const sealed = await close(today, after.reportStamp)
+    assert.equal(sealed.statusCode, 201, sealed.body)
+    assert.equal(sealed.json().data.summary.refundPaidCents, 3_000_000)
+    const [stored] = await db
+      .select({
+        count: financeDayClosings.refundPaidCount,
+        cents: financeDayClosings.refundPaidCents,
+        net: financeDayClosings.netCents,
+      })
+      .from(financeDayClosings)
+      .where(
+        and(eq(financeDayClosings.institutionId, a.id), eq(financeDayClosings.closingDate, today)),
+      )
+    assert.deepEqual(stored, { count: 1, cents: 3_000_000, net: NET / 2 - 3_000_000 })
+    assert.equal((await report(today)).summary.refundPaidCents, 3_000_000)
+  })
+
   test('IST-107, DOM-FIN-054: ekstre ayrılış hesabını ve iadeyi yazar; kısmi tahsilat iade alacağı kalmaz', async () => {
     const a = await institution()
     // 1. taksit tam, 2. taksit 10.000 ₺ kısmi; hak edilen 20.000 ₺, iade 40.000 ₺.
@@ -737,6 +907,7 @@ describe('ayrılış ve iade uçları', () => {
     const { id, version } = (await withdraw(a.cookie)).json().data
     const headers = { 'if-match': `"${String(version)}"`, ...key() }
     const url = `/api/v1/withdrawals/${String(id)}/pay-refund`
+    await insertRefundBankAccount(db, a.id)
     const first = await send('POST', url, a.cookie, REFUND, headers)
     assert.equal(first.statusCode, 200, first.body)
     assert.equal(first.json().data.maskedIban, 'TR** **** 1326')
@@ -772,6 +943,7 @@ describe('ayrılış ve iade uçları', () => {
     const { id, version } = withdrawn.json().data
     const refundHeaders = { 'if-match': `"${String(version)}"`, ...key() }
     const url = `/api/v1/withdrawals/${String(id)}/pay-refund`
+    await insertRefundBankAccount(db, a.id)
     const first = await send('POST', url, a.cookie, REFUND, refundHeaders)
     assert.equal(first.statusCode, 200, first.body)
 

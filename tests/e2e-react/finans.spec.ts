@@ -861,8 +861,22 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('dialog', { name: /İade hesap kırılımı/ })).toBeVisible()
     await page.keyboard.press('Escape')
 
+    // M-13: iade kurumun bildirilmiş hesabından ödenir; hesap tanımlıysa ilk hesap öntanımlıdır.
+    const account = await client.post(
+      '/api/v1/bank-accounts',
+      {
+        bankName: 'Örnek Bankası',
+        iban: 'TR320010009999901234567890',
+        accountHolder: 'Akademi Özel Okulları',
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(account.status, 'kurum hesabı').toBe(201)
     await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
     const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
+    await expect(refund.getByLabel('Kurum banka hesabı')).toHaveValue(
+      (account.body as { data: { id: string } }).data.id,
+    )
     await refund.getByLabel('IBAN').fill('TR330006100519786457841326')
     await refund.getByLabel('Hesap sahibi').fill('Başka Kişi')
     await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()

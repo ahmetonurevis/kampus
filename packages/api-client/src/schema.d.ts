@@ -3808,7 +3808,7 @@ export interface paths {
         post?: never;
         /**
          * Kurumsal müşteriyi arşivle
-         * @description Etkin bağlı kursiyeri olan şirket 422 `corporate_customer_has_employees`; kesilmiş faturalar kalır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
+         * @description Bugün bitmemiş bağı (etkin, bitişi ya da başlangıcı ileri tarihli) olan şirket 422 `corporate_customer_has_employees`; kesilmiş faturalar kalır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.
          */
         delete: operations["archiveCorporateCustomer"];
         options?: never;
@@ -40930,7 +40930,7 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description `active` etkin, `ended` biten bağlar */
+                /** @description `active` bugünü kapsayan (bitişi ileri tarihli dahil), `ended` bitişi bugünden önce olan bağlar (Europe/Istanbul günü); başlangıcı ileri tarihli bağ yalnız süzgeçsiz listededir */
                 status?: "active" | "ended";
             };
             header?: never;

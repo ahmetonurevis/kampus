@@ -319,11 +319,13 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
     assertError(await link(t, otherCustomer, 's3', '2026-10-10'), 422, 'corporate_link_overlaps')
     await ok(await link(t, otherCustomer, 's3', '2026-10-11'), 201)
 
-    const list = await call('GET', `${url}?status=ended`, t.admin)
-    assert.deepEqual(
-      list.json().data.map((item: Json) => item.id),
-      [linked.id],
-    )
+    // Bitişi (10 Ekim) bugünden (6 Ekim) sonra olan bağ bitişine kadar etkindir.
+    const listed = async (status: string) =>
+      (await call('GET', `${url}?status=${status}`, t.admin))
+        .json()
+        .data.map((item: Json) => item.id)
+    assert.deepEqual(await listed('active'), [linked.id])
+    assert.deepEqual(await listed('ended'), [])
   })
 
   test('DOM-FIN-060: toplu fatura önizlemeyle aynı satırları keser, idempotent ve mükerrer değil', async () => {
@@ -490,6 +492,48 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
     await ok(await call('DELETE', url, t.admin, undefined, ifMatch(customer.version)))
     assertError(await get(url, t.admin), 404)
     assert.equal((await get(CUSTOMERS, t.admin)).json().meta.total, 0)
+  })
+
+  test('DOM-FIN-060: etkin çalışan bugünü kapsayan bağdır; ileri tarihli bitiş etkin, şirket arşivlenmez', async () => {
+    const t = await institution()
+    const customer = await createCustomer(t)
+    const customerId = String(customer.id)
+    const url = `${CUSTOMERS}/${customerId}`
+    const third = STUDENTS.find((item) => item.id !== 's3' && item.id !== OTHER)?.id ?? ''
+    const endLink = async (linked: Json, endsOn: string) =>
+      ok(
+        await call(
+          'POST',
+          `${url}/employees/${String(linked.id)}/end`,
+          t.admin,
+          { endsOn },
+          ifMatch(linked.version),
+        ),
+      )
+    // s3: bitişi ileri tarihli (etkin); OTHER: dün bitti; third: başlangıcı ileri tarihli.
+    await endLink(await ok(await link(t, customerId, 's3'), 201), '2026-12-31')
+    await endLink(await ok(await link(t, customerId, OTHER), 201), '2026-10-05')
+    await ok(await link(t, customerId, third, '2026-11-01'), 201)
+
+    assert.equal((await ok(await get(url, t.admin))).activeEmployeeCount, 1)
+    const customers = (await get(CUSTOMERS, t.admin)).json().data as Json[]
+    assert.deepEqual(
+      customers.map((item) => item.activeEmployeeCount),
+      [1],
+    )
+    const ids = async (status: string) =>
+      ((await get(`${url}/employees?status=${status}`, t.admin)).json().data as Json[]).map(
+        (item) => item.studentId,
+      )
+    assert.deepEqual(await ids('active'), ['s3'])
+    assert.deepEqual(await ids('ended'), [OTHER])
+    // Bitişi ileri tarihli ya da henüz başlamamış bağ varken şirket arşivlenmez.
+    assertError(
+      await call('DELETE', url, t.admin, undefined, ifMatch(customer.version)),
+      422,
+      'corporate_customer_has_employees',
+    )
+    assert.equal((await get(CUSTOMERS, t.admin)).json().meta.total, 1)
   })
 
   /** Etkin kur ve bir grubu; `enroll` kursiyeri verilen anda gruba yazar, kur kaydı kimliğini döner. */

@@ -31,6 +31,7 @@ import {
   archiveCorporateCustomer,
   cancelCorporateInvoice,
   countActiveEmployees,
+  countOpenEmployees,
   endCustomerLink,
   findCorporateCustomer,
   findCorporateInvoice,
@@ -112,13 +113,13 @@ function checkedPeriod(period: FinancePeriod): FinancePeriod {
 export const listCorporateCustomersFor = (
   ctx: ServiceContext,
   query: { page: number; pageSize: number; q?: string | undefined },
-) => listCorporateCustomers(ctx.db, ctx.institutionId, query)
+) => listCorporateCustomers(ctx.db, ctx.institutionId, query, dayKey(ctx.now))
 
 export async function getCorporateCustomerFor(ctx: ServiceContext, id: string) {
   const customer = await customerOf(ctx.db, ctx, id)
   return {
     ...customer,
-    activeEmployeeCount: await countActiveEmployees(ctx.db, ctx.institutionId, id),
+    activeEmployeeCount: await countActiveEmployees(ctx.db, ctx.institutionId, id, dayKey(ctx.now)),
   }
 }
 
@@ -127,7 +128,7 @@ async function customerBody(tx: Database, ctx: ServiceContext, id: string) {
   return {
     data: {
       ...customer,
-      activeEmployeeCount: await countActiveEmployees(tx, ctx.institutionId, id),
+      activeEmployeeCount: await countActiveEmployees(tx, ctx.institutionId, id, dayKey(ctx.now)),
     },
   }
 }
@@ -232,8 +233,8 @@ export function archiveCorporateCustomerCommand(
       load: async (tx) => {
         const current = await customerOf(tx, ctx, id)
         if (current.version !== expectedVersion) throw new ConflictError()
-        const active = await countActiveEmployees(tx, ctx.institutionId, id)
-        return { run: () => assertCustomerArchivable(active) }
+        const open = await countOpenEmployees(tx, ctx.institutionId, id, dayKey(ctx.now))
+        return { run: () => assertCustomerArchivable(open) }
       },
       after: async (tx) => {
         const saved = await archiveCorporateCustomer(tx, ctx.institutionId, {
@@ -258,7 +259,13 @@ export async function listCorporateEmployeesFor(
   query: { page: number; pageSize: number; status?: 'active' | 'ended' | undefined },
 ) {
   await customerOf(ctx.db, ctx, customerId)
-  const { items, total } = await listCustomerLinks(ctx.db, ctx.institutionId, customerId, query)
+  const { items, total } = await listCustomerLinks(
+    ctx.db,
+    ctx.institutionId,
+    customerId,
+    query,
+    dayKey(ctx.now),
+  )
   const names = await studentNames(
     ctx.db,
     ctx.institutionId,

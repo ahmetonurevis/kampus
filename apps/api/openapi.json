@@ -85981,7 +85981,7 @@
         "tags": [
           "finance-corporate"
         ],
-        "description": "Etkin bağlı kursiyeri olan şirket 422 `corporate_customer_has_employees`; kesilmiş faturalar kalır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "description": "Bugün bitmemiş bağı (etkin, bitişi ya da başlangıcı ileri tarihli) olan şirket 422 `corporate_customer_has_employees`; kesilmiş faturalar kalır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -86170,7 +86170,7 @@
             "in": "query",
             "name": "status",
             "required": false,
-            "description": "`active` etkin, `ended` biten bağlar"
+            "description": "`active` bugünü kapsayan (bitişi ileri tarihli dahil), `ended` bitişi bugünden önce olan bağlar (Europe/Istanbul günü); başlangıcı ileri tarihli bağ yalnız süzgeçsiz listededir"
           },
           {
             "schema": {

@@ -10,6 +10,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  lt,
   lte,
   max,
   or,
@@ -114,6 +115,7 @@ export async function listCorporateCustomers(
   db: Database,
   institutionId: string,
   query: { page: number; pageSize: number; q?: string | undefined },
+  today: string,
 ): Promise<{
   items: (StoredCorporateCustomer & { activeEmployeeCount: number })[]
   total: number
@@ -138,7 +140,7 @@ export async function listCorporateCustomers(
     .where(
       and(
         eq(corporateCustomerEmployees.institutionId, institutionId),
-        isNull(corporateCustomerEmployees.endsOn),
+        linkCoversDay(today),
         isNull(corporateCustomerEmployees.archivedAt),
       ),
     )
@@ -235,6 +237,19 @@ const linkScope = (institutionId: string) =>
     isNull(corporateCustomerEmployees.archivedAt),
   )
 
+/**
+ * Bağ verilen günü kapsar (core `linkCovers`; gün Europe/Istanbul `YYYY-MM-DD`): etkin çalışan budur.
+ * Bitişi ileri tarihli bağ bitişine kadar etkindir, başlangıcı ileri tarihli bağ henüz değildir.
+ */
+const linkCoversDay = (day: string) =>
+  and(
+    lte(corporateCustomerEmployees.startsOn, day),
+    or(isNull(corporateCustomerEmployees.endsOn), gte(corporateCustomerEmployees.endsOn, day)),
+  )
+/** Bağ verilen günde bitmemiş: etkin ya da henüz başlamamış. Şirket arşivini engeller. */
+const linkOpenOn = (day: string) =>
+  or(isNull(corporateCustomerEmployees.endsOn), gte(corporateCustomerEmployees.endsOn, day))
+
 /** Şirketin bütün bağları (etkin ve biten), başlangıca göre. */
 export async function loadCustomerLinks(
   db: Database,
@@ -280,10 +295,11 @@ export async function findCustomerLink(
   return row ?? null
 }
 
-export async function countActiveEmployees(
+async function countEmployees(
   db: Database,
   institutionId: string,
   customerId: string,
+  condition: ReturnType<typeof linkOpenOn>,
 ): Promise<number> {
   const [row] = await db
     .select({ total: count() })
@@ -292,26 +308,49 @@ export async function countActiveEmployees(
       and(
         linkScope(institutionId),
         eq(corporateCustomerEmployees.customerId, customerId),
-        isNull(corporateCustomerEmployees.endsOn),
+        condition,
       ),
     )
   return row?.total ?? 0
 }
 
-/** Şirketin bağları sayfalı: etkin önce, sonra yeni başlayan önce. */
+/** Şirkete `today` günü etkin bağlı kursiyer sayısı. */
+export const countActiveEmployees = (
+  db: Database,
+  institutionId: string,
+  customerId: string,
+  today: string,
+) => countEmployees(db, institutionId, customerId, linkCoversDay(today))
+
+/** `today` günü bitmemiş (etkin ya da ileri tarihli) bağ sayısı; varsa şirket arşivlenmez. */
+export const countOpenEmployees = (
+  db: Database,
+  institutionId: string,
+  customerId: string,
+  today: string,
+) => countEmployees(db, institutionId, customerId, linkOpenOn(today))
+
+/**
+ * Şirketin bağları sayfalı: bitişsiz önce, sonra yeni başlayan önce. `active` bugünü kapsayan,
+ * `ended` bitişi bugünden önce olan bağdır; başlangıcı ileri tarihli bağ yalnız süzgeçsiz listededir.
+ */
 export async function listCustomerLinks(
   db: Database,
   institutionId: string,
   customerId: string,
   query: { page: number; pageSize: number; status?: 'active' | 'ended' | undefined },
+  today: string,
 ): Promise<{ items: StoredCorporateLink[]; total: number }> {
   const where = and(
     linkScope(institutionId),
     eq(corporateCustomerEmployees.customerId, customerId),
     query.status === 'active'
-      ? isNull(corporateCustomerEmployees.endsOn)
+      ? linkCoversDay(today)
       : query.status === 'ended'
-        ? isNotNull(corporateCustomerEmployees.endsOn)
+        ? and(
+            isNotNull(corporateCustomerEmployees.endsOn),
+            lt(corporateCustomerEmployees.endsOn, today),
+          )
         : undefined,
   )
   const [totalRow] = await db

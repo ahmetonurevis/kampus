@@ -377,6 +377,7 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-51   | 2026-11-08 | `DOM-FIN-060` | Toplu faturayı yönetici ve ön büro keser; iptal yalnız yöneticidedir (tahsilat iptali gibi).                                                 | Rol dizileri (`CORPORATE_*_ROLES`) değişir.                                    |
 | K-52   | 2026-11-08 | `DOM-FIN-060` | Faturalanmış taksit ek protokolle değişirse yeni taksit yeniden faturalanmaz; fark için toplu fatura iptal edilip yeniden kesilir.           | Fark faturası (ek döküm) üretilir.                                             |
 | K-53   | 2026-11-08 | `DOM-FIN-060` | Toplu fatura numarası `KF-<yıl>-<sıra>`; yıl Europe/Istanbul, sıra kurumda yıl içinde ardışık, iptal edilen numara boşta kalır.              | `corporateInvoiceNumber` biçimi değişir.                                       |
+
 #### M-13 · Ödenen iadenin gün sonu ve kapalı gün kuralı
 
 - **Kural:** `DOM-FIN-036`, `DOM-FIN-041`; IST-113, IST-110.

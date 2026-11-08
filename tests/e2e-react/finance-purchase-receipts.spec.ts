@@ -1,4 +1,5 @@
 import { createApiClient, switchInstitutionApi, type ApiResult } from './support/api.ts'
+import { pdfText } from './support/finance-pdf-text.ts'
 import { expect, test } from './support/fixtures.ts'
 import type { Tenant } from './support/tenant.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
@@ -6,7 +7,7 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // Mal kabul ekranı (ON-226; DOM-FIN-074). Kural dalları birim ve API testlerindedir
 // (`tests/finance-purchase-receipts.test.ts`, `apps/api/test/finance-purchase-receipts.test.ts`);
 // burada yönetici kısmi kabul (ret nedeniyle) kaydeder ve iptal eder, ön büro kalanı teslim alır ve
-// siparişi tamamlar ama kabulü iptal edemez.
+// siparişi tamamlar ama kabulü iptal edemez. Kabulün tutanak PDF'i (ON-337) indirilip metni okunur.
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
@@ -161,6 +162,20 @@ test.describe('DOM-FIN-074: mal kabul ekranı', () => {
     await expect(history).toContainText('Muayene notu: Kutular hasarlı geldi')
     // Teslim alınmaya başlanan sipariş iptal edilmez.
     await expect(order.getByRole('button', { name: 'Siparişi iptal et' })).toHaveCount(0)
+
+    // Tutanak PDF'i (ON-337): kabul satırındaki düğme önizlemeyi açar, indirme aynı belgeyi verir.
+    await history.getByRole('button', { name: /^Tutanak PDF/ }).click()
+    const preview = page.getByRole('dialog', { name: 'Mal kabul tutanağı · Önizleme' })
+    const downloading = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    const download = await downloading
+    expect(download.suggestedFilename()).toMatch(/^mal-kabul-tutanagi-SA-\d{4}-\d+-MK1\.pdf$/)
+    const text = await pdfText(download)
+    for (const part of ['MAL KABUL TUTANAĞI', 'Beta Teknoloji Ltd.', 'Hasan Usta', 'Tuşları kırık'])
+      expect(text).toContain(part)
+    expect(text).toContain('1111111114')
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
 
     await history.getByRole('button', { name: /kabulünü iptal et/ }).click()
     const cancel = page.getByRole('dialog', { name: 'Mal kabulü iptal et' })

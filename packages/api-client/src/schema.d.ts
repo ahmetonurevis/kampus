@@ -53739,6 +53739,16 @@ export interface operations {
                                 number: string;
                                 /** @enum {string} */
                                 status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                                /** @description Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337) */
+                                supplier: {
+                                    name: string;
+                                    /** @enum {string} */
+                                    type: "company" | "individual";
+                                    /** @description Vergi dairesi; şahıs tedarikçide boş (K-215) */
+                                    taxOffice: string | null;
+                                    /** @description VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215) */
+                                    taxNumber: string | null;
+                                };
                                 /** @description `If-Match` için kayıt sürümü */
                                 version: number;
                             };
@@ -53765,6 +53775,8 @@ export interface operations {
                             /** @description Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla */
                             receipts: {
                                 id: string;
+                                /** @description Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216) */
+                                sequence: number;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
                                 /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
@@ -53780,11 +53792,17 @@ export interface operations {
                                     name: string;
                                     /** @enum {string} */
                                     unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                    /** @description Kalemin sipariş miktarı */
+                                    orderedQuantity: number;
+                                    /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                    unitPriceCents: number;
                                     /** @description Kabul edilen miktar */
                                     acceptedQuantity: number;
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
+                                    netCents: number;
                                     /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
                                     stockItemId: string | null;
                                     stockItemName: string | null;
@@ -53933,6 +53951,16 @@ export interface operations {
                                 number: string;
                                 /** @enum {string} */
                                 status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                                /** @description Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337) */
+                                supplier: {
+                                    name: string;
+                                    /** @enum {string} */
+                                    type: "company" | "individual";
+                                    /** @description Vergi dairesi; şahıs tedarikçide boş (K-215) */
+                                    taxOffice: string | null;
+                                    /** @description VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215) */
+                                    taxNumber: string | null;
+                                };
                                 /** @description `If-Match` için kayıt sürümü */
                                 version: number;
                             };
@@ -53959,6 +53987,8 @@ export interface operations {
                             /** @description Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla */
                             receipts: {
                                 id: string;
+                                /** @description Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216) */
+                                sequence: number;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
                                 /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
@@ -53974,11 +54004,17 @@ export interface operations {
                                     name: string;
                                     /** @enum {string} */
                                     unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                    /** @description Kalemin sipariş miktarı */
+                                    orderedQuantity: number;
+                                    /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                    unitPriceCents: number;
                                     /** @description Kabul edilen miktar */
                                     acceptedQuantity: number;
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
+                                    netCents: number;
                                     /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
                                     stockItemId: string | null;
                                     stockItemName: string | null;
@@ -54114,6 +54150,16 @@ export interface operations {
                                 number: string;
                                 /** @enum {string} */
                                 status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                                /** @description Siparişin açılış anındaki tedarikçi kopyası; tutanak PDF’i için (ON-337) */
+                                supplier: {
+                                    name: string;
+                                    /** @enum {string} */
+                                    type: "company" | "individual";
+                                    /** @description Vergi dairesi; şahıs tedarikçide boş (K-215) */
+                                    taxOffice: string | null;
+                                    /** @description VKN; şahıs tedarikçide TCKN verilmez, boş döner (K-215) */
+                                    taxNumber: string | null;
+                                };
                                 /** @description `If-Match` için kayıt sürümü */
                                 version: number;
                             };
@@ -54140,6 +54186,8 @@ export interface operations {
                             /** @description Kabul geçmişi (iptal edilenler dahil), kabul günü sırasıyla */
                             receipts: {
                                 id: string;
+                                /** @description Siparişteki kayıt sırası (1’den; iptal edilenler dahil, değişmez); tutanak numarası `<sipariş no>-MK<sıra>` (K-216) */
+                                sequence: number;
                                 /** @description Kabul günü `YYYY-MM-DD` */
                                 receiptDate: string;
                                 /** @description Stok girişinin yapıldığı depo; stok kartı seçilmediyse boş (K-184) */
@@ -54155,11 +54203,17 @@ export interface operations {
                                     name: string;
                                     /** @enum {string} */
                                     unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                    /** @description Kalemin sipariş miktarı */
+                                    orderedQuantity: number;
+                                    /** @description Sipariş birim fiyatı, KDV hariç, kuruş */
+                                    unitPriceCents: number;
                                     /** @description Kabul edilen miktar */
                                     acceptedQuantity: number;
                                     /** @description Reddedilen miktar */
                                     rejectedQuantity: number;
                                     rejectReason: string | null;
+                                    /** @description Kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
+                                    netCents: number;
                                     /** @description Kabul edilen miktarın girdiği stok kartı (DOM-FIN-078, K-184) */
                                     stockItemId: string | null;
                                     stockItemName: string | null;

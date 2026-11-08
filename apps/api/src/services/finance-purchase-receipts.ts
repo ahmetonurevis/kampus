@@ -73,8 +73,28 @@ function boardView(
   const itemById = new Map(items.map((item) => [item.id, item]))
   const nameOf = (userId: string | null) => (userId === null ? null : (names.get(userId) ?? null))
   const live = receipts.filter((receipt) => receipt.cancelledAt === null)
+  // Tutanak numarası kayıt sırasıdır (K-216): kabuller silinmez, geriye tarihli kabul de sırayı
+  // bozmaz; liste ise kabul günü sırasıyla döner.
+  const sequenceOf = new Map(
+    receipts
+      .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      .map((receipt, index) => [receipt.id, index + 1]),
+  )
+  const individual = order.supplierType === 'individual'
   return {
-    order: { id: order.id, number: order.number, status: order.status, version: order.version },
+    order: {
+      id: order.id,
+      number: order.number,
+      status: order.status,
+      // Şahıs tedarikçinin TCKN'si tutanağa girmez (K-215, KVKK veri en azlığı).
+      supplier: {
+        name: order.supplierName,
+        type: order.supplierType,
+        taxOffice: individual ? null : order.supplierTaxOffice,
+        taxNumber: individual ? null : order.supplierTaxNumber,
+      },
+      version: order.version,
+    },
     items: items.map((item) => {
       const entry = progress.get(item.id)
       return {
@@ -100,6 +120,7 @@ function boardView(
       })
       return {
         id: receipt.id,
+        sequence: sequenceOf.get(receipt.id) ?? 0,
         receiptDate: receipt.receiptDate,
         warehouseId: linked[0]?.warehouseId ?? null,
         warehouseName: linked[0]?.warehouseName ?? null,
@@ -112,9 +133,12 @@ function boardView(
             orderItemId: line.orderItemId,
             name: item?.name ?? '',
             unit: item?.unit ?? 'piece',
+            orderedQuantity: item?.quantity ?? 0,
+            unitPriceCents: item?.unitPriceCents ?? 0,
             acceptedQuantity: line.acceptedQuantity,
             rejectedQuantity: line.rejectedQuantity,
             rejectReason: line.rejectReason,
+            netCents: receiptNetCents([line], items),
             stockItemId: stock.get(line.id)?.stockItemId ?? null,
             stockItemName: stock.get(line.id)?.stockItemName ?? null,
           }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import {
   usePurchaseRequest,
   usePurchaseRequestOptions,
@@ -27,6 +27,11 @@ import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PurchaseRequestFormModal, ReasonModal } from './FinancePurchaseRequestForms.tsx'
 import { REQUEST_STATUS_VIEW } from './finance-procurement-forms.ts'
+
+// Teklif ve sipariş (DOM-FIN-072, DOM-FIN-073) yalnız onaylı talepte açılan ayrı parçadır.
+const FinancePurchaseQuotesPanel = lazy(async () => ({
+  default: (await import('./FinancePurchaseQuotesPanel.tsx')).FinancePurchaseQuotesPanel,
+}))
 
 const NO_SORT: readonly string[] = []
 const MOBILE = ['number', 'status', 'total']
@@ -309,6 +314,11 @@ function RequestDetail({ requestId }: { requestId: string }) {
           Tahmini toplam: <span className="tabular-nums">{money(request.totalCents)}</span>
         </p>
       </section>
+      {request.status === 'approved' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          <FinancePurchaseQuotesPanel requestId={request.id} />
+        </Suspense>
+      ) : null}
       <History request={request} />
       {dialog === 'edit' ? (
         <PurchaseRequestFormModal request={request} onClose={() => setDialog(null)} />

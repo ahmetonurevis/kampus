@@ -52,6 +52,7 @@ const FinancePurchaseOrdersSection = lazy(async () => ({
 }))
 const FinancePurchaseReportSection = lazy(async () => ({
   default: (await import('./FinancePurchaseReportSection.tsx')).FinancePurchaseReportSection,
+}))
 const FinanceSupplierLedgerSection = lazy(async () => ({
   default: (await import('./FinanceSupplierLedgerSection.tsx')).FinanceSupplierLedgerSection,
 }))

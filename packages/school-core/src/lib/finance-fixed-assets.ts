@@ -212,6 +212,8 @@ export type FixedAssetDraft = Omit<FixedAssetFields, 'tagNumber' | 'status'> & {
 export interface FixedAssetChecks {
   today: string
   tagTaken: boolean
+  /** Düzeltmede kaydın şimdiki durumu; hurdaya ayrılmışsa gövdedeki durum bunu değiştiremez. */
+  currentStatus?: FixedAssetStatus
   campusFound?: boolean
   supplierFound?: boolean
   /** `null`: kalem kurumda yok. `link`: kalem yeni bağlanıyor (iptal ve miktar denetlenir). */
@@ -224,7 +226,7 @@ export interface FixedAssetChecks {
  * sayısı kabul edilen miktarı aşamaz: her demirbaş bir adettir (K-187).
  */
 export function planFixedAsset(draft: FixedAssetDraft, checks: FixedAssetChecks): FixedAssetDraft {
-  if (draft.status === 'scrapped')
+  if (draft.status === 'scrapped' || checks.currentStatus === 'scrapped')
     throw ruleError('fixed_asset_scrapped', 'Hurdaya ayrılmış demirbaş düzeltilemez.', 'status')
   if (checks.tagTaken)
     throw new DomainError('fixed_asset_tag_exists', 'Bu etiket numarasıyla bir demirbaş var.', {

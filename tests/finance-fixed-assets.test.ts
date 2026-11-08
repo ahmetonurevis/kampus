@@ -108,6 +108,16 @@ test('DOM-FIN-085: geçerli kayıt değişmeden döner; tekil etiket, gelecek g�
     () => planFixedAsset(draft({ status: 'scrapped' }), { today: TODAY, tagTaken: false }),
     isDomainError('fixed_asset_scrapped'),
   )
+  // Hurdaya ayrılmış kayıt gövdedeki durumla yeniden açılamaz (K-188).
+  assert.throws(
+    () =>
+      planFixedAsset(draft({ status: 'in_use' }), {
+        today: TODAY,
+        tagTaken: false,
+        currentStatus: 'scrapped',
+      }),
+    isDomainError('fixed_asset_scrapped'),
+  )
 })
 
 test('DOM-FIN-085: mal kabul bağı tedarikçiyi siparişten alır; kabul edilen miktarı aşamaz (K-187)', () => {

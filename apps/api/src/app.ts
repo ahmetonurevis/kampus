@@ -32,7 +32,10 @@ import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
+import { registerFinanceBoardReportRoutes } from './routes/finance-board-report.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
+import { registerFinanceBudgetRoutes } from './routes/finance-budget.ts'
+import { registerFinanceBudgetActualsRoutes } from './routes/finance-budget-actuals.ts'
 import { registerFinanceCorporateRoutes } from './routes/finance-corporate.ts'
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
@@ -446,6 +449,9 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceCorporateRoutes(app)
   registerFinanceForecastRoutes(app)
   registerFinanceOpeningWatchRoutes(app)
+  registerFinanceBudgetRoutes(app)
+  registerFinanceBoardReportRoutes(app)
+  registerFinanceBudgetActualsRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

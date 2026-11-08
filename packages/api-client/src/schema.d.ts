@@ -4172,6 +4172,270 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/cost-centers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Maliyet merkezlerini listele
+         * @description Hiyerarşi yoluna göre (üst merkez altındakilerden önce); pasifler dahil, `status` ile süzülür (DOM-FIN-062). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        get: operations["listCostCenters"];
+        put?: never;
+        /**
+         * Maliyet merkezi ekle
+         * @description Kampüs merkezi bir kampüse bağlanır (zorunlu), program okulda sınıf düzeyine, dil okulunda kura bağlanabilir, birim bağsızdır. Kod kurumda tekil: 409 `cost_center_code_taken`; kampüse tek etkin merkez: 409 `cost_center_campus_taken`; aynı üst merkezde aynı programa tek etkin merkez: 409 `cost_center_program_taken`. Üst merkez yok, pasif, döngü ya da 4 düzeyi aşma 422 (`cost_center_parent_not_found`, `cost_center_parent_inactive`, `cost_center_too_deep`); kampüs ya da kur yok 422, kurum türüne uymayan bağ 422 `cost_center_link_unavailable` (DOM-FIN-062, K-73). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        post: operations["createCostCenter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/cost-centers/{costCenterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Maliyet merkezini düzelt ya da pasifleştir
+         * @description Kısmi düzeltme; tür değişmez. `isActive: false` pasifleştirir (altında etkin merkez varsa 422 `cost_center_has_active_children`), `true` yeniden etkinleştirir. Üst merkezi kendisinin altına taşımak 422 `cost_center_cycle`. Merkez silinmez. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        patch: operations["updateCostCenter"];
+        trace?: never;
+    };
+    "/api/v1/finance/budget-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe kalemlerini listele
+         * @description Koda göre; pasifler dahil, `kind` ve `status` ile süzülür (DOM-FIN-062). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        get: operations["listBudgetItems"];
+        put?: never;
+        /**
+         * Bütçe kalemi ekle
+         * @description Gelir ya da gider kalemi; gelir kalemi isteğe bağlı bir ücret türüne eşlenir, giderde ücret türü 400. Kod kurumda tekil: 409 `budget_item_code_taken`; bir ücret türüne tek etkin gelir kalemi: 409 `budget_item_fee_kind_taken` (K-72). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        post: operations["createBudgetItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bütçe kalemini düzelt ya da pasifleştir
+         * @description Kısmi düzeltme; bütçe satırında kullanılan kalemin türü değişmez: 422 `budget_item_in_use`. Gider kalemine ücret türü 422 `budget_item_fee_kind_expense`. `isActive: false` pasifleştirir; kalem silinmez. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        patch: operations["updateBudgetItem"];
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe dönemlerini listele
+         * @description Yeni başlayan önce; gelir, gider, fark ve satır sayısı satırlardan hesaplanır (DOM-FIN-062). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        get: operations["listBudgetPeriods"];
+        put?: never;
+        /**
+         * Bütçe dönemi ekle
+         * @description Taslak açılır. `academicYear` verilirse günler kurumun o eğitim yılı kaydından (yoksa 1 Eylül – 31 Ağustos) kopyalanır (K-63); ya da `startDate` ve `endDate` verilir. Bitiş başlangıçtan önce 422 `budget_period_dates_invalid`, 366 günü aşan dönem 422 `budget_period_too_long`, aynı ad 409 `budget_period_name_taken`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        post: operations["createBudgetPeriod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods/{periodId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe dönemi ayrıntısı
+         * @description Toplamlar ve ay listesiyle. Olmayan ya da başka kurumun dönemi 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        get: operations["getBudgetPeriod"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bütçe dönemini düzelt
+         * @description Ad taslakta ve açıkken değişir; günler (`academicYear` ya da `startDate`/`endDate`) yalnız taslakta: 422 `budget_period_not_draft`, aylık dağılımlı satır varken 422 `budget_period_has_distribution`. Kapalı dönem 422 `budget_period_closed`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        patch: operations["updateBudgetPeriod"];
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods/{periodId}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bütçe dönemini aç
+         * @description Yalnız taslak açılır (422 `budget_period_not_draft`); açık dönemler örtüşmez: 422 `budget_period_overlap` (K-62). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: yalnız `yonetici` (K-61). Modül `finance`.
+         */
+        post: operations["openBudgetPeriod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods/{periodId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bütçe dönemini kapat
+         * @description Yalnız açık dönem kapanır (422 `budget_period_not_open`); kapanış geri alınmaz, kapalı dönemde hiçbir şey değişmez (K-61). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: yalnız `yonetici` (K-61). Modül `finance`.
+         */
+        post: operations["closeBudgetPeriod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods/{periodId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe satırlarını listele
+         * @description Merkez ve kalem koduna göre; `costCenterId`, `kind` ve `q` ile süzülür. Olmayan ya da başka kurumun dönemi 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        get: operations["listBudgetLines"];
+        put?: never;
+        /**
+         * Bütçe satırı ekle
+         * @description Dönem × maliyet merkezi × kalem için planlanan tutar (kuruş). Kapalı dönem 422 `budget_period_closed`; merkez ya da kalem yok ya da pasif 422 (`cost_center_not_found`, `cost_center_inactive`, `budget_item_not_found`, `budget_item_inactive`); aynı üçlü 409 `budget_line_exists`. `monthlyCents` verilirse dönemin `months` sırasıyla her ay için tutar, toplamı `amountCents` (422 `budget_line_months_mismatch`, `budget_line_monthly_sum`; K-64). Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        post: operations["createBudgetLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods/{periodId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Bütçe satırını kaldır
+         * @description Satır arşivlenir; aynı merkez ve kalem için yeni satır eklenebilir. Kapalı dönem 422 `budget_period_closed`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        delete: operations["removeBudgetLine"];
+        options?: never;
+        head?: never;
+        /**
+         * Bütçe satırını düzelt
+         * @description Tutar ve aylık dağılım değişir; merkez ve kalem değişmez. Tutar değişip dağılım gönderilmezse eski dağılım yeni tutarla tutmalı (422 `budget_line_monthly_sum`); `monthlyCents: null` dağılımı kaldırır. Kapalı dönem 422 `budget_period_closed`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-60). Modül `finance`.
+         */
+        patch: operations["updateBudgetLine"];
+        trace?: never;
+    };
+    "/api/v1/finance/board-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yönetim kurulu raporu: dönemlik finans ve kayıt özeti
+         * @description Seçilen dönemin yönetim kurulu özeti (DOM-FIN-064); kişi adı ve kimliği taşımaz, PDF web’de üretilir. Dönem `year` eğitim yılıdır (kayıt yoksa 1 Eylül – 31 Ağustos); `termId` yılın dönemini, `from`/`to` elle aralığı seçer (en çok bir yıl; yalnız bir uç ya da dönem ile aralık birlikte 400). Süren dönemde bitiş bugündür. `finance.totals` yıl sonu mutabakatının (DOM-FIN-056) dönem toplamıdır; `methods` tahsilatı ödeme yöntemine göre brüt, iptal ve net verir; `aging` bugünün gecikmiş alacağını (vadesi dönem sonuna kadar gelmiş taksitler) 1–30, 31–60, 61–90 ve 90+ gün dilimlerine ayırır; `packages` dil okulunda paket saat raporu toplamıdır. `enrollment` dönem başı ve sonu kayıtlı sayısı, yeni kayıt, ayrılış, mezuniyet, ayrılış nedeni ve okulda yenileme oranıdır; `funnel` dönemde açılan adayların hunisidir (`crm` kapalıysa `null`). Kırılım hücresinde 1–4 kişi varsa sayı ve tutar `null`, `suppressed: true` gelir; tek gizli hücrede en küçük görünür hücre de gizlenir. Ters dönem 422 `export_period_invalid`, bir yılı aşan 422 `export_period_too_long`, yılda olmayan dönem 422 `board_report_term_not_found`, başlamamış dönem 422 `board_report_period_not_started`. Hiçbir şey yazmaz. Rol: `yonetici`.
+         */
+        get: operations["getFinanceBoardReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-periods/{periodId}/actuals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe–gerçekleşen karşılaştırması
+         * @description Seçilen bütçe döneminin planı kalem × maliyet merkezi × ay bazında gerçekleşenle karşılaştırılır (ON-244; DOM-FIN-066). `basis` `accrual` (varsayılan, K-85): taksit vade gününde, ayrılışta hak edilmeyen tahakkuk ayrılış gününde düşülür; `cash`: tahsilat ödeme gününde, iptal iptal gününde, ödenen iade ödeme gününde; dosyadan aktarılan geçmiş ödeme sayılır ve `openingImportCents`te ayrıca verilir. Hareket ücret türüyle (`fee_kind`) gelir kalemine eşlenir; eşlenmeyen ya da taksite dağıtılmamış tutar `unmatched`tadır. Merkez öğrencinin kampüs ve program bağından bulunur (K-86), gerçekleşen kalem için satırı olan en yakın merkeze yazılır; bulunamazsa `costCenterId` `null` (dağıtılmamış). Hareket dönem ve bugünle sınırlıdır; gelmemiş ayın gerçekleşeni `null`. Gider gerçekleşeni kaynağı yoktur (satın alma modülü kurulmadı): `expenseData` `none`, gider satırı `status` `no_expense_data`. Ay Europe/Istanbul ayı; tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Olmayan ya da başka kurumun dönemi 404; bilinmeyen parametre 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getBudgetActuals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -43711,6 +43975,2401 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCostCenters: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ya da adda arama (Türkçe harf duyarsız) */
+                q?: string;
+                /** @description Merkez türü */
+                type?: "campus" | "unit" | "program";
+                /** @description `active` etkin, `inactive` pasif kayıtlar */
+                status?: "active" | "inactive";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "campus" | "unit" | "program";
+                            parentId: string | null;
+                            /** @description Kökten merkeze kod yolu, ör. `KAD / ORT / 7` */
+                            path: string;
+                            campusId: string | null;
+                            /** @description Bağlı kampüsün adı; arşivlenmişse boş */
+                            campusName: string | null;
+                            gradeLevel: number | null;
+                            courseId: string | null;
+                            /** @description Bağlı kurun adı; arşivlenmişse boş */
+                            courseName: string | null;
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCostCenter: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    type: "campus" | "unit" | "program";
+                    /** @default null */
+                    parentId?: string | null;
+                    /** @default null */
+                    campusId?: string | null;
+                    /** @default null */
+                    gradeLevel?: number | null;
+                    /** @default null */
+                    courseId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "campus" | "unit" | "program";
+                            parentId: string | null;
+                            /** @description Kökten merkeze kod yolu, ör. `KAD / ORT / 7` */
+                            path: string;
+                            campusId: string | null;
+                            /** @description Bağlı kampüsün adı; arşivlenmişse boş */
+                            campusName: string | null;
+                            gradeLevel: number | null;
+                            courseId: string | null;
+                            /** @description Bağlı kurun adı; arşivlenmişse boş */
+                            courseName: string | null;
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCostCenter: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                costCenterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code?: string;
+                    name?: string;
+                    parentId?: string | null;
+                    campusId?: string | null;
+                    gradeLevel?: number | null;
+                    courseId?: string | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "campus" | "unit" | "program";
+                            parentId: string | null;
+                            /** @description Kökten merkeze kod yolu, ör. `KAD / ORT / 7` */
+                            path: string;
+                            campusId: string | null;
+                            /** @description Bağlı kampüsün adı; arşivlenmişse boş */
+                            campusName: string | null;
+                            gradeLevel: number | null;
+                            courseId: string | null;
+                            /** @description Bağlı kurun adı; arşivlenmişse boş */
+                            courseName: string | null;
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBudgetItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kodda ya da adda arama (Türkçe harf duyarsız) */
+                q?: string;
+                /** @description `income` gelir, `expense` gider */
+                kind?: "income" | "expense";
+                /** @description `active` etkin, `inactive` pasif kayıtlar */
+                status?: "active" | "inactive";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "income" | "expense";
+                            /** @description Gelir kaleminin eşlendiği ücret türü */
+                            feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createBudgetItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    kind: "income" | "expense";
+                    /** @default null */
+                    feeKind?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "income" | "expense";
+                            /** @description Gelir kaleminin eşlendiği ücret türü */
+                            feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateBudgetItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code?: string;
+                    name?: string;
+                    /** @enum {string} */
+                    kind?: "income" | "expense";
+                    feeKind?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "income" | "expense";
+                            /** @description Gelir kaleminin eşlendiği ücret türü */
+                            feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBudgetPeriods: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Dönem durumu */
+                status?: "draft" | "open" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bağlı eğitim yılının başlangıç yılı */
+                            academicYear: number | null;
+                            startDate: string;
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            /** @description Dönemin değdiği takvim ayları (`YYYY-MM`); aylık dağılımın sırası */
+                            months: string[];
+                            /** @description Gelir satırları toplamı, kuruş; hesaplanır */
+                            incomeCents: number;
+                            /** @description Gider satırları toplamı, kuruş; hesaplanır */
+                            expenseCents: number;
+                            /** @description Gelir eksi gider, kuruş */
+                            balanceCents: number;
+                            lineCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createBudgetPeriod: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    academicYear?: number | null;
+                    startDate?: string;
+                    endDate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bağlı eğitim yılının başlangıç yılı */
+                            academicYear: number | null;
+                            startDate: string;
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            /** @description Dönemin değdiği takvim ayları (`YYYY-MM`); aylık dağılımın sırası */
+                            months: string[];
+                            /** @description Gelir satırları toplamı, kuruş; hesaplanır */
+                            incomeCents: number;
+                            /** @description Gider satırları toplamı, kuruş; hesaplanır */
+                            expenseCents: number;
+                            /** @description Gelir eksi gider, kuruş */
+                            balanceCents: number;
+                            lineCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBudgetPeriod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bağlı eğitim yılının başlangıç yılı */
+                            academicYear: number | null;
+                            startDate: string;
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            /** @description Dönemin değdiği takvim ayları (`YYYY-MM`); aylık dağılımın sırası */
+                            months: string[];
+                            /** @description Gelir satırları toplamı, kuruş; hesaplanır */
+                            incomeCents: number;
+                            /** @description Gider satırları toplamı, kuruş; hesaplanır */
+                            expenseCents: number;
+                            /** @description Gelir eksi gider, kuruş */
+                            balanceCents: number;
+                            lineCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateBudgetPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    academicYear?: number;
+                    startDate?: string;
+                    endDate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bağlı eğitim yılının başlangıç yılı */
+                            academicYear: number | null;
+                            startDate: string;
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            /** @description Dönemin değdiği takvim ayları (`YYYY-MM`); aylık dağılımın sırası */
+                            months: string[];
+                            /** @description Gelir satırları toplamı, kuruş; hesaplanır */
+                            incomeCents: number;
+                            /** @description Gider satırları toplamı, kuruş; hesaplanır */
+                            expenseCents: number;
+                            /** @description Gelir eksi gider, kuruş */
+                            balanceCents: number;
+                            lineCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openBudgetPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bağlı eğitim yılının başlangıç yılı */
+                            academicYear: number | null;
+                            startDate: string;
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            /** @description Dönemin değdiği takvim ayları (`YYYY-MM`); aylık dağılımın sırası */
+                            months: string[];
+                            /** @description Gelir satırları toplamı, kuruş; hesaplanır */
+                            incomeCents: number;
+                            /** @description Gider satırları toplamı, kuruş; hesaplanır */
+                            expenseCents: number;
+                            /** @description Gelir eksi gider, kuruş */
+                            balanceCents: number;
+                            lineCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeBudgetPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bağlı eğitim yılının başlangıç yılı */
+                            academicYear: number | null;
+                            startDate: string;
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            /** @description Dönemin değdiği takvim ayları (`YYYY-MM`); aylık dağılımın sırası */
+                            months: string[];
+                            /** @description Gelir satırları toplamı, kuruş; hesaplanır */
+                            incomeCents: number;
+                            /** @description Gider satırları toplamı, kuruş; hesaplanır */
+                            expenseCents: number;
+                            /** @description Gelir eksi gider, kuruş */
+                            balanceCents: number;
+                            lineCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBudgetLines: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Merkez ya da kalem kodu ve adında arama */
+                q?: string;
+                /** @description Merkez süzgeci */
+                costCenterId?: string;
+                /** @description Kalem türü süzgeci */
+                kind?: "income" | "expense";
+            };
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            costCenterId: string;
+                            costCenterCode: string;
+                            costCenterName: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            itemKind: "income" | "expense";
+                            /** @description Planlanan tutar, kuruş */
+                            amountCents: number;
+                            /** @description Aylık dağılım, dönemin `months` sırasıyla; boşsa dağılım yok */
+                            monthlyCents: number[] | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createBudgetLine: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    costCenterId: string;
+                    /** Format: uuid */
+                    itemId: string;
+                    amountCents: number;
+                    /** @default null */
+                    monthlyCents?: number[] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            costCenterId: string;
+                            costCenterCode: string;
+                            costCenterName: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            itemKind: "income" | "expense";
+                            /** @description Planlanan tutar, kuruş */
+                            amountCents: number;
+                            /** @description Aylık dağılım, dönemin `months` sırasıyla; boşsa dağılım yok */
+                            monthlyCents: number[] | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeBudgetLine: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateBudgetLine: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    amountCents?: number;
+                    monthlyCents?: number[] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            costCenterId: string;
+                            costCenterCode: string;
+                            costCenterName: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            itemKind: "income" | "expense";
+                            /** @description Planlanan tutar, kuruş */
+                            amountCents: number;
+                            /** @description Aylık dağılım, dönemin `months` sırasıyla; boşsa dağılım yok */
+                            monthlyCents: number[] | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceBoardReport: {
+        parameters: {
+            query: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                year: number;
+                /** @description Dil okulunda yılın dönemi; dönem aralığı rapor dönemi olur */
+                termId?: string;
+                /** @description Elle dönem başlangıcı (YYYY-MM-DD) */
+                from?: string;
+                /** @description Elle dönem bitişi (YYYY-MM-DD) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            period: {
+                                /** @enum {string} */
+                                kind: "year" | "term" | "custom";
+                                year: number;
+                                from: string;
+                                /** @description Rapor bitişi; süren dönemde bugün */
+                                to: string;
+                                /** @description Seçilen bitiş günü */
+                                endDate: string;
+                                /** @description Seçilen bitiş geçtiyse `true` */
+                                complete: boolean;
+                                termId: string | null;
+                                termName: string | null;
+                            };
+                            today: string;
+                            /** @enum {string} */
+                            institutionType: "school" | "language_school";
+                            /** @description Küçük grup bastırma eşiği (kişi) */
+                            minGroupSize: number;
+                            /** @description Seçilen eğitim yılının dönemleri (dil okulu dönem seçimi için) */
+                            terms: {
+                                id: string;
+                                name: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            finance: {
+                                /** @description Yıl sonu mutabakatının dönem toplamı (DOM-FIN-056) */
+                                totals: {
+                                    /** @description Dönem başı bakiye: açık borç − alacak */
+                                    openingCents: number;
+                                    /** @description Vadesi dönemde olan taksitler (tahakkuk) */
+                                    accruedCents: number;
+                                    /** @description Ayrılışta hak edilmeyen tahakkuk */
+                                    withdrawalAdjustmentCents: number;
+                                    /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                    collectedCents: number;
+                                    /** @description Ödeme günü dönemde olan açılış aktarımı (DOM-FIN-014) */
+                                    openingImportCents: number;
+                                    /** @description İptal günü dönemde olan tahsilatlar */
+                                    reversedCents: number;
+                                    /** @description Ödeme günü dönemde olan iadeler */
+                                    refundedCents: number;
+                                    /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı */
+                                    scholarshipCents: number;
+                                    /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı */
+                                    discountCents: number;
+                                    /** @description Dönem sonu bakiye: açık borç − alacak */
+                                    closingCents: number;
+                                    expectedClosingCents: number;
+                                    differenceCents: number;
+                                    /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                    openDebtCents: number;
+                                    creditCents: number;
+                                };
+                                /** @description Mutabakatta tutmayan kişi sayısı */
+                                mismatchCount: number;
+                                methods: {
+                                    rows: {
+                                        /** @enum {string} */
+                                        method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                        /** @description Gizli hücrede `null` */
+                                        studentCount: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        collectedCents: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        reversedCents: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        netCents: number | null;
+                                        suppressed: boolean;
+                                    }[];
+                                    collectedCents: number;
+                                    reversedCents: number;
+                                    netCents: number;
+                                };
+                                aging: {
+                                    /** @description Yaşlandırma günü: raporun alındığı gün */
+                                    asOf: string;
+                                    overdueCents: number;
+                                    studentCount: number;
+                                    rows: {
+                                        /** @enum {string} */
+                                        bucket: "days_1_30" | "days_31_60" | "days_61_90" | "days_91_plus";
+                                        /** @description Gizli hücrede `null` */
+                                        studentCount: number | null;
+                                        /** @description Gizli hücrede `null` */
+                                        amountCents: number | null;
+                                        suppressed: boolean;
+                                    }[];
+                                };
+                                /** @description Paket saat raporu toplamı (DOM-FIN-058); yalnız dil okulunda */
+                                packages: {
+                                    saleCount: number;
+                                    soldHours: number;
+                                    usedHours: number;
+                                    refundedHours: number;
+                                    expiredHours: number;
+                                    soldCents: number;
+                                    /** @description Kullanılan saatin payı: tanınan gelir */
+                                    recognizedCents: number;
+                                    returnedCents: number;
+                                    openingDeferredCents: number;
+                                    /** @description Dönem sonu ertelenmiş gelir */
+                                    closingDeferredCents: number;
+                                } | null;
+                            };
+                            enrollment: {
+                                startCount: number;
+                                endCount: number;
+                                newCount: number;
+                                withdrawnCount: number;
+                                graduatedCount: number;
+                                reasons: {
+                                    /** @enum {string} */
+                                    reason: "transfer" | "relocation" | "documented" | "financial" | "dissatisfaction" | "other";
+                                    /** @description Gizli hücrede `null` */
+                                    count: number | null;
+                                    suppressed: boolean;
+                                }[];
+                                /** @description Yenileme modülü kapalıysa `null` */
+                                renewal: {
+                                    targetYear: number;
+                                    eligibleCount: number;
+                                    renewedCount: number;
+                                    /** @description Yüzde, bir ondalık */
+                                    rate: number | null;
+                                } | null;
+                            };
+                            /** @description Dönemde açılan adayların hunisi (DOM-KAY-040); `crm` kapalıysa `null` */
+                            funnel: {
+                                prospects: number;
+                                steps: {
+                                    /** @enum {string} */
+                                    step: "prospect" | "meeting" | "trial" | "enrolled";
+                                    count: number;
+                                    rate: number | null;
+                                }[];
+                                conversionRate: number | null;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBudgetActuals: {
+        parameters: {
+            query?: {
+                basis?: "accrual" | "cash";
+            };
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            /** @enum {string} */
+                            basis: "accrual" | "cash";
+                            startDate: string;
+                            endDate: string;
+                            /** @description Hareketlerin sayıldığı son gün */
+                            asOfDate: string | null;
+                            months: string[];
+                            /** @enum {string} */
+                            expenseData: "none" | "available";
+                            rows: {
+                                key: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                                /** @description `null`: dağıtılmamış */
+                                costCenterId: string | null;
+                                costCenterCode: string | null;
+                                costCenterName: string | null;
+                                costCenterPath: string | null;
+                                /** @description Bu merkez ve kalem için bütçe satırı var mı */
+                                hasLine: boolean;
+                                plannedCents: number;
+                                /** @description Bugüne kadarki ayların planı; dağılımsızsa boş */
+                                plannedToDateCents: number | null;
+                                actualCents: number | null;
+                                varianceCents: number | null;
+                                /** @description Gerçekleşen ÷ plan, on binde bir */
+                                realizationBasisPoints: number | null;
+                                /** @enum {string} */
+                                status: "mapped" | "unmapped_item" | "no_expense_data" | "not_started";
+                                months: {
+                                    /** @description Takvim ayı `YYYY-MM` (Europe/Istanbul) */
+                                    month: string;
+                                    /** @description Aylık dağılım yoksa boş */
+                                    plannedCents: number | null;
+                                    /** @description Gelmemiş ayda boş */
+                                    actualCents: number | null;
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ plan, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                }[];
+                            }[];
+                            unmatched: {
+                                feeKind: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring") | null;
+                                actualCents: number;
+                                months: {
+                                    /** @description Takvim ayı `YYYY-MM` (Europe/Istanbul) */
+                                    month: string;
+                                    actualCents: number | null;
+                                }[];
+                            }[];
+                            totals: {
+                                income: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                    /** @description Gerçekleşen − plan */
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ plan, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                    unmatchedCents: number | null;
+                                };
+                                expense: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                    /** @description Gerçekleşen − plan */
+                                    varianceCents: number | null;
+                                    /** @description Gerçekleşen ÷ plan, on binde bir */
+                                    realizationBasisPoints: number | null;
+                                };
+                                net: {
+                                    plannedCents: number;
+                                    actualCents: number | null;
+                                };
+                            };
+                            openingImportCents: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

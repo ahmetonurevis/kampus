@@ -1,5 +1,5 @@
 {
-  "id": "71c89c35-de6f-4d35-8c43-48d6ccbf801d",
+  "id": "ee676d00-b228-41a5-835e-ebab05892c88",
   "prevId": "046c711e-d771-4fd7-b7a6-9ae72e5f27a7",
   "version": "7",
   "dialect": "postgresql",
@@ -5777,6 +5777,857 @@
       },
       "isRLSEnabled": false
     },
+    "public.budget_items": {
+      "name": "budget_items",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fee_kind": {
+          "name": "fee_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "budget_items_code_key": {
+          "name": "budget_items_code_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"budget_items\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "budget_items_fee_kind_key": {
+          "name": "budget_items_fee_kind_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fee_kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"budget_items\".\"fee_kind\" is not null and \"budget_items\".\"is_active\" and \"budget_items\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "budget_items_institution_id_institutions_id_fk": {
+          "name": "budget_items_institution_id_institutions_id_fk",
+          "tableFrom": "budget_items",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "budget_items_pkey": {
+          "name": "budget_items_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "budget_items_code_check": {
+          "name": "budget_items_code_check",
+          "value": "\"budget_items\".\"code\" ~ '^[A-Z0-9][A-Z0-9._-]{0,19}$'"
+        },
+        "budget_items_name_check": {
+          "name": "budget_items_name_check",
+          "value": "char_length(\"budget_items\".\"name\") between 2 and 120"
+        },
+        "budget_items_kind_check": {
+          "name": "budget_items_kind_check",
+          "value": "\"budget_items\".\"kind\" in ('income', 'expense')"
+        },
+        "budget_items_fee_kind_check": {
+          "name": "budget_items_fee_kind_check",
+          "value": "\"budget_items\".\"fee_kind\" is null or (\"budget_items\".\"kind\" = 'income' and \"budget_items\".\"fee_kind\" in ('tuition', 'breakfast', 'meal', 'transport', 'dormitory', 'stationery', 'uniform', 'tutoring'))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.budget_lines": {
+      "name": "budget_lines",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_center_id": {
+          "name": "cost_center_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monthly_cents": {
+          "name": "monthly_cents",
+          "type": "bigint[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "budget_lines_key": {
+          "name": "budget_lines_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cost_center_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"budget_lines\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "budget_lines_cost_center_idx": {
+          "name": "budget_lines_cost_center_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cost_center_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "budget_lines_item_idx": {
+          "name": "budget_lines_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "budget_lines_institution_id_institutions_id_fk": {
+          "name": "budget_lines_institution_id_institutions_id_fk",
+          "tableFrom": "budget_lines",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "budget_lines_period_fkey": {
+          "name": "budget_lines_period_fkey",
+          "tableFrom": "budget_lines",
+          "tableTo": "budget_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "budget_lines_cost_center_fkey": {
+          "name": "budget_lines_cost_center_fkey",
+          "tableFrom": "budget_lines",
+          "tableTo": "cost_centers",
+          "columnsFrom": [
+            "institution_id",
+            "cost_center_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "budget_lines_item_fkey": {
+          "name": "budget_lines_item_fkey",
+          "tableFrom": "budget_lines",
+          "tableTo": "budget_items",
+          "columnsFrom": [
+            "institution_id",
+            "item_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "budget_lines_pkey": {
+          "name": "budget_lines_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "budget_lines_amount_check": {
+          "name": "budget_lines_amount_check",
+          "value": "\"budget_lines\".\"amount_cents\" between 0 and 1000000000000"
+        },
+        "budget_lines_monthly_check": {
+          "name": "budget_lines_monthly_check",
+          "value": "\"budget_lines\".\"monthly_cents\" is null or (cardinality(\"budget_lines\".\"monthly_cents\") between 1 and 24 and 0 <= all(\"budget_lines\".\"monthly_cents\"))"
+        },
+        "budget_lines_currency_check": {
+          "name": "budget_lines_currency_check",
+          "value": "\"budget_lines\".\"currency\" = 'TRY'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.budget_periods": {
+      "name": "budget_periods",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "opened_at": {
+          "name": "opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "opened_by_user_id": {
+          "name": "opened_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "budget_periods_name_key": {
+          "name": "budget_periods_name_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"budget_periods\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "budget_periods_institution_id_institutions_id_fk": {
+          "name": "budget_periods_institution_id_institutions_id_fk",
+          "tableFrom": "budget_periods",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "budget_periods_pkey": {
+          "name": "budget_periods_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "budget_periods_name_check": {
+          "name": "budget_periods_name_check",
+          "value": "char_length(\"budget_periods\".\"name\") between 2 and 120"
+        },
+        "budget_periods_academic_year_check": {
+          "name": "budget_periods_academic_year_check",
+          "value": "\"budget_periods\".\"academic_year\" is null or \"budget_periods\".\"academic_year\" between 2000 and 2100"
+        },
+        "budget_periods_dates_check": {
+          "name": "budget_periods_dates_check",
+          "value": "\"budget_periods\".\"end_date\" >= \"budget_periods\".\"start_date\" and \"budget_periods\".\"end_date\" - \"budget_periods\".\"start_date\" < 366"
+        },
+        "budget_periods_status_check": {
+          "name": "budget_periods_status_check",
+          "value": "\"budget_periods\".\"status\" in ('draft', 'open', 'closed')"
+        },
+        "budget_periods_lifecycle_check": {
+          "name": "budget_periods_lifecycle_check",
+          "value": "(\"budget_periods\".\"status\" = 'draft' and \"budget_periods\".\"opened_at\" is null and \"budget_periods\".\"closed_at\" is null)\n        or (\"budget_periods\".\"status\" = 'open' and \"budget_periods\".\"opened_at\" is not null and \"budget_periods\".\"opened_by_user_id\" is not null and \"budget_periods\".\"closed_at\" is null)\n        or (\"budget_periods\".\"status\" = 'closed' and \"budget_periods\".\"opened_at\" is not null and \"budget_periods\".\"closed_at\" is not null and \"budget_periods\".\"closed_by_user_id\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.cost_centers": {
+      "name": "cost_centers",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "campus_id": {
+          "name": "campus_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grade_level": {
+          "name": "grade_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "course_id": {
+          "name": "course_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "cost_centers_code_key": {
+          "name": "cost_centers_code_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"cost_centers\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cost_centers_campus_key": {
+          "name": "cost_centers_campus_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "campus_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"cost_centers\".\"campus_id\" is not null and \"cost_centers\".\"is_active\" and \"cost_centers\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cost_centers_parent_idx": {
+          "name": "cost_centers_parent_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cost_centers_course_idx": {
+          "name": "cost_centers_course_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "cost_centers_institution_id_institutions_id_fk": {
+          "name": "cost_centers_institution_id_institutions_id_fk",
+          "tableFrom": "cost_centers",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cost_centers_parent_fkey": {
+          "name": "cost_centers_parent_fkey",
+          "tableFrom": "cost_centers",
+          "tableTo": "cost_centers",
+          "columnsFrom": [
+            "institution_id",
+            "parent_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "cost_centers_course_fkey": {
+          "name": "cost_centers_course_fkey",
+          "tableFrom": "cost_centers",
+          "tableTo": "courses",
+          "columnsFrom": [
+            "institution_id",
+            "course_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "cost_centers_pkey": {
+          "name": "cost_centers_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "cost_centers_code_check": {
+          "name": "cost_centers_code_check",
+          "value": "\"cost_centers\".\"code\" ~ '^[A-Z0-9][A-Z0-9._-]{0,19}$'"
+        },
+        "cost_centers_name_check": {
+          "name": "cost_centers_name_check",
+          "value": "char_length(\"cost_centers\".\"name\") between 2 and 120"
+        },
+        "cost_centers_type_check": {
+          "name": "cost_centers_type_check",
+          "value": "\"cost_centers\".\"type\" in ('campus', 'unit', 'program')"
+        },
+        "cost_centers_parent_check": {
+          "name": "cost_centers_parent_check",
+          "value": "\"cost_centers\".\"parent_id\" is null or \"cost_centers\".\"parent_id\" <> \"cost_centers\".\"id\""
+        },
+        "cost_centers_grade_level_check": {
+          "name": "cost_centers_grade_level_check",
+          "value": "\"cost_centers\".\"grade_level\" is null or \"cost_centers\".\"grade_level\" between 5 and 12"
+        },
+        "cost_centers_link_check": {
+          "name": "cost_centers_link_check",
+          "value": "(\"cost_centers\".\"type\" = 'campus' and \"cost_centers\".\"campus_id\" is not null and \"cost_centers\".\"grade_level\" is null and \"cost_centers\".\"course_id\" is null)\n        or (\"cost_centers\".\"type\" = 'unit' and \"cost_centers\".\"campus_id\" is null and \"cost_centers\".\"grade_level\" is null and \"cost_centers\".\"course_id\" is null)\n        or (\"cost_centers\".\"type\" = 'program' and \"cost_centers\".\"campus_id\" is null and (\"cost_centers\".\"grade_level\" is null or \"cost_centers\".\"course_id\" is null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.corporate_customer_employees": {
       "name": "corporate_customer_employees",
       "schema": "",
@@ -8140,602 +8991,6 @@
         "referral_rewards_cancelled_check": {
           "name": "referral_rewards_cancelled_check",
           "value": "(\"referral_rewards\".\"status\" = 'cancelled') = (\"referral_rewards\".\"cancel_reason\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.scholarship_fund_allocations": {
-      "name": "scholarship_fund_allocations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fund_id": {
-          "name": "fund_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "award_id": {
-          "name": "award_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "allocated_on": {
-          "name": "allocated_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "allocated_by_user_id": {
-          "name": "allocated_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "scholarship_fund_allocations_fund_award_key": {
-          "name": "scholarship_fund_allocations_fund_award_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fund_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "award_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"scholarship_fund_allocations\".\"cancelled_at\" is null and \"scholarship_fund_allocations\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "scholarship_fund_allocations_fund_idx": {
-          "name": "scholarship_fund_allocations_fund_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fund_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "scholarship_fund_allocations_award_idx": {
-          "name": "scholarship_fund_allocations_award_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "award_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "scholarship_fund_allocations_institution_id_institutions_id_fk": {
-          "name": "scholarship_fund_allocations_institution_id_institutions_id_fk",
-          "tableFrom": "scholarship_fund_allocations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "scholarship_fund_allocations_fund_fkey": {
-          "name": "scholarship_fund_allocations_fund_fkey",
-          "tableFrom": "scholarship_fund_allocations",
-          "tableTo": "scholarship_funds",
-          "columnsFrom": [
-            "institution_id",
-            "fund_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "scholarship_fund_allocations_award_fkey": {
-          "name": "scholarship_fund_allocations_award_fkey",
-          "tableFrom": "scholarship_fund_allocations",
-          "tableTo": "scholarship_awards",
-          "columnsFrom": [
-            "institution_id",
-            "award_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "scholarship_fund_allocations_pkey": {
-          "name": "scholarship_fund_allocations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "scholarship_fund_allocations_amount_check": {
-          "name": "scholarship_fund_allocations_amount_check",
-          "value": "\"scholarship_fund_allocations\".\"amount_cents\" > 0"
-        },
-        "scholarship_fund_allocations_currency_check": {
-          "name": "scholarship_fund_allocations_currency_check",
-          "value": "\"scholarship_fund_allocations\".\"currency\" = 'TRY'"
-        },
-        "scholarship_fund_allocations_cancel_check": {
-          "name": "scholarship_fund_allocations_cancel_check",
-          "value": "(\"scholarship_fund_allocations\".\"cancelled_at\" is null) = (\"scholarship_fund_allocations\".\"cancelled_by_user_id\" is null) and (\"scholarship_fund_allocations\".\"cancelled_at\" is null) = (\"scholarship_fund_allocations\".\"cancel_reason\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.scholarship_fund_donations": {
-      "name": "scholarship_fund_donations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fund_id": {
-          "name": "fund_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "donated_on": {
-          "name": "donated_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "channel": {
-          "name": "channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "scholarship_fund_donations_fund_idx": {
-          "name": "scholarship_fund_donations_fund_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fund_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "scholarship_fund_donations_institution_id_institutions_id_fk": {
-          "name": "scholarship_fund_donations_institution_id_institutions_id_fk",
-          "tableFrom": "scholarship_fund_donations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "scholarship_fund_donations_fund_fkey": {
-          "name": "scholarship_fund_donations_fund_fkey",
-          "tableFrom": "scholarship_fund_donations",
-          "tableTo": "scholarship_funds",
-          "columnsFrom": [
-            "institution_id",
-            "fund_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "scholarship_fund_donations_pkey": {
-          "name": "scholarship_fund_donations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "scholarship_fund_donations_amount_check": {
-          "name": "scholarship_fund_donations_amount_check",
-          "value": "\"scholarship_fund_donations\".\"amount_cents\" > 0"
-        },
-        "scholarship_fund_donations_currency_check": {
-          "name": "scholarship_fund_donations_currency_check",
-          "value": "\"scholarship_fund_donations\".\"currency\" = 'TRY'"
-        },
-        "scholarship_fund_donations_channel_check": {
-          "name": "scholarship_fund_donations_channel_check",
-          "value": "\"scholarship_fund_donations\".\"channel\" in ('bank_transfer', 'cash', 'other')"
-        },
-        "scholarship_fund_donations_cancel_check": {
-          "name": "scholarship_fund_donations_cancel_check",
-          "value": "(\"scholarship_fund_donations\".\"cancelled_at\" is null) = (\"scholarship_fund_donations\".\"cancelled_by_user_id\" is null) and (\"scholarship_fund_donations\".\"cancelled_at\" is null) = (\"scholarship_fund_donations\".\"cancel_reason\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.scholarship_funds": {
-      "name": "scholarship_funds",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "donor_kind": {
-          "name": "donor_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "donor_name": {
-          "name": "donor_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "scholarship_funds_name_key": {
-          "name": "scholarship_funds_name_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"scholarship_funds\".\"archived_at\" is null and \"scholarship_funds\".\"closed_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "scholarship_funds_institution_id_institutions_id_fk": {
-          "name": "scholarship_funds_institution_id_institutions_id_fk",
-          "tableFrom": "scholarship_funds",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "scholarship_funds_pkey": {
-          "name": "scholarship_funds_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "scholarship_funds_donor_kind_check": {
-          "name": "scholarship_funds_donor_kind_check",
-          "value": "\"scholarship_funds\".\"donor_kind\" in ('person', 'organization', 'anonymous')"
-        },
-        "scholarship_funds_donor_name_check": {
-          "name": "scholarship_funds_donor_name_check",
-          "value": "(\"scholarship_funds\".\"donor_kind\" = 'anonymous') = (\"scholarship_funds\".\"donor_name\" is null)"
-        },
-        "scholarship_funds_closed_check": {
-          "name": "scholarship_funds_closed_check",
-          "value": "(\"scholarship_funds\".\"closed_at\" is null) = (\"scholarship_funds\".\"closed_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

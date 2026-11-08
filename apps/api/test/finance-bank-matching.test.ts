@@ -794,6 +794,73 @@ describe('banka hareketi eşleştirme uçları', () => {
     assert.equal(done.statusCode, 201, done.body)
   })
 
+  /** Elle tahsilat girişi (`POST /payments`): s1, 2026-10-01, kurumun hesabı. */
+  const manualPayment = (t: Tenant, body: Record<string, unknown>) =>
+    send(
+      'POST',
+      '/api/v1/payments',
+      t.adminCookie,
+      {
+        studentId: 's1',
+        amountCents: 1_000_000,
+        paidDate: '2026-10-01',
+        bankAccountId: t.accountId,
+        ...body,
+      },
+      key(),
+    )
+
+  test('DOM-FIN-069, K-121: ekstreden onaylanmış havale varken aynı gün aynı tutarda elle havale 409 olası mükerrer; açık onayla geçilir (ON-332)', async () => {
+    const t = await institution()
+    const [row] = await imported(t)
+    assert.ok(row)
+    const done = await match(t.adminCookie, row.id, row.version)
+    assert.equal(done.statusCode, 201, done.body)
+    // Referans farklı: kullanılmış referans denetimi (DOM-FIN-031) yakalamaz.
+    const refused = await manualPayment(t, { method: 'Banka havalesi', reference: 'ELLE-2' })
+    assertError(refused, 409, 'bank_match_possible_duplicate')
+    assert.match(refused.json().message, /ekstresinden onaylanmış/)
+    assert.equal((await paymentRows(t.id)).length, 1)
+    assert.equal((await actions(t.id, 'payment.record')).length, 1)
+    const confirmed = await manualPayment(t, {
+      method: 'Banka havalesi',
+      reference: 'ELLE-2',
+      confirmDuplicate: true,
+    })
+    assert.equal(confirmed.statusCode, 201, confirmed.body)
+    assert.equal(confirmed.json().data.method, 'Banka havalesi')
+    assert.equal((await paymentRows(t.id)).length, 2)
+  })
+
+  test('DOM-FIN-069, K-121: başka gün, başka tutar, başka öğrenci, kart ya da iptal edilmiş eşleşme elle girişte uyarısız (ON-332)', async () => {
+    const t = await institution()
+    const [row] = await imported(t)
+    assert.ok(row)
+    const done = await match(t.adminCookie, row.id, row.version)
+    assert.equal(done.statusCode, 201, done.body)
+    for (const body of [
+      { method: 'Banka havalesi', reference: 'E-GUN', paidDate: '2026-10-02' },
+      { method: 'Banka havalesi', reference: 'E-TUTAR', amountCents: 500_000 },
+      { method: 'Banka havalesi', reference: 'E-OGR', studentId: 's25' },
+      { method: 'Kredi kartı', reference: 'POS-1' },
+    ]) {
+      const response = await manualPayment(t, body)
+      assert.equal(response.statusCode, 201, response.body)
+    }
+    // İptal edilen eşleşmenin tahsilatı mükerrer sayılmaz; hareket yeniden açılır.
+    const { payment } = done.json().data
+    const reversed = await send(
+      'POST',
+      `/api/v1/payments/${String(payment.id)}/reverse`,
+      t.adminCookie,
+      { reason: 'Yanlış öğrenciyle eşleşti' },
+      { ...ifMatch(payment.version), ...key() },
+    )
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const after = await manualPayment(t, { method: 'Banka havalesi', reference: 'E-IPTAL' })
+    assert.equal(after.statusCode, 201, after.body)
+  })
+
   test('K-111: tahsilat iptali eşleşmeyi geri açar; hareket yeniden eşleşir', async () => {
     const t = await institution()
     const [first] = await imported(t)

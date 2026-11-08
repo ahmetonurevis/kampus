@@ -6,6 +6,7 @@ import {
   assertBankTransactionIgnored,
   assertBankTransactionOpen,
   assertNoPossibleDuplicate,
+  assertNoStatementDuplicate,
   bankIgnoreSchema,
   bankMatchDirectory,
   bankMatchSchema,
@@ -13,6 +14,7 @@ import {
   suggestBankMatches,
   type MatchInvoiceInput,
 } from '../packages/school-core/src/lib/finance-bank-matching.ts'
+import { recordPaymentSchema } from '../packages/school-core/src/lib/payments.ts'
 
 // Banka hareketi eşleştirme önerisi (IST-115, ON-099; DOM-FIN-069, K-108…K-111).
 
@@ -238,6 +240,32 @@ describe('K-121: onayda olası mükerrer', () => {
         error.code === 'bank_match_possible_duplicate' &&
         error.kind === 'conflict' &&
         error.message.includes('mükerrer'),
+    )
+  })
+
+  test('K-121 ters yön (ON-332): elle havalede ekstreden onaylanmış ikiz varsa açık onay istenir', () => {
+    assertNoStatementDuplicate(0, false)
+    assertNoStatementDuplicate(2, true)
+    assert.throws(
+      () => assertNoStatementDuplicate(1, false),
+      (error: unknown) =>
+        error instanceof DomainError &&
+        error.code === 'bank_match_possible_duplicate' &&
+        error.kind === 'conflict' &&
+        error.message.includes('ekstresinden onaylanmış'),
+    )
+  })
+
+  test('tahsilat gövdesi açık mükerrer onayını isteğe bağlı mantıksal değer olarak alır (K-121, ON-332)', () => {
+    const body = { studentId: 's1', amountCents: 1_000, method: 'Banka havalesi', reference: 'D-1' }
+    assert.equal(recordPaymentSchema.parse(body).confirmDuplicate, undefined)
+    assert.equal(
+      recordPaymentSchema.parse({ ...body, confirmDuplicate: true }).confirmDuplicate,
+      true,
+    )
+    assert.equal(
+      recordPaymentSchema.safeParse({ ...body, confirmDuplicate: 'evet' }).success,
+      false,
     )
   })
 

@@ -13,6 +13,7 @@ import {
   corporateLineStatus,
   corporateReportTotals,
   linkCorporateEmployeeSchema,
+  linkCovers,
   planCorporateInvoice,
   planCorporateInvoiceCancel,
   planEmployeeEnd,
@@ -592,16 +593,25 @@ export function cancelCorporateInvoiceCommand(
 // --- Katılım özeti -------------------------------------------------------------------------------
 
 /**
- * Şirkete bugün etkin bağlı kursiyerlerin kur kayıtları (DOM-DIL-093, K-49): yalnız devam saatleri,
- * oran, devam şartı ve onaylı kur sonucu. Gerekçe, puan ve özür bilgisi okunsa da satıra girmez.
+ * Şirkete bugün etkin bağlı kursiyerlerin kur kayıtları (DOM-FIN-060, DOM-DIL-093, K-49): yalnız devam
+ * saatleri, oran, devam şartı ve onaylı kur sonucu. Bağ bugünü kapsamalıdır (başlangıcı ya da bitişi
+ * ileri tarihli olabilir); kur kaydı bağın içinde başlamalıdır ki bağdan önceki, kursiyerin kendi
+ * ödediği kur işverene gitmesin. Gerekçe, puan ve özür bilgisi okunsa da satıra girmez.
  */
 async function attendanceReport(ctx: ServiceContext, customerId: string) {
   const customer = await customerOf(ctx.db, ctx, customerId)
-  const links = (await loadCustomerLinks(ctx.db, ctx.institutionId, customerId)).filter(
-    (link) => link.endsOn === null,
+  const today = dayKey(ctx.now)
+  const links = (await loadCustomerLinks(ctx.db, ctx.institutionId, customerId)).filter((link) =>
+    linkCovers(link, today),
   )
+  const linkOf = new Map(links.map((link) => [link.studentId, link]))
   const studentIds = links.map((link) => link.studentId)
-  const enrollments = await loadEnrollmentsOfStudents(ctx.db, ctx.institutionId, studentIds)
+  const enrollments = (
+    await loadEnrollmentsOfStudents(ctx.db, ctx.institutionId, studentIds)
+  ).filter((row) => {
+    const link = linkOf.get(row.studentId)
+    return link !== undefined && linkCovers(link, dayKey(row.joinedAt))
+  })
   const enrollmentIds = enrollments.map((row) => row.enrollmentId)
   const [attendance, decisions, names] = await Promise.all([
     listLessonHourAttendances(ctx.db, ctx.institutionId, enrollmentIds),

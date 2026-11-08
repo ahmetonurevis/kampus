@@ -694,6 +694,8 @@ export type CorporateEnrollmentRow = {
   courseName: string
   level: string
   totalHours: number
+  /** Gruba katılma anı; katılım özetinde kaydın bağ içinde başlayıp başlamadığını belirler. */
+  joinedAt: Date
 }
 
 /** Kursiyerlerin arşivlenmemiş kur kayıtları; grup ve kur adıyla, katılım sırasıyla. */
@@ -712,6 +714,7 @@ export async function loadEnrollmentsOfStudents(
       courseName: courses.name,
       level: courses.level,
       totalHours: courses.totalHours,
+      joinedAt: languageGroupMembers.joinedAt,
     })
     .from(languageGroupMembers)
     .innerJoin(

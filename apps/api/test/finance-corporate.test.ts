@@ -492,8 +492,8 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
     assert.equal((await get(CUSTOMERS, t.admin)).json().meta.total, 0)
   })
 
-  test('DOM-DIL-093: katılım özeti yalnız etkin bağlı kursiyerin devamını ve kur sonucunu verir', async () => {
-    const t = await ready()
+  /** Etkin kur ve bir grubu; `enroll` kursiyeri verilen anda gruba yazar, kur kaydı kimliğini döner. */
+  async function courseGroup(t: Tenant, courseName: string, room = 'A1') {
     const teacher = await createMember(app, t.id, 'ogretmen')
     const course = await ok(
       await call(
@@ -501,7 +501,7 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
         '/api/v1/courses',
         t.admin,
         {
-          name: 'Genel İngilizce B1.1',
+          name: courseName,
           level: 'B1',
           totalHours: 8,
           weeklyHours: 2,
@@ -522,11 +522,11 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
         t.admin,
         {
           courseId: course.id,
-          name: 'B1 Akşam',
+          name: `${courseName} grubu`,
           ageBand: 'adult',
           teacherMembershipId: teacher.membershipId,
           delivery: 'in_person',
-          room: 'A1',
+          room,
           schedule: [
             { weekday: 1, startTime: '18:00' },
             { weekday: 3, startTime: '18:00' },
@@ -538,16 +538,26 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
       ),
       201,
     )
-    const enrollmentId = randomUUID()
     const groupId = String(group.id)
-    await db.insert(languageGroupMembers).values({
-      institutionId: t.id,
-      id: enrollmentId,
-      groupId,
-      studentId: 's3',
-      status: 'active',
-      joinedAt: FIXED_NOW,
-    })
+    const enroll = async (studentId: string, joinedAt: Date) => {
+      const enrollmentId = randomUUID()
+      await db.insert(languageGroupMembers).values({
+        institutionId: t.id,
+        id: enrollmentId,
+        groupId,
+        studentId,
+        status: 'active',
+        joinedAt,
+      })
+      return enrollmentId
+    }
+    return { teacher, groupId, enroll }
+  }
+
+  test('DOM-DIL-093: katılım özeti yalnız etkin bağlı kursiyerin devamını ve kur sonucunu verir', async () => {
+    const t = await ready()
+    const { teacher, groupId, enroll } = await courseGroup(t, 'Genel İngilizce B1.1')
+    const enrollmentId = await enroll('s3', FIXED_NOW)
     await insertLessonHourAttendances(
       db,
       t.id,
@@ -603,6 +613,56 @@ describe('IST-089: kurumsal müşteri ve toplu fatura uçları', () => {
     assert.deepEqual(await audits(t.id, 'finance.corporate_report_export'), [
       { entityId: t.customerId },
     ])
+  })
+
+  test('DOM-FIN-060, DOM-DIL-093: katılım özeti bugün etkin bağı ve bağ içinde başlayan kur kaydını alır', async () => {
+    const t = await institution()
+    const customerId = String((await createCustomer(t)).id)
+    const third = STUDENTS.find((item) => item.id !== 's3' && item.id !== OTHER)?.id ?? ''
+    // s3 bağı 1 Eylül'de başlar; OTHER'ın bitişi ileri tarihli; third'ün bağı henüz başlamadı.
+    await ok(await link(t, customerId, 's3'), 201)
+    const ending = await ok(await link(t, customerId, OTHER), 201)
+    await ok(
+      await call(
+        'POST',
+        `${CUSTOMERS}/${customerId}/employees/${String(ending.id)}/end`,
+        t.admin,
+        { endsOn: '2026-12-31' },
+        ifMatch(ending.version),
+      ),
+    )
+    await ok(await link(t, customerId, third, '2026-11-01'), 201)
+
+    // 31 Ağustos 23:00 İstanbul: bağdan önce, kursiyerin kendi ödediği kur.
+    const own = await courseGroup(t, 'Kendi ödediği kur')
+    const ownEnrollment = await own.enroll('s3', new Date('2026-08-31T20:00:00.000Z'))
+    await insertLessonHourAttendances(
+      db,
+      t.id,
+      { id: ownEnrollment, groupId: own.groupId, studentId: 's3' },
+      [{ lessonHourId: 'ders-1', status: 'absent' }],
+      { userId: own.teacher.id, at: FIXED_NOW },
+    )
+    // 1 Eylül 01:30 İstanbul: bağın ilk günü, işverenin kuru.
+    const paid = await courseGroup(t, 'Şirket kuru', 'A2')
+    await paid.enroll('s3', new Date('2026-08-31T22:30:00.000Z'))
+    await paid.enroll(OTHER, FIXED_NOW)
+    await paid.enroll(third, FIXED_NOW)
+
+    const url = `${CUSTOMERS}/${customerId}/attendance-report`
+    const report = await ok(await get(url, t.admin))
+    const employees = report.employees as Json[]
+    assert.deepEqual(employees.map((item) => item.studentId).sort(), ['s3', OTHER].sort())
+    for (const employee of employees)
+      assert.deepEqual(
+        (employee.enrollments as Json[]).map((row) => row.courseName),
+        ['Şirket kuru'],
+      )
+    assert.equal((report.totals as Json).enrollmentCount, 2)
+    const file = await csv(url, t.admin)
+    assert.equal(file.statusCode, 200, file.body)
+    assert.equal(file.body.includes('Kendi ödediği kur'), false)
+    assert.equal(file.body.split('\r\n').length, 3)
   })
 
   test('IST-002: başka kurumun şirketi, bağı ve faturası 404, listede yok, B değişmez', async () => {

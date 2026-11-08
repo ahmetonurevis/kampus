@@ -33,6 +33,7 @@ import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certifi
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceBoardReportRoutes } from './routes/finance-board-report.ts'
+import { registerFinanceBankMatchingRoutes } from './routes/finance-bank-matching.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceBudgetRoutes } from './routes/finance-budget.ts'
 import { registerFinanceBudgetActualsRoutes } from './routes/finance-budget-actuals.ts'
@@ -136,6 +137,13 @@ export const REDACTED_PATHS = [
   // kvkk: Ç — kapatılmış günü yeniden açma gerekçesi (DOM-FIN-036); kapanış açıklaması `note`'tadır.
   'reopenReason',
   '*.reopenReason',
+  // kvkk: Ç — banka ekstresi açıklaması, gönderen adı ve yoksayma gerekçesi (DOM-FIN-069).
+  'statementDescription',
+  '*.statementDescription',
+  'counterpartyName',
+  '*.counterpartyName',
+  'ignoreReason',
+  '*.ignoreReason',
   // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
   'signatory',
   '*.signatory',
@@ -452,6 +460,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceBoardReportRoutes(app)
   registerFinanceBudgetActualsRoutes(app)
   registerFinanceCostReportRoutes(app)
+  registerFinanceBankMatchingRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

@@ -18038,6 +18038,661 @@
           "byCounselor"
         ]
       },
+      "BankStatementImportRowInput": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "skipped",
+              "outgoing",
+              "ignored",
+              "invalid"
+            ],
+            "description": "`ready` yazılacak, `skipped` daha önce aktarılmış, `outgoing` giden hareket (yazılmaz), `ignored` hareket değil (devir, toplam), `invalid` hatalı"
+          },
+          "bookingDate": {
+            "description": "İşlem günü, `YYYY-MM-DD`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amountCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mutlak tutar, kuruş"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "credit",
+                  "debit"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Açıklama ve gönderen; uzun rakam dizileri maskeli"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "date",
+                        "description",
+                        "amount",
+                        "credit",
+                        "debit",
+                        "balance",
+                        "reference",
+                        "counterparty"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "code",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "bookingDate",
+          "amountCents",
+          "direction",
+          "description",
+          "reference",
+          "issues"
+        ]
+      },
+      "BankStatementImportResultInput": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "mt940"
+            ]
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "CSV başlık satırının hücreleri (sütun eşleme için)"
+          },
+          "columns": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "date",
+                "description",
+                "amount",
+                "credit",
+                "debit",
+                "balance",
+                "reference",
+                "counterparty"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Alan → kullanılan başlık adı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "readyCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak (onayda yazılan) gelen hareket"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Daha önce aktarıldığı için atlanan"
+          },
+          "outgoingCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Giden hareket; yazılmaz"
+          },
+          "ignoredCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Hareket olmayan satır"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak gelen hareketlerin toplamı, kuruş"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankStatementImportRowInput"
+            },
+            "description": "Yalnız önizlemede dolu"
+          }
+        },
+        "required": [
+          "dryRun",
+          "format",
+          "headers",
+          "columns",
+          "rowCount",
+          "readyCount",
+          "skippedCount",
+          "outgoingCount",
+          "ignoredCount",
+          "invalidCount",
+          "totalCents",
+          "rows"
+        ]
+      },
+      "BankMatchSuggestionInput": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "invoiceId": {
+            "type": "string"
+          },
+          "installment": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Vade, `YYYY-MM-DD`"
+          },
+          "openCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Önerilen taksitin kalanı, kuruş"
+          },
+          "studentOpenCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Öğrencinin bütün açık taksitlerinin kalanı"
+          },
+          "creditCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Açık taksitleri aşan, iade alacağı olacak kısım"
+          },
+          "amountFit": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "multiple",
+              "partial",
+              "over"
+            ]
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "national_id",
+                "national_id_suffix",
+                "student_number",
+                "contract",
+                "student_name",
+                "guardian_name",
+                "surname",
+                "amount_exact",
+                "amount_multiple",
+                "amount_partial",
+                "amount_over"
+              ]
+            },
+            "description": "Gerekçe kodları; değer taşımaz"
+          }
+        },
+        "required": [
+          "studentId",
+          "studentName",
+          "invoiceId",
+          "installment",
+          "dueDate",
+          "openCents",
+          "studentOpenCents",
+          "creditCents",
+          "amountFit",
+          "score",
+          "confidence",
+          "reasons"
+        ]
+      },
+      "BankTransactionInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bankAccountId": {
+            "type": "string"
+          },
+          "bankAccountLabel": {
+            "type": "string",
+            "description": "Banka adı ve IBAN son dört hanesi"
+          },
+          "bookingDate": {
+            "type": "string",
+            "description": "İşlem günü, `YYYY-MM-DD`"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Gelen tutar, kuruş"
+          },
+          "description": {
+            "type": "string",
+            "description": "Açıklama; 11+ haneli rakam dizileri maskeli (K-112)"
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "description": "Banka referansı",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "balanceCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "mt940"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unmatched",
+              "matched",
+              "ignored"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "receiptYear": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "receiptNumber": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "studentId": {
+                    "type": "string"
+                  },
+                  "studentName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "receiptYear",
+                  "receiptNumber",
+                  "studentId",
+                  "studentName"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eşleşen tahsilatın dekontu ve öğrencisi"
+          },
+          "referenceInUse": {
+            "type": "boolean",
+            "description": "Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış"
+          },
+          "matchedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoreReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "importedAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için hareket sürümü"
+          }
+        },
+        "required": [
+          "id",
+          "bankAccountId",
+          "bankAccountLabel",
+          "bookingDate",
+          "amountCents",
+          "description",
+          "counterparty",
+          "reference",
+          "balanceCents",
+          "sourceFormat",
+          "status",
+          "paymentId",
+          "payment",
+          "referenceInUse",
+          "matchedAt",
+          "ignoredAt",
+          "ignoreReason",
+          "importedAt",
+          "version"
+        ]
+      },
+      "BankTransactionListItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bankAccountId": {
+            "type": "string"
+          },
+          "bankAccountLabel": {
+            "type": "string",
+            "description": "Banka adı ve IBAN son dört hanesi"
+          },
+          "bookingDate": {
+            "type": "string",
+            "description": "İşlem günü, `YYYY-MM-DD`"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Gelen tutar, kuruş"
+          },
+          "description": {
+            "type": "string",
+            "description": "Açıklama; 11+ haneli rakam dizileri maskeli (K-112)"
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "description": "Banka referansı",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "balanceCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "mt940"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unmatched",
+              "matched",
+              "ignored"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "receiptYear": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "receiptNumber": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "studentId": {
+                    "type": "string"
+                  },
+                  "studentName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "receiptYear",
+                  "receiptNumber",
+                  "studentId",
+                  "studentName"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eşleşen tahsilatın dekontu ve öğrencisi"
+          },
+          "referenceInUse": {
+            "type": "boolean",
+            "description": "Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış"
+          },
+          "matchedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoreReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "importedAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için hareket sürümü"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BankMatchSuggestionInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eşleşmemiş harekette en iyi öneri; yoksa boş"
+          }
+        },
+        "required": [
+          "id",
+          "bankAccountId",
+          "bankAccountLabel",
+          "bookingDate",
+          "amountCents",
+          "description",
+          "counterparty",
+          "reference",
+          "balanceCents",
+          "sourceFormat",
+          "status",
+          "paymentId",
+          "payment",
+          "referenceInUse",
+          "matchedAt",
+          "ignoredAt",
+          "ignoreReason",
+          "importedAt",
+          "version",
+          "suggestion"
+        ]
+      },
       "InstallmentImportRowInput": {
         "type": "object",
         "properties": {
@@ -36660,6 +37315,669 @@
           "total",
           "bySource",
           "byCounselor"
+        ],
+        "additionalProperties": false
+      },
+      "BankStatementImportRow": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "skipped",
+              "outgoing",
+              "ignored",
+              "invalid"
+            ],
+            "description": "`ready` yazılacak, `skipped` daha önce aktarılmış, `outgoing` giden hareket (yazılmaz), `ignored` hareket değil (devir, toplam), `invalid` hatalı"
+          },
+          "bookingDate": {
+            "description": "İşlem günü, `YYYY-MM-DD`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amountCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mutlak tutar, kuruş"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "credit",
+                  "debit"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Açıklama ve gönderen; uzun rakam dizileri maskeli"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "date",
+                        "description",
+                        "amount",
+                        "credit",
+                        "debit",
+                        "balance",
+                        "reference",
+                        "counterparty"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "bookingDate",
+          "amountCents",
+          "direction",
+          "description",
+          "reference",
+          "issues"
+        ],
+        "additionalProperties": false
+      },
+      "BankStatementImportResult": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "mt940"
+            ]
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "CSV başlık satırının hücreleri (sütun eşleme için)"
+          },
+          "columns": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "date",
+                "description",
+                "amount",
+                "credit",
+                "debit",
+                "balance",
+                "reference",
+                "counterparty"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Alan → kullanılan başlık adı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "readyCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak (onayda yazılan) gelen hareket"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Daha önce aktarıldığı için atlanan"
+          },
+          "outgoingCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Giden hareket; yazılmaz"
+          },
+          "ignoredCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Hareket olmayan satır"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Yazılacak gelen hareketlerin toplamı, kuruş"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankStatementImportRow"
+            },
+            "description": "Yalnız önizlemede dolu"
+          }
+        },
+        "required": [
+          "dryRun",
+          "format",
+          "headers",
+          "columns",
+          "rowCount",
+          "readyCount",
+          "skippedCount",
+          "outgoingCount",
+          "ignoredCount",
+          "invalidCount",
+          "totalCents",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "BankMatchSuggestion": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "invoiceId": {
+            "type": "string"
+          },
+          "installment": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Vade, `YYYY-MM-DD`"
+          },
+          "openCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Önerilen taksitin kalanı, kuruş"
+          },
+          "studentOpenCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Öğrencinin bütün açık taksitlerinin kalanı"
+          },
+          "creditCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Açık taksitleri aşan, iade alacağı olacak kısım"
+          },
+          "amountFit": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "multiple",
+              "partial",
+              "over"
+            ]
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "national_id",
+                "national_id_suffix",
+                "student_number",
+                "contract",
+                "student_name",
+                "guardian_name",
+                "surname",
+                "amount_exact",
+                "amount_multiple",
+                "amount_partial",
+                "amount_over"
+              ]
+            },
+            "description": "Gerekçe kodları; değer taşımaz"
+          }
+        },
+        "required": [
+          "studentId",
+          "studentName",
+          "invoiceId",
+          "installment",
+          "dueDate",
+          "openCents",
+          "studentOpenCents",
+          "creditCents",
+          "amountFit",
+          "score",
+          "confidence",
+          "reasons"
+        ],
+        "additionalProperties": false
+      },
+      "BankTransaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bankAccountId": {
+            "type": "string"
+          },
+          "bankAccountLabel": {
+            "type": "string",
+            "description": "Banka adı ve IBAN son dört hanesi"
+          },
+          "bookingDate": {
+            "type": "string",
+            "description": "İşlem günü, `YYYY-MM-DD`"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Gelen tutar, kuruş"
+          },
+          "description": {
+            "type": "string",
+            "description": "Açıklama; 11+ haneli rakam dizileri maskeli (K-112)"
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "description": "Banka referansı",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "balanceCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "mt940"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unmatched",
+              "matched",
+              "ignored"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "receiptYear": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "receiptNumber": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "studentId": {
+                    "type": "string"
+                  },
+                  "studentName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "receiptYear",
+                  "receiptNumber",
+                  "studentId",
+                  "studentName"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eşleşen tahsilatın dekontu ve öğrencisi"
+          },
+          "referenceInUse": {
+            "type": "boolean",
+            "description": "Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış"
+          },
+          "matchedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoreReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "importedAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için hareket sürümü"
+          }
+        },
+        "required": [
+          "id",
+          "bankAccountId",
+          "bankAccountLabel",
+          "bookingDate",
+          "amountCents",
+          "description",
+          "counterparty",
+          "reference",
+          "balanceCents",
+          "sourceFormat",
+          "status",
+          "paymentId",
+          "payment",
+          "referenceInUse",
+          "matchedAt",
+          "ignoredAt",
+          "ignoreReason",
+          "importedAt",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "BankTransactionListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bankAccountId": {
+            "type": "string"
+          },
+          "bankAccountLabel": {
+            "type": "string",
+            "description": "Banka adı ve IBAN son dört hanesi"
+          },
+          "bookingDate": {
+            "type": "string",
+            "description": "İşlem günü, `YYYY-MM-DD`"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Gelen tutar, kuruş"
+          },
+          "description": {
+            "type": "string",
+            "description": "Açıklama; 11+ haneli rakam dizileri maskeli (K-112)"
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "description": "Banka referansı",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "balanceCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "mt940"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unmatched",
+              "matched",
+              "ignored"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "receiptYear": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "receiptNumber": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "studentId": {
+                    "type": "string"
+                  },
+                  "studentName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "receiptYear",
+                  "receiptNumber",
+                  "studentId",
+                  "studentName"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eşleşen tahsilatın dekontu ve öğrencisi"
+          },
+          "referenceInUse": {
+            "type": "boolean",
+            "description": "Eşleşmemiş hareketin referansı başka bir tahsilatta kullanılmış"
+          },
+          "matchedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ignoreReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "importedAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için hareket sürümü"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BankMatchSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eşleşmemiş harekette en iyi öneri; yoksa boş"
+          }
+        },
+        "required": [
+          "id",
+          "bankAccountId",
+          "bankAccountLabel",
+          "bookingDate",
+          "amountCents",
+          "description",
+          "counterparty",
+          "reference",
+          "balanceCents",
+          "sourceFormat",
+          "status",
+          "paymentId",
+          "payment",
+          "referenceInUse",
+          "matchedAt",
+          "ignoredAt",
+          "ignoreReason",
+          "importedAt",
+          "version",
+          "suggestion"
         ],
         "additionalProperties": false
       },
@@ -96229,6 +97547,1204 @@
             }
           },
           "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/bank-statement-imports": {
+      "post": {
+        "operationId": "importBankStatement",
+        "summary": "Banka ekstresini aktar",
+        "tags": [
+          "finance-bank-matching"
+        ],
+        "description": "Seçilen kurum banka hesabının (`bankAccountId`, DOM-FIN-032) hareket dökümünü yükler (IST-115, DOM-FIN-069). `fileBase64`: CSV, Excel (.xlsx, ilk sayfa) ya da MT940 dosyasının base64'ü, en çok 5 MB; tür içerikten anlaşılır, dosya saklanmaz. CSV başlık satırı ilk 30 satırda aranır; yaygın banka başlıkları (tarih/işlem tarihi, açıklama, tutar ya da alacak/borç, bakiye, referans/dekont no, gönderen) tanınır, `columns` ile alan → başlık adı elle eşlenir. En çok 5.000 satır. Yalnız gelen (alacak) hareket yazılır; giden hareket (`outgoing`) ve tarihi ya da tutarı boş satır (`ignored`) yazılmaz (K-106). Aynı hesapta daha önce aktarılmış hareket atlanır (`skipped`, K-107): ikinci yükleme mükerrer kayıt açmaz. `dryRun: true` önizlemedir: 200 ve satır bazında durum, açıklama maskeli; hiçbir şey yazmaz. Onay 201; hatalı satır varsa 422 `bank_statement_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir hareket yazılmaz. Arşivli ya da başka kurumun hesabı 422 `bank_account_invalid`; MT940 hesabı seçilen hesap değilse 422 `bank_statement_account_mismatch`. Başlık bulunamazsa 422 `bank_statement_header_missing`. Aktarım tahsilat oluşturmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileBase64": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 6990508,
+                    "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+                  },
+                  "dryRun": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "bankAccountId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "columns": {
+                    "type": "object",
+                    "properties": {
+                      "date": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "amount": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "credit": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "debit": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "balance": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "reference": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "counterparty": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "fileBase64",
+                  "bankAccountId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/BankStatementImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/BankStatementImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/bank-transactions": {
+      "get": {
+        "operationId": "listBankTransactions",
+        "summary": "Banka hareketlerini listele",
+        "tags": [
+          "finance-bank-matching"
+        ],
+        "description": "Aktarılmış gelen hareketler, en yeni işlem günü önce. `status`, `bankAccountId`, `dateFrom`/`dateTo` (işlem günü, dahil) ve `q` (açıklama, gönderen, referans; Türkçe harf duyarsız) ile süzülür; sayfalıdır, `pageSize` en çok 100, bilinmeyen parametre 400. Eşleşmemiş harekette en iyi öneri (`suggestion`) ve referansı başka tahsilatta kullanılmışsa `referenceInUse` döner. Açıklamada 11+ haneli rakam dizileri maskelidir (K-112). Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unmatched",
+                "matched",
+                "ignored"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Yalnız bu durumdaki hareketler"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "bankAccountId",
+            "required": false,
+            "description": "Yalnız bu hesabın"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "İşlem günü başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "İşlem günü bitiş (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Açıklama, gönderen ve referansta arar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BankTransactionListItem"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/bank-transactions/{transactionId}/suggestions": {
+      "get": {
+        "operationId": "listBankMatchSuggestions",
+        "summary": "Eşleştirme önerileri",
+        "tags": [
+          "finance-bank-matching"
+        ],
+        "description": "Hareket için en çok 5 öneri, puana göre sıralı (K-108): T.C. kimlik no (tamamı ya da son haneleri), öğrenci numarası, sözleşme kimliği, öğrenci ve veli adı ile tutarın açık taksite uyumu. Öğrenci başına tek öneri: tutarı eşit ilk açık taksit, yoksa en eski vadeli açık taksit. Güven `high` yalnız kimlik sinyali olan, puanı 70+ ve ikinci adaydan 15+ önde olan ilk öneridir; kimlik sinyali yoksa tutarı eşit açık taksitler `low` önerilir. `amountFit`: `exact`, `multiple` (birden çok taksite eşit), `partial`, `over`; `creditCents` iade alacağı olacak kısımdır (DOM-FIN-030). `studentId` verilirse yalnız o öğrencinin önerisi döner. Eşleşmiş ya da yoksayılmış harekette liste boştur. Kimlik numarası yanıtta yoktur. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Yalnız bu öğrencinin açık taksiti önerilir (yetkili başka öğrenci seçti)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "description": "Banka hareketi kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "transaction": {
+                          "$ref": "#/components/schemas/BankTransaction"
+                        },
+                        "suggestions": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/BankMatchSuggestion"
+                          }
+                        }
+                      },
+                      "required": [
+                        "transaction",
+                        "suggestions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/bank-transactions/{transactionId}/match": {
+      "post": {
+        "operationId": "matchBankTransaction",
+        "summary": "Eşleşmeyi onayla ve tahsilat oluştur",
+        "tags": [
+          "finance-bank-matching"
+        ],
+        "description": "Öneriyi ya da seçilen taksiti onaylar (DOM-FIN-069): tahsilat hareketin tamamıyla, `Banka havalesi` yöntemiyle, hareketin hesabına ve işlem gününe yazılır; referans hareketin banka referansıdır, yoksa `EKSTRE-…` (K-109). Dağılım tahsilat kuralıdır: önce `invoiceId`, artanı en eski vade, açık taksitleri aşanı iade alacağı (DOM-FIN-030, K-110). Hareket aynı işlemde `matched` olur; ikinci onay 409 `bank_transaction_not_open` ve tek tahsilat (DOM-FIN-031). İşlem günü kapatılmışsa 422 `finance_day_closed` (DOM-FIN-036); referans başka tahsilatta kullanılmışsa 409 `payment_reference_used`; taksit öğrencinin değilse 404, ödenmişse 409 `invoice_already_paid`; hesap arşivlenmişse 422 `bank_account_invalid`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunlu: aynı anahtar ikinci tahsilat açmaz. Başarı 201: hareket ve tahsilat. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
+                  "invoiceId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "invoiceId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "description": "Banka hareketi kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "transaction": {
+                          "$ref": "#/components/schemas/BankTransaction"
+                        },
+                        "payment": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "studentId": {
+                              "type": "string"
+                            },
+                            "studentName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "amountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tahsilat tutarı (kuruş)"
+                            },
+                            "creditCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş)"
+                            },
+                            "method": {
+                              "type": "string",
+                              "enum": [
+                                "Banka havalesi",
+                                "Nakit",
+                                "Kredi kartı",
+                                "Senet"
+                              ]
+                            },
+                            "reference": {
+                              "description": "Banka veya POS işlem referansı",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "paidAt": {
+                              "type": "string",
+                              "description": "Ödeme anı (ISO 8601 UTC)"
+                            },
+                            "receiptYear": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dekont yılı"
+                            },
+                            "receiptNumber": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kurum ve yıl içinde ardışık dekont numarası"
+                            },
+                            "reversedAt": {
+                              "description": "İptal anı; iptal edilmediyse boş",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "reversalReason": {
+                              "description": "İptal gerekçesi; yalnız personele döner",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "bankAccountLabel": {
+                              "description": "Tahsilatın yapıldığı hesabın kısa adı",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "mebbisRecordedAt": {
+                              "description": "MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü"
+                            },
+                            "allocations": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Taksite dağıtılan tutar (kuruş)"
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "studentId",
+                            "studentName",
+                            "amountCents",
+                            "creditCents",
+                            "method",
+                            "reference",
+                            "paidAt",
+                            "receiptYear",
+                            "receiptNumber",
+                            "reversedAt",
+                            "reversalReason",
+                            "bankAccountLabel",
+                            "mebbisRecordedAt",
+                            "version",
+                            "allocations"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "transaction",
+                        "payment"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/bank-transactions/{transactionId}/ignore": {
+      "post": {
+        "operationId": "ignoreBankTransaction",
+        "summary": "Hareketi yoksay",
+        "tags": [
+          "finance-bank-matching"
+        ],
+        "description": "Öğrenci tahsilatı olmayan gelen hareketi (kira, iade, başka gelir) gerekçeyle (`ignoreReason`, 3–200 karakter) yoksayar; tahsilat yazılmaz. Yalnız eşleşmemiş hareket: aksi 409 `bank_transaction_not_open`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ignoreReason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "ignoreReason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "description": "Banka hareketi kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/BankTransaction"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/bank-transactions/{transactionId}/restore": {
+      "post": {
+        "operationId": "restoreBankTransaction",
+        "summary": "Yoksaymayı geri al",
+        "tags": [
+          "finance-bank-matching"
+        ],
+        "description": "Yoksayılan hareket yeniden eşleşmemiş olur; yalnız yoksayılan hareket: aksi 409 `bank_transaction_not_ignored`. Eşleşmiş hareket tahsilat iptaliyle (`POST /payments/:paymentId/reverse`, yönetici) geri açılır (K-111). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-105). Modül `finance`. Kurum oturumdan gelir; başka kurumun hareketi 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "transactionId",
+            "required": true,
+            "description": "Banka hareketi kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/BankTransaction"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

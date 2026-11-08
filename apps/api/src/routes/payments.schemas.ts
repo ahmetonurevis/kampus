@@ -33,7 +33,7 @@ export const paymentListQuerySchema = z
     message: 'Bitiş günü başlangıç gününden önce olamaz.',
   })
 
-const paymentSchema = z.object({
+export const paymentSchema = z.object({
   id: z.string(),
   studentId: z.string(),
   studentName: z.string().nullable(),

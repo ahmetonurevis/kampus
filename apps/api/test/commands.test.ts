@@ -62,6 +62,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/e-ozel/items/{kind}/{sourceId}/record',
   // Toplu fatura taksitleri tek belgeye bağlar (routes/finance-corporate.ts; IST-089, DOM-FIN-060).
   'POST /api/v1/finance/corporate-invoices',
+  // Banka ekstresi toplu aktarımı ve eşleşme onayı tahsilat yazar (IST-115, DOM-FIN-069).
+  'POST /api/v1/finance/bank-statement-imports',
+  'POST /api/v1/finance/bank-transactions/{transactionId}/match',
 ]
 // Onur: kayıt ve finans sonu
 

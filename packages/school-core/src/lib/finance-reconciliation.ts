@@ -184,7 +184,7 @@ const sumOf = <T>(items: readonly T[], read: (item: T) => number) =>
  * ayrılıştan sonra ödense de sayılmaz; kimliği eski kayıtta yoktur, en büyük taksit numaralı olandır.
  * Hesaba giren bütün sözleşmelerin (K-06) ödenmiş taksitleri sayılır; ödenen tutar hepsini kapsar.
  */
-function settledCredit(
+export function withdrawalSettledCredit(
   withdrawal: ReconciliationWithdrawal,
   invoices: readonly Invoice[],
   contracts: readonly (Contract | undefined)[],
@@ -280,7 +280,7 @@ export function financeReconciliation(input: {
   for (const withdrawal of input.withdrawals)
     push(withdrawalsOf, withdrawal.studentId, {
       ...withdrawal,
-      settled: settledCredit(
+      settled: withdrawalSettledCredit(
         withdrawal,
         invoicesOf.get(withdrawal.studentId) ?? [],
         (

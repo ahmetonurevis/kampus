@@ -271,7 +271,7 @@ test('DOM-FIN-076: ödeme yöntemi, banka hesabı ve gün denetimi', () => {
   )
 })
 
-test('DOM-FIN-076, DOM-FIN-036: kapalı güne nakit ödeme yazılmaz, banka ödemesi yazılır (K-166)', () => {
+test('DOM-FIN-076, DOM-FIN-036: kapalı güne nakit ödeme yazılmaz, ödeme günü kapalı nakit ödeme iptal edilmez (K-166, K-190)', () => {
   const closed = { ...PAYMENT_CONTEXT, dayClosed: true }
   assert.throws(
     () => planSupplierPayment(payment({ method: 'cash', bankAccountId: null }), closed),
@@ -286,6 +286,15 @@ test('DOM-FIN-076, DOM-FIN-036: kapalı güne nakit ödeme yazılmaz, banka öde
         true,
       ),
     isDomainError('finance_day_closed'),
+  )
+  // Ödeme günü açıksa nakit iptal gün sonundan düşer; bugünün kapalı olmasına bakılmaz.
+  assert.deepEqual(
+    planSupplierPaymentCancel(
+      { cancelled: false, method: 'cash' },
+      { reason: 'Hatalı tutar' },
+      false,
+    ),
+    { reason: 'Hatalı tutar' },
   )
   assert.deepEqual(
     planSupplierPaymentCancel(

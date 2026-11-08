@@ -12,6 +12,7 @@ import {
   financeDayStamp,
   financeDayRefunds,
   financeDaySummary,
+  financeDaySupplierPayments,
   FINANCE_DAY_CLOSE_ROLES,
   FINANCE_DAY_REOPEN_ROLES,
   isCashCountRequired,
@@ -19,7 +20,9 @@ import {
   planFinanceDayClosing,
   planFinanceDayReopen,
   REFUND_PAYMENT_METHOD,
+  SUPPLIER_PAYMENT_DAY_METHOD,
   type FinanceDayPayment,
+  type FinanceDaySupplierPayment,
 } from '../packages/school-core/src/lib/finance-day-closings.ts'
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import { parseAmountInput, PAYMENT_METHODS } from '../packages/school-core/src/lib/payments.ts'
@@ -46,6 +49,16 @@ function rejects(work: () => unknown, code: string, kind?: string) {
   })
 }
 
+const supplierPayment = (
+  overrides: Partial<FinanceDaySupplierPayment> = {},
+): FinanceDaySupplierPayment => ({
+  amountCents: 8_000,
+  paidDate: DAY,
+  method: 'cash',
+  cancelledAt: null,
+  ...overrides,
+})
+
 const stampOf = (payments: FinanceDayPayment[]) => financeDayStamp(financeDaySummary(payments, DAY))
 
 test('DOM-FIN-036: özet yöntem bazındadır; hareketi olmayan yöntem de sıfırla görünür', () => {
@@ -71,6 +84,8 @@ test('DOM-FIN-036: özet yöntem bazındadır; hareketi olmayan yöntem de sıf�
     reversedCents: 0,
     refundPaidCount: 0,
     refundPaidCents: 0,
+    supplierPaidCount: 0,
+    supplierPaidCents: 0,
     netCents: 20_050,
   })
   assert.equal(summary.methods.find((item) => item.method === 'Senet')?.collectedCount, 0)
@@ -130,6 +145,8 @@ test('M-13, DOM-FIN-036: ödenen iade banka satırında ayrı sayılır, netten 
       reversedCents: 0,
       refundPaidCount: 2,
       refundPaidCents: 37_000,
+      supplierPaidCount: 0,
+      supplierPaidCents: 0,
       netCents: 13_000,
     },
   )
@@ -169,6 +186,103 @@ test('M-13, DOM-FIN-036: iade ödemesi damgayı değiştirir; net eşit kalsa da
     'finance_day_report_changed',
     'conflict',
   )
+})
+
+test('K-166, DOM-FIN-036, DOM-FIN-076: nakit tedarikçi ödemesi nakit satırında ayrı sayılır, netten ve kasadan düşer', () => {
+  const payments = [payment({ amountCents: 30_000 }), payment({ method: 'Banka havalesi' })]
+  const suppliers = [
+    supplierPayment(),
+    supplierPayment({ amountCents: 2_000 }),
+    // Havale, EFT ve çek kasaya dokunmaz; başka günün ve iptal edilmiş ödeme bu güne girmez.
+    supplierPayment({ method: 'eft', amountCents: 50_000 }),
+    supplierPayment({ method: 'cheque', amountCents: 40_000 }),
+    supplierPayment({ paidDate: '2026-10-05', amountCents: 99_000 }),
+    supplierPayment({ cancelledAt: `${DAY}T10:00:00.000Z`, amountCents: 7_000 }),
+  ]
+  assert.equal(SUPPLIER_PAYMENT_DAY_METHOD, 'Nakit')
+  assert.equal(financeDaySupplierPayments(suppliers, DAY).length, 2)
+  const summary = financeDaySummary(payments, DAY, [], suppliers)
+  assert.deepEqual(
+    summary.methods.find((item) => item.method === 'Nakit'),
+    {
+      method: 'Nakit',
+      collectedCount: 1,
+      collectedCents: 30_000,
+      reversedCount: 0,
+      reversedCents: 0,
+      refundPaidCount: 0,
+      refundPaidCents: 0,
+      supplierPaidCount: 2,
+      supplierPaidCents: 10_000,
+      netCents: 20_000,
+    },
+  )
+  for (const item of summary.methods.filter((line) => line.method !== 'Nakit'))
+    assert.deepEqual([item.supplierPaidCount, item.supplierPaidCents], [0, 0])
+  assert.deepEqual(
+    [summary.supplierPaidCount, summary.supplierPaidCents, summary.netCents],
+    [2, 10_000, 40_000 - 10_000],
+  )
+  assert.equal(financeDayCashNet(summary), 20_000)
+  const plan = planFinanceDayClosing(
+    DAY,
+    summary,
+    { reportStamp: financeDayStamp(summary), openingCashCents: 5_000, countedCashCents: 25_000 },
+    today,
+  )
+  assert.deepEqual(plan.cash, {
+    openingCents: 5_000,
+    countedCents: 25_000,
+    expectedCents: 25_000,
+    differenceCents: 0,
+  })
+  // Ödemesi başka gün olan nakit tedarikçi ödemesi o günün özetindedir.
+  assert.equal(financeDaySummary([], '2026-10-05', [], suppliers).supplierPaidCents, 99_000)
+})
+
+test('K-166, DOM-FIN-036: tedarikçi ödemesi ve iptali damgayı değiştirir; damga beş parçalıdır', () => {
+  const payments = [payment({ amountCents: 30_000 })]
+  const before = financeDaySummary(payments, DAY)
+  const paid = financeDaySummary(payments, DAY, [], [supplierPayment()])
+  assert.equal(financeDayStamp(before), '1:0:0:0:30000')
+  assert.equal(financeDayStamp(paid), '1:0:0:1:22000')
+  rejects(
+    () =>
+      planFinanceDayClosing(
+        DAY,
+        paid,
+        { reportStamp: financeDayStamp(before), countedCashCents: 22_000 },
+        today,
+      ),
+    'finance_day_report_changed',
+    'conflict',
+  )
+  // İptal edilen ödeme günün raporundan çıkar; özet ödemesiz güne döner.
+  const cancelled = financeDaySummary(
+    payments,
+    DAY,
+    [],
+    [supplierPayment({ cancelledAt: `${DAY}T11:00:00.000Z` })],
+  )
+  assert.deepEqual(cancelled, before)
+})
+
+test('K-166, DOM-FIN-032: yalnız nakit tedarikçi ödemesi olan günde nakit kapalı olsa da sayım gerekir', () => {
+  const summary = financeDaySummary([], DAY, [], [supplierPayment()])
+  assert.equal(isCashCountRequired(summary, false), true)
+  rejects(
+    () =>
+      planFinanceDayClosing(
+        DAY,
+        summary,
+        { reportStamp: financeDayStamp(summary) },
+        { ...today, cashEnabled: false },
+      ),
+    'cash_count_required',
+  )
+  const eft = financeDaySummary([], DAY, [], [supplierPayment({ method: 'eft' })])
+  assert.equal(isCashCountRequired(eft, false), false)
+  assert.equal(eft.netCents, 0)
 })
 
 test('DOM-FIN-036: kasa farkı açılış + net nakde göre hesaplanır', () => {

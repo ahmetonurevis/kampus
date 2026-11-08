@@ -518,10 +518,11 @@ describe('kasa ve gün sonu uçları', () => {
     assert.equal((await closingRows(a.id))[0]?.reopenedAt, null)
   })
 
-  test('M-13, DOM-FIN-036: 0083 öncesi kapanış iade alanı olmadan sıfır okunur; iade kolonları da değişmez', async () => {
+  test('M-13, K-166, DOM-FIN-036: 0083/0086 öncesi kapanış iade ve tedarikçi alanı olmadan sıfır okunur; kolonlar değişmez', async () => {
     const a = await institution({}, false)
     const id = '1b2c3d4e-5f60-4718-8a9b-0c1d2e3f4a5b'
-    // Migration 0083'ten önce yazılmış satır: yöntem özetinde iade alanı yok, kolonlar varsayılan.
+    // Migration 0083'ten önce yazılmış satır: yöntem özetinde iade ve tedarikçi alanı yok, kolonlar
+    // varsayılan (0086 öncesi satır aynı şekilde tedarikçi alanı taşımaz).
     await db.insert(financeDayClosings).values({
       institutionId: a.id,
       id,
@@ -552,16 +553,25 @@ describe('kasa ve gün sonu uçları', () => {
       [summary.refundPaidCount, summary.refundPaidCents, summary.netCents],
       [0, 0, 50_000],
     )
-    for (const item of summary.methods) assert.equal(item.refundPaidCents, 0)
-    assert.equal(read.json().data.reportStamp, '1:0:0:50000')
+    assert.deepEqual([summary.supplierPaidCount, summary.supplierPaidCents], [0, 0])
+    for (const item of summary.methods)
+      assert.deepEqual(
+        [item.refundPaidCents, item.supplierPaidCount, item.supplierPaidCents],
+        [0, 0, 0],
+      )
+    assert.equal(read.json().data.reportStamp, '1:0:0:0:50000')
     const where = and(eq(financeDayClosings.institutionId, a.id), eq(financeDayClosings.id, id))
-    await assert.rejects(
-      db.update(financeDayClosings).set({ refundPaidCount: 1, refundPaidCents: 1 }).where(where),
-      (error: { cause?: { code?: string }; code?: string }) => {
-        assert.equal(error.cause?.code ?? error.code, '55000')
-        return true
-      },
-    )
+    for (const change of [
+      { refundPaidCount: 1, refundPaidCents: 1 },
+      { supplierPaidCount: 1, supplierPaidCents: 1 },
+    ])
+      await assert.rejects(
+        db.update(financeDayClosings).set(change).where(where),
+        (error: { cause?: { code?: string }; code?: string }) => {
+          assert.equal(error.cause?.code ?? error.code, '55000')
+          return true
+        },
+      )
   })
 
   // --- Yeniden açma ------------------------------------------------------------------------------

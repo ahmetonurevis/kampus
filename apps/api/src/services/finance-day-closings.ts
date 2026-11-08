@@ -6,12 +6,14 @@ import {
   financeDayLines,
   financeDayStamp,
   financeDaySummary,
+  financeDaySupplierPayments,
   isCashCountRequired,
   planFinanceDayClosing,
   planFinanceDayReopen,
   type FinanceDayCash,
   type FinanceDaySummary,
 } from '@kampus/school-core/lib/finance-day-closings.ts'
+import { SUPPLIER_LEDGER_ROLES } from '@kampus/school-core/lib/finance-supplier-ledger.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import {
@@ -24,6 +26,10 @@ import {
   type StoredDayClosing,
 } from '../db/finance-day-closings.ts'
 import type { Database } from '../db/client.ts'
+import {
+  cashSupplierPaymentsOnDay,
+  type StoredDaySupplierPayment,
+} from '../db/finance-supplier-ledger.ts'
 import { loadPaymentSettings, paymentsTouchingDay, type StoredPayment } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { refundsPaidOnDay, type StoredDayRefund } from '../db/withdrawals.ts'
@@ -42,7 +48,8 @@ import {
  * Kapanış kurum kilidi altında okunan tahsilatlardan kurulur; aynı kilit tahsilat ve iptali de
  * sıraya sokar, kapanışla aynı anda güne yazılamaz. Tutar, sayım, açıklama ve gerekçe loglanmaz;
  * denetime yalnız alan adları düşer. Rapor içeriği `paymentsTouchingDay` ve o gün ödenen iadelerden
- * (`refundsPaidOnDay`, M-13) gelir; iade ödemesi de aynı kurum kilidiyle kapanışla sıraya girer.
+ * (`refundsPaidOnDay`, M-13) ve kasadan ödenen tedarikçi ödemelerinden (`cashSupplierPaymentsOnDay`,
+ * K-166) gelir; iade ve tedarikçi ödemesi de aynı kurum kilidiyle kapanışla sıraya girer.
  */
 
 const ENTITY = 'finance_day_closings'
@@ -78,6 +85,15 @@ export interface FinanceDayLine {
 /** O gün ödenen ayrılış iadesi (M-13); IBAN ve hesap sahibi yoktur. */
 export type FinanceDayRefundLine = StoredDayRefund
 
+/** O gün kasadan ödenen tedarikçi ödemesi (K-166); IBAN ve vergi numarası yoktur. */
+export interface FinanceDaySupplierLine {
+  paymentId: string
+  supplierName: string
+  invoiceNumber: string
+  amountCents: number
+  paidDate: string
+}
+
 export interface FinanceDayReport {
   closingDate: string
   status: 'open' | 'closed'
@@ -93,6 +109,11 @@ export interface FinanceDayReport {
   reversed: FinanceDayLine[]
   /** O gün ödenen iadeler; banka yönteminin iade ödemesi satırıdır. */
   refunds: FinanceDayRefundLine[]
+  /**
+   * O gün kasadan ödenen tedarikçi ödemeleri; tedarikçi carisini görmeyen rolde (ön büro, K-160)
+   * boştur, tutar ve adet özette yine vardır (K-191).
+   */
+  supplierPayments: FinanceDaySupplierLine[] | null
   /** Geçerli kapanış; gün açıksa boş. */
   closing: FinanceDayClosingView | null
   /** Yeniden açılmış eski kapanışlar, en yeni önce. */
@@ -174,6 +195,21 @@ async function closingViews(
   return closings.map((item) => closingView(item, names))
 }
 
+/** Özetin okuduğu nakit tedarikçi ödemeleri. */
+const daySupplierPayments = (tx: Database, ctx: ServiceContext, closingDate: string) =>
+  cashSupplierPaymentsOnDay(tx, ctx.institutionId, closingDate)
+
+const canSeeSupplierLines = (ctx: ServiceContext) =>
+  (SUPPLIER_LEDGER_ROLES as readonly string[]).includes(ctx.actor.role)
+
+const supplierLineOf = (payment: StoredDaySupplierPayment): FinanceDaySupplierLine => ({
+  paymentId: payment.paymentId,
+  supplierName: payment.supplierName,
+  invoiceNumber: payment.invoiceNumber,
+  amountCents: payment.amountCents,
+  paidDate: payment.paidDate,
+})
+
 type DayLineSource = ReturnType<typeof summaryPayments>[number]
 
 const lineOf = (payment: DayLineSource): FinanceDayLine => ({
@@ -205,6 +241,7 @@ export function financeDayReportFor(
     load: async (tx) => {
       const payments = summaryPayments(await dayPayments(tx, ctx, closingDate))
       const refunds = await refundsPaidOnDay(tx, ctx.institutionId, closingDate)
+      const supplierPayments = await daySupplierPayments(tx, ctx, closingDate)
       const closings = await closingViews(
         tx,
         ctx,
@@ -216,7 +253,8 @@ export function financeDayReportFor(
         run: (): FinanceDayReport => {
           assertFinanceDayReportable(closingDate, dayKey(ctx.now))
           const closing = closings.find((item) => item.reopenedAt === null) ?? null
-          const summary = closing?.summary ?? financeDaySummary(payments, closingDate, refunds)
+          const summary =
+            closing?.summary ?? financeDaySummary(payments, closingDate, refunds, supplierPayments)
           const { collected, reversed } = financeDayLines(payments, closingDate)
           return {
             closingDate,
@@ -234,6 +272,9 @@ export function financeDayReportFor(
             })),
             reversed: reversed.map(lineOf),
             refunds,
+            supplierPayments: canSeeSupplierLines(ctx)
+              ? financeDaySupplierPayments(supplierPayments, closingDate).map(supplierLineOf)
+              : null,
             closing,
             history: closings.filter((item) => item.reopenedAt !== null),
           }
@@ -261,6 +302,7 @@ export function closeFinanceDayCommand(
       load: async (tx) => {
         const payments = summaryPayments(await dayPayments(tx, ctx, closingDate))
         const refunds = await refundsPaidOnDay(tx, ctx.institutionId, closingDate)
+        const supplierPayments = await daySupplierPayments(tx, ctx, closingDate)
         const alreadyClosed = await isFinanceDayClosed(tx, ctx.institutionId, closingDate)
         const { cashPaymentsEnabled: cashEnabled } = await loadPaymentSettings(
           tx,
@@ -271,7 +313,7 @@ export function closeFinanceDayCommand(
           run: () =>
             planFinanceDayClosing(
               closingDate,
-              financeDaySummary(payments, closingDate, refunds),
+              financeDaySummary(payments, closingDate, refunds, supplierPayments),
               input,
               {
                 today: dayKey(ctx.now),

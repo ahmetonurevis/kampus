@@ -361,7 +361,8 @@ export function transitionSupplierInvoiceCommand(
 
 /**
  * Taksite ödeme (DOM-FIN-076). Taksitin kalanı kurum kilidi altında yeniden hesaplanır: eşzamanlı
- * iki ödeme aynı kalanı birlikte tüketemez. Kapatılmış güne nakit ödeme yazılmaz (K-166). 201.
+ * iki ödeme aynı kalanı birlikte tüketemez. Nakit ödeme ödeme gününün gün sonuna girer; kapatılmış
+ * güne yazılmaz (K-166). 201.
  */
 export function createSupplierPaymentCommand(
   ctx: ServiceContext,
@@ -442,7 +443,10 @@ export function createSupplierPaymentCommand(
   )
 }
 
-/** Ödeme iptali gerekçeyle; nakitte bugün kapalıysa reddedilir (K-166). */
+/**
+ * Ödeme iptali gerekçeyle. Nakit ödeme ödeme gününün gün sonundadır, iptal onu oradan çıkarır; o gün
+ * kapatılmışsa reddedilir (K-166, K-190). Kapanışla aynı kurum kilidinde sıraya girer.
+ */
 export function cancelSupplierPaymentCommand(
   ctx: ServiceContext,
   id: string,
@@ -462,14 +466,15 @@ export function cancelSupplierPaymentCommand(
         const payment = await findSupplierPayment(tx, ctx.institutionId, id)
         if (payment === null) throw new NotFoundError()
         if (payment.version !== expectedVersion) throw new ConflictError()
-        const todayClosed =
-          payment.method === 'cash' && (await isFinanceDayClosed(tx, ctx.institutionId, today(ctx)))
+        const paidDayClosed =
+          payment.method === 'cash' &&
+          (await isFinanceDayClosed(tx, ctx.institutionId, payment.paidDate))
         return {
           run: () =>
             planSupplierPaymentCancel(
               { cancelled: payment.cancelledAt !== null, method: payment.method },
               input,
-              todayClosed,
+              paidDayClosed,
             ),
         }
       },

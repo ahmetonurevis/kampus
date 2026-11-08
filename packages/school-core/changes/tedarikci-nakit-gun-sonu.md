@@ -1,0 +1,6 @@
+---
+etki: major
+---
+
+- **Kırıcı:** Gün sonu özeti kasadan ödenen tedarikçi ödemesini sayar (K-166, DOM-FIN-036, DOM-FIN-076): `FinanceDaySummary` ve `FinanceDayMethodTotal` `supplierPaidCount` ve `supplierPaidCents` alanlarını taşır, yalnız `Nakit` satırında dolar (`SUPPLIER_PAYMENT_DAY_METHOD`); net tahsilat − iptal − iade ödemesi − tedarikçi ödemesidir ve kasa beklenenini düşürür. `financeDaySummary` isteğe bağlı dördüncü parametre olarak tedarikçi ödemelerini (`FinanceDaySupplierPayment`: `{ amountCents, paidDate, method, cancelledAt }`) alır; `financeDaySupplierPayments` yalnız o günün iptal edilmemiş nakit ödemelerini süzer. `financeDayStamp` tedarikçi ödemesi adedini de içerir (`tahsilat:iptal:iade:tedarikçi:net`); eski damga kapanışta reddedilir. Nakit tedarikçi ödemesi olan günde `isCashCountRequired` nakit kapalı olsa da `true` döner. Geçiş: özet kuran çağıran tedarikçi ödemelerini verir; elle kurulan özet nesnelerine iki alan eklenir.
+- **Kırıcı:** `planSupplierPaymentCancel` üçüncü parametresi bugünün değil ödeme gününün kapanış durumudur (K-190): nakit ödemenin günü kapatılmışsa `finance_day_closed`, bugünün kapalı olmasına bakılmaz. Geçiş: çağıran ödeme gününün kapanış durumunu verir.

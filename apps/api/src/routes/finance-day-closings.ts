@@ -46,7 +46,20 @@ const summarySchema = z.object({
           .int()
           .describe('O gün ödenen ayrılış iadesi adedi; yalnız `Banka havalesi` satırında (M-13)'),
         refundPaidCents: z.number().int().describe('O gün ödenen ayrılış iadesi toplamı (kuruş)'),
-        netCents: z.number().int().describe('Tahsilat eksi iptal eksi iade ödemesi (kuruş)'),
+        supplierPaidCount: z
+          .number()
+          .int()
+          .describe(
+            'O gün kasadan ödenen tedarikçi ödemesi adedi; yalnız `Nakit` satırında (K-166)',
+          ),
+        supplierPaidCents: z
+          .number()
+          .int()
+          .describe('O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş)'),
+        netCents: z
+          .number()
+          .int()
+          .describe('Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş)'),
       }),
     )
     .describe('Her yöntem hareket olmasa da yer alır'),
@@ -56,7 +69,15 @@ const summarySchema = z.object({
   reversedCents: z.number().int(),
   refundPaidCount: z.number().int().describe('O gün ödenen ayrılış iadesi adedi'),
   refundPaidCents: z.number().int().describe('O gün ödenen ayrılış iadesi toplamı (kuruş)'),
-  netCents: z.number().int().describe('Tahsilat eksi iptal eksi iade ödemesi (kuruş)'),
+  supplierPaidCount: z.number().int().describe('O gün kasadan ödenen tedarikçi ödemesi adedi'),
+  supplierPaidCents: z
+    .number()
+    .int()
+    .describe('O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş)'),
+  netCents: z
+    .number()
+    .int()
+    .describe('Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş)'),
 })
 
 const closingSchema = z.object({
@@ -67,7 +88,10 @@ const closingSchema = z.object({
     .object({
       openingCents: z.number().int().describe('Açılış kasası (kuruş)'),
       countedCents: z.number().int().describe('Sayılan nakit (kuruş)'),
-      expectedCents: z.number().int().describe('Açılış artı günün net nakdi (kuruş)'),
+      expectedCents: z
+        .number()
+        .int()
+        .describe('Açılış artı günün net nakdi (kuruş); nakit tedarikçi ödemesi düşülmüştür'),
       differenceCents: z.number().int().describe('Sayılan eksi beklenen (kuruş)'),
     })
     .nullable()
@@ -106,6 +130,14 @@ const refundLineSchema = z.object({
     .describe('İadenin ödendiği kurum hesabı; hesap seçimi zorunlu olmadan önce ödenmişse boş'),
 })
 
+const supplierLineSchema = z.object({
+  paymentId: z.string(),
+  supplierName: z.string().describe('Tedarikçi unvanı'),
+  invoiceNumber: z.string().describe('Ödemenin yazıldığı fatura numarası'),
+  amountCents: z.number().int().describe('Kasadan ödenen tutar (kuruş)'),
+  paidDate: z.string().describe('Ödeme günü (`YYYY-MM-DD`)'),
+})
+
 const reportSchema = dataResponse(
   z.object({
     closingDate: z.string(),
@@ -129,6 +161,12 @@ const reportSchema = dataResponse(
       .array(refundLineSchema)
       .describe(
         'O gün ödenen ayrılış iadeleri (M-13); IBAN ve hesap sahibi yok. Kapalı günde de güncel liste',
+      ),
+    supplierPayments: z
+      .array(supplierLineSchema)
+      .nullable()
+      .describe(
+        'O gün kasadan ödenen etkin nakit tedarikçi ödemeleri (K-166); IBAN ve vergi numarası yok. Tedarikçi carisini görmeyen rolde (ön büro) boş; adet ve tutar özettedir (K-191). Kapalı günde de güncel liste',
       ),
     closing: closingSchema.nullable().describe('Geçerli kapanış; gün açıksa boş'),
     history: z.array(closingSchema).describe('Yeniden açılmış eski kapanışlar, en yeni önce'),
@@ -157,7 +195,7 @@ export function registerFinanceDayClosingRoutes(app: FastifyInstance) {
         tags: ['finance-day-closings'],
         summary: 'Gün sonu raporu',
         description:
-          'Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.',
+          'Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, kasadan ödenen tedarikçi ödemeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). Nakit tedarikçi ödemesi ödeme gününe nakit satırında ayrı sayılır, netten ve kasa beklenenden düşer; iptal edilen ödeme o günün raporundan çıkar (K-166). Geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.',
         params: paramsSchema,
         response: { 200: reportSchema, ...commandErrors },
       },
@@ -182,7 +220,7 @@ export function registerFinanceDayClosingRoutes(app: FastifyInstance) {
         tags: ['finance-day-closings'],
         summary: 'Günü kapat',
         description:
-          'Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat ve iade ödemesi girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.',
+          'Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat, iade ödemesi ve nakit tedarikçi ödemesi girilemez, o günün nakit tedarikçi ödemesi iptal edilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi (tahsilat, iptal, tedarikçi ödemesi) olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: paramsSchema,
         body: closeFinanceDaySchema,

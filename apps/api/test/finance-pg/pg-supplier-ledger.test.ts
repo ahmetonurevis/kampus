@@ -6,6 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import type { App } from '../../src/app.ts'
 import type { Database } from '../../src/db/client.ts'
+import { financeDayClosings } from '../../src/db/schema/finance-day-closings.ts'
 import { supplierPayments } from '../../src/db/schema/finance-supplier-ledger.ts'
 import {
   buildTestApp,
@@ -38,9 +39,9 @@ describe('PostgreSQL 16: tedarikçi ödemesi eşzamanlılığı', { skip: PG_SKI
     await close()
   })
 
-  function call(cookie: string, url: string, payload: unknown) {
+  function call(cookie: string, url: string, payload: unknown, method: 'POST' | 'GET' = 'POST') {
     return app.inject({
-      method: 'POST',
+      method,
       url,
       remoteAddress: '10.77.0.1',
       headers: {
@@ -115,5 +116,44 @@ describe('PostgreSQL 16: tedarikçi ödemesi eşzamanlılığı', { skip: PG_SKI
       rows.reduce((sum, row) => sum + row.amountCents, 0),
       80_000,
     )
+  })
+
+  test('K-166, DOM-FIN-036: gün kapanışı ve nakit tedarikçi ödemesi yarışır; görülmemiş ödeme mühürlenmez', async () => {
+    const t = await tenant()
+    const day = '2026-10-06'
+    const read = await call(t.admin, `${FINANCE}/day-closings/${day}`, undefined, 'GET')
+    const stamp = (read.json().data as Json).reportStamp
+    const [paid, closed] = await Promise.all([
+      call(t.admin, `${FINANCE}/supplier-payments`, {
+        installmentId: t.installment.id,
+        paidDate: day,
+        amountCents: 30_000,
+        method: 'cash',
+      }),
+      call(t.admin, `${FINANCE}/day-closings/${day}/close`, {
+        reportStamp: stamp,
+        openingCashCents: 0,
+        countedCashCents: 0,
+      }),
+    ])
+    const outcome = [paid.statusCode, closed.statusCode]
+    if (paid.statusCode === 201) {
+      assert.deepEqual(outcome, [201, 409], paid.body + closed.body)
+      assert.equal(closed.json().code, 'finance_day_report_changed')
+    } else {
+      assert.deepEqual(outcome, [422, 201], paid.body + closed.body)
+      assert.equal(paid.json().code, 'finance_day_closed')
+    }
+    const closings = await db
+      .select()
+      .from(financeDayClosings)
+      .where(eq(financeDayClosings.institutionId, t.id))
+    const payments = await db
+      .select()
+      .from(supplierPayments)
+      .where(eq(supplierPayments.institutionId, t.id))
+    // Kapanış varsa ödeme yoktur; ödeme varsa kapanış yoktur.
+    assert.equal(closings.length + payments.length, 1)
+    for (const closing of closings) assert.equal(closing.supplierPaidCount, 0)
   })
 })

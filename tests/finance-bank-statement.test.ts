@@ -53,6 +53,39 @@ describe('DOM-FIN-069: ekstre tutar ve tarih hücreleri', () => {
     )
     assert.equal(maskStatementText('OGR NO 2026001'), 'OGR NO 2026001')
   })
+
+  test('K-122: boşluk, tire ya da noktayla bölünmüş kimlik no ve IBAN da maskelenir', () => {
+    assert.equal(
+      maskStatementText('IBAN TR12 0006 1005 1978 6457 8413 26 HAVALE'),
+      'IBAN TR** **** **** **** **** **13 26 HAVALE',
+    )
+    assert.equal(maskStatementText('TC 123 456 789 01 EKIM'), 'TC *** *** *89 01 EKIM')
+    assert.equal(maskStatementText('TC 123-456-789-01'), 'TC ***-***-*89-01')
+    assert.equal(maskStatementText('TC 123.456.789.01'), 'TC ***.***.*89.01')
+    assert.equal(maskStatementText('TEL 0532 123 45 67'), 'TEL **** *** 45 67')
+    // Kısa diziler, tarih ve tutar değişmez; virgül ayraç sayılmaz.
+    assert.equal(
+      maskStatementText('OGR NO 2026001 01.10.2026 TAKSIT 3 24.500,00'),
+      'OGR NO 2026001 01.10.2026 TAKSIT 3 24.500,00',
+    )
+    // Bitişik uzun dizinin ardındaki grup diziyi korumaz.
+    assert.equal(maskStatementText('TC 12345678901 22'), 'TC *******8901 22')
+    // Harfe bitişik uzun dizi (referans) son dört hane dışında maskelenir.
+    assert.equal(maskStatementText('EFT2026100100001'), 'EFT*********0001')
+  })
+
+  test('K-122: önizleme satırında açıklama ve referans maskeli; aktarılacak hareket ham kalır', () => {
+    const raw = [
+      'Tarih;Açıklama;Tutar;Referans',
+      '01.10.2026;HAVALE TC 123 456 789 01;100,00;TR12 0006 1005 1978 6457 8413 26',
+    ].join('\n')
+    const lines = parse(raw).lines
+    const plan = planBankStatementImport(lines, bankTransactionKeys(ACCOUNT, lines), () => false)
+    assert.equal(plan.rows[0]?.description, 'HAVALE TC *** *** *89 01')
+    assert.equal(plan.rows[0]?.reference, 'TR** **** **** **** **** **13 26')
+    assert.equal(plan.transactions[0]?.description, 'HAVALE TC 123 456 789 01')
+    assert.equal(plan.transactions[0]?.reference, 'TR12 0006 1005 1978 6457 8413 26')
+  })
 })
 
 describe('DOM-FIN-069: CSV ekstresi', () => {

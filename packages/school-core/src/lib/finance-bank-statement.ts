@@ -534,6 +534,7 @@ export interface BankImportRow {
   direction: BankDirection | null
   /** Maskeli açıklama (`maskStatementText`); önizlemede gösterilir. */
   description: string
+  /** Maskeli referans (K-122). */
   reference: string
   issues: BankStatementIssue[]
 }
@@ -557,14 +558,31 @@ export interface BankImportPlan {
 }
 
 /**
- * 11 ve daha uzun rakam dizileri (T.C. kimlik no, IBAN gövdesi, telefon) son dört hanesi dışında
- * maskelenir: açıklama yanıtta ve önizlemede bu biçimde döner (K-112). Saklanan metin hamdır.
+ * Rakam dizisi: bitişik rakamlar ya da tek boşluk, tire veya noktayla bölünmüş en çok dört haneli
+ * gruplar. Gönderen kimlik numarasını ve IBAN'ı çoğunlukla gruplayarak yazar ("TR12 0006 1005 …",
+ * "123 456 789 01"). Grup en çok dört hanedir ve dizi bir sayının ortasından başlamaz: öğrenci
+ * numarasının ("2026001") yanındaki tarih onunla birleşip maskelenmez. Virgül ayraç değildir.
+ */
+const DIGIT_RUN = /(?<!\d[ .-]?)(?:\d{1,4}(?:[ .-]\d{1,4})+|\d+)(?!\d)/g
+const MASK_MIN_DIGITS = 11
+const MASK_KEEP_DIGITS = 4
+
+/**
+ * Ayraçlarla birlikte 11 ve daha çok rakamlı diziler (T.C. kimlik no, IBAN gövdesi, telefon) son
+ * dört hanesi dışında maskelenir, ayraçlar yerinde kalır (K-112, K-122). Açıklama, gönderen ve
+ * referans yanıtta ve önizlemede bu biçimde döner; saklanan metin hamdır, eşleştirme hamla çalışır.
+ * Ayraçlı dizide tarih ile tutar yan yana gelirse fazladan maskelenebilir; bu güvenli yöndür.
  */
 export function maskStatementText(value: string): string {
-  return value.replace(
-    /(?<!\d)\d{11,}(?!\d)/g,
-    (digits) => `${'*'.repeat(digits.length - 4)}${digits.slice(-4)}`,
-  )
+  return value.replace(DIGIT_RUN, (run) => {
+    const total = run.replace(/\D/g, '').length
+    if (total < MASK_MIN_DIGITS) return run
+    let seen = 0
+    return run.replace(/\d/g, (digit) => {
+      seen += 1
+      return seen > total - MASK_KEEP_DIGITS ? digit : '*'
+    })
+  })
 }
 
 /**
@@ -606,7 +624,7 @@ export function planBankStatementImport(
       amountCents: line.amountCents,
       direction: line.direction,
       description: maskStatementText(clip(`${line.description} ${line.counterparty}`, 300)),
-      reference: line.reference,
+      reference: maskStatementText(line.reference),
       issues: line.issues,
     })
     if (

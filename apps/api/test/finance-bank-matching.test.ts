@@ -405,6 +405,51 @@ describe('banka hareketi eşleştirme uçları', () => {
     )
   })
 
+  test('DOM-FIN-069, K-122: bölünmüş kimlik no ve IBAN açıklamada ve referansta maskeli; önizleme, liste, öneri ve logda ham yok', async () => {
+    const t = await institution()
+    const spacedId = '123 456 789 01'
+    const spacedIban = 'TR12 0006 1005 1978 6457 8413 26'
+    const text = [
+      'Tarih;Açıklama;Tutar;Referans',
+      `01.10.2026;HAVALE TC ${spacedId} GONDEREN ${spacedIban};10.000,00;${spacedIban}`,
+      '02.10.2026;EFT TC 123-456-789-02;500,00;REF 1234 5678 901',
+    ].join('\n')
+    const raw = ['12345678901', '120006100519786457841326', '123 456 789', '0006 1005', '5678 901']
+    const leaks = (body: string) => raw.filter((value) => body.includes(value))
+    const preview = await upload(t.adminCookie, t, { text, dryRun: true })
+    assert.equal(preview.statusCode, 200, preview.body)
+    assert.deepEqual(leaks(preview.body), [])
+    assert.deepEqual(
+      preview.json().data.rows.map((row: { reference: string }) => row.reference),
+      ['TR** **** **** **** **** **13 26', 'REF **** ***8 901'],
+    )
+    assert.equal((await upload(t.adminCookie, t, { text })).statusCode, 201)
+    // Saklanan metin hamdır; eşleştirme ham metinle çalışır.
+    const [stored] = await transactions(t.id)
+    assert.equal(stored?.bankReference, spacedIban)
+    assert.ok(stored?.statementDescription.includes(spacedId))
+    const listed = await send('GET', LIST, t.adminCookie)
+    assert.equal(listed.statusCode, 200, listed.body)
+    assert.deepEqual(leaks(listed.body), [])
+    const item = listed
+      .json()
+      .data.find((row: { bookingDate: string }) => row.bookingDate === '2026-10-01')
+    assert.equal(
+      item.description,
+      'HAVALE TC *** *** *89 01 GONDEREN TR** **** **** **** **** **13 26',
+    )
+    assert.equal(item.reference, 'TR** **** **** **** **** **13 26')
+    assert.ok(stored)
+    const suggested = await send('GET', `${LIST}/${stored.id}/suggestions`, t.adminCookie)
+    assert.equal(suggested.statusCode, 200, suggested.body)
+    assert.deepEqual(leaks(suggested.body), [])
+    assert.equal(suggested.json().data.transaction.reference, item.reference)
+    assert.deepEqual(
+      logs.flatMap((line) => leaks(line)),
+      [],
+    )
+  })
+
   test('DOM-FIN-069, K-108: öneriler kimlik no ile yüksek güvenli, kimlik yanıtta yok; seçilen öğrencinin taksiti', async () => {
     const t = await institution()
     const [first] = await imported(t)

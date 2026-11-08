@@ -293,7 +293,8 @@ function transactionView(row: StoredBankTransaction, referenceInUse = false): Ba
     amountCents: row.amountCents,
     description: maskStatementText(row.statementDescription),
     counterparty: row.counterpartyName === null ? null : maskStatementText(row.counterpartyName),
-    reference: row.bankReference,
+    // Referans sütununa gönderen IBAN'ı ya da kimlik no da yazılabilir (K-122).
+    reference: row.bankReference === null ? null : maskStatementText(row.bankReference),
     balanceCents: row.balanceCents,
     sourceFormat: row.sourceFormat,
     status: row.status,

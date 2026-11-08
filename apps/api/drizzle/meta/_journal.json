@@ -610,6 +610,13 @@
       "when": 1794165595909,
       "tag": "0086_supplier_cash_day_closing",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794166942837,
+      "tag": "0087_create_fixed_asset_assignments",
+      "breakpoints": true
     }
   ]
 }

@@ -5536,6 +5536,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/fixed-asset-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demirbaş zimmetlerini listele
+         * @description Açık zimmetler önce, yeni zimmet önce. `assetId` demirbaşın zimmet geçmişini, `membershipId` personelin zimmetlerini (ilişik kesmede açık zimmetler, K-214), `state` açık ya da iade edilmişleri süzer; `q` etiket, demirbaş adı, personel adı ve konumda arar (DOM-FIN-086). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssetAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zimmet ayrıntısı
+         * @description Zimmet tutanağının verisi: demirbaş, teslim alan (personel ya da konum), zimmet ve iade bilgisi. Olmayan ya da başka kurumun zimmeti 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["getFixedAssetAssignment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-assets/{assetId}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demirbaşı zimmetle
+         * @description Personele (`assigneeType: staff`, kurumun etkin yönetici, öğretmen ya da ön büro üyeliği) ya da konuma (`assigneeType: location`, isteğe bağlı kampüs ve oda) zimmet, zimmet günü ve not (K-210). Açık zimmet varken 409 `fixed_asset_already_assigned` (devir önce iadedir, K-211); hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`; gelecek gün 422 `fixed_asset_date_in_future`; alım gününden önce 422 `fixed_asset_assignment_before_acquisition`; son iade gününden önce 422 `fixed_asset_assignment_before_return`; olmayan üyelik 422 `fixed_asset_assignee_not_found`, öğrenci ya da veli 422 `fixed_asset_assignee_not_staff`, pasif personel 422 `fixed_asset_assignee_inactive`; olmayan kampüs 422 `fixed_asset_campus_not_found`. Başka kurumun demirbaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["assignFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-assignments/{assignmentId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Zimmeti iade al
+         * @description İade günü, durum (`intact` sağlam, `damaged` hasarlı) ve not; hasarlı iadede not en az 5 karakter (K-212). Zimmet kaydı silinmez; demirbaşın durumu kendiliğinden değişmez. Zaten iade edilmiş 422 `fixed_asset_assignment_returned`, gelecek gün 422 `fixed_asset_date_in_future`, zimmet gününden önce 422 `fixed_asset_return_before_assignment`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["returnFixedAssetAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zimmet alabilecek personel ve açık zimmet sayısı
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri, ada göre; her satırda açık zimmet sayısı. Pasifleştirilmiş (ayrılan) personel de listelenir; `status=passive&holding=true` ilişik kesmede iade bekleyen zimmetleri olan personeli verir (K-214). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssetAssignees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -58076,6 +58176,22 @@ export interface operations {
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
+                            /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
+                            assignment: {
+                                id: string;
+                                /** @enum {string} */
+                                assigneeType: "staff" | "location";
+                                membershipId: string | null;
+                                /** @description Teslim alan personelin adı (yalnız yönetici) */
+                                staffName: string | null;
+                                /** @description Personel pasifleştirildiyse `false` */
+                                staffActive: boolean | null;
+                                campusId: string | null;
+                                campusName: string | null;
+                                location: string | null;
+                                /** @description Zimmet günü (YYYY-MM-DD) */
+                                assignedDate: string;
+                            } | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         }[];
@@ -58236,6 +58352,22 @@ export interface operations {
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
+                            /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
+                            assignment: {
+                                id: string;
+                                /** @enum {string} */
+                                assigneeType: "staff" | "location";
+                                membershipId: string | null;
+                                /** @description Teslim alan personelin adı (yalnız yönetici) */
+                                staffName: string | null;
+                                /** @description Personel pasifleştirildiyse `false` */
+                                staffActive: boolean | null;
+                                campusId: string | null;
+                                campusName: string | null;
+                                location: string | null;
+                                /** @description Zimmet günü (YYYY-MM-DD) */
+                                assignedDate: string;
+                            } | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -58496,6 +58628,22 @@ export interface operations {
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
+                            /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
+                            assignment: {
+                                id: string;
+                                /** @enum {string} */
+                                assigneeType: "staff" | "location";
+                                membershipId: string | null;
+                                /** @description Teslim alan personelin adı (yalnız yönetici) */
+                                staffName: string | null;
+                                /** @description Personel pasifleştirildiyse `false` */
+                                staffActive: boolean | null;
+                                campusId: string | null;
+                                campusName: string | null;
+                                location: string | null;
+                                /** @description Zimmet günü (YYYY-MM-DD) */
+                                assignedDate: string;
+                            } | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -58661,6 +58809,22 @@ export interface operations {
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
+                            /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
+                            assignment: {
+                                id: string;
+                                /** @enum {string} */
+                                assigneeType: "staff" | "location";
+                                membershipId: string | null;
+                                /** @description Teslim alan personelin adı (yalnız yönetici) */
+                                staffName: string | null;
+                                /** @description Personel pasifleştirildiyse `false` */
+                                staffActive: boolean | null;
+                                campusId: string | null;
+                                campusName: string | null;
+                                location: string | null;
+                                /** @description Zimmet günü (YYYY-MM-DD) */
+                                assignedDate: string;
+                            } | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -58817,6 +58981,22 @@ export interface operations {
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
+                            /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
+                            assignment: {
+                                id: string;
+                                /** @enum {string} */
+                                assigneeType: "staff" | "location";
+                                membershipId: string | null;
+                                /** @description Teslim alan personelin adı (yalnız yönetici) */
+                                staffName: string | null;
+                                /** @description Personel pasifleştirildiyse `false` */
+                                staffActive: boolean | null;
+                                campusId: string | null;
+                                campusName: string | null;
+                                location: string | null;
+                                /** @description Zimmet günü (YYYY-MM-DD) */
+                                assignedDate: string;
+                            } | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -58838,6 +59018,710 @@ export interface operations {
                             scrapReason: string | null;
                             createdAt: string;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssetAssignments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Demirbaşın zimmet geçmişi */
+                assetId?: string;
+                /** @description Personelin zimmetleri */
+                membershipId?: string;
+                /** @description `open` iade edilmemiş, `returned` iade edilmiş */
+                state?: "open" | "returned";
+                /** @description Etiket, demirbaş adı, personel adı ve konumda arama, Türkçe harf duyarsız */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assetId: string;
+                            assetTagNumber: string;
+                            assetName: string;
+                            /** @enum {string} */
+                            assetCategory: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            /**
+                             * @description `staff` personel, `location` konum (K-210)
+                             * @enum {string}
+                             */
+                            assigneeType: "staff" | "location";
+                            /** @description Personel zimmetinde kurum üyeliği */
+                            membershipId: string | null;
+                            /** @description Teslim alan personelin adı */
+                            staffName: string | null;
+                            /** @description Personelin bugünkü rolü */
+                            staffRole: string | null;
+                            /** @description Personel pasifleştirildiyse `false`; konum zimmetinde boş */
+                            staffActive: boolean | null;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Konum zimmetinde oda ya da yer */
+                            location: string | null;
+                            /** @description Zimmet günü (YYYY-MM-DD) */
+                            assignedDate: string;
+                            note: string | null;
+                            assignedAt: string;
+                            /** @description İade günü; açık zimmette boş */
+                            returnDate: string | null;
+                            returnCondition: ("intact" | "damaged") | null;
+                            returnNote: string | null;
+                            returnedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iade) */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFixedAssetAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assetId: string;
+                            assetTagNumber: string;
+                            assetName: string;
+                            /** @enum {string} */
+                            assetCategory: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            /**
+                             * @description `staff` personel, `location` konum (K-210)
+                             * @enum {string}
+                             */
+                            assigneeType: "staff" | "location";
+                            /** @description Personel zimmetinde kurum üyeliği */
+                            membershipId: string | null;
+                            /** @description Teslim alan personelin adı */
+                            staffName: string | null;
+                            /** @description Personelin bugünkü rolü */
+                            staffRole: string | null;
+                            /** @description Personel pasifleştirildiyse `false`; konum zimmetinde boş */
+                            staffActive: boolean | null;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Konum zimmetinde oda ya da yer */
+                            location: string | null;
+                            /** @description Zimmet günü (YYYY-MM-DD) */
+                            assignedDate: string;
+                            note: string | null;
+                            assignedAt: string;
+                            /** @description İade günü; açık zimmette boş */
+                            returnDate: string | null;
+                            returnCondition: ("intact" | "damaged") | null;
+                            returnNote: string | null;
+                            returnedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iade) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assignFixedAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    assigneeType: "staff";
+                    /** @description Teslim alan personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Zimmet (teslim) günü; bugünden sonra olamaz */
+                    assignedDate: string;
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                } | {
+                    /** @enum {string} */
+                    assigneeType: "location";
+                    /**
+                     * @description Kampüs (branches kaydı); tek kampüslü kurumda boş
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /** @description Oda ya da yer, serbest metin */
+                    location: string;
+                    /** @description Zimmet (teslim) günü; bugünden sonra olamaz */
+                    assignedDate: string;
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assetId: string;
+                            assetTagNumber: string;
+                            assetName: string;
+                            /** @enum {string} */
+                            assetCategory: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            /**
+                             * @description `staff` personel, `location` konum (K-210)
+                             * @enum {string}
+                             */
+                            assigneeType: "staff" | "location";
+                            /** @description Personel zimmetinde kurum üyeliği */
+                            membershipId: string | null;
+                            /** @description Teslim alan personelin adı */
+                            staffName: string | null;
+                            /** @description Personelin bugünkü rolü */
+                            staffRole: string | null;
+                            /** @description Personel pasifleştirildiyse `false`; konum zimmetinde boş */
+                            staffActive: boolean | null;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Konum zimmetinde oda ya da yer */
+                            location: string | null;
+                            /** @description Zimmet günü (YYYY-MM-DD) */
+                            assignedDate: string;
+                            note: string | null;
+                            assignedAt: string;
+                            /** @description İade günü; açık zimmette boş */
+                            returnDate: string | null;
+                            returnCondition: ("intact" | "damaged") | null;
+                            returnNote: string | null;
+                            returnedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iade) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    returnFixedAssetAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İade günü; zimmet gününden önce, bugünden sonra olamaz */
+                    returnDate: string;
+                    /**
+                     * @description `intact` sağlam, `damaged` hasarlı
+                     * @enum {string}
+                     */
+                    condition: "intact" | "damaged";
+                    /** @description Durum notu; hasarlı iadede en az 5 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assetId: string;
+                            assetTagNumber: string;
+                            assetName: string;
+                            /** @enum {string} */
+                            assetCategory: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                            /**
+                             * @description `staff` personel, `location` konum (K-210)
+                             * @enum {string}
+                             */
+                            assigneeType: "staff" | "location";
+                            /** @description Personel zimmetinde kurum üyeliği */
+                            membershipId: string | null;
+                            /** @description Teslim alan personelin adı */
+                            staffName: string | null;
+                            /** @description Personelin bugünkü rolü */
+                            staffRole: string | null;
+                            /** @description Personel pasifleştirildiyse `false`; konum zimmetinde boş */
+                            staffActive: boolean | null;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Konum zimmetinde oda ya da yer */
+                            location: string | null;
+                            /** @description Zimmet günü (YYYY-MM-DD) */
+                            assignedDate: string;
+                            note: string | null;
+                            assignedAt: string;
+                            /** @description İade günü; açık zimmette boş */
+                            returnDate: string | null;
+                            returnCondition: ("intact" | "damaged") | null;
+                            returnNote: string | null;
+                            returnedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iade) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssetAssignees: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description `true` yalnız açık zimmeti olan personel */
+                holding?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Üzerindeki açık zimmet sayısı */
+                            openAssignmentCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
                     };
                 };
             };

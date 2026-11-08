@@ -539,10 +539,14 @@ const pairFrom = (input: unknown, warehouseKey: string) => {
 
 async function movementBody(tx: Database, ctx: ServiceContext, ids: readonly string[]) {
   const movements = await Promise.all(ids.map((id) => findStockMovement(tx, ctx.institutionId, id)))
+  // Transferin iki bacağı veritabanından sırasız gelir; yanıt hep önce çıkışı, sonra girişi verir.
+  const legOrder = (type: string) => (type === 'transfer_in' ? 1 : 0)
   return movementViews(
     tx,
     ctx,
-    movements.filter((movement): movement is StoredStockMovement => movement !== null),
+    movements
+      .filter((movement): movement is StoredStockMovement => movement !== null)
+      .sort((a, b) => legOrder(a.type) - legOrder(b.type)),
   )
 }
 

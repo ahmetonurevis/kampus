@@ -116919,7 +116919,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.",
+        "description": "Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Her satırda ve toplamda ayrıca teslim alınan (iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı, **KDV hariç**), faturalanan (siparişe bağlı iptal edilmemiş faturalar, **KDV dahil**), ödenen (bu faturalara iptal edilmemiş ödemeler, **KDV dahil**) ve açık tutar (faturalanan eksi ödenen, **KDV dahil**) döner; kabul, fatura ve ödeme günü süzülmez, kapsamdaki siparişlerinkidir (K-195, K-196). Siparişe bağlı olmayan faturalar `unlinkedInvoices` satırındadır: fatura tarihi aralıkta (bütçe döneminde dönemin günlerinde); toplamlara girmez (K-197). İptal edilen siparişin faturası ve ödemesi `cancelled` altındadır (K-198). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner (sütun başlıkları KDV hariç/dahil esasını yazar, siparişsiz fatura toplamın altında ayrı satırdır; K-199): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.",
         "parameters": [
           {
             "schema": {
@@ -117031,19 +117031,43 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "KDV hariç tutar, kuruş"
+                              "description": "Sipariş tutarı, KDV hariç, kuruş"
                             },
                             "vatCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                             },
                             "grossCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "KDV dahil tutar, kuruş"
+                              "description": "Sipariş tutarı, KDV dahil, kuruş"
+                            },
+                            "receivedNetCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                            },
+                            "invoicedGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                            },
+                            "openCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                             },
                             "supplierCount": {
                               "type": "integer",
@@ -117057,6 +117081,10 @@
                             "netCents",
                             "vatCents",
                             "grossCents",
+                            "receivedNetCents",
+                            "invoicedGrossCents",
+                            "paidCents",
+                            "openCents",
                             "supplierCount"
                           ],
                           "additionalProperties": false
@@ -117074,14 +117102,64 @@
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
                               "description": "İptal edilen KDV dahil tutar"
+                            },
+                            "invoicedGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen siparişlere bağlı etkin faturalar, KDV dahil"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bu faturalara iptal edilmemiş ödemeler, KDV dahil"
                             }
                           },
                           "required": [
                             "orderCount",
-                            "grossCents"
+                            "grossCents",
+                            "invoicedGrossCents",
+                            "paidCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Kapsamda iptal edilen siparişler; toplamlara girmez"
+                          "description": "Kapsamda iptal edilen siparişler; faturaları ve ödemeleriyle toplamlara girmez (K-198)"
+                        },
+                        "unlinkedInvoices": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "invoicedGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                            },
+                            "openCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "invoicedGrossCents",
+                            "paidCents",
+                            "openCents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Siparişe bağlı olmayan etkin faturalar: fatura tarihi kapsamın günlerinde (bütçe döneminde dönemin günleri); toplamlara ve kırılımlara girmez (K-197)"
                         },
                         "leadTime": {
                           "type": "object",
@@ -117166,19 +117244,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -117201,6 +117303,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints"
                             ],
                             "additionalProperties": false
@@ -117263,19 +117369,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -117309,6 +117439,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints",
                               "averageLeadDays"
                             ],
@@ -117372,19 +117506,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -117418,6 +117576,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints",
                               "averageLeadDays"
                             ],
@@ -117452,19 +117614,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -117489,6 +117675,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints"
                             ],
                             "additionalProperties": false
@@ -117522,19 +117712,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -117559,6 +117773,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints"
                             ],
                             "additionalProperties": false
@@ -117573,6 +117791,7 @@
                         "period",
                         "totals",
                         "cancelled",
+                        "unlinkedInvoices",
                         "leadTime",
                         "categories",
                         "suppliers",

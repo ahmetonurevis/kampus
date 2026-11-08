@@ -56,6 +56,9 @@ const FinancePurchaseReportSection = lazy(async () => ({
 const FinanceSupplierLedgerSection = lazy(async () => ({
   default: (await import('./FinanceSupplierLedgerSection.tsx')).FinanceSupplierLedgerSection,
 }))
+const FinanceInventorySection = lazy(async () => ({
+  default: (await import('./FinanceInventorySection.tsx')).FinanceInventorySection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -81,6 +84,7 @@ const VIEWS = {
   purchaseOrders: { label: 'Siparişler', param: 'siparis' },
   purchaseReport: { label: 'Satın alma raporu', param: 'satin-alma-raporu' },
   supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
+  inventory: { label: 'Stok', param: 'stok' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
@@ -100,6 +104,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Siparişler (DOM-FIN-073) de ikisine açıktır; siparişi yönetici açar ve iptal eder (K-141).
  * Satın alma raporu (DOM-FIN-075) yalnız yöneticidedir; ön büro görmez (K-155).
  * Tedarikçi carisi (DOM-FIN-076) yalnız yöneticidedir; ön büro görmez (K-160).
+ * Stok (DOM-FIN-077, DOM-FIN-078) ikisine açıktır; ön büro okur ve çıkış yazar (K-180).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -241,13 +246,15 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'purchaseRequests' ||
       tab === 'purchaseOrders' ||
       tab === 'purchaseReport' ||
-      tab === 'supplierLedger' ? (
+      tab === 'supplierLedger' ||
+      tab === 'inventory' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
           {tab === 'purchaseOrders' ? <FinancePurchaseOrdersSection /> : null}
           {tab === 'purchaseReport' ? <FinancePurchaseReportSection /> : null}
           {tab === 'supplierLedger' ? <FinanceSupplierLedgerSection /> : null}
+          {tab === 'inventory' ? <FinanceInventorySection role={session?.role ?? ''} /> : null}
         </Suspense>
       ) : null}
       {tab === 'boardReport' ? (

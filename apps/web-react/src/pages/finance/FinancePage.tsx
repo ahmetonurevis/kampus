@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { CorporateCustomersSection } from './CorporateCustomersSection.tsx'
 import { CourseOffersSection } from './CourseOffersSection.tsx'
 import { EOzelSection } from './EOzelSection.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
@@ -37,6 +38,7 @@ const VIEWS = {
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
   packages: { label: 'Paketler', param: 'paket' },
   courseOffers: { label: 'Kur yenileme', param: 'kur-yenileme' },
+  corporate: { label: 'Kurumsal müşteriler', param: 'kurumsal' },
   scholarships: { label: 'Burslar', param: 'burs' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
@@ -49,12 +51,13 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
   label: view.label,
 }))
 /**
- * Paket satışı ve kur yenileme teklifi yalnız dil okulundadır (IST-078, IST-088), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
+ * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
+ * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008):
  * kapalı sekme gizlenir, adresi taksitlere düşer.
  */
 const viewOptionsFor = (institutionType: string | undefined) =>
   VIEW_OPTIONS.filter(({ value }) => {
-    if (value === 'packages' || value === 'courseOffers')
+    if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
     return true
@@ -153,6 +156,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
       ) : null}
+      {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
       {tab === 'referrals' ? <ReferralRewardsSection /> : null}
       {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
       {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}

@@ -1,5 +1,5 @@
 {
-  "id": "794f2e2b-256a-4118-bbff-f6fe0f16fdce",
+  "id": "2ed8b8b9-3721-43e1-8685-d2b06af6b9cc",
   "prevId": "2d209dad-b0db-4e21-a4e7-9b034266454f",
   "version": "7",
   "dialect": "postgresql",
@@ -8263,8 +8263,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.stock_items": {
-      "name": "stock_items",
+    "public.fixed_assets": {
+      "name": "fixed_assets",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -8279,8 +8279,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "code": {
-          "name": "code",
+        "tag_number": {
+          "name": "tag_number",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -8297,189 +8297,39 @@
           "primaryKey": false,
           "notNull": true
         },
-        "unit": {
-          "name": "unit",
+        "campus_id": {
+          "name": "campus_id",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_quantity": {
-          "name": "min_quantity",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stock_items_code_key": {
-          "name": "stock_items_code_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "code",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"stock_items\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stock_items_institution_id_institutions_id_fk": {
-          "name": "stock_items_institution_id_institutions_id_fk",
-          "tableFrom": "stock_items",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_items_pkey": {
-          "name": "stock_items_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_items_text_check": {
-          "name": "stock_items_text_check",
-          "value": "\"stock_items\".\"code\" ~ '^[A-Z0-9][A-Z0-9._-]{0,19}$'\n        and char_length(\"stock_items\".\"name\") between 2 and 120"
-        },
-        "stock_items_category_check": {
-          "name": "stock_items_category_check",
-          "value": "\"stock_items\".\"category\" in ('stationery', 'cleaning', 'food', 'it', 'maintenance', 'furniture', 'educational', 'services', 'transport', 'other')"
-        },
-        "stock_items_unit_check": {
-          "name": "stock_items_unit_check",
-          "value": "\"stock_items\".\"unit\" in ('piece', 'pack', 'box', 'kilogram', 'liter', 'meter')"
-        },
-        "stock_items_min_quantity_check": {
-          "name": "stock_items_min_quantity_check",
-          "value": "\"stock_items\".\"min_quantity\" is null or \"stock_items\".\"min_quantity\" between 0 and 1000000"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stock_movements": {
-      "name": "stock_movements",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
+        "location": {
+          "name": "location",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "id": {
-          "name": "id",
-          "type": "uuid",
+        "acquisition_value_cents": {
+          "name": "acquisition_value_cents",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
-        "item_id": {
-          "name": "item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "warehouse_id": {
-          "name": "warehouse_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
+        "currency": {
+          "name": "currency",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'TRY'"
         },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "movement_date": {
-          "name": "movement_date",
+        "acquisition_date": {
+          "name": "acquisition_date",
           "type": "date",
           "primaryKey": false,
           "notNull": true
         },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "transfer_id": {
-          "name": "transfer_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "receipt_id": {
-          "name": "receipt_id",
+        "supplier_id": {
+          "name": "supplier_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -8490,26 +8340,39 @@
           "primaryKey": false,
           "notNull": false
         },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'in_use'"
+        },
         "created_by_user_id": {
           "name": "created_by_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "cancelled_at": {
-          "name": "cancelled_at",
+        "scrapped_at": {
+          "name": "scrapped_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
+        "scrap_date": {
+          "name": "scrap_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scrapped_by_user_id": {
+          "name": "scrapped_by_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "cancel_reason": {
-          "name": "cancel_reason",
+        "scrap_reason": {
+          "name": "scrap_reason",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -8543,8 +8406,8 @@
         }
       },
       "indexes": {
-        "stock_movements_item_warehouse_idx": {
-          "name": "stock_movements_item_warehouse_idx",
+        "fixed_assets_tag_number_key": {
+          "name": "fixed_assets_tag_number_key",
           "columns": [
             {
               "expression": "institution_id",
@@ -8553,320 +8416,41 @@
               "nulls": "last"
             },
             {
-              "expression": "item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "warehouse_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "movement_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_movements_warehouse_idx": {
-          "name": "stock_movements_warehouse_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "warehouse_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_movements_date_idx": {
-          "name": "stock_movements_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "movement_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_movements_transfer_idx": {
-          "name": "stock_movements_transfer_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "transfer_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"stock_movements\".\"transfer_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_movements_receipt_idx": {
-          "name": "stock_movements_receipt_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "receipt_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"stock_movements\".\"receipt_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_movements_receipt_item_key": {
-          "name": "stock_movements_receipt_item_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "receipt_item_id",
+              "expression": "tag_number",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "where": "\"stock_movements\".\"receipt_item_id\" is not null",
+          "where": "\"fixed_assets\".\"archived_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stock_movements_institution_id_institutions_id_fk": {
-          "name": "stock_movements_institution_id_institutions_id_fk",
-          "tableFrom": "stock_movements",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         },
-        "stock_movements_item_fkey": {
-          "name": "stock_movements_item_fkey",
-          "tableFrom": "stock_movements",
-          "tableTo": "stock_items",
-          "columnsFrom": [
-            "institution_id",
-            "item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stock_movements_warehouse_fkey": {
-          "name": "stock_movements_warehouse_fkey",
-          "tableFrom": "stock_movements",
-          "tableTo": "stock_warehouses",
-          "columnsFrom": [
-            "institution_id",
-            "warehouse_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stock_movements_receipt_fkey": {
-          "name": "stock_movements_receipt_fkey",
-          "tableFrom": "stock_movements",
-          "tableTo": "purchase_receipts",
-          "columnsFrom": [
-            "institution_id",
-            "receipt_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stock_movements_receipt_item_fkey": {
-          "name": "stock_movements_receipt_item_fkey",
-          "tableFrom": "stock_movements",
-          "tableTo": "purchase_receipt_items",
-          "columnsFrom": [
-            "institution_id",
-            "receipt_item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_movements_pkey": {
-          "name": "stock_movements_pkey",
+        "fixed_assets_status_idx": {
+          "name": "fixed_assets_status_idx",
           "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_movements_type_check": {
-          "name": "stock_movements_type_check",
-          "value": "\"stock_movements\".\"type\" in ('in', 'out', 'transfer_in', 'transfer_out', 'receipt')"
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
-        "stock_movements_quantity_check": {
-          "name": "stock_movements_quantity_check",
-          "value": "\"stock_movements\".\"quantity\" between 1 and 1000000"
-        },
-        "stock_movements_source_check": {
-          "name": "stock_movements_source_check",
-          "value": "(\"stock_movements\".\"type\" = 'in' and \"stock_movements\".\"reason\" is not null and \"stock_movements\".\"reason\" in ('opening', 'donation', 'count_surplus', 'returned', 'other') and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" = 'out' and \"stock_movements\".\"reason\" is not null and \"stock_movements\".\"reason\" in ('usage', 'damage', 'loss', 'count_shortage', 'other') and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" in ('transfer_in', 'transfer_out') and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is not null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" = 'receipt' and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is not null and \"stock_movements\".\"receipt_item_id\" is not null)"
-        },
-        "stock_movements_text_check": {
-          "name": "stock_movements_text_check",
-          "value": "(\"stock_movements\".\"note\" is null or char_length(\"stock_movements\".\"note\") <= 500)\n        and (\"stock_movements\".\"cancel_reason\" is null or char_length(\"stock_movements\".\"cancel_reason\") <= 500)"
-        },
-        "stock_movements_cancel_check": {
-          "name": "stock_movements_cancel_check",
-          "value": "((\"stock_movements\".\"cancelled_at\" is null) = (\"stock_movements\".\"cancelled_by_user_id\" is null))\n        and ((\"stock_movements\".\"cancelled_at\" is null) = (\"stock_movements\".\"cancel_reason\" is null))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stock_warehouses": {
-      "name": "stock_warehouses",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "campus_id": {
-          "name": "campus_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stock_warehouses_campus_idx": {
-          "name": "stock_warehouses_campus_idx",
+        "fixed_assets_campus_idx": {
+          "name": "fixed_assets_campus_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -8885,12 +8469,54 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "fixed_assets_supplier_idx": {
+          "name": "fixed_assets_supplier_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "fixed_assets_receipt_item_idx": {
+          "name": "fixed_assets_receipt_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "receipt_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "stock_warehouses_institution_id_institutions_id_fk": {
-          "name": "stock_warehouses_institution_id_institutions_id_fk",
-          "tableFrom": "stock_warehouses",
+        "fixed_assets_institution_id_institutions_id_fk": {
+          "name": "fixed_assets_institution_id_institutions_id_fk",
+          "tableFrom": "fixed_assets",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -8900,11 +8526,41 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "fixed_assets_supplier_fkey": {
+          "name": "fixed_assets_supplier_fkey",
+          "tableFrom": "fixed_assets",
+          "tableTo": "suppliers",
+          "columnsFrom": [
+            "institution_id",
+            "supplier_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "fixed_assets_receipt_item_fkey": {
+          "name": "fixed_assets_receipt_item_fkey",
+          "tableFrom": "fixed_assets",
+          "tableTo": "purchase_receipt_items",
+          "columnsFrom": [
+            "institution_id",
+            "receipt_item_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "stock_warehouses_pkey": {
-          "name": "stock_warehouses_pkey",
+        "fixed_assets_pkey": {
+          "name": "fixed_assets_pkey",
           "columns": [
             "institution_id",
             "id"
@@ -8914,9 +8570,33 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "stock_warehouses_text_check": {
-          "name": "stock_warehouses_text_check",
-          "value": "char_length(\"stock_warehouses\".\"name\") between 2 and 80\n        and char_length(\"stock_warehouses\".\"campus_id\") between 1 and 100\n        and (\"stock_warehouses\".\"note\" is null or char_length(\"stock_warehouses\".\"note\") <= 500)"
+        "fixed_assets_tag_number_check": {
+          "name": "fixed_assets_tag_number_check",
+          "value": "\"fixed_assets\".\"tag_number\" ~ '^[A-Z0-9][A-Z0-9./-]{1,39}$'"
+        },
+        "fixed_assets_text_check": {
+          "name": "fixed_assets_text_check",
+          "value": "char_length(\"fixed_assets\".\"name\") between 2 and 200\n        and char_length(\"fixed_assets\".\"location\") between 2 and 120\n        and (\"fixed_assets\".\"scrap_reason\" is null or char_length(\"fixed_assets\".\"scrap_reason\") <= 500)"
+        },
+        "fixed_assets_category_check": {
+          "name": "fixed_assets_category_check",
+          "value": "\"fixed_assets\".\"category\" in ('furniture', 'it', 'audiovisual', 'office', 'laboratory', 'sports', 'kitchen', 'appliance', 'vehicle', 'other')"
+        },
+        "fixed_assets_status_check": {
+          "name": "fixed_assets_status_check",
+          "value": "\"fixed_assets\".\"status\" in ('in_use', 'in_storage', 'broken', 'scrapped')"
+        },
+        "fixed_assets_value_check": {
+          "name": "fixed_assets_value_check",
+          "value": "\"fixed_assets\".\"acquisition_value_cents\" between 1 and 10000000000"
+        },
+        "fixed_assets_currency_check": {
+          "name": "fixed_assets_currency_check",
+          "value": "\"fixed_assets\".\"currency\" = 'TRY'"
+        },
+        "fixed_assets_scrap_check": {
+          "name": "fixed_assets_scrap_check",
+          "value": "((\"fixed_assets\".\"status\" = 'scrapped') = (\"fixed_assets\".\"scrapped_at\" is not null))\n        and ((\"fixed_assets\".\"scrapped_at\" is null) = (\"fixed_assets\".\"scrap_date\" is null))\n        and ((\"fixed_assets\".\"scrapped_at\" is null) = (\"fixed_assets\".\"scrapped_by_user_id\" is null))\n        and ((\"fixed_assets\".\"scrapped_at\" is null) = (\"fixed_assets\".\"scrap_reason\" is null))\n        and (\"fixed_assets\".\"scrap_date\" is null or \"fixed_assets\".\"scrap_date\" >= \"fixed_assets\".\"acquisition_date\")"
         }
       },
       "isRLSEnabled": false

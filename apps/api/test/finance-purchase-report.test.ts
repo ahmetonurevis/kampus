@@ -34,6 +34,9 @@ const ORDERS = `${FINANCE}/purchase-orders`
 const REPORT = `${FINANCE}/purchase-report`
 const TCKN = '10000000146'
 const OCTOBER = `${REPORT}?from=2026-10-01&to=2026-10-31`
+const NO_SETTLEMENT = { receivedNetCents: 0, invoicedGrossCents: 0, paidCents: 0, openCents: 0 }
+const NO_CANCELLED_INVOICES = { invoicedGrossCents: 0, paidCents: 0 }
+const NO_UNLINKED = { invoiceCount: 0, invoicedGrossCents: 0, paidCents: 0, openCents: 0 }
 
 type Json = Record<string, unknown>
 type Response = Awaited<ReturnType<App['inject']>>
@@ -237,7 +240,7 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
    */
   async function reportTenant() {
     const t = await institution()
-    await placeOrder(t, {
+    const alfaOrder = await placeOrder(t, {
       supplier: t.alpha,
       center: t.it,
       item: t.supplies,
@@ -288,7 +291,7 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
         ifMatch(cancelled.version),
       ),
     )
-    return t
+    return { ...t, alfaOrder }
   }
 
   const member = async (institutionId: string, role: Role) =>
@@ -348,9 +351,15 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
       netCents: 115_025,
       vatCents: 21_503,
       grossCents: 136_528,
+      ...NO_SETTLEMENT,
       supplierCount: 2,
     })
-    assert.deepEqual(report.cancelled, { orderCount: 1, grossCents: 119_880 })
+    assert.deepEqual(report.cancelled, {
+      orderCount: 1,
+      grossCents: 119_880,
+      ...NO_CANCELLED_INVOICES,
+    })
+    assert.deepEqual(report.unlinkedInvoices, NO_UNLINKED)
     assert.deepEqual(report.leadTime, { orderCount: 2, averageDays: 3.5, minDays: 2, maxDays: 5 })
     assert.deepEqual(
       (report.categories as Json[]).map((row) => [
@@ -421,6 +430,7 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
       netCents: 165_025,
       vatCents: 21_503,
       grossCents: 186_528,
+      ...NO_SETTLEMENT,
       supplierCount: 3,
     })
     const person = (report.suppliers as Json[]).find((row) => row.supplierId === t.person.id)
@@ -451,10 +461,12 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
       netCents: 0,
       vatCents: 0,
       grossCents: 0,
+      ...NO_SETTLEMENT,
       supplierCount: 0,
     })
     assert.deepEqual(report.suppliers, [])
-    assert.deepEqual(report.cancelled, { orderCount: 0, grossCents: 0 })
+    assert.deepEqual(report.cancelled, { orderCount: 0, grossCents: 0, ...NO_CANCELLED_INVOICES })
+    assert.deepEqual(report.unlinkedInvoices, NO_UNLINKED)
     // Sorgudaki institutionId bilinmeyen parametredir, kapsamı değiştirmez.
     assertError(await get(`${OCTOBER}&institutionId=${b.id}`, a.admin), 400)
   })
@@ -489,7 +501,11 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
     )
     assert.ok(file.body.startsWith('\uFEFF'))
     const lines = file.body.replace('\uFEFF', '').split('\r\n')
-    assert.equal(lines[1], '"Toplam";"";"";"";"";3;1160,25;215,13;1375,38;""')
+    assert.equal(lines[1], '"Toplam";"";"";"";"";3;1160,25;215,13;1375,38;"";0,00;0,00;0,00;0,00')
+    assert.equal(
+      lines[2],
+      '"Siparişsiz fatura";"0 fatura";"";"";"";"";"";"";"";"";"";0,00;0,00;0,00',
+    )
     assert.ok(lines.some((line) => line.startsWith('"Tedarikçi";"\'=HYPERLINK(""x"")"')))
     assert.ok(!file.body.includes(TCKN))
     assert.deepEqual(
@@ -506,6 +522,198 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
     } finally {
       await later.close()
     }
+    assert.equal((await audits(t.id)).length, 1)
+  })
+
+  const key = () => ({ 'idempotency-key': randomUUID() })
+  const createInvoice = (t: Tenant, body: Json) =>
+    call(
+      'POST',
+      `${FINANCE}/supplier-invoices`,
+      t.admin,
+      {
+        invoiceDate: '2026-10-05',
+        dueDate: '2026-10-31',
+        amountIncludesVat: true,
+        ...body,
+      },
+      key(),
+    )
+  const pay = (t: Tenant, invoice: Json, amountCents: number) =>
+    call(
+      'POST',
+      `${FINANCE}/supplier-payments`,
+      t.admin,
+      {
+        installmentId: (invoice.installments as Json[])[0]?.id,
+        paidDate: '2026-10-06',
+        amountCents,
+        method: 'cash',
+        bankAccountId: null,
+      },
+      key(),
+    )
+
+  test('DOM-FIN-075: teslim alınan KDV hariç, faturalanan, ödenen ve açık KDV dahil; siparişsiz fatura ayrı satırda; iptaller sayılmaz (K-195…K-199)', async () => {
+    const t = await reportTenant()
+    // Alfa'nın 10 × 100,00 %20 siparişi: gönder, 6 kabul et; 3'lük ikinci kabul iptal edilir.
+    const { alfaOrder } = t
+    const sent = ok(
+      await call(
+        'POST',
+        `${ORDERS}/${String(alfaOrder.id)}/send`,
+        t.admin,
+        undefined,
+        ifMatch(alfaOrder.version),
+      ),
+    )
+    const orderItem = String((sent.items as Json[])[0]?.id)
+    const receiptsUrl = `${ORDERS}/${String(alfaOrder.id)}/receipts`
+    const receive = (acceptedQuantity: number) =>
+      call(
+        'POST',
+        receiptsUrl,
+        t.admin,
+        {
+          receiptDate: '2026-10-06',
+          receivedBy: 'Hasan Usta',
+          lines: [{ orderItemId: orderItem, acceptedQuantity }],
+        },
+        key(),
+      )
+    ok(await receive(6), 201)
+    const second = ok(await receive(3), 201)
+    const cancelledReceipt = (second.receipts as Json[]).find((row) =>
+      (row.lines as Json[]).some((line) => line.acceptedQuantity === 3),
+    ) as Json
+    ok(
+      await call(
+        'POST',
+        `${receiptsUrl}/${String(cancelledReceipt.id)}/cancel`,
+        t.admin,
+        { reason: 'Yanlış kalem sayıldı' },
+        ifMatch(cancelledReceipt.version),
+      ),
+    )
+    // Bağlı iki fatura (720,00 + 120,00), ödemeler 300,00 + 120,00; 100,00'lık ödeme iptal edilir.
+    const first = ok(
+      await createInvoice(t, {
+        supplierId: t.alpha.id,
+        invoiceNumber: 'ALF-1',
+        purchaseOrderId: alfaOrder.id,
+        amountCents: 72_000,
+        vatCents: 12_000,
+      }),
+      201,
+    )
+    const extra = ok(
+      await createInvoice(t, {
+        supplierId: t.alpha.id,
+        invoiceNumber: 'ALF-2',
+        purchaseOrderId: alfaOrder.id,
+        amountCents: 12_000,
+        vatCents: 2_000,
+      }),
+      201,
+    )
+    ok(await pay(t, first, 30_000), 201)
+    ok(await pay(t, extra, 12_000), 201)
+    const wrong = ok(await pay(t, first, 10_000), 201)
+    ok(
+      await call(
+        'POST',
+        `${FINANCE}/supplier-payments/${String(wrong.id)}/cancel`,
+        t.admin,
+        { reason: 'Hatalı tutar girildi' },
+        ifMatch(wrong.version),
+      ),
+    )
+    // Siparişsiz faturalar: Ekim'de 50,00 (20,00 ödendi), Eylül'de 80,00 (aralıkta yok, dönemde var).
+    const loose = ok(
+      await createInvoice(t, {
+        supplierId: t.beta.id,
+        invoiceNumber: 'BET-9',
+        invoiceDate: '2026-10-02',
+        amountCents: 5_000,
+        vatCents: 0,
+      }),
+      201,
+    )
+    ok(await pay(t, loose, 2_000), 201)
+    ok(
+      await createInvoice(t, {
+        supplierId: t.beta.id,
+        invoiceNumber: 'BET-8',
+        invoiceDate: '2026-09-15',
+        dueDate: '2026-09-30',
+        amountCents: 8_000,
+        vatCents: 0,
+      }),
+      201,
+    )
+
+    const report = ok(await get(OCTOBER, t.admin))
+    const alfaSettlement = {
+      receivedNetCents: 60_000,
+      invoicedGrossCents: 84_000,
+      paidCents: 42_000,
+      openCents: 42_000,
+    }
+    assert.deepEqual(report.totals, {
+      orderCount: 2,
+      netCents: 115_025,
+      vatCents: 21_503,
+      grossCents: 136_528,
+      ...alfaSettlement,
+      supplierCount: 2,
+    })
+    const settlementOf = (row: Json | undefined) => [
+      row?.receivedNetCents,
+      row?.invoicedGrossCents,
+      row?.paidCents,
+      row?.openCents,
+    ]
+    const alfaRow = (report.suppliers as Json[]).find((row) => row.supplierId === t.alpha.id)
+    assert.deepEqual(settlementOf(alfaRow), Object.values(alfaSettlement))
+    assert.equal(alfaRow?.grossCents, 120_000)
+    assert.equal(alfaRow?.shareBasisPoints, 8_789)
+    assert.deepEqual(
+      settlementOf((report.costCenters as Json[]).find((row) => row.id === t.it.id)),
+      Object.values(alfaSettlement),
+    )
+    assert.deepEqual(
+      settlementOf((report.costCenters as Json[]).find((row) => row.id === t.office.id)),
+      [0, 0, 0, 0],
+    )
+    assert.deepEqual(report.unlinkedInvoices, {
+      invoiceCount: 1,
+      invoicedGrossCents: 5_000,
+      paidCents: 2_000,
+      openCents: 3_000,
+    })
+    // Bütçe döneminde siparişsiz fatura dönemin günleriyle süzülür: Eylül faturası da girer.
+    const period = ok(await get(`${REPORT}?periodId=${String(t.period.id)}`, t.admin))
+    assert.ok(String(period.from) <= '2026-09-15')
+    assert.deepEqual(period.unlinkedInvoices, {
+      invoiceCount: 2,
+      invoicedGrossCents: 13_000,
+      paidCents: 2_000,
+      openCents: 11_000,
+    })
+    assert.equal((period.totals as Json).invoicedGrossCents, 84_000)
+
+    const file = await call('GET', OCTOBER, t.admin, undefined, { accept: 'text/csv' })
+    assert.equal(file.statusCode, 200, file.body)
+    const lines = file.body.replace('﻿', '').split('\r\n')
+    assert.match(String(lines[0]), /"Teslim alınan \(KDV hariç\)";"Faturalanan \(KDV dahil\)"/)
+    assert.equal(
+      lines[1],
+      '"Toplam";"";"";"";"";2;1150,25;215,03;1365,28;"";600,00;840,00;420,00;420,00',
+    )
+    assert.equal(
+      lines[2],
+      '"Siparişsiz fatura";"1 fatura";"";"";"";"";"";"";"";"";"";50,00;20,00;30,00',
+    )
     assert.equal((await audits(t.id)).length, 1)
   })
 })

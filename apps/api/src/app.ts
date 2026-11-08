@@ -42,6 +42,7 @@ import { registerFinanceCostReportRoutes } from './routes/finance-cost-reports.t
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.ts'
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
@@ -63,6 +64,7 @@ import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
+import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -475,6 +477,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerEnrollmentImportRoutes(app)
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
+  registerProspectSeasonWatchRoutes(app)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)
@@ -493,6 +496,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePurchaseReportRoutes(app)
   registerFinanceSupplierLedgerRoutes(app)
   registerFinanceInventoryRoutes(app)
+  registerFinanceFixedAssetRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

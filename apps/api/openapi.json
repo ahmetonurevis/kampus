@@ -18888,6 +18888,383 @@
           "rows"
         ]
       },
+      "SeasonWatchMeetingInput": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Görüşmenin başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dakika; süresi saklanmamış eski görüşmede 30"
+          },
+          "room": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teacherName": {
+            "description": "Görevli öğretmen; yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean",
+            "description": "Bitişi geçmiş mi"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "room",
+          "teacherName",
+          "held"
+        ]
+      },
+      "SeasonWatchTrialInput": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Dersin güncel başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "groupName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "resultRecorded": {
+            "type": "boolean",
+            "description": "Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031)"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "groupName",
+          "held",
+          "resultRecorded"
+        ]
+      },
+      "SeasonWatchFollowUpInput": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "first_contact",
+              "meeting_outcome",
+              "trial_outcome",
+              "stale"
+            ],
+            "description": "`first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi"
+          },
+          "sinceDate": {
+            "type": "string",
+            "description": "Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem)"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Dayanak günden bugüne geçen gün"
+          },
+          "trialResultRecorded": {
+            "description": "Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null`",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "reason",
+          "sinceDate",
+          "days",
+          "trialResultRecorded"
+        ]
+      },
+      "ProspectSeasonWatchInput": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Bugün"
+              },
+              "to": {
+                "type": "string",
+                "description": "Pencerenin son günü (dahil)"
+              },
+              "days": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "days"
+            ]
+          },
+          "trialsEnabled": {
+            "type": "boolean",
+            "description": "Deneme dersi bölümü var mı (yalnız dil okulu)"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "meetingsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "meetingsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUps": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUpsByReason": {
+                "type": "object",
+                "properties": {
+                  "first_contact": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "meeting_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "trial_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "stale": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "first_contact",
+                  "meeting_outcome",
+                  "trial_outcome",
+                  "stale"
+                ]
+              },
+              "newToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bugün açılan açık aday"
+              }
+            },
+            "required": [
+              "meetingsToday",
+              "meetingsInWindow",
+              "trialsToday",
+              "trialsInWindow",
+              "followUps",
+              "followUpsByReason",
+              "newToday"
+            ]
+          },
+          "meetings": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchMeetingInput"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ]
+          },
+          "trials": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchTrialInput"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ]
+          },
+          "followUps": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchFollowUpInput"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ]
+          }
+        },
+        "required": [
+          "window",
+          "trialsEnabled",
+          "summary",
+          "meetings",
+          "trials",
+          "followUps"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -38176,6 +38553,393 @@
           "totalCents",
           "paidCents",
           "rows"
+        ],
+        "additionalProperties": false
+      },
+      "SeasonWatchMeeting": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Görüşmenin başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dakika; süresi saklanmamış eski görüşmede 30"
+          },
+          "room": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teacherName": {
+            "description": "Görevli öğretmen; yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean",
+            "description": "Bitişi geçmiş mi"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "room",
+          "teacherName",
+          "held"
+        ],
+        "additionalProperties": false
+      },
+      "SeasonWatchTrial": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Dersin güncel başlangıç anı (ISO 8601 UTC)"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "groupName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "resultRecorded": {
+            "type": "boolean",
+            "description": "Öğretmen deneme sonucunu yazdı mı (DOM-DIL-031)"
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "date",
+          "duration",
+          "groupName",
+          "held",
+          "resultRecorded"
+        ],
+        "additionalProperties": false
+      },
+      "SeasonWatchFollowUp": {
+        "type": "object",
+        "properties": {
+          "prospectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Aday adı"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi"
+            ],
+            "description": "Açık aşama"
+          },
+          "branchName": {
+            "description": "Kampüs adı; kampüs kaydı yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "first_contact",
+              "meeting_outcome",
+              "trial_outcome",
+              "stale"
+            ],
+            "description": "`first_contact` ilk temas bekliyor, `meeting_outcome` görüşme sonucu bekleniyor, `trial_outcome` deneme sonrası takip (dil okulu), `stale` temas kesildi"
+          },
+          "sinceDate": {
+            "type": "string",
+            "description": "Nedenin dayandığı gün (açılış, görüşme, deneme ya da son işlem)"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Dayanak günden bugüne geçen gün"
+          },
+          "trialResultRecorded": {
+            "description": "Yalnız `trial_outcome`: öğretmen sonucu yazdı mı; diğerlerinde `null`",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospectId",
+          "name",
+          "stage",
+          "branchName",
+          "reason",
+          "sinceDate",
+          "days",
+          "trialResultRecorded"
+        ],
+        "additionalProperties": false
+      },
+      "ProspectSeasonWatch": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Bugün"
+              },
+              "to": {
+                "type": "string",
+                "description": "Pencerenin son günü (dahil)"
+              },
+              "days": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "days"
+            ],
+            "additionalProperties": false
+          },
+          "trialsEnabled": {
+            "type": "boolean",
+            "description": "Deneme dersi bölümü var mı (yalnız dil okulu)"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "meetingsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "meetingsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "trialsInWindow": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUps": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "followUpsByReason": {
+                "type": "object",
+                "properties": {
+                  "first_contact": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "meeting_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "trial_outcome": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "stale": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "first_contact",
+                  "meeting_outcome",
+                  "trial_outcome",
+                  "stale"
+                ],
+                "additionalProperties": false
+              },
+              "newToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bugün açılan açık aday"
+              }
+            },
+            "required": [
+              "meetingsToday",
+              "meetingsInWindow",
+              "trialsToday",
+              "trialsInWindow",
+              "followUps",
+              "followUpsByReason",
+              "newToday"
+            ],
+            "additionalProperties": false
+          },
+          "meetings": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchMeeting"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ],
+            "additionalProperties": false
+          },
+          "trials": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchTrial"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ],
+            "additionalProperties": false
+          },
+          "followUps": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Bölümdeki bütün satırlar"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SeasonWatchFollowUp"
+                },
+                "description": "En çok 50 satır"
+              }
+            },
+            "required": [
+              "total",
+              "rows"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "window",
+          "trialsEnabled",
+          "summary",
+          "meetings",
+          "trials",
+          "followUps"
         ],
         "additionalProperties": false
       }
@@ -89197,6 +89961,110 @@
         }
       }
     },
+    "/api/v1/prospects/season-watch": {
+      "get": {
+        "operationId": "getProspectSeasonWatch",
+        "summary": "Kayıt sezonu nöbeti: görüşmeler, deneme dersleri, geciken takipler",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Açık adayların bugün ve yakın günlerde ilgilenilmesi gerekenleri (DOM-KAY-037). Pencere bugünden başlar, bugün dahil `days` gün (1–14, varsayılan 7; Europe/Istanbul). `meetings`: penceredeki tanışma görüşmeleri, saat sırasıyla (bitişi geçen `held`). `trials`: yalnız dil okulunda penceredeki deneme dersleri; gün dersin güncel kaydından, iptal edilen ya da programdan kalkan derse bağlı deneme yok. `followUps`: şu andan sonra başlayan görüşmesi ya da denemesi olmayan açık aday, ilk tutan nedenle bir kez (`first_contact`: açılışın ertesi gününe giren `Yeni aday`; `meeting_outcome`/`trial_outcome`: önceki bir gün yapılmış, aşaması hâlâ `Görüşme planlandı` ve sonrasında not yok; `stale`: son işlem 7 gün ya da daha eski); en çok gecikenler önce. Her bölüm toplamla birlikte en çok 50 satır döner. Satır aday kimliği, adı, aşaması ve kampüsünü taşır; telefon, e-posta, veli, not, ilgi ve kaynak dönmez. Arşivlenen aday sayılmaz. Bilinmeyen parametre ya da aralık dışı `days` 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 14
+            },
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "description": "Bugün dahil pencere uzunluğu (gün, 1–14); verilmezse 7"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProspectSeasonWatch"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
       "get": {
         "operationId": "getEnrollmentCertificate",
@@ -116167,7 +117035,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.",
+        "description": "Bütçe dönemi (`periodId`) ya da tarih aralığı (`from`, `to`; Europe/Istanbul günleri, ikisi dahil, en çok 366 gün) için siparişlerin (DOM-FIN-073) tedarikçi kategorisi, tedarikçi, maliyet merkezi ve gider kalemi bazında sayısı, net, KDV ve brüt tutarı ile brüt payı (DOM-FIN-075). Bütçe döneminde talebin dönemi, aralıkta siparişin açılış günü belirler; iptal edilen sipariş toplamlara girmez, `cancelled` altında sayılır, taslak sipariş girer (K-156). Çok kategorili tedarikçinin siparişi her kategorisinde sayılır (K-157). Her satırda ve toplamda ayrıca teslim alınan (iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı, **KDV hariç**), faturalanan (siparişe bağlı iptal edilmemiş faturalar, **KDV dahil**), ödenen (bu faturalara iptal edilmemiş ödemeler, **KDV dahil**) ve açık tutar (faturalanan eksi ödenen, **KDV dahil**) döner; kabul, fatura ve ödeme günü süzülmez, kapsamdaki siparişlerinkidir (K-195, K-196). Siparişe bağlı olmayan faturalar `unlinkedInvoices` satırındadır: fatura tarihi aralıkta (bütçe döneminde dönemin günlerinde); toplamlara girmez (K-197). İptal edilen siparişin faturası ve ödemesi `cancelled` altındadır (K-198). Talepten siparişe süre talebin gönderim gününden siparişin açılış gününe takvim günüdür; ortalama bir ondalık; en çok harcama yapılan beş tedarikçi `topSuppliers` (K-158). Dönem ve aralık birlikte, eksik ya da ters aralık 400. Olmayan ya da başka kurumun dönemi 404. Vergi numarası dönmez; şahıs tedarikçinin adı kişisel veridir. `Accept: text/csv` ile tek tablo CSV iner (sütun başlıkları KDV hariç/dahil esasını yazar, siparişsiz fatura toplamın altında ayrı satırdır; K-199): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.purchase_report_export`. Rol: `yonetici` (ön büro dahil diğerleri 403, K-155); `finance` modülü kapalıysa 403 `module_disabled`. Salt okurdur.",
         "parameters": [
           {
             "schema": {
@@ -116279,19 +117147,43 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "KDV hariç tutar, kuruş"
+                              "description": "Sipariş tutarı, KDV hariç, kuruş"
                             },
                             "vatCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                              "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                             },
                             "grossCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
-                              "description": "KDV dahil tutar, kuruş"
+                              "description": "Sipariş tutarı, KDV dahil, kuruş"
+                            },
+                            "receivedNetCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                            },
+                            "invoicedGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                            },
+                            "openCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                             },
                             "supplierCount": {
                               "type": "integer",
@@ -116305,6 +117197,10 @@
                             "netCents",
                             "vatCents",
                             "grossCents",
+                            "receivedNetCents",
+                            "invoicedGrossCents",
+                            "paidCents",
+                            "openCents",
                             "supplierCount"
                           ],
                           "additionalProperties": false
@@ -116322,14 +117218,64 @@
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
                               "description": "İptal edilen KDV dahil tutar"
+                            },
+                            "invoicedGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen siparişlere bağlı etkin faturalar, KDV dahil"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bu faturalara iptal edilmemiş ödemeler, KDV dahil"
                             }
                           },
                           "required": [
                             "orderCount",
-                            "grossCents"
+                            "grossCents",
+                            "invoicedGrossCents",
+                            "paidCents"
                           ],
                           "additionalProperties": false,
-                          "description": "Kapsamda iptal edilen siparişler; toplamlara girmez"
+                          "description": "Kapsamda iptal edilen siparişler; faturaları ve ödemeleriyle toplamlara girmez (K-198)"
+                        },
+                        "unlinkedInvoices": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "invoicedGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                            },
+                            "openCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "invoicedGrossCents",
+                            "paidCents",
+                            "openCents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Siparişe bağlı olmayan etkin faturalar: fatura tarihi kapsamın günlerinde (bütçe döneminde dönemin günleri); toplamlara ve kırılımlara girmez (K-197)"
                         },
                         "leadTime": {
                           "type": "object",
@@ -116414,19 +117360,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -116449,6 +117419,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints"
                             ],
                             "additionalProperties": false
@@ -116511,19 +117485,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -116557,6 +117555,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints",
                               "averageLeadDays"
                             ],
@@ -116620,19 +117622,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -116666,6 +117692,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints",
                               "averageLeadDays"
                             ],
@@ -116700,19 +117730,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -116737,6 +117791,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints"
                             ],
                             "additionalProperties": false
@@ -116770,19 +117828,43 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV hariç tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV hariç, kuruş"
                               },
                               "vatCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV, kuruş; kalemde yuvarlanır (K-138)"
+                                "description": "Sipariş KDV tutarı, kuruş; kalemde yuvarlanır (K-138)"
                               },
                               "grossCents": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
-                                "description": "KDV dahil tutar, kuruş"
+                                "description": "Sipariş tutarı, KDV dahil, kuruş"
+                              },
+                              "receivedNetCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim alınan, KDV hariç, kuruş: iptal edilmemiş kabullerde kabul edilen miktar × sipariş birim fiyatı (K-151)"
+                              },
+                              "invoicedGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan, KDV dahil, kuruş: iptal edilmemiş faturaların toplamı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen, KDV dahil, kuruş: bu faturalara iptal edilmemiş ödemeler"
+                              },
+                              "openCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açık tutar, KDV dahil, kuruş: faturalanan eksi ödenen"
                               },
                               "shareBasisPoints": {
                                 "anyOf": [
@@ -116807,6 +117889,10 @@
                               "netCents",
                               "vatCents",
                               "grossCents",
+                              "receivedNetCents",
+                              "invoicedGrossCents",
+                              "paidCents",
+                              "openCents",
                               "shareBasisPoints"
                             ],
                             "additionalProperties": false
@@ -116821,6 +117907,7 @@
                         "period",
                         "totals",
                         "cancelled",
+                        "unlinkedInvoices",
                         "leadTime",
                         "categories",
                         "suppliers",
@@ -125011,6 +126098,2085 @@
                         ],
                         "additionalProperties": false
                       }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-assets": {
+      "get": {
+        "operationId": "listFixedAssets",
+        "summary": "Demirbaşları listele",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Hurdaya ayrılmamışlar önce, etiket numarasına göre; `q` etiket, ad ve konumda arar, `status`, `category`, `campusId` ve `supplierId` ile süzülür (DOM-FIN-085). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Etiket, ad ve konumda arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "in_use",
+                "in_storage",
+                "broken",
+                "scrapped"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "furniture",
+                "it",
+                "audiovisual",
+                "office",
+                "laboratory",
+                "sports",
+                "kitchen",
+                "appliance",
+                "vehicle",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Kategori"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "campusId",
+            "required": false,
+            "description": "Kampüs"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "supplierId",
+            "required": false,
+            "description": "Tedarikçi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "tagNumber": {
+                            "type": "string",
+                            "description": "Kurumda tekil etiket (ör. `DB-2026-0001`)"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "furniture",
+                              "it",
+                              "audiovisual",
+                              "office",
+                              "laboratory",
+                              "sports",
+                              "kitchen",
+                              "appliance",
+                              "vehicle",
+                              "other"
+                            ],
+                            "description": "Sabit kategori (K-186)"
+                          },
+                          "campusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "campusName": {
+                            "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "type": "string",
+                            "description": "Oda ya da yer"
+                          },
+                          "acquisitionValueCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV hariç alım değeri, kuruş"
+                          },
+                          "acquisitionDate": {
+                            "type": "string",
+                            "description": "Alım günü (YYYY-MM-DD)"
+                          },
+                          "supplierId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "supplierName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "receiptItemId": {
+                            "description": "Bağlı mal kabul kalemi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "in_use",
+                              "in_storage",
+                              "broken",
+                              "scrapped"
+                            ]
+                          },
+                          "scrapDate": {
+                            "description": "Hurdaya ayırma günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tagNumber",
+                          "name",
+                          "category",
+                          "campusId",
+                          "campusName",
+                          "location",
+                          "acquisitionValueCents",
+                          "acquisitionDate",
+                          "supplierId",
+                          "supplierName",
+                          "receiptItemId",
+                          "status",
+                          "scrapDate",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createFixedAsset",
+        "summary": "Demirbaş kaydet",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Etiket (boşsa kayıt yılının sıradaki `DB-<yıl>-<sıra>` etiketi; elle girilen büyük harfe çevrilir, K-185), ad, kategori (K-186), isteğe bağlı kampüs, konum, KDV hariç alım değeri (kuruş), alım günü, isteğe bağlı tedarikçi ve mal kabul kalemi, durum (`in_use`, `in_storage`, `broken`). Etiket kurumda tekil: 409 `fixed_asset_tag_exists`. Gelecek gün 422 `fixed_asset_date_in_future`; olmayan kampüs 422 `fixed_asset_campus_not_found`, tedarikçi 422 `fixed_asset_supplier_not_found`, kabul kalemi 422 `fixed_asset_receipt_item_not_found`; iptal edilmiş kabul 422 `fixed_asset_receipt_cancelled`; kalemin bütün adedine demirbaş bağlıysa 422 `fixed_asset_receipt_quantity_exceeded` (K-187); siparişten başka tedarikçi 422 `fixed_asset_supplier_mismatch`; kabul gününden önceki alım günü 422 `fixed_asset_date_before_receipt`. Kabule bağlı kayıtta tedarikçi boşsa siparişin tedarikçisi yazılır. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tagNumber": {
+                    "description": "Kurumda tekil etiket; boşsa `DB-<yıl>-<sıra>` verilir",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "furniture",
+                      "it",
+                      "audiovisual",
+                      "office",
+                      "laboratory",
+                      "sports",
+                      "kitchen",
+                      "appliance",
+                      "vehicle",
+                      "other"
+                    ]
+                  },
+                  "campusId": {
+                    "default": null,
+                    "description": "Kampüs (branches kaydı); tek kampüslü kurumda boş",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Oda ya da yer, serbest metin"
+                  },
+                  "acquisitionValueCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000,
+                    "description": "KDV hariç alım değeri, kuruş (M-30)"
+                  },
+                  "acquisitionDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Alım günü; bugünden sonra olamaz"
+                  },
+                  "supplierId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "receiptItemId": {
+                    "default": null,
+                    "description": "Mal kabul kalemi (DOM-FIN-074)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "default": "in_use",
+                    "type": "string",
+                    "enum": [
+                      "in_use",
+                      "in_storage",
+                      "broken"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "category",
+                  "location",
+                  "acquisitionValueCents",
+                  "acquisitionDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tagNumber": {
+                          "type": "string",
+                          "description": "Kurumda tekil etiket (ör. `DB-2026-0001`)"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ],
+                          "description": "Sabit kategori (K-186)"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "acquisitionValueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç alım değeri, kuruş"
+                        },
+                        "acquisitionDate": {
+                          "type": "string",
+                          "description": "Alım günü (YYYY-MM-DD)"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptItemId": {
+                          "description": "Bağlı mal kabul kalemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "in_use",
+                            "in_storage",
+                            "broken",
+                            "scrapped"
+                          ]
+                        },
+                        "scrapDate": {
+                          "description": "Hurdaya ayırma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "receipt": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "receiptId": {
+                                  "type": "string"
+                                },
+                                "receiptDate": {
+                                  "type": "string"
+                                },
+                                "receiptCancelled": {
+                                  "type": "boolean",
+                                  "description": "Kabul sonradan iptal edildiyse `true`"
+                                },
+                                "orderId": {
+                                  "type": "string"
+                                },
+                                "orderNumber": {
+                                  "type": "string"
+                                },
+                                "itemName": {
+                                  "type": "string"
+                                },
+                                "unitPriceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                },
+                                "acceptedQuantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "linkedAssetCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Kaleme bağlı demirbaş sayısı (bu kayıt dahil)"
+                                }
+                              },
+                              "required": [
+                                "receiptId",
+                                "receiptDate",
+                                "receiptCancelled",
+                                "orderId",
+                                "orderNumber",
+                                "itemName",
+                                "unitPriceCents",
+                                "acceptedQuantity",
+                                "linkedAssetCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Mal kabul bağı (DOM-FIN-074)"
+                        },
+                        "scrappedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scrapReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tagNumber",
+                        "name",
+                        "category",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "acquisitionValueCents",
+                        "acquisitionDate",
+                        "supplierId",
+                        "supplierName",
+                        "receiptItemId",
+                        "status",
+                        "scrapDate",
+                        "version",
+                        "receipt",
+                        "scrappedAt",
+                        "scrapReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-assets/receipt-items": {
+      "get": {
+        "operationId": "listFixedAssetReceiptItems",
+        "summary": "Demirbaş bağlanabilecek mal kabul kalemleri",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "İptal edilmemiş kabullerde kabul edilen miktarı, bağlı demirbaş sayısından büyük olan kalemler; yeni kabul önce. Her demirbaş bir adettir (K-187). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kalem adı, sipariş numarası ve tedarikçi unvanında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "receiptItemId": {
+                            "type": "string"
+                          },
+                          "receiptId": {
+                            "type": "string"
+                          },
+                          "receiptDate": {
+                            "type": "string"
+                          },
+                          "orderId": {
+                            "type": "string"
+                          },
+                          "orderNumber": {
+                            "type": "string"
+                          },
+                          "supplierId": {
+                            "type": "string"
+                          },
+                          "supplierName": {
+                            "type": "string",
+                            "description": "Siparişteki tedarikçi unvanı"
+                          },
+                          "itemName": {
+                            "type": "string"
+                          },
+                          "unitPriceCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                          },
+                          "acceptedQuantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "linkedAssetCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kaleme bağlı demirbaş sayısı"
+                          }
+                        },
+                        "required": [
+                          "receiptItemId",
+                          "receiptId",
+                          "receiptDate",
+                          "orderId",
+                          "orderNumber",
+                          "supplierId",
+                          "supplierName",
+                          "itemName",
+                          "unitPriceCents",
+                          "acceptedQuantity",
+                          "linkedAssetCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-assets/{assetId}": {
+      "get": {
+        "operationId": "getFixedAsset",
+        "summary": "Demirbaş ayrıntısı",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Kampüs adı, tedarikçi, mal kabul bağı (sipariş numarası, kalem, kabul günü, iptal edildi mi) ve hurdaya ayırma izi. Olmayan ya da başka kurumun demirbaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assetId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tagNumber": {
+                          "type": "string",
+                          "description": "Kurumda tekil etiket (ör. `DB-2026-0001`)"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ],
+                          "description": "Sabit kategori (K-186)"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "acquisitionValueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç alım değeri, kuruş"
+                        },
+                        "acquisitionDate": {
+                          "type": "string",
+                          "description": "Alım günü (YYYY-MM-DD)"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptItemId": {
+                          "description": "Bağlı mal kabul kalemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "in_use",
+                            "in_storage",
+                            "broken",
+                            "scrapped"
+                          ]
+                        },
+                        "scrapDate": {
+                          "description": "Hurdaya ayırma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "receipt": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "receiptId": {
+                                  "type": "string"
+                                },
+                                "receiptDate": {
+                                  "type": "string"
+                                },
+                                "receiptCancelled": {
+                                  "type": "boolean",
+                                  "description": "Kabul sonradan iptal edildiyse `true`"
+                                },
+                                "orderId": {
+                                  "type": "string"
+                                },
+                                "orderNumber": {
+                                  "type": "string"
+                                },
+                                "itemName": {
+                                  "type": "string"
+                                },
+                                "unitPriceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                },
+                                "acceptedQuantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "linkedAssetCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Kaleme bağlı demirbaş sayısı (bu kayıt dahil)"
+                                }
+                              },
+                              "required": [
+                                "receiptId",
+                                "receiptDate",
+                                "receiptCancelled",
+                                "orderId",
+                                "orderNumber",
+                                "itemName",
+                                "unitPriceCents",
+                                "acceptedQuantity",
+                                "linkedAssetCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Mal kabul bağı (DOM-FIN-074)"
+                        },
+                        "scrappedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scrapReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tagNumber",
+                        "name",
+                        "category",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "acquisitionValueCents",
+                        "acquisitionDate",
+                        "supplierId",
+                        "supplierName",
+                        "receiptItemId",
+                        "status",
+                        "scrapDate",
+                        "version",
+                        "receipt",
+                        "scrappedAt",
+                        "scrapReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateFixedAsset",
+        "summary": "Demirbaşı düzelt ya da durumunu değiştir",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Kısmi düzeltme; durum kullanımda, depoda ve arızalı arasında değişir, hurdaya ayırma ayrı uçtur. Hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`. Yalnız değişen bağ yeniden denetlenir; kurallar ve kodlar kayıttakiyle aynıdır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tagNumber": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "furniture",
+                      "it",
+                      "audiovisual",
+                      "office",
+                      "laboratory",
+                      "sports",
+                      "kitchen",
+                      "appliance",
+                      "vehicle",
+                      "other"
+                    ]
+                  },
+                  "campusId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "acquisitionValueCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  },
+                  "acquisitionDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "supplierId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "receiptItemId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "in_use",
+                      "in_storage",
+                      "broken"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assetId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tagNumber": {
+                          "type": "string",
+                          "description": "Kurumda tekil etiket (ör. `DB-2026-0001`)"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ],
+                          "description": "Sabit kategori (K-186)"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "acquisitionValueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç alım değeri, kuruş"
+                        },
+                        "acquisitionDate": {
+                          "type": "string",
+                          "description": "Alım günü (YYYY-MM-DD)"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptItemId": {
+                          "description": "Bağlı mal kabul kalemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "in_use",
+                            "in_storage",
+                            "broken",
+                            "scrapped"
+                          ]
+                        },
+                        "scrapDate": {
+                          "description": "Hurdaya ayırma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "receipt": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "receiptId": {
+                                  "type": "string"
+                                },
+                                "receiptDate": {
+                                  "type": "string"
+                                },
+                                "receiptCancelled": {
+                                  "type": "boolean",
+                                  "description": "Kabul sonradan iptal edildiyse `true`"
+                                },
+                                "orderId": {
+                                  "type": "string"
+                                },
+                                "orderNumber": {
+                                  "type": "string"
+                                },
+                                "itemName": {
+                                  "type": "string"
+                                },
+                                "unitPriceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                },
+                                "acceptedQuantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "linkedAssetCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Kaleme bağlı demirbaş sayısı (bu kayıt dahil)"
+                                }
+                              },
+                              "required": [
+                                "receiptId",
+                                "receiptDate",
+                                "receiptCancelled",
+                                "orderId",
+                                "orderNumber",
+                                "itemName",
+                                "unitPriceCents",
+                                "acceptedQuantity",
+                                "linkedAssetCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Mal kabul bağı (DOM-FIN-074)"
+                        },
+                        "scrappedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scrapReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tagNumber",
+                        "name",
+                        "category",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "acquisitionValueCents",
+                        "acquisitionDate",
+                        "supplierId",
+                        "supplierName",
+                        "receiptItemId",
+                        "status",
+                        "scrapDate",
+                        "version",
+                        "receipt",
+                        "scrappedAt",
+                        "scrapReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-assets/{assetId}/scrap": {
+      "post": {
+        "operationId": "scrapFixedAsset",
+        "summary": "Demirbaşı hurdaya ayır",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Gerekçe (5–500 karakter) ve gün ister; kayıt silinmez, geri alınmaz (K-188). Zaten hurdaya ayrılmış 422 `fixed_asset_scrapped`, gelecek gün 422 `fixed_asset_date_in_future`, alım gününden önceki gün 422 `fixed_asset_scrap_before_acquisition`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  },
+                  "scrapDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Hurdaya ayırma günü; alım gününden önce, bugünden sonra olamaz"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "scrapDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assetId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tagNumber": {
+                          "type": "string",
+                          "description": "Kurumda tekil etiket (ör. `DB-2026-0001`)"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "furniture",
+                            "it",
+                            "audiovisual",
+                            "office",
+                            "laboratory",
+                            "sports",
+                            "kitchen",
+                            "appliance",
+                            "vehicle",
+                            "other"
+                          ],
+                          "description": "Sabit kategori (K-186)"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "acquisitionValueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç alım değeri, kuruş"
+                        },
+                        "acquisitionDate": {
+                          "type": "string",
+                          "description": "Alım günü (YYYY-MM-DD)"
+                        },
+                        "supplierId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supplierName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptItemId": {
+                          "description": "Bağlı mal kabul kalemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "in_use",
+                            "in_storage",
+                            "broken",
+                            "scrapped"
+                          ]
+                        },
+                        "scrapDate": {
+                          "description": "Hurdaya ayırma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "receipt": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "receiptId": {
+                                  "type": "string"
+                                },
+                                "receiptDate": {
+                                  "type": "string"
+                                },
+                                "receiptCancelled": {
+                                  "type": "boolean",
+                                  "description": "Kabul sonradan iptal edildiyse `true`"
+                                },
+                                "orderId": {
+                                  "type": "string"
+                                },
+                                "orderNumber": {
+                                  "type": "string"
+                                },
+                                "itemName": {
+                                  "type": "string"
+                                },
+                                "unitPriceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Sipariş birim fiyatı, KDV hariç, kuruş"
+                                },
+                                "acceptedQuantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "linkedAssetCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Kaleme bağlı demirbaş sayısı (bu kayıt dahil)"
+                                }
+                              },
+                              "required": [
+                                "receiptId",
+                                "receiptDate",
+                                "receiptCancelled",
+                                "orderId",
+                                "orderNumber",
+                                "itemName",
+                                "unitPriceCents",
+                                "acceptedQuantity",
+                                "linkedAssetCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Mal kabul bağı (DOM-FIN-074)"
+                        },
+                        "scrappedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scrapReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tagNumber",
+                        "name",
+                        "category",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "acquisitionValueCents",
+                        "acquisitionDate",
+                        "supplierId",
+                        "supplierName",
+                        "receiptItemId",
+                        "status",
+                        "scrapDate",
+                        "version",
+                        "receipt",
+                        "scrappedAt",
+                        "scrapReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

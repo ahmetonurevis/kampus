@@ -138,14 +138,19 @@ test('DOM-FIN-068: atama bakiyeyi ve bursun karşılanmamış kısmını aşamaz
 
 test('DOM-FIN-068: iptal gerekçe ister, ikinci kez yapılmaz; bağış iptali bakiyeyi eksiye düşürmez (K-97)', () => {
   const reason = { reason: 'Yanlış tutar girildi' }
-  assert.deepEqual(planScholarshipFundAllocationCancel({ cancelledAt: null }, reason), reason)
+  assert.deepEqual(planScholarshipFundAllocationCancel(OPEN, { cancelledAt: null }, reason), reason)
   assert.throws(
-    () => planScholarshipFundAllocationCancel({ cancelledAt: null }, { reason: 'kısa' }),
+    () => planScholarshipFundAllocationCancel(OPEN, { cancelledAt: null }, { reason: 'kısa' }),
     ZodError,
   )
   assert.throws(
-    () => planScholarshipFundAllocationCancel({ cancelledAt: CLOSED.closedAt }, reason),
+    () => planScholarshipFundAllocationCancel(OPEN, { cancelledAt: CLOSED.closedAt }, reason),
     isDomainError('scholarship_fund_allocation_cancelled', 'conflict'),
+  )
+  // Kapalı fonda iptal bakiye açardı; kapanış kesindir (K-97).
+  assert.throws(
+    () => planScholarshipFundAllocationCancel(CLOSED, { cancelledAt: null }, reason),
+    isDomainError('scholarship_fund_closed'),
   )
   const donation = { cancelledAt: null, amountCents: 300_000 }
   assert.deepEqual(planScholarshipFundDonationCancel(donation, 300_000, reason), reason)

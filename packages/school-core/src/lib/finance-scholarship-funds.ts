@@ -213,12 +213,17 @@ export function planScholarshipFundAllocation(
   }
 }
 
-/** Atama iptali bakiyeyi geri verir; iptal edilmiş atama yeniden iptal edilmez. */
+/**
+ * Atama iptali bakiyeyi geri verir; iptal edilmiş atama yeniden iptal edilmez. Kapalı fonda atama
+ * iptal edilmez: kapanış sıfır bakiyeyle kesinleşmiştir, iptal kapalı fona bakiye açardı (K-97).
+ */
 export function planScholarshipFundAllocationCancel(
+  fund: ScholarshipFundState,
   allocation: { cancelledAt: string | null },
   input: unknown,
 ) {
   const data = scholarshipFundCancelSchema.parse(input)
+  requireOpen(fund)
   if (allocation.cancelledAt !== null)
     throw new DomainError('scholarship_fund_allocation_cancelled', 'Bu atama zaten iptal edildi.', {
       kind: 'conflict',

@@ -265,7 +265,7 @@ export function registerFinanceScholarshipFundRoutes(app: FastifyInstance) {
         operationId: 'cancelScholarshipFundAllocation',
         tags,
         summary: 'Fondan atamayı iptal et',
-        description: `Gerekçeyle (5–500 karakter); tutar fon bakiyesine geri döner, burs ataması kalır (K-97). İptal edilmiş atama 409 \`scholarship_fund_allocation_cancelled\`, sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${MANAGER}`,
+        description: `Gerekçeyle (5–500 karakter); tutar fon bakiyesine geri döner, burs ataması kalır (K-97). Kapalı fonda 422 \`scholarship_fund_closed\`. İptal edilmiş atama 409 \`scholarship_fund_allocation_cancelled\`, sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${MANAGER}`,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: allocationParams,
         body: scholarshipFundCancelSchema,

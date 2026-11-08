@@ -487,6 +487,41 @@ describe('DOM-FIN-068: burs fonu uçları', () => {
     await createFund(t)
   })
 
+  test('DOM-FIN-068, K-97: kapalı fonda atama elle iptal edilmez; bakiye sıfır kalır, kayıt değişmez', async () => {
+    const t = await institution()
+    const fund = await createFund(t)
+    await ok(await donate(t.admin, fund.id, { ...DONATION, amountCents: 100_000 }), 201)
+    const allocated = await ok(await allocate(t.admin, fund.id, t.awardS1, 100_000), 201)
+    const allocation = (allocated.movements as Json[]).find(
+      (row) => row.kind === 'allocation',
+    ) as Json
+    await ok(
+      await call(
+        'POST',
+        `${FUNDS}/${String(fund.id)}/close`,
+        t.admin,
+        undefined,
+        ifMatch(fund.version),
+      ),
+    )
+    const before = await allocationRows(t.id)
+    assertError(
+      await call(
+        'POST',
+        `${FUNDS}/${String(fund.id)}/allocations/${String(allocation.id)}/cancel`,
+        t.admin,
+        { reason: 'Burs yanlış öğrenciye bağlandı' },
+        { ...key(), ...ifMatch(allocation.version) },
+      ),
+      422,
+      'scholarship_fund_closed',
+    )
+    assert.deepEqual(await allocationRows(t.id), before)
+    const after = (await report(t.admin, fund.id)).fund as Json
+    assert.deepEqual([after.status, after.balanceCents], ['closed', 0])
+    assert.equal((await audits(t.id, 'scholarship_fund.allocation_cancel')).length, 0)
+  })
+
   test('DOM-FIN-068: liste arar, süzer ve sayfalar; toplamlar fon başınadır', async () => {
     const t = await institution()
     const first = await createFund(t)

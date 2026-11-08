@@ -299,7 +299,7 @@ export function cancelScholarshipFundDonationCommand(
   )
 }
 
-/** Atama iptali bakiyeyi geri verir (K-97). */
+/** Atama iptali bakiyeyi geri verir; kapalı fonda 422 `scholarship_fund_closed` (K-97). */
 export function cancelScholarshipFundAllocationCommand(
   ctx: ServiceContext,
   fundId: string,
@@ -317,11 +317,11 @@ export function cancelScholarshipFundAllocationCommand(
       collections: [],
       entity,
       load: async (tx) => {
-        await fundOf(tx, ctx, fundId)
+        const fund = await fundOf(tx, ctx, fundId)
         const allocation = await findFundAllocation(tx, ctx.institutionId, fundId, allocationId)
         if (allocation === null) throw new NotFoundError()
         if (allocation.version !== expectedVersion) throw new ConflictError()
-        return { run: () => planScholarshipFundAllocationCancel(allocation, input) }
+        return { run: () => planScholarshipFundAllocationCancel(fund, allocation, input) }
       },
       after: async (tx, plan) => {
         const saved = await cancelFundAllocation(tx, ctx.institutionId, {

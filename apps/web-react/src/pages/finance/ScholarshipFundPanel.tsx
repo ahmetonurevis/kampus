@@ -193,7 +193,7 @@ function FundDetail({ fundId, canManage }: { fundId: string; canManage: boolean 
                   <span className="text-muted-foreground tabular-nums">
                     Bakiye {money(row.balanceAfterCents)}
                   </span>
-                  {canManage && row.cancelledAt === null ? (
+                  {canManage && open && row.cancelledAt === null ? (
                     <Button
                       type="button"
                       size="sm"

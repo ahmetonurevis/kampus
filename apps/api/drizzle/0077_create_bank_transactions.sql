@@ -42,7 +42,8 @@ ALTER TABLE "bank_transactions" ADD CONSTRAINT "bank_transactions_bank_account_f
 ALTER TABLE "bank_transactions" ADD CONSTRAINT "bank_transactions_payment_fkey" FOREIGN KEY ("institution_id","payment_id") REFERENCES "public"."payments"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "bank_transactions_fingerprint_key" ON "bank_transactions" USING btree ("institution_id","bank_account_id","fingerprint") WHERE "bank_transactions"."archived_at" is null;--> statement-breakpoint
 CREATE UNIQUE INDEX "bank_transactions_payment_key" ON "bank_transactions" USING btree ("institution_id","payment_id") WHERE "bank_transactions"."payment_id" is not null;--> statement-breakpoint
-CREATE INDEX "bank_transactions_status_date_idx" ON "bank_transactions" USING btree ("institution_id","status","booking_date");--> statement-breakpoint
+CREATE INDEX "bank_transactions_status_date_idx" ON "bank_transactions" USING btree ("institution_id","status","booking_date");
+--> statement-breakpoint
 -- Elle eklendi (kolon açıklamaları; drizzle-kit üretmez, yeniden üretimde bu blok korunur).
 COMMENT ON TABLE "bank_transactions" IS 'Banka ekstresinden aktarılan gelen hareket (IST-115, ON-099, DOM-FIN-069). Dosya saklanmaz, yalnız gelen (alacak) hareket yazılır (K-106). Tutar, gün, açıklama ve referans değişmez; durum unmatched → matched (onayla aynı işlemde tahsilat yazılır) ya da ignored. Eşleşme tahsilat iptaliyle geri açılır (K-111).';--> statement-breakpoint
 COMMENT ON COLUMN "bank_transactions"."institution_id" IS 'Kurum.';--> statement-breakpoint

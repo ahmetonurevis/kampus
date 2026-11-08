@@ -1127,6 +1127,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
     'CASH_FLOW',
   ),
+  // Onur: gelir senaryo analizi (ON-248; DOM-FIN-067).
+  'POST /api/v1/finance/forecasts/scenarios': liste(
+    'finance-forecasts.test.ts',
+    'başka kurumun taksiti, sözleşmesi, adayı ve iadesi tahminde yok',
+    'SCENARIOS',
+  ),
   // Onur: bütçe ve maliyet merkezi (ON-241, ON-242; DOM-FIN-062).
   ...Object.fromEntries(
     (
@@ -1193,6 +1199,44 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         ),
       ],
     ),
+  ),
+  // Onur: burs fonu (ON-259; DOM-FIN-068).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/scholarship-funds', 'get(FUNDS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/scholarship-funds', "call('POST', FUNDS, a.admin"],
+        ['kayıt', 'GET /api/v1/finance/scholarship-funds/:fundId/report', '`${bUrl}/report`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/donations',
+          'donate(a.admin, bFund.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/allocations',
+          'allocate(a.admin, bFund.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/donations/:donationId/cancel',
+          '`${bUrl}/donations/${String(bDonation.id)}/cancel`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-funds/:fundId/allocations/:allocationId/cancel',
+          '`${bUrl}/allocations/${String(bAllocation.id)}/cancel`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/scholarship-funds/:fundId/close', '`${bUrl}/close`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-scholarship-funds.test.ts',
+        'başka kurumun fonu, bağışı, ataması ve bursu 404',
+        marker,
+      ),
+    ]),
   ),
   // Onur: banka hareketi eşleştirme (ON-099, IST-115; DOM-FIN-069).
   ...Object.fromEntries(

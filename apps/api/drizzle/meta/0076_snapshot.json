@@ -1,5 +1,5 @@
 {
-  "id": "13a5a479-5828-4c23-b845-45cc53585763",
+  "id": "11de9954-656a-49d9-9e9a-4bdc1eebd0b9",
   "prevId": "ee676d00-b228-41a5-835e-ebab05892c88",
   "version": "7",
   "dialect": "postgresql",
@@ -5777,339 +5777,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.bank_transactions": {
-      "name": "bank_transactions",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bank_account_id": {
-          "name": "bank_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "booking_date": {
-          "name": "booking_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "statement_description": {
-          "name": "statement_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "counterparty_name": {
-          "name": "counterparty_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bank_reference": {
-          "name": "bank_reference",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "balance_cents": {
-          "name": "balance_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_format": {
-          "name": "source_format",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "import_batch_id": {
-          "name": "import_batch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_line": {
-          "name": "source_line",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "imported_by_user_id": {
-          "name": "imported_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'unmatched'"
-        },
-        "payment_id": {
-          "name": "payment_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "matched_at": {
-          "name": "matched_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "matched_by_user_id": {
-          "name": "matched_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ignored_at": {
-          "name": "ignored_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ignored_by_user_id": {
-          "name": "ignored_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ignore_reason": {
-          "name": "ignore_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "bank_transactions_fingerprint_key": {
-          "name": "bank_transactions_fingerprint_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bank_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fingerprint",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"bank_transactions\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "bank_transactions_payment_key": {
-          "name": "bank_transactions_payment_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "payment_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"bank_transactions\".\"payment_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "bank_transactions_status_date_idx": {
-          "name": "bank_transactions_status_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "booking_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "bank_transactions_institution_id_institutions_id_fk": {
-          "name": "bank_transactions_institution_id_institutions_id_fk",
-          "tableFrom": "bank_transactions",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "bank_transactions_bank_account_fkey": {
-          "name": "bank_transactions_bank_account_fkey",
-          "tableFrom": "bank_transactions",
-          "tableTo": "bank_accounts",
-          "columnsFrom": [
-            "institution_id",
-            "bank_account_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "bank_transactions_payment_fkey": {
-          "name": "bank_transactions_payment_fkey",
-          "tableFrom": "bank_transactions",
-          "tableTo": "payments",
-          "columnsFrom": [
-            "institution_id",
-            "payment_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "bank_transactions_pkey": {
-          "name": "bank_transactions_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "bank_transactions_amount_check": {
-          "name": "bank_transactions_amount_check",
-          "value": "\"bank_transactions\".\"amount_cents\" > 0"
-        },
-        "bank_transactions_currency_check": {
-          "name": "bank_transactions_currency_check",
-          "value": "\"bank_transactions\".\"currency\" = 'TRY'"
-        },
-        "bank_transactions_description_check": {
-          "name": "bank_transactions_description_check",
-          "value": "char_length(\"bank_transactions\".\"statement_description\") <= 1000"
-        },
-        "bank_transactions_fingerprint_check": {
-          "name": "bank_transactions_fingerprint_check",
-          "value": "\"bank_transactions\".\"fingerprint\" ~ '^[0-9a-f]{64}$'"
-        },
-        "bank_transactions_source_format_check": {
-          "name": "bank_transactions_source_format_check",
-          "value": "\"bank_transactions\".\"source_format\" in ('csv', 'mt940')"
-        },
-        "bank_transactions_status_check": {
-          "name": "bank_transactions_status_check",
-          "value": "\"bank_transactions\".\"status\" in ('unmatched', 'matched', 'ignored')"
-        },
-        "bank_transactions_lifecycle_check": {
-          "name": "bank_transactions_lifecycle_check",
-          "value": "(\"bank_transactions\".\"status\" = 'unmatched' and \"bank_transactions\".\"payment_id\" is null and \"bank_transactions\".\"matched_at\" is null and \"bank_transactions\".\"matched_by_user_id\" is null and \"bank_transactions\".\"ignored_at\" is null and \"bank_transactions\".\"ignored_by_user_id\" is null and \"bank_transactions\".\"ignore_reason\" is null)\n        or (\"bank_transactions\".\"status\" = 'matched' and \"bank_transactions\".\"payment_id\" is not null and \"bank_transactions\".\"matched_at\" is not null and \"bank_transactions\".\"matched_by_user_id\" is not null and \"bank_transactions\".\"ignored_at\" is null and \"bank_transactions\".\"ignore_reason\" is null)\n        or (\"bank_transactions\".\"status\" = 'ignored' and \"bank_transactions\".\"payment_id\" is null and \"bank_transactions\".\"ignored_at\" is not null and \"bank_transactions\".\"ignored_by_user_id\" is not null and \"bank_transactions\".\"ignore_reason\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.budget_items": {
       "name": "budget_items",
       "schema": "",
@@ -9324,6 +8991,602 @@
         "referral_rewards_cancelled_check": {
           "name": "referral_rewards_cancelled_check",
           "value": "(\"referral_rewards\".\"status\" = 'cancelled') = (\"referral_rewards\".\"cancel_reason\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.scholarship_fund_allocations": {
+      "name": "scholarship_fund_allocations",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fund_id": {
+          "name": "fund_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "award_id": {
+          "name": "award_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "allocated_on": {
+          "name": "allocated_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allocated_by_user_id": {
+          "name": "allocated_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "scholarship_fund_allocations_fund_award_key": {
+          "name": "scholarship_fund_allocations_fund_award_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fund_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "award_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"scholarship_fund_allocations\".\"cancelled_at\" is null and \"scholarship_fund_allocations\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "scholarship_fund_allocations_fund_idx": {
+          "name": "scholarship_fund_allocations_fund_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fund_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "scholarship_fund_allocations_award_idx": {
+          "name": "scholarship_fund_allocations_award_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "award_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scholarship_fund_allocations_institution_id_institutions_id_fk": {
+          "name": "scholarship_fund_allocations_institution_id_institutions_id_fk",
+          "tableFrom": "scholarship_fund_allocations",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "scholarship_fund_allocations_fund_fkey": {
+          "name": "scholarship_fund_allocations_fund_fkey",
+          "tableFrom": "scholarship_fund_allocations",
+          "tableTo": "scholarship_funds",
+          "columnsFrom": [
+            "institution_id",
+            "fund_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "scholarship_fund_allocations_award_fkey": {
+          "name": "scholarship_fund_allocations_award_fkey",
+          "tableFrom": "scholarship_fund_allocations",
+          "tableTo": "scholarship_awards",
+          "columnsFrom": [
+            "institution_id",
+            "award_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "scholarship_fund_allocations_pkey": {
+          "name": "scholarship_fund_allocations_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "scholarship_fund_allocations_amount_check": {
+          "name": "scholarship_fund_allocations_amount_check",
+          "value": "\"scholarship_fund_allocations\".\"amount_cents\" > 0"
+        },
+        "scholarship_fund_allocations_currency_check": {
+          "name": "scholarship_fund_allocations_currency_check",
+          "value": "\"scholarship_fund_allocations\".\"currency\" = 'TRY'"
+        },
+        "scholarship_fund_allocations_cancel_check": {
+          "name": "scholarship_fund_allocations_cancel_check",
+          "value": "(\"scholarship_fund_allocations\".\"cancelled_at\" is null) = (\"scholarship_fund_allocations\".\"cancelled_by_user_id\" is null) and (\"scholarship_fund_allocations\".\"cancelled_at\" is null) = (\"scholarship_fund_allocations\".\"cancel_reason\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.scholarship_fund_donations": {
+      "name": "scholarship_fund_donations",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fund_id": {
+          "name": "fund_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "donated_on": {
+          "name": "donated_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recorded_by_user_id": {
+          "name": "recorded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "scholarship_fund_donations_fund_idx": {
+          "name": "scholarship_fund_donations_fund_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fund_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scholarship_fund_donations_institution_id_institutions_id_fk": {
+          "name": "scholarship_fund_donations_institution_id_institutions_id_fk",
+          "tableFrom": "scholarship_fund_donations",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "scholarship_fund_donations_fund_fkey": {
+          "name": "scholarship_fund_donations_fund_fkey",
+          "tableFrom": "scholarship_fund_donations",
+          "tableTo": "scholarship_funds",
+          "columnsFrom": [
+            "institution_id",
+            "fund_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "scholarship_fund_donations_pkey": {
+          "name": "scholarship_fund_donations_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "scholarship_fund_donations_amount_check": {
+          "name": "scholarship_fund_donations_amount_check",
+          "value": "\"scholarship_fund_donations\".\"amount_cents\" > 0"
+        },
+        "scholarship_fund_donations_currency_check": {
+          "name": "scholarship_fund_donations_currency_check",
+          "value": "\"scholarship_fund_donations\".\"currency\" = 'TRY'"
+        },
+        "scholarship_fund_donations_channel_check": {
+          "name": "scholarship_fund_donations_channel_check",
+          "value": "\"scholarship_fund_donations\".\"channel\" in ('bank_transfer', 'cash', 'other')"
+        },
+        "scholarship_fund_donations_cancel_check": {
+          "name": "scholarship_fund_donations_cancel_check",
+          "value": "(\"scholarship_fund_donations\".\"cancelled_at\" is null) = (\"scholarship_fund_donations\".\"cancelled_by_user_id\" is null) and (\"scholarship_fund_donations\".\"cancelled_at\" is null) = (\"scholarship_fund_donations\".\"cancel_reason\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.scholarship_funds": {
+      "name": "scholarship_funds",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "donor_kind": {
+          "name": "donor_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "donor_name": {
+          "name": "donor_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "scholarship_funds_name_key": {
+          "name": "scholarship_funds_name_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"scholarship_funds\".\"archived_at\" is null and \"scholarship_funds\".\"closed_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scholarship_funds_institution_id_institutions_id_fk": {
+          "name": "scholarship_funds_institution_id_institutions_id_fk",
+          "tableFrom": "scholarship_funds",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "scholarship_funds_pkey": {
+          "name": "scholarship_funds_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "scholarship_funds_donor_kind_check": {
+          "name": "scholarship_funds_donor_kind_check",
+          "value": "\"scholarship_funds\".\"donor_kind\" in ('person', 'organization', 'anonymous')"
+        },
+        "scholarship_funds_donor_name_check": {
+          "name": "scholarship_funds_donor_name_check",
+          "value": "(\"scholarship_funds\".\"donor_kind\" = 'anonymous') = (\"scholarship_funds\".\"donor_name\" is null)"
+        },
+        "scholarship_funds_closed_check": {
+          "name": "scholarship_funds_closed_check",
+          "value": "(\"scholarship_funds\".\"closed_at\" is null) = (\"scholarship_funds\".\"closed_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

@@ -31,6 +31,7 @@ import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
 import { monthLabel } from '../dashboard/dashboard-model.ts'
 import { cashFlowNotes, percentLabel, revenueNotes, revenueRows } from './finance-forecast-model.ts'
+import { FinanceScenarioSection } from './FinanceScenarioSection.tsx'
 
 // recharts yalnız sekme açılınca yüklenir (rota parçası bütçesi).
 const TrendBars = lazy(() => import('../dashboard/TrendBars.tsx'))
@@ -55,7 +56,8 @@ function Notes({ items }: { items: readonly string[] }) {
 }
 
 /**
- * Gelir ve nakit akışı tahmini (ON-246, ON-247; DOM-FIN-063): Finans "Tahmin" sekmesi, yalnız yönetici.
+ * Gelir ve nakit akışı tahmini (ON-246, ON-247; DOM-FIN-063) ve senaryo analizi (ON-248; DOM-FIN-067):
+ * Finans "Tahmin" sekmesi, yalnız yönetici.
  * Hesap ve varsayımlar sunucudadır; ekran yanıtı tablo, grafik ve CSV olarak gösterir. Rapor kayıt
  * değiştirmez, kişi verisi taşımaz; CSV bu yüzden tarayıcıda yanıttan üretilir.
  */
@@ -69,6 +71,7 @@ export function FinanceForecastSection({
   return (
     <>
       <RevenueForecastPanel enrollmentYear={enrollmentYear} institutionType={institutionType} />
+      <FinanceScenarioSection enrollmentYear={enrollmentYear} />
       <CashFlowForecastPanel />
     </>
   )

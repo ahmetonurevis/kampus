@@ -59,6 +59,12 @@ export const revenueForecastResponseSchema = dataResponse(
         netCents: cents,
         unpricedProspects: count,
         unratedProspects: count,
+        expectedEnrollments: z
+          .number()
+          .min(0)
+          .describe(
+            'Beklentiye giren adaylardan beklenen kesin kayıt (oranların toplamı; kesirli)',
+          ),
       })
       .nullable()
       .describe('Huni beklentisi; geçmiş yılda ve `crm` kapalıyken `null`'),
@@ -115,5 +121,85 @@ export const cashFlowForecastResponseSchema = dataResponse(
       lateRecoveryRateSource: z.enum(['history', 'default']),
       expenseSource: z.enum(['manual', 'none']),
     }),
+  }),
+)
+
+// Senaryo analizi (ON-248; DOM-FIN-067). Öğrenci sayısı huni beklentisinden kesirli gelir.
+
+const students = z.number().min(0).describe('Öğrenci; iki ondalık')
+const scenarioSegment = z.object({
+  students,
+  contractedStudents: students.describe('Bunlardan sözleşmesi olan öğrenci'),
+  netCents: cents,
+  unpricedStudents: students.describe('Birim fiyatı bulunamadığı için gelire girmeyen öğrenci'),
+})
+const scenarioOutcome = {
+  newEnrollment: scenarioSegment.describe('Yeni kayıt: kesin yeni kayıt + huni beklentisi'),
+  renewal: scenarioSegment.describe('Yenileme: yapılmış yenilemeler'),
+  discountRateBasisPoints: basisPoints.describe(
+    'Sözleşmesiz öğrenciye uygulanan indirim ve burs oranı',
+  ),
+  expectedTotalCents: cents,
+  differenceCents: cents.describe('Senaryo eksi temel'),
+  differenceBasisPoints: z
+    .number()
+    .int()
+    .nullable()
+    .describe('Farkın temele oranı (on binde bir); temel sıfırsa `null`'),
+}
+const studentChange = z.object({ unit: z.enum(['percent', 'count']), value: z.number().int() })
+
+export const financeScenarioResponseSchema = dataResponse(
+  z.object({
+    year: z.number().int(),
+    enrollmentYear: z.number().int(),
+    today: day,
+    baseline: z.object(scenarioOutcome),
+    scenarios: z.array(
+      z.object({
+        ...scenarioOutcome,
+        parameters: z
+          .object({
+            newStudents: studentChange,
+            renewalStudents: studentChange,
+            priceChangeBasisPoints: z.number().int(),
+            discountChangeBasisPoints: z.number().int(),
+            applyToExistingContracts: z.boolean(),
+          })
+          .describe('Varsayılanları doldurulmuş senaryo parametreleri'),
+      }),
+    ),
+    assumptions: z.object({
+      pipelineStatus: z.enum(['included', 'crm_disabled', 'past_year']),
+      discountRateBasisPoints: basisPoints,
+      fallbackGrossCents: cents
+        .nullable()
+        .describe(
+          'Öğrencisiz segmentte eklenen öğrencinin brüt fiyatı (sözleşme liste ortalaması)',
+        ),
+      tariffYear: z.number().int().nullable(),
+      tariffCarriedOver: z.boolean(),
+    }),
+    cashFlow: z
+      .object({
+        from: month,
+        to: month,
+        spreadFrom: month.nullable(),
+        spreadTo: month.nullable(),
+        spreadMonths: count,
+        onTimeRateBasisPoints: basisPoints,
+        baseline: z.array(z.object({ month, netCents: cents, cumulativeNetCents: cents })),
+        scenarios: z.array(
+          z.object({
+            months: z.array(
+              z.object({ month, changeCents: cents, netCents: cents, cumulativeNetCents: cents }),
+            ),
+            totalChangeCents: cents,
+            beyondHorizonChangeCents: cents,
+          }),
+        ),
+      })
+      .nullable()
+      .describe('`cashFlowMonths` verilmediyse `null`'),
   }),
 )

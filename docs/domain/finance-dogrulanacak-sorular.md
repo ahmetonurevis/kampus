@@ -243,12 +243,21 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Rapor açık rızaya bağlanır; kayıtta işveren raporu rızası alınır, rızası olmayan kursiyer rapora girmez.
 - **Cevap:** bekleniyor
 
+#### H-26 · Burs fonu bağışçısının ve bursiyerin kişisel verisi
+
+- **Kural:** `DOM-FIN-068`; ON-259, K26.
+- **Soru:** Kişi bağışçının adını fon kaydında tutmanın hukuki dayanağı ve aydınlatma yükümlülüğü nedir (KVKK md. 4, 5, 10)? Anonim kalmak isteyen bağışçının adı kurumda hiç tutulmamalı mı, yoksa makbuz ya da mali kayıt için saklanıp yalnız raporlarda mı gizlenmeli? Bağışçıya, bağışının hangi öğrenciye burs olarak verildiği (ad, sınıf, başarı) bildirilebilir mi; bunun için burslu öğrencinin velisinden açık rıza gerekir mi?
+- **Bugünkü varsayım:** Bağışçının yalnız adı ya da kurum adı tutulur; anonim bağışta ad hiç saklanmaz, iletişim ve kimlik numarası alınmaz (K-95). Fon raporunda öğrenci adı yalnız yöneticiye görünür (K-98); bağışçıya rapor ya da erişim yoktur.
+- **Kodda:** `lib/finance-scholarship-funds.ts` (`createScholarshipFundSchema`), tablo `scholarship_funds.donor_name`; rapor `GET /api/v1/finance/scholarship-funds/:fundId/report`.
+- **Cevap değişirse:** Anonim bağışta ad gizli alan olarak saklanır ve yalnız yönetici görür; bağışçıya rapor için velinin rızası kesin kayıtta ya da burs atamasında alınır, rızası olmayan öğrenci bağışçı raporuna girmez.
+- **Cevap:** bekleniyor
+
 #### H-27 · Banka ekstresindeki üçüncü kişi verisi
 
 - **Kural:** `DOM-FIN-069`; ON-099, IST-115.
 - **Soru:** Banka ekstresinin açıklama ve gönderen alanlarında ödeme yapan kişinin adı, IBAN'ı ve bazen T.C. kimlik numarası bulunur; bunlar kurumun tahsilat kaydı için işlenebilir mi (KVKK md. 5/2-c sözleşmenin ifası, md. 5/2-ç hukuki yükümlülük)? Eşleşen ve eşleşmeyen (kurumla ilgisi olmayan) hareketin açıklaması ne kadar süre saklanmalı?
 - **Bugünkü varsayım:** Yalnız gelen hareket saklanır; açıklama loglanmaz, ekranda uzun rakam dizileri maskelidir; hareket tahsilat kaydı gibi saklanır, ayrı imha süresi yoktur.
-- **Kodda:** `bank_transactions.statement_description`, `counterparty_name` (migration 0076); `maskStatementText`.
+- **Kodda:** `bank_transactions.statement_description`, `counterparty_name` (migration 0077); `maskStatementText`.
 - **Cevap değişirse:** Eşleşmeyen ya da yoksayılan hareketin açıklaması süre dolunca imha işiyle silinir; açıklama içe aktarımda maskeli saklanır (K-112).
 - **Cevap:** bekleniyor
 
@@ -426,6 +435,24 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Anahtara alan ya da ders saati eklenir (merkez başına ölçü alanı, migration); gerçekleşen gider kaydı (satın alma) gelince rapor bütçe ile gerçekleşeni ayrı sütunda verir; KDV hariç sütun kalem oranından hesaplanır.
 - **Cevap:** bekleniyor
 
+#### M-21 · Burs fonu bağışının makbuzu ve vergi indirimi
+
+- **Kural:** `DOM-FIN-068`; ON-259, K26.
+- **Soru:** Okula burs fonu için yapılan bağışa kurum hangi belgeyi düzenlemelidir (bağış makbuzu, alındı belgesi, fatura dışı belge)? Bağışçının bağışı gelir veya kurumlar vergisi matrahından indirebilmesi için belgenin ve kurumun taşıması gereken nitelik nedir; özel okul ve dil kursu (şirket) bu bakımdan farklı mıdır? Nakit bağış kabul edilebilir mi, yoksa banka yoluyla mı alınmalıdır?
+- **Bugünkü varsayım:** Kampüs bağış makbuzu ya da vergi belgesi üretmez; bağış kaynağı (banka havalesi/EFT, nakit, diğer) ve isteğe bağlı not (dekont numarası) bilgi olarak kaydedilir. Vergi indirimi hakkında ekranda ve belgede bir ifade yoktur.
+- **Kodda:** `planScholarshipFundDonation` (`lib/finance-scholarship-funds.ts`), `POST /api/v1/finance/scholarship-funds/:fundId/donations`; fon raporu PDF'i "makbuz değildir" notunu taşır.
+- **Cevap değişirse:** Bağış için numaralı makbuz belgesi (seri, sıra, bağışçı unvanı ve vergi numarası) eklenir; bağışçı bilgisi buna göre genişler (H-26 ile birlikte), nakit kanal kapatılabilir.
+- **Cevap:** bekleniyor
+
+#### M-22 · Burs fonu bağışının ve fondan karşılanan bursun muhasebe kaydı
+
+- **Kural:** `DOM-FIN-068`; `DOM-FIN-055`, `DOM-FIN-025`.
+- **Soru:** Burs fonuna gelen bağış kurumun geliri midir, yoksa bursiyer adına emanet (karşılık) olarak mı izlenmelidir? Fondan karşılanan bursta öğrenim ücretinden düşülen burs tutarı gider ya da indirim olarak nasıl kaydedilir; bağış ile burs farklı mali yıllara düşerse dönemsellik nasıl kurulur?
+- **Bugünkü varsayım:** Fon bağış ve atamaları muhasebe aktarımına (`DOM-FIN-055`) ve gün sonuna (`DOM-FIN-036`) girmez; fon kurum içi izleme kaydıdır. Burs sözleşmede `scholarship` kalemi olarak kalır, fondan atama sözleşmeyi değiştirmez.
+- **Kodda:** `scholarship_fund_donations`, `scholarship_fund_allocations`; muhasebe aktarımı `lib/finance-export.ts` bu tabloları okumaz.
+- **Cevap değişirse:** Muhasebe aktarımına `kind=scholarship_fund` satırları (bağış girişi, atama, iptal) eklenir; banka kanalı bağış banka hesabına bağlanır.
+- **Cevap:** bekleniyor
+
 #### M-23 · Banka hareketinden oluşan tahsilatın günü ve eşleşmeyen havale
 
 - **Kural:** `DOM-FIN-069`; ON-099, IST-115.
@@ -487,6 +514,16 @@ Aşağıdakiler proje sahibinin onayını bekleyen ürün kararlarıdır; kod ö
 | K-102  | 2026-11-08 | `DOM-FIN-065` | Öğrencisi 5'ten az merkez, kampüs ve kurum toplamında öğrenci başı değer gizlenir; tutar ve öğrenci sayısı görünür kalır (`DOM-YTK-024` eşiği, K-77 ile aynı; ortak bastırma kuralı OG-766 gelince ona bağlanır).                                                                    | Eşik ya da gizlenen alanlar değişir (`COST_REPORT_MIN_GROUP`).                                             |
 | K-103  | 2026-11-08 | `DOM-FIN-065` | Maliyet yalnız bütçe gideridir; gerçekleşen gider kaydı (satın alma) yoktur, gelir satırı maliyete girmez.                                                                                                                                                                           | Gerçekleşen gider modülü gelince ayrı sütun olur.                                                          |
 | K-104  | 2026-11-08 | `DOM-FIN-065` | Raporları bütçeyi gören rol görür (bugün yönetici); CSV tarayıcıda yanıttan üretilir, kişi verisi taşımadığı için taze oturum ve denetim istemez. Konsolide rapor kampüsleri kapsar; kurum grubu (ON-278) kapsam dışıdır.                                                            | Rol listesi (`BUDGET_ROLES`) değişir ya da CSV sunucuda denetimli üretilir.                                |
+| K-95   | 2026-11-08 | `DOM-FIN-068` | Bağışçı fon düzeyinde tek kayıttır: kişi ya da kurum adı; anonim bağışta ad hiç saklanmaz, iletişim ve kimlik numarası alınmaz.                                                                                                                                                      | Anonimde ad gizli saklanır, bağışçı bağış başına girilir (H-26).                                           |
+| K-96   | 2026-11-08 | `DOM-FIN-068` | Fondan atama mevcut burs atamasına bağlanır; bir burs birden çok fondan parça parça karşılanabilir, toplamı burs tutarını aşamaz; aynı fondan aynı bursa tek geçerli atama.                                                                                                          | `planScholarshipFundAllocation` kuralı; tek fon kısıtı için tekil indeks.                                  |
+| K-97   | 2026-11-08 | `DOM-FIN-068` | Silme yok: bağış ve atama gerekçeyle iptal edilir; bakiyeyi eksiye düşürecek bağış iptali reddedilir; fon yalnız sıfır bakiyede kapanır.                                                                                                                                             | İptal ve kapanış planları (`lib/finance-scholarship-funds.ts`).                                            |
+| K-98   | 2026-11-08 | `DOM-FIN-068` | Fonu yönetici yönetir (burs onayı gibi), ön büro görür; raporda öğrenci adı yalnız yöneticiye, muhasebe rolü açılınca ona da.                                                                                                                                                        | `SCHOLARSHIP_FUND_READ_ROLES`, `SCHOLARSHIP_FUND_NAME_ROLES`, `scholarship.manage`.                        |
+| K-99   | 2026-11-08 | `DOM-FIN-068` | Fon raporu CSV'si sunucuda `Accept: text/csv` ile, taze oturumlu ve denetimli iner; PDF web'de aynı yanıttan üretilir. Bağış makbuzu üretilmez.                                                                                                                                      | CSV tarayıcıda üretilir ya da makbuz belgesi eklenir (M-21).                                               |
+| K-90   | 2026-11-08 | `DOM-FIN-067` | Senaryolar saklanmaz; parametreler ekran adresinde (URL) tutulur, paylaşım adresle olur. Hesap sunucuda, salt okur `POST /finance/forecasts/scenarios` gövdesiyle (iç içe en çok dört senaryo sorgu dizesine sığmaz); migration yok.                                                 | Senaryo tablosu (ad, sahip, parametreler; migration) ve kayıtlı senaryo listesi eklenir.                   |
+| K-91   | 2026-11-08 | `DOM-FIN-067` | Öğrenci değişimi segmentin toplamına (kesin + huni beklentisi) uygulanır; azalma önce huniden, sonra sözleşmeli öğrenciden düşer. Eklenen öğrenci sözleşmesiz birim netiyle, öğrencisiz segmentte sözleşme liste ortalamasıyla fiyatlanır.                                           | `scenarioSegment` (`lib/finance-scenarios.ts`) birim fiyat ve azalma sırası.                               |
+| K-92   | 2026-11-08 | `DOM-FIN-067` | Fiyat ve indirim değişimi varsayılan olarak mevcut sözleşmeleri değiştirmez; seçenekle bütün öğrenciye uygulanır.                                                                                                                                                                    | `applyToExistingContracts` varsayılanı.                                                                    |
+| K-93   | 2026-11-08 | `DOM-FIN-067` | İndirim ve burs tek oran üzerinde puanla değişir, sonuç %0–%100'e sıkışır; fiyat değişimi oranı değiştirmez. Sınırlar: en çok 4 senaryo, öğrenci −%100…+%200 ya da ±10.000, fiyat −%50…+%200, indirim ±100 puan.                                                                     | İndirim türü (kardeş, burs) bazında ayrı oran; sabitler `SCENARIO_*`.                                      |
+| K-94   | 2026-11-08 | `DOM-FIN-067` | Nakit etkisinde gelir farkı eğitim yılının (Eylül–Ağustos) bu aydan sonraki aylarına eşit yayılır ve vadesinde tahsil oranıyla beklenir; geçmiş yılda yazılmaz.                                                                                                                      | Fark tarifenin ödeme koşullarına (taksit ayları) göre yayılır.                                             |
 | K-105  | 2026-11-08 | `DOM-FIN-069` | Eşleştirmeyi yönetici yapar (muhasebe rolü açılınca `BANK_MATCH_ROLES`'e girer); ön büro görmez. Tahsilat yazdığı için `invoice.pay` yetkisi kilit altında yeniden denetlenir.                                                                                                       | Rol listesi `BANK_MATCH_ROLES` değişir.                                                                    |
 | K-106  | 2026-11-08 | `DOM-FIN-069` | Yalnız gelen (alacak) hareket saklanır; giden hareket, sıfır tutar ve tarihi ya da tutarı boş satır (devir, toplam) aktarılmaz, önizlemede sayılır.                                                                                                                                  | Giden hareket de saklanır (`bank_transactions` yön kolonu, migration).                                     |
 | K-107  | 2026-11-08 | `DOM-FIN-069` | Mükerrer izi hesap + işlem günü + tutar + katlanmış açıklama + referanstır; aynı dosyada aynı izli hareketler sıra numarasıyla ayrılır. Bakiye ize girmez.                                                                                                                           | `bankTransactionKeys` anahtarına bakiye ya da valör eklenir.                                               |

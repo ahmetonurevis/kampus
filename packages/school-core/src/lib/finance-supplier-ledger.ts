@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { assertPaymentDayOpen, assertReversalDayOpen } from './finance-day-closings.ts'
+import { assertPaymentDayOpen } from './finance-day-closings.ts'
 import { dayKey, money } from './format.ts'
 import type { PurchaseOrderStatus } from './finance-purchase-orders.ts'
 
@@ -634,7 +634,7 @@ export interface SupplierPaymentContext {
   } | null
   /** Kurumun arşivlenmemiş banka hesapları (`DOM-FIN-032`). */
   bankAccountIds: readonly string[]
-  /** Ödeme günü kapatılmış mı (`DOM-FIN-036`); yalnız nakitte bakılır (K-166). */
+  /** Ödeme günü kapatılmış mı (`DOM-FIN-036`); yalnız nakitte bakılır, nakit gün sonuna girer (K-166). */
   dayClosed: boolean
   today: string
 }
@@ -685,17 +685,22 @@ export function planSupplierPayment(
 }
 
 /**
- * Ödeme iptali gerekçeyle; silme yok. Nakit ödemenin iptali bugünün gün sonuna dokunur: bugün
- * kapalıysa reddedilir (`DOM-FIN-036`, K-166).
+ * Ödeme iptali gerekçeyle; silme yok. Nakit ödeme ödeme gününün gün sonundadır ve iptal edilince
+ * oradan çıkar (`DOM-FIN-036`, K-166). Ödeme günü kapatılmışsa iptal o kapanışı değiştireceği için
+ * reddedilir; yönetici önce o günü yeniden açar (K-190). İptalin yapıldığı gün (bugün) bakılmaz.
  */
 export function planSupplierPaymentCancel(
   payment: { cancelled: boolean; method: SupplierPaymentMethod },
   input: unknown,
-  todayClosed: boolean,
+  paidDayClosed: boolean,
 ): { reason: string } {
   const data = cancelSupplierPaymentSchema.parse(input)
   if (payment.cancelled) throw ruleError('supplier_payment_cancelled', 'Ödeme zaten iptal edilmiş.')
-  if (payment.method === 'cash') assertReversalDayOpen(todayClosed)
+  if (payment.method === 'cash' && paidDayClosed)
+    throw ruleError(
+      'finance_day_closed',
+      'Ödeme gününün kasası kapatılmış; nakit ödemeyi iptal etmek için yöneticinin o günü yeniden açması gerekir.',
+    )
   return data
 }
 

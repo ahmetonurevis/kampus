@@ -35,12 +35,15 @@ function closingOf(row: Row): StoredDayClosing {
   const methods = row.methodTotals.map((item): FinanceDayMethodTotal => {
     const method = METHOD_LABELS[item.method]
     if (method === undefined) throw new Error(`unknown payment method: ${item.method}`)
-    // 0083 öncesi kapanışta iade alanı yoktur; o gün iade gün sonuna girmiyordu (M-13).
+    // 0083 öncesi kapanışta iade, 0086 öncesinde tedarikçi ödemesi alanı yoktur; o gün bunlar gün
+    // sonuna girmiyordu (M-13, K-166).
     return {
       ...item,
       method,
       refundPaidCount: item.refundPaidCount ?? 0,
       refundPaidCents: item.refundPaidCents ?? 0,
+      supplierPaidCount: item.supplierPaidCount ?? 0,
+      supplierPaidCents: item.supplierPaidCents ?? 0,
     }
   })
   return {
@@ -54,6 +57,8 @@ function closingOf(row: Row): StoredDayClosing {
       reversedCents: row.reversedCents,
       refundPaidCount: row.refundPaidCount,
       refundPaidCents: row.refundPaidCents,
+      supplierPaidCount: row.supplierPaidCount,
+      supplierPaidCents: row.supplierPaidCents,
       netCents: row.netCents,
     },
     // Kısıt dört kolonu birlikte dolu ya da birlikte boş tutar.
@@ -164,6 +169,8 @@ export async function insertDayClosing(
       reversedCents: summary.reversedCents,
       refundPaidCount: summary.refundPaidCount,
       refundPaidCents: summary.refundPaidCents,
+      supplierPaidCount: summary.supplierPaidCount,
+      supplierPaidCents: summary.supplierPaidCents,
       netCents: summary.netCents,
       openingCashCents: cash?.openingCents ?? null,
       countedCashCents: cash?.countedCents ?? null,

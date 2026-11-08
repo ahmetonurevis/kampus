@@ -2373,7 +2373,7 @@ export interface paths {
         };
         /**
          * Gün sonu raporu
-         * @description Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.
+         * @description Günün tahsilatları yöntem bazında, iptaller, ödenen ayrılış iadeleri, kasadan ödenen tedarikçi ödemeleri, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe, iade ödemesi ödeme gününe yazılır; iade banka havalesi satırında ayrı sayılır ve netten düşer (M-13). Nakit tedarikçi ödemesi ödeme gününe nakit satırında ayrı sayılır, netten ve kasa beklenenden düşer; iptal edilen ödeme o günün raporundan çıkar (K-166). Geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.
          */
         get: operations["getFinanceDayReport"];
         put?: never;
@@ -2395,7 +2395,7 @@ export interface paths {
         put?: never;
         /**
          * Günü kapat
-         * @description Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat ve iade ödemesi girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.
+         * @description Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat, iade ödemesi ve nakit tedarikçi ödemesi girilemez, o günün nakit tedarikçi ödemesi iptal edilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi (tahsilat, iptal, tedarikçi ödemesi) olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.
          */
         post: operations["closeFinanceDay"];
         delete?: never;
@@ -5167,7 +5167,7 @@ export interface paths {
         put?: never;
         /**
          * Taksite tedarikçi ödemesi kaydet
-         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
          */
         post: operations["createSupplierPayment"];
         delete?: never;
@@ -5187,7 +5187,7 @@ export interface paths {
         put?: never;
         /**
          * Tedarikçi ödemesini iptal et
-         * @description Gerekçeyle iptal eder; silme yoktur, taksit yeniden açılır, iptal ekstrede iptal gününe yazılır. Nakit ödemede bugün kapatılmışsa 422 `finance_day_closed` (K-166). Talimat dosyası alınmış ödemenin bankadaki talimatı ayrıca durdurulur. Zaten iptal 422 `supplier_payment_cancelled`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Gerekçeyle iptal eder; silme yoktur, taksit yeniden açılır, iptal ekstrede iptal gününe yazılır. Nakit ödeme iptal edilince ödeme gününün gün sonundan çıkar; ödeme günü kapatılmışsa 422 `finance_day_closed`, yönetici önce o günü yeniden açar (K-166, K-190). Talimat dosyası alınmış ödemenin bankadaki talimatı ayrıca durdurulur. Zaten iptal 422 `supplier_payment_cancelled`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
          */
         post: operations["cancelSupplierPayment"];
         delete?: never;
@@ -31358,7 +31358,11 @@ export interface operations {
                                     refundPaidCount: number;
                                     /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                     refundPaidCents: number;
-                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi adedi; yalnız `Nakit` satırında (K-166) */
+                                    supplierPaidCount: number;
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                    supplierPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                     netCents: number;
                                 }[];
                                 collectedCount: number;
@@ -31369,7 +31373,11 @@ export interface operations {
                                 refundPaidCount: number;
                                 /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                 refundPaidCents: number;
-                                /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                /** @description O gün kasadan ödenen tedarikçi ödemesi adedi */
+                                supplierPaidCount: number;
+                                /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                supplierPaidCents: number;
+                                /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                 netCents: number;
                             };
                             /** @description Kapatırken geri gönderilir; rapor değiştiyse 409 */
@@ -31421,6 +31429,18 @@ export interface operations {
                                 /** @description İadenin ödendiği kurum hesabı; hesap seçimi zorunlu olmadan önce ödenmişse boş */
                                 bankAccountLabel: string | null;
                             }[];
+                            /** @description O gün kasadan ödenen etkin nakit tedarikçi ödemeleri (K-166); IBAN ve vergi numarası yok. Tedarikçi carisini görmeyen rolde (ön büro) boş; adet ve tutar özettedir (K-191). Kapalı günde de güncel liste */
+                            supplierPayments: {
+                                paymentId: string;
+                                /** @description Tedarikçi unvanı */
+                                supplierName: string;
+                                /** @description Ödemenin yazıldığı fatura numarası */
+                                invoiceNumber: string;
+                                /** @description Kasadan ödenen tutar (kuruş) */
+                                amountCents: number;
+                                /** @description Ödeme günü (`YYYY-MM-DD`) */
+                                paidDate: string;
+                            }[] | null;
                             /** @description Geçerli kapanış; gün açıksa boş */
                             closing: {
                                 id: string;
@@ -31443,7 +31463,11 @@ export interface operations {
                                         refundPaidCount: number;
                                         /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                         refundPaidCents: number;
-                                        /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                        /** @description O gün kasadan ödenen tedarikçi ödemesi adedi; yalnız `Nakit` satırında (K-166) */
+                                        supplierPaidCount: number;
+                                        /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                        supplierPaidCents: number;
+                                        /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                         netCents: number;
                                     }[];
                                     collectedCount: number;
@@ -31454,7 +31478,11 @@ export interface operations {
                                     refundPaidCount: number;
                                     /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                     refundPaidCents: number;
-                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi adedi */
+                                    supplierPaidCount: number;
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                    supplierPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                     netCents: number;
                                 };
                                 /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -31463,7 +31491,7 @@ export interface operations {
                                     openingCents: number;
                                     /** @description Sayılan nakit (kuruş) */
                                     countedCents: number;
-                                    /** @description Açılış artı günün net nakdi (kuruş) */
+                                    /** @description Açılış artı günün net nakdi (kuruş); nakit tedarikçi ödemesi düşülmüştür */
                                     expectedCents: number;
                                     /** @description Sayılan eksi beklenen (kuruş) */
                                     differenceCents: number;
@@ -31505,7 +31533,11 @@ export interface operations {
                                         refundPaidCount: number;
                                         /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                         refundPaidCents: number;
-                                        /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                        /** @description O gün kasadan ödenen tedarikçi ödemesi adedi; yalnız `Nakit` satırında (K-166) */
+                                        supplierPaidCount: number;
+                                        /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                        supplierPaidCents: number;
+                                        /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                         netCents: number;
                                     }[];
                                     collectedCount: number;
@@ -31516,7 +31548,11 @@ export interface operations {
                                     refundPaidCount: number;
                                     /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                     refundPaidCents: number;
-                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi adedi */
+                                    supplierPaidCount: number;
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                    supplierPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                     netCents: number;
                                 };
                                 /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -31525,7 +31561,7 @@ export interface operations {
                                     openingCents: number;
                                     /** @description Sayılan nakit (kuruş) */
                                     countedCents: number;
-                                    /** @description Açılış artı günün net nakdi (kuruş) */
+                                    /** @description Açılış artı günün net nakdi (kuruş); nakit tedarikçi ödemesi düşülmüştür */
                                     expectedCents: number;
                                     /** @description Sayılan eksi beklenen (kuruş) */
                                     differenceCents: number;
@@ -31675,7 +31711,11 @@ export interface operations {
                                     refundPaidCount: number;
                                     /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                     refundPaidCents: number;
-                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi adedi; yalnız `Nakit` satırında (K-166) */
+                                    supplierPaidCount: number;
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                    supplierPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                     netCents: number;
                                 }[];
                                 collectedCount: number;
@@ -31686,7 +31726,11 @@ export interface operations {
                                 refundPaidCount: number;
                                 /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                 refundPaidCents: number;
-                                /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                /** @description O gün kasadan ödenen tedarikçi ödemesi adedi */
+                                supplierPaidCount: number;
+                                /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                supplierPaidCents: number;
+                                /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                 netCents: number;
                             };
                             /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -31695,7 +31739,7 @@ export interface operations {
                                 openingCents: number;
                                 /** @description Sayılan nakit (kuruş) */
                                 countedCents: number;
-                                /** @description Açılış artı günün net nakdi (kuruş) */
+                                /** @description Açılış artı günün net nakdi (kuruş); nakit tedarikçi ödemesi düşülmüştür */
                                 expectedCents: number;
                                 /** @description Sayılan eksi beklenen (kuruş) */
                                 differenceCents: number;
@@ -31843,7 +31887,11 @@ export interface operations {
                                     refundPaidCount: number;
                                     /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                     refundPaidCents: number;
-                                    /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi adedi; yalnız `Nakit` satırında (K-166) */
+                                    supplierPaidCount: number;
+                                    /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                    supplierPaidCents: number;
+                                    /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                     netCents: number;
                                 }[];
                                 collectedCount: number;
@@ -31854,7 +31902,11 @@ export interface operations {
                                 refundPaidCount: number;
                                 /** @description O gün ödenen ayrılış iadesi toplamı (kuruş) */
                                 refundPaidCents: number;
-                                /** @description Tahsilat eksi iptal eksi iade ödemesi (kuruş) */
+                                /** @description O gün kasadan ödenen tedarikçi ödemesi adedi */
+                                supplierPaidCount: number;
+                                /** @description O gün kasadan ödenen tedarikçi ödemesi toplamı (kuruş) */
+                                supplierPaidCents: number;
+                                /** @description Tahsilat eksi iptal eksi iade ödemesi eksi tedarikçi ödemesi (kuruş) */
                                 netCents: number;
                             };
                             /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
@@ -31863,7 +31915,7 @@ export interface operations {
                                 openingCents: number;
                                 /** @description Sayılan nakit (kuruş) */
                                 countedCents: number;
-                                /** @description Açılış artı günün net nakdi (kuruş) */
+                                /** @description Açılış artı günün net nakdi (kuruş); nakit tedarikçi ödemesi düşülmüştür */
                                 expectedCents: number;
                                 /** @description Sayılan eksi beklenen (kuruş) */
                                 differenceCents: number;

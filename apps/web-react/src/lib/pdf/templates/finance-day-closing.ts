@@ -1,6 +1,7 @@
 // Gün sonu raporu (IST-113, DOM-FIN-036): rakamlar API raporundan gelir, burada yeniden hesaplanmaz.
 // Kapalı günde kapanış anının özeti yazılır; belge kurum içi özettir. O gün ödenen ayrılış iadesi
-// banka satırında ayrı sütundur ve netten düşer (M-13).
+// banka satırında (M-13), kasadan ödenen tedarikçi ödemesi nakit satırında (K-166) ayrı sütundur ve
+// netten düşer.
 import type { FinanceDayReport } from '@kampus/react-shared/use-finance-day-closings.ts'
 import { receiptNumberLabel } from '@kampus/school-core/lib/finance-receipt.ts'
 import { dateLabel, money, timeLabel } from '@kampus/school-core/lib/format.ts'
@@ -12,19 +13,22 @@ import type { TemplateOptions } from './shared.ts'
 export const DAY_CLOSING_TITLE = 'Gün sonu raporu'
 
 const METHOD_COLUMNS = [
-  { header: 'Yöntem', width: 34 },
-  { header: 'Adet', width: 20 },
-  { header: 'Tahsilat', width: 30 },
-  { header: 'İptal', width: 30 },
-  { header: 'İade', width: 30 },
-  { header: 'Net', width: 30 },
+  { header: 'Yöntem', width: 30 },
+  { header: 'Adet', width: 22 },
+  { header: 'Tahsilat', width: 24 },
+  { header: 'İptal', width: 24 },
+  { header: 'İade', width: 24 },
+  { header: 'Tedarikçi', width: 24 },
+  { header: 'Net', width: 26 },
 ] as const
-/** Tahsilat / iptal / iade adedi; sütun dar olduğu için boşluksuz yazılır. */
+/** Tahsilat / iptal / iade / tedarikçi ödemesi adedi; sütun dar olduğu için boşluksuz yazılır. */
 const countsOf = (item: {
   collectedCount: number
   reversedCount: number
   refundPaidCount: number
-}) => [item.collectedCount, item.reversedCount, item.refundPaidCount].join('/')
+  supplierPaidCount: number
+}) =>
+  [item.collectedCount, item.reversedCount, item.refundPaidCount, item.supplierPaidCount].join('/')
 // Kayıtlı kişi sütunu kurum türüne göre adlandırılır: okulda öğrenci, dil okulu ve kursta kursiyer.
 const lineColumns = (learner: LearnerTerm) =>
   [
@@ -40,6 +44,11 @@ const refundColumns = (learner: LearnerTerm) =>
     { header: 'Kurum banka hesabı', width: 74 },
     { header: 'Tutar', width: 30 },
   ] as const
+const SUPPLIER_COLUMNS = [
+  { header: 'Tedarikçi', width: 80 },
+  { header: 'Fatura no', width: 64 },
+  { header: 'Tutar', width: 30 },
+] as const
 const reversalColumns = (learner: LearnerTerm) =>
   [
     { header: 'Dekont', width: 24 },
@@ -80,7 +89,7 @@ function table(doc: DocumentLayout, columns: Columns, rows: Rows, keepLastRow: b
 }
 
 /** İmza alanından önceki son bölüm. */
-type Tail = 'reversals' | 'refunds' | 'closing' | 'history'
+type Tail = 'reversals' | 'refunds' | 'suppliers' | 'closing' | 'history'
 
 /**
  * Raporu yazar. `keepTail` ise imzadan önceki son içerik birimi (son tablo satırı, son paragraf ya
@@ -94,14 +103,20 @@ function writeDayClosing(
 ): { document: PdfDocument; signatureAlone: boolean } {
   const { summary, closing } = report
   const learner = learnerTerm(options.institutionType)
+  // Tedarikçi satırları yalnız carisini gören rolde gelir (K-191); ötekinde yalnız adet yazılır.
+  const supplierLines = report.supplierPayments
+  const hasSuppliers =
+    supplierLines === null ? summary.supplierPaidCount > 0 : supplierLines.length > 0
   const tail: Tail =
     report.history.length > 0
       ? 'history'
       : closing
         ? 'closing'
-        : report.refunds.length > 0
-          ? 'refunds'
-          : 'reversals'
+        : hasSuppliers
+          ? 'suppliers'
+          : report.refunds.length > 0
+            ? 'refunds'
+            : 'reversals'
   const keep = (block: Tail) => keepTail && tail === block
   const doc = new DocumentLayout(measurer, {
     label: 'GÜN SONU RAPORU',
@@ -116,6 +131,7 @@ function writeDayClosing(
     ['TAHSİLAT', money(summary.collectedCents)],
     ['İPTAL', money(summary.reversedCents)],
     ['İADE ÖDEMESİ', money(summary.refundPaidCents)],
+    ['TEDARİKÇİ ÖDEMESİ', money(summary.supplierPaidCents)],
     ['NET', money(summary.netCents)],
   ])
   if (!closing) doc.paragraph('Bu gün henüz kapatılmadı; rakamlar kesinleşmemiştir.')
@@ -130,6 +146,7 @@ function writeDayClosing(
         money(item.collectedCents),
         money(item.reversedCents),
         money(item.refundPaidCents),
+        money(item.supplierPaidCents),
         money(item.netCents),
       ]),
       [
@@ -138,6 +155,7 @@ function writeDayClosing(
         money(summary.collectedCents),
         money(summary.reversedCents),
         money(summary.refundPaidCents),
+        money(summary.supplierPaidCents),
         money(summary.netCents),
       ],
     ],
@@ -190,6 +208,22 @@ function writeDayClosing(
       ]),
       keep('refunds'),
     )
+  }
+
+  // Kasadan ödenen tedarikçi ödemeleri yalnız o gün varsa yazılır; tutar özette her gün vardır.
+  if (hasSuppliers) {
+    const rows = (supplierLines ?? []).map((line) => [
+      line.supplierName,
+      line.invoiceNumber,
+      money(line.amountCents),
+    ])
+    if (keep('suppliers') && rows.length < 2) doc.newPage()
+    doc.section('Tedarikçi ödemeleri (nakit)')
+    if (supplierLines === null)
+      doc.paragraph(
+        `${String(summary.supplierPaidCount)} nakit tedarikçi ödemesi var; ayrıntısı tedarikçi carisini yöneten yöneticide görünür.`,
+      )
+    else table(doc, SUPPLIER_COLUMNS, rows, keep('suppliers'))
   }
 
   if (closing) {

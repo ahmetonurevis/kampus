@@ -47,6 +47,8 @@ export const SUPPLIER_LEDGER_WARNING_CODES = [
 ] as const
 
 const LEDGER_KEY = [...PROCUREMENT_KEY, 'supplier-ledger'] as const
+/** Gün sonu raporu tahsilat önekinin altındadır; nakit ödeme ve iptali o günün raporuna girer (K-166). */
+const DAY_CLOSING_KEY = ['payments', 'day-closing'] as const
 const MESSAGES = { version_conflict: PROCUREMENT_CHANGED_MESSAGE }
 const keyOnly = (headers: CommandHeaders) => ({ 'idempotency-key': headers['idempotency-key'] })
 const versioned = (headers: CommandHeaders) => ({
@@ -156,7 +158,7 @@ export function useCreateSupplierPayment() {
         params: { header: keyOnly(headers) },
         body,
       }),
-    invalidates: [LEDGER_KEY, PURCHASE_REPORT_KEY],
+    invalidates: [LEDGER_KEY, DAY_CLOSING_KEY, PURCHASE_REPORT_KEY],
     exclusive: true,
   })
 }
@@ -172,7 +174,7 @@ export function useCancelSupplierPayment() {
         params: { path: { paymentId: input.paymentId }, header: versioned(headers) },
         body: { reason: input.reason },
       }),
-    invalidates: [LEDGER_KEY, PURCHASE_REPORT_KEY],
+    invalidates: [LEDGER_KEY, DAY_CLOSING_KEY, PURCHASE_REPORT_KEY],
     version: (input) => input.version,
     messages: MESSAGES,
     exclusive: true,

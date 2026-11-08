@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
 import { createApiClient, switchInstitutionApi, type ApiResult } from './support/api.ts'
+import { istanbulDay } from './support/commands.ts'
 import { expect, test } from './support/fixtures.ts'
 import type { Tenant } from './support/tenant.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
@@ -42,6 +43,49 @@ async function seedSupplier(school: Tenant) {
           iban: 'TR320010009999901234567890',
           accountHolder: 'Akademi Özel Okulları',
         },
+        { 'idempotency-key': crypto.randomUUID() },
+      ),
+    )
+  } finally {
+    await api.dispose()
+  }
+}
+
+/** Tedarikçi, bugünkü fatura ve 150 TL'lik bugünkü nakit ödeme API'den kurulur (K-166). */
+async function seedCashPayment(school: Tenant) {
+  const api = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+  try {
+    expect((await switchInstitutionApi(api, school.institutionId)).ok).toBe(true)
+    const supplier = ok(
+      await api.post('/api/v1/finance/suppliers', {
+        name: 'Beta Kırtasiye Ltd.',
+        type: 'company',
+        taxNumber: '1111111114',
+        taxOffice: 'Kadıköy',
+        categories: ['it'],
+      }),
+    )
+    const today = istanbulDay()
+    const invoice = ok(
+      await api.post(
+        '/api/v1/finance/supplier-invoices',
+        {
+          supplierId: supplier.id,
+          invoiceNumber: 'KRT-7',
+          invoiceDate: today,
+          dueDate: today,
+          amountCents: 15_000,
+          amountIncludesVat: true,
+          vatCents: 2_500,
+        },
+        { 'idempotency-key': crypto.randomUUID() },
+      ),
+    )
+    const [installment] = invoice.installments as { id: string }[]
+    ok(
+      await api.post(
+        '/api/v1/finance/supplier-payments',
+        { installmentId: installment?.id, paidDate: today, amountCents: 15_000, method: 'cash' },
         { 'idempotency-key': crypto.randomUUID() },
       ),
     )
@@ -140,5 +184,42 @@ test.describe('DOM-FIN-076: tedarikçi carisi ekranı', () => {
     )
     await expect(tabs.getByRole('button', { name: 'Tedarikçi carisi' })).toHaveCount(0)
     await expect(desk.getByRole('region', { name: 'Tedarikçi carisi' })).toHaveCount(0)
+  })
+
+  test('K-166, K-191, DOM-FIN-036: nakit tedarikçi ödemesi gün sonu kasasından düşer; ön büro yalnız adedi görür', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'] })
+    await seedCashPayment(school)
+
+    const admin = await loginAs(school.user('yonetici'))
+    await admin.goto(`${ADMIN}?gorunum=gunsonu`)
+    const suppliers = admin.getByRole('table', { name: 'Günün nakit tedarikçi ödemeleri' })
+    await expect(suppliers).toContainText('Beta Kırtasiye Ltd.')
+    await expect(suppliers).toContainText('KRT-7')
+    await expect(suppliers).toContainText('150,00')
+    const cashRow = admin
+      .getByRole('table', { name: 'Ödeme yöntemine göre gün özeti' })
+      .getByRole('row', { name: /Nakit/ })
+    await expect(cashRow).toContainText('0 / 0 / 0 / 1')
+    await expect(cashRow).toContainText('-150,00')
+
+    const desk = await loginAs(school.user('onburo'))
+    await desk.goto(`${DESK}?gorunum=gunsonu`)
+    await expect(desk.getByText(/1 nakit tedarikçi ödemesi var/)).toBeVisible()
+    await expect(desk.getByText('Beta Kırtasiye Ltd.')).toHaveCount(0)
+    // Kasadan ödeme olan gün sayımla kapanır; beklenen nakit ödeme düşülmüş tutardır.
+    await desk
+      .getByRole('group', { name: 'Gün kapanışı' })
+      .getByRole('button', { name: 'Günü kapat' })
+      .click()
+    const dialog = desk.getByRole('dialog', { name: 'Günü kapat' })
+    await dialog.getByLabel('Açılış kasası (₺)').fill('500,00')
+    await dialog.getByLabel('Sayılan nakit (₺)').fill('350,00')
+    await expect(dialog.getByText('Fark yok')).toBeVisible()
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(desk.getByText('Gün kapatıldı.')).toBeVisible()
+    await expect(desk.getByRole('group', { name: 'Gün kapanışı' })).toContainText('350,00')
   })
 })

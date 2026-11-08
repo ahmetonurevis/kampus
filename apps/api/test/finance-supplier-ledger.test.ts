@@ -8,6 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { financeDayClosings } from '../src/db/schema/finance-day-closings.ts'
 import {
   supplierInvoiceInstallments,
   supplierInvoices,
@@ -36,6 +37,7 @@ const PAYMENTS = `${FINANCE}/supplier-payments`
 const LEDGER = `${FINANCE}/supplier-ledger`
 const INSTRUCTION = `${PAYMENTS}/instruction-file`
 const TODAY = '2026-10-06'
+const YESTERDAY = '2026-10-05'
 const SUPPLIER_IBAN = 'TR330006100519786457841326'
 const ACCOUNT_IBAN = 'TR320010009999901234567890'
 
@@ -536,44 +538,180 @@ describe('DOM-FIN-076: tedarikçi carisi uçları', () => {
     ok(await createInvoice(t.admin, invoiceBody(t)), 201)
   })
 
-  test('DOM-FIN-076, DOM-FIN-036: kapatılmış güne nakit ödeme ve kapalı bugünde nakit iptali 422 (K-166)', async () => {
+  const dayReport = async (cookie: string, day = TODAY) =>
+    ok(await get(`${FINANCE}/day-closings/${day}`, cookie))
+  const cashRow = (report: Json) =>
+    ((report.summary as Json).methods as Json[]).find((item) => item.method === 'Nakit') as Json
+  const closeDay = (cookie: string, body: Json, day = TODAY) =>
+    call('POST', `${FINANCE}/day-closings/${day}/close`, cookie, body, key())
+  const cancelPayment = (cookie: string, payment: Json) =>
+    call(
+      'POST',
+      `${PAYMENTS}/${String(payment.id)}/cancel`,
+      cookie,
+      { reason: 'Hatalı tutar' },
+      ifMatch(payment.version),
+    )
+  const closingRow = async (institutionId: string, day: string) => {
+    const [row] = await db
+      .select()
+      .from(financeDayClosings)
+      .where(
+        and(
+          eq(financeDayClosings.institutionId, institutionId),
+          eq(financeDayClosings.closingDate, day),
+        ),
+      )
+    return row
+  }
+
+  test('K-166, DOM-FIN-036, DOM-FIN-076: nakit ödeme gün sonu kasasına girer; kapanıştan sonra o güne ödeme ve iptal 422', async () => {
     const t = await institution()
     const invoice = ok(await createInvoice(t.admin, invoiceBody(t)), 201)
     const installment = installmentsOf(invoice)[0] as Json
-    const cash = ok(
-      await pay(t.admin, payBody(t, installment, { method: 'cash', bankAccountId: null })),
+    const cashBody = payBody(t, installment, { method: 'cash', bankAccountId: null })
+    const cash = ok(await pay(t.admin, cashBody), 201)
+    // Banka ödemesi kasaya dokunmaz, gün sonuna girmez.
+    ok(await pay(t.admin, payBody(t, installment, { amountCents: 25_000 })), 201)
+    const report = await dayReport(t.admin)
+    assert.deepEqual(
+      [
+        cashRow(report).supplierPaidCount,
+        cashRow(report).supplierPaidCents,
+        cashRow(report).netCents,
+      ],
+      [1, 10_000, -10_000],
+    )
+    const summary = report.summary as Json
+    assert.deepEqual(
+      [summary.supplierPaidCount, summary.supplierPaidCents, summary.netCents],
+      [1, 10_000, -10_000],
+    )
+    assert.equal(report.reportStamp, '0:0:0:1:-10000')
+    assert.equal(report.cashNetCents, -10_000)
+    assert.equal(report.cashCountRequired, true)
+    assert.deepEqual(report.supplierPayments, [
+      {
+        paymentId: cash.id,
+        supplierName: 'Alfa Bilişim A.Ş.',
+        invoiceNumber: 'ABC20260001',
+        amountCents: 10_000,
+        paidDate: TODAY,
+      },
+    ])
+    assert.equal(JSON.stringify(report).includes(SUPPLIER_IBAN), false)
+    // Nakit hareketi olan gün sayımsız kapanmaz; beklenen nakit tedarikçi ödemesi düşülmüş tutardır.
+    assertError(
+      await closeDay(t.admin, { reportStamp: report.reportStamp }),
+      422,
+      'cash_count_required',
+    )
+    const closed = ok(
+      await closeDay(t.admin, {
+        reportStamp: report.reportStamp,
+        openingCashCents: 50_000,
+        countedCashCents: 40_000,
+      }),
       201,
     )
-    const report = ok(await get(`${FINANCE}/day-closings/${TODAY}`, t.admin))
-    ok(
-      await call(
-        'POST',
-        `${FINANCE}/day-closings/${TODAY}/close`,
-        t.admin,
-        { reportStamp: report.reportStamp },
-        key(),
-      ),
-      201,
+    assert.deepEqual(closed.cash, {
+      openingCents: 50_000,
+      countedCents: 40_000,
+      expectedCents: 40_000,
+      differenceCents: 0,
+    })
+    const row = await closingRow(t.id, TODAY)
+    assert.deepEqual(
+      [row?.supplierPaidCount, row?.supplierPaidCents, row?.netCents, row?.expectedCashCents],
+      [1, 10_000, -10_000, 40_000],
     )
-    assertError(
-      await pay(t.admin, payBody(t, installment, { method: 'cash', bankAccountId: null })),
-      422,
-      'finance_day_closed',
+    assert.deepEqual(
+      row?.methodTotals.find((item) => item.method === 'cash'),
+      {
+        method: 'cash',
+        collectedCount: 0,
+        collectedCents: 0,
+        reversedCount: 0,
+        reversedCents: 0,
+        refundPaidCount: 0,
+        refundPaidCents: 0,
+        supplierPaidCount: 1,
+        supplierPaidCents: 10_000,
+        netCents: -10_000,
+      },
     )
-    assertError(
-      await call(
-        'POST',
-        `${PAYMENTS}/${String(cash.id)}/cancel`,
-        t.admin,
-        { reason: 'Hatalı tutar' },
-        ifMatch(cash.version),
-      ),
-      422,
-      'finance_day_closed',
-    )
-    // Banka ödemesi kasaya dokunmaz.
+    assertError(await pay(t.admin, cashBody), 422, 'finance_day_closed')
+    assertError(await cancelPayment(t.admin, cash), 422, 'finance_day_closed')
+    // Banka ödemesi kapalı günde de yazılır; kapanış özeti değişmez.
     ok(await pay(t.admin, payBody(t, installment)), 201)
-    assert.equal((await rows(t.id)).payments.length, 2)
+    assert.equal((await rows(t.id)).payments.length, 3)
+    assert.equal((await dayReport(t.admin)).reportStamp, '0:0:0:1:-10000')
+  })
+
+  test('K-166, K-190, DOM-FIN-036: açık günün nakit ödemesi bugün kapalıyken de iptal edilir, o günün gün sonundan çıkar', async () => {
+    const t = await institution()
+    const invoice = ok(await createInvoice(t.admin, invoiceBody(t)), 201)
+    const installment = installmentsOf(invoice)[0] as Json
+    const yesterday = ok(
+      await pay(
+        t.admin,
+        payBody(t, installment, { method: 'cash', bankAccountId: null, paidDate: YESTERDAY }),
+      ),
+      201,
+    )
+    const before = await dayReport(t.admin, YESTERDAY)
+    assert.equal(cashRow(before).supplierPaidCents, 10_000)
+    // Bugün kapatılır; dünün ödemesi bugünün kasasına girmez.
+    const todayReport = await dayReport(t.admin)
+    assert.equal((todayReport.summary as Json).supplierPaidCount, 0)
+    ok(
+      await closeDay(t.admin, {
+        reportStamp: todayReport.reportStamp,
+        openingCashCents: 0,
+        countedCashCents: 0,
+      }),
+      201,
+    )
+    const cancelled = ok(await cancelPayment(t.admin, yesterday))
+    assert.notEqual(cancelled.cancelledAt, null)
+    const after = await dayReport(t.admin, YESTERDAY)
+    assert.deepEqual(
+      [cashRow(after).supplierPaidCount, cashRow(after).supplierPaidCents, after.cashNetCents],
+      [0, 0, 0],
+    )
+    assert.deepEqual(after.supplierPayments, [])
+    assert.notEqual(after.reportStamp, before.reportStamp)
+    // Ekrandaki eski raporla kapanış reddedilir: iptal görülmeden mühürlenmez.
+    assertError(
+      await closeDay(t.admin, { reportStamp: before.reportStamp, countedCashCents: 0 }, YESTERDAY),
+      409,
+      'finance_day_report_changed',
+    )
+  })
+
+  test('K-191, K-160, DOM-FIN-036: ön büro gün sonunda tedarikçi ödemesinin tutarını görür, satırlarını görmez', async () => {
+    const t = await institution()
+    const invoice = ok(await createInvoice(t.admin, invoiceBody(t)), 201)
+    const installment = installmentsOf(invoice)[0] as Json
+    ok(await pay(t.admin, payBody(t, installment, { method: 'cash', bankAccountId: null })), 201)
+    const frontDesk = await member(t.id, 'onburo')
+    const report = await dayReport(frontDesk)
+    assert.equal(report.supplierPayments, null)
+    assert.deepEqual(
+      [cashRow(report).supplierPaidCount, cashRow(report).supplierPaidCents],
+      [1, 10_000],
+    )
+    assert.equal(JSON.stringify(report).includes('Alfa'), false)
+    // Ön büro günü kapatır; kapanış tedarikçi ödemesini taşır.
+    ok(
+      await closeDay(frontDesk, {
+        reportStamp: report.reportStamp,
+        openingCashCents: 10_000,
+        countedCashCents: 0,
+      }),
+      201,
+    )
+    assert.equal((await closingRow(t.id, TODAY))?.supplierPaidCents, 10_000)
   })
 
   test('DOM-FIN-076: cari özet ve ekstre: bakiye, vadesi geçmiş, iptaller iptal gününe; IBAN maskeli', async () => {

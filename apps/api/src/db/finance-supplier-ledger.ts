@@ -729,6 +729,62 @@ export async function cancelSupplierPaymentRow(
   return rows.length === 1
 }
 
+/** Gün sonuna giren nakit tedarikçi ödemesi (K-166); IBAN ve vergi numarası yoktur. */
+export interface StoredDaySupplierPayment {
+  paymentId: string
+  supplierName: string
+  invoiceNumber: string
+  amountCents: number
+  paidDate: string
+  method: SupplierPaymentMethod
+  cancelledAt: string | null
+}
+
+/**
+ * O gün kasadan ödenen etkin nakit tedarikçi ödemeleri (DOM-FIN-036, K-166), giriş sırasıyla.
+ * İptal edilen ödeme ödeme gününün raporundan çıkar; `supplier_payments_paid_date_idx`'e iner.
+ */
+export async function cashSupplierPaymentsOnDay(
+  db: Database,
+  institutionId: string,
+  day: string,
+): Promise<StoredDaySupplierPayment[]> {
+  const rows = await db
+    .select({
+      paymentId: supplierPayments.id,
+      supplierName: suppliers.name,
+      invoiceNumber: supplierInvoices.invoiceNumber,
+      amountCents: supplierPayments.amountCents,
+      paidDate: supplierPayments.paidDate,
+      method: supplierPayments.method,
+      cancelledAt: supplierPayments.cancelledAt,
+    })
+    .from(supplierPayments)
+    .innerJoin(
+      suppliers,
+      and(
+        eq(suppliers.institutionId, supplierPayments.institutionId),
+        eq(suppliers.id, supplierPayments.supplierId),
+      ),
+    )
+    .innerJoin(
+      supplierInvoices,
+      and(
+        eq(supplierInvoices.institutionId, supplierPayments.institutionId),
+        eq(supplierInvoices.id, supplierPayments.invoiceId),
+      ),
+    )
+    .where(
+      and(
+        effectivePayment(institutionId),
+        eq(supplierPayments.paidDate, day),
+        eq(supplierPayments.method, 'cash'),
+      ),
+    )
+    .orderBy(asc(supplierPayments.createdAt), asc(supplierPayments.id))
+  return rows.map((row) => ({ ...row, cancelledAt: at(row.cancelledAt) }))
+}
+
 export interface StoredInstructionPayment {
   id: string
   method: SupplierPaymentMethod

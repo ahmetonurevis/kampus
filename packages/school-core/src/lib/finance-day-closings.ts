@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
+import type { SupplierPaymentMethod } from './finance-supplier-ledger.ts'
 import { parseAmountInput, PAYMENT_METHODS, type PaymentMethod } from './payments.ts'
 
 /**
@@ -10,7 +11,9 @@ import { parseAmountInput, PAYMENT_METHODS, type PaymentMethod } from './payment
  * günün tahsilatı bugün iptal edilirse kapatılmış gün değişmez, ters kayıt bugünün raporuna düşer.
  * Kapanış satırı raporun o anki özetini taşır; yeniden açma satırı silmez, yeni kapanış yeni satırdır.
  * Ödenen ayrılış iadesi ödeme gününe banka yönteminde "iade ödemesi" olarak yazılır ve netten düşer
- * (M-13, DOM-FIN-041); nakit iade yoktur.
+ * (M-13, DOM-FIN-041); nakit iade yoktur. Nakit tedarikçi ödemesi (DOM-FIN-076) ödeme gününe nakit
+ * yönteminde "tedarikçi ödemesi" olarak yazılır, netten ve kasa beklenenden düşer; iptal edilen
+ * ödeme o günün raporundan çıkar (K-166).
  */
 
 /** Günü kapatan roller (DOM-FIN-036). Kapatma tahsilat kaydıyla aynı görevlilerdedir. */
@@ -21,6 +24,8 @@ export const FINANCE_DAY_REOPEN_ROLES = ['yonetici'] as const
 const CASH: PaymentMethod = 'Nakit'
 /** İade kurumun bildirilmiş banka hesabından havaleyle ödenir (M-13); gün sonunda bu yöntemdedir. */
 export const REFUND_PAYMENT_METHOD: PaymentMethod = 'Banka havalesi'
+/** Kasadan çıkan tedarikçi ödemesi yalnız nakittir; gün sonunda nakit yöntemindedir (K-166). */
+export const SUPPLIER_PAYMENT_DAY_METHOD: PaymentMethod = CASH
 /** Kasa sayımının üst sınırı; tek tahsilat sınırından geniştir, kapanışı engellemesin diye. */
 const MAX_CASH_CENTS = 1_000_000_000
 
@@ -93,6 +98,17 @@ export interface FinanceDayRefund {
   paidDate: string
 }
 
+/**
+ * Özetin okuduğu tedarikçi ödemesi alanları (DOM-FIN-076, K-166). Yalnız iptal edilmemiş nakit
+ * ödeme ödeme gününe (`paidDate`, Europe/Istanbul) girer; havale, EFT ve çek kasaya dokunmaz.
+ */
+export interface FinanceDaySupplierPayment {
+  amountCents: number
+  paidDate: string
+  method: SupplierPaymentMethod
+  cancelledAt: string | null
+}
+
 export interface FinanceDayMethodTotal {
   method: PaymentMethod
   collectedCount: number
@@ -102,7 +118,10 @@ export interface FinanceDayMethodTotal {
   /** O gün ödenen iade adedi; yalnız `REFUND_PAYMENT_METHOD` satırında sıfırdan büyük olur. */
   refundPaidCount: number
   refundPaidCents: number
-  /** Tahsilat − iptal − iade ödemesi. */
+  /** O gün ödenen nakit tedarikçi ödemesi adedi; yalnız `SUPPLIER_PAYMENT_DAY_METHOD` satırında. */
+  supplierPaidCount: number
+  supplierPaidCents: number
+  /** Tahsilat − iptal − iade ödemesi − tedarikçi ödemesi. */
   netCents: number
 }
 
@@ -115,6 +134,8 @@ export interface FinanceDaySummary {
   reversedCents: number
   refundPaidCount: number
   refundPaidCents: number
+  supplierPaidCount: number
+  supplierPaidCents: number
   netCents: number
 }
 
@@ -137,24 +158,38 @@ export const financeDayRefunds = <T extends FinanceDayRefund>(
   day: string,
 ): T[] => refunds.filter((refund) => refund.paidDate === day)
 
+/** O gün kasadan çıkan tedarikçi ödemeleri (K-166): nakit, iptal edilmemiş, ödeme günü bu gün. */
+export const financeDaySupplierPayments = <T extends FinanceDaySupplierPayment>(
+  payments: readonly T[],
+  day: string,
+): T[] =>
+  payments.filter(
+    (payment) =>
+      payment.paidDate === day && payment.method === 'cash' && payment.cancelledAt === null,
+  )
+
 const centsOf = (lines: readonly { amountCents: number }[]) =>
   lines.reduce((total, line) => total + line.amountCents, 0)
 
 /**
- * Yöntem bazında gün özeti; net = tahsilat − o gün yapılan iptaller − o gün ödenen iadeler
- * (DOM-FIN-036, M-13). İade banka yöntemine yazılır; nakit ve kasa beklenenine dokunmaz.
+ * Yöntem bazında gün özeti; net = tahsilat − o gün yapılan iptaller − o gün ödenen iadeler − o gün
+ * kasadan ödenen tedarikçi ödemeleri (DOM-FIN-036, M-13, K-166). İade banka yöntemine yazılır, kasa
+ * beklenenine dokunmaz; nakit tedarikçi ödemesi nakit yöntemine yazılır, kasa beklenenini düşürür.
  */
 export function financeDaySummary(
   payments: readonly FinanceDayPayment[],
   day: string,
   refunds: readonly FinanceDayRefund[] = [],
+  supplierPayments: readonly FinanceDaySupplierPayment[] = [],
 ): FinanceDaySummary {
   const { collected, reversed } = financeDayLines(payments, day)
   const refunded = financeDayRefunds(refunds, day)
+  const supplierPaid = financeDaySupplierPayments(supplierPayments, day)
   const methods = PAYMENT_METHODS.map((method): FinanceDayMethodTotal => {
     const collectedLines = collected.filter((line) => line.method === method)
     const reversedLines = reversed.filter((line) => line.method === method)
     const refundLines = method === REFUND_PAYMENT_METHOD ? refunded : []
+    const supplierLines = method === SUPPLIER_PAYMENT_DAY_METHOD ? supplierPaid : []
     return {
       method,
       collectedCount: collectedLines.length,
@@ -163,7 +198,13 @@ export function financeDaySummary(
       reversedCents: centsOf(reversedLines),
       refundPaidCount: refundLines.length,
       refundPaidCents: centsOf(refundLines),
-      netCents: centsOf(collectedLines) - centsOf(reversedLines) - centsOf(refundLines),
+      supplierPaidCount: supplierLines.length,
+      supplierPaidCents: centsOf(supplierLines),
+      netCents:
+        centsOf(collectedLines) -
+        centsOf(reversedLines) -
+        centsOf(refundLines) -
+        centsOf(supplierLines),
     }
   })
   return {
@@ -174,18 +215,25 @@ export function financeDaySummary(
     reversedCents: centsOf(reversed),
     refundPaidCount: refunded.length,
     refundPaidCents: centsOf(refunded),
-    netCents: centsOf(collected) - centsOf(reversed) - centsOf(refunded),
+    supplierPaidCount: supplierPaid.length,
+    supplierPaidCents: centsOf(supplierPaid),
+    netCents: centsOf(collected) - centsOf(reversed) - centsOf(refunded) - centsOf(supplierPaid),
   }
 }
 
 /**
  * Raporun damgası: görevli ekrandaki raporla kapatır. Ekran açıkken başka biri tahsilat girer,
- * iptal eder ya da iade öderse damga tutmaz ve kapanış reddedilir; görmediği rakam mühürlenmez.
+ * iptal eder, iade öder ya da kasadan tedarikçiye öderse (veya bu ödemeyi iptal ederse) damga
+ * tutmaz ve kapanış reddedilir; görmediği rakam mühürlenmez. Biçim `tahsilat:iptal:iade:tedarikçi:net`.
  */
 export const financeDayStamp = (summary: FinanceDaySummary): string =>
-  [summary.collectedCount, summary.reversedCount, summary.refundPaidCount, summary.netCents].join(
-    ':',
-  )
+  [
+    summary.collectedCount,
+    summary.reversedCount,
+    summary.refundPaidCount,
+    summary.supplierPaidCount,
+    summary.netCents,
+  ].join(':')
 
 const cashTotal = (summary: FinanceDaySummary) =>
   summary.methods.find((item) => item.method === CASH)
@@ -194,16 +242,24 @@ const cashTotal = (summary: FinanceDaySummary) =>
 export const financeDayCashNet = (summary: FinanceDaySummary): number =>
   cashTotal(summary)?.netCents ?? 0
 
-/** Nakit açıksa ya da o gün nakit hareketi olduysa sayım zorunludur (DOM-FIN-032, DOM-FIN-036). */
+/**
+ * Nakit açıksa ya da o gün nakit hareketi (tahsilat, iptal, nakit tedarikçi ödemesi) olduysa sayım
+ * zorunludur (DOM-FIN-032, DOM-FIN-036, K-166).
+ */
 export function isCashCountRequired(summary: FinanceDaySummary, cashEnabled: boolean): boolean {
   const cash = cashTotal(summary)
-  return cashEnabled || (cash?.collectedCount ?? 0) > 0 || (cash?.reversedCount ?? 0) > 0
+  return (
+    cashEnabled ||
+    (cash?.collectedCount ?? 0) > 0 ||
+    (cash?.reversedCount ?? 0) > 0 ||
+    (cash?.supplierPaidCount ?? 0) > 0
+  )
 }
 
 export interface FinanceDayCash {
   openingCents: number
   countedCents: number
-  /** Açılış + günün net nakdi; iptal edilen nakit kasadan çıkmış sayılır. */
+  /** Açılış + günün net nakdi; iptal edilen nakit ve nakit tedarikçi ödemesi kasadan çıkmış sayılır. */
   expectedCents: number
   /** Sayılan − beklenen: artı fazla, eksi eksik. */
   differenceCents: number

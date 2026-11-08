@@ -4616,6 +4616,202 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçileri listele
+         * @description Etkinler önce, unvana göre; pasifler dahil, `status`, `type` ve `category` ile süzülür (DOM-FIN-070). Şahıs tedarikçinin TCKN'si ve IBAN son dört hane dışında maskelidir; belge uyarısı sayıları bugüne göredir. Roller: `yonetici`, `onburo` (K-126). Modül `finance`.
+         */
+        get: operations["listSuppliers"];
+        put?: never;
+        /**
+         * Tedarikçi ekle
+         * @description Unvan, tür (`company` VKN 10 hane, `individual` TCKN 11 hane; kontrol haneleri denetlenir), vergi dairesi, en az bir kategori, isteğe bağlı iletişim, adres, TR IBAN (mod-97) ve belge listesi (ad, son geçerlilik günü, not; dosya yok, K-127). Vergi numarası kurumda tekil: 409 `supplier_tax_number_exists` (DOM-FIN-070). Rol: `yonetici` (muhasebe rolü açılınca o da; K-126). Modül `finance`.
+         */
+        post: operations["createSupplier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/suppliers/{supplierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçi ayrıntısı
+         * @description Tam vergi numarası, IBAN, adres ve belge durumları. Olmayan ya da başka kurumun tedarikçisi 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-126). Modül `finance`.
+         */
+        get: operations["getSupplier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Tedarikçiyi düzelt ya da pasifleştir
+         * @description Kısmi düzeltme; tür ve vergi numarası birlikte gönderilir, belge listesi bütün olarak yazılır. `isActive: false` pasifleştirir (pasif tedarikçi talepte önerilemez), `true` yeniden etkinleştirir. Başka tedarikçinin vergi numarası 409 `supplier_tax_number_exists`, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-126). Modül `finance`.
+         */
+        patch: operations["updateSupplier"];
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma taleplerini listele
+         * @description Yeni açılan önce; durum, birim ve dönemle süzülür, `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        get: operations["listPurchaseRequests"];
+        put?: never;
+        /**
+         * Satın alma talebi aç
+         * @description Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        post: operations["createPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma talebi formu seçenekleri
+         * @description Etkin maliyet merkezleri, etkin gider kalemleri, kapalı olmayan bütçe dönemleri ve etkin tedarikçiler; yalnız kimlik, kod ve ad (bütçe planı yöneticidedir, K-60). Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        get: operations["getPurchaseRequestOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma talebi ayrıntısı
+         * @description Kalemler, bütçe kalanı bilgisi (plan, onaylanmış ve bekleyen talepler, kalan; K-131), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        get: operations["getPurchaseRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Taslak talebi düzelt
+         * @description Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        patch: operations["updatePurchaseRequest"];
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Satın alma talebini gönder
+         * @description Taslak talebi onaya gönderir. Bütçe dönemi açık olmalıdır: 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Yanıt bütçe kalanını bilgi olarak taşır, aşım engellenmez (K-131, ON-245). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        post: operations["submitPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Satın alma talebini onayla
+         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         */
+        post: operations["approvePurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Satın alma talebini reddet
+         * @description Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         */
+        post: operations["rejectPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Satın alma talebini iptal et
+         * @description Taslak ya da gönderilmiş talebi gerekçeyle iptal eder; onaylanmış ya da reddedilmiş talep 422 `purchase_request_not_cancellable` (K-132). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        post: operations["cancelPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -48195,6 +48391,2140 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["BankTransaction"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSuppliers: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Unvanda (yöneticide ayrıca vergi numarasında) arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `active` etkin, `inactive` pasif tedarikçiler */
+                status?: "active" | "inactive";
+                /** @description Tedarikçi türü */
+                type?: "company" | "individual";
+                /** @description Kategori */
+                category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "company" | "individual";
+                            /** @description Şirkette VKN; şahısta son dört hane dışında maskeli TCKN (`*******0146`) */
+                            taxNumber: string;
+                            taxOffice: string;
+                            /** @description Satın alma kategorileri (K-125) */
+                            categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                            contactName: string | null;
+                            contactPhone: string | null;
+                            contactEmail: string | null;
+                            /** @description Ülke kodu ve son dört hane dışında maskeli IBAN */
+                            iban: string | null;
+                            documentCount: number;
+                            /** @description Geçerliliği geçmiş belge sayısı */
+                            expiredDocumentCount: number;
+                            /** @description 30 gün içinde geçerliliği bitecek belge sayısı */
+                            expiringDocumentCount: number;
+                            isActive: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSupplier: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    type: "company" | "individual";
+                    taxNumber: string;
+                    taxOffice: string;
+                    categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                    /** @default null */
+                    contactName?: string | null;
+                    /** @default null */
+                    contactPhone?: string | null;
+                    /** @default null */
+                    contactEmail?: string | null;
+                    /** @default null */
+                    address?: string | null;
+                    iban?: string | null;
+                    documents?: {
+                        name: string;
+                        /**
+                         * @description Son geçerlilik günü; süresizse boş
+                         * @default null
+                         */
+                        expiryDate?: string | null;
+                        /** @default null */
+                        note?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "company" | "individual";
+                            /** @description Tam vergi numarası (yalnız yönetici) */
+                            taxNumber: string;
+                            taxOffice: string;
+                            /** @description Satın alma kategorileri (K-125) */
+                            categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                            contactName: string | null;
+                            contactPhone: string | null;
+                            contactEmail: string | null;
+                            address: string | null;
+                            /** @description Tam IBAN (yalnız yönetici) */
+                            iban: string | null;
+                            documents: {
+                                name: string;
+                                /** @description Son geçerlilik günü; süresizse boş */
+                                expiryDate: string | null;
+                                note: string | null;
+                                /**
+                                 * @description Bugüne göre durum: geçerli, süresi yaklaşıyor (30 gün), geçti, süresiz
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "open-ended";
+                            }[];
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "company" | "individual";
+                            /** @description Tam vergi numarası (yalnız yönetici) */
+                            taxNumber: string;
+                            taxOffice: string;
+                            /** @description Satın alma kategorileri (K-125) */
+                            categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                            contactName: string | null;
+                            contactPhone: string | null;
+                            contactEmail: string | null;
+                            address: string | null;
+                            /** @description Tam IBAN (yalnız yönetici) */
+                            iban: string | null;
+                            documents: {
+                                name: string;
+                                /** @description Son geçerlilik günü; süresizse boş */
+                                expiryDate: string | null;
+                                note: string | null;
+                                /**
+                                 * @description Bugüne göre durum: geçerli, süresi yaklaşıyor (30 gün), geçti, süresiz
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "open-ended";
+                            }[];
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSupplier: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    type?: "company" | "individual";
+                    taxNumber?: string;
+                    taxOffice?: string;
+                    categories?: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                    contactName?: string | null;
+                    contactPhone?: string | null;
+                    contactEmail?: string | null;
+                    address?: string | null;
+                    iban?: string | null;
+                    documents?: {
+                        name: string;
+                        /**
+                         * @description Son geçerlilik günü; süresizse boş
+                         * @default null
+                         */
+                        expiryDate?: string | null;
+                        /** @default null */
+                        note?: string | null;
+                    }[];
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "company" | "individual";
+                            /** @description Tam vergi numarası (yalnız yönetici) */
+                            taxNumber: string;
+                            taxOffice: string;
+                            /** @description Satın alma kategorileri (K-125) */
+                            categories: ("stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other")[];
+                            contactName: string | null;
+                            contactPhone: string | null;
+                            contactEmail: string | null;
+                            address: string | null;
+                            /** @description Tam IBAN (yalnız yönetici) */
+                            iban: string | null;
+                            documents: {
+                                name: string;
+                                /** @description Son geçerlilik günü; süresizse boş */
+                                expiryDate: string | null;
+                                note: string | null;
+                                /**
+                                 * @description Bugüne göre durum: geçerli, süresi yaklaşıyor (30 gün), geçti, süresiz
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "open-ended";
+                            }[];
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPurchaseRequests: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Talep numarasında (`ST-0001`), gerekçede ya da birim adında arama */
+                q?: string;
+                /** @description Durum */
+                status?: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                /** @description Talep eden birim */
+                costCenterId?: string;
+                /** @description Bütçe dönemi */
+                periodId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    costCenterId: string;
+                    /** Format: uuid */
+                    periodId: string;
+                    /** Format: uuid */
+                    budgetItemId: string;
+                    justification: string;
+                    /** @default null */
+                    supplierId?: string | null;
+                    items: {
+                        name: string;
+                        quantity: number;
+                        /** @enum {string} */
+                        unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                        estimatedUnitPriceCents: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseRequestOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Etkin maliyet merkezleri */
+                            costCenters: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            }[];
+                            /** @description Etkin gider kalemleri */
+                            budgetItems: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            }[];
+                            /** @description Kapalı olmayan bütçe dönemleri */
+                            periods: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description Etkin tedarikçiler */
+                            suppliers: {
+                                id: string;
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    costCenterId?: string;
+                    /** Format: uuid */
+                    periodId?: string;
+                    /** Format: uuid */
+                    budgetItemId?: string;
+                    justification?: string;
+                    supplierId?: string | null;
+                    items?: {
+                        name: string;
+                        quantity: number;
+                        /** @enum {string} */
+                        unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                        estimatedUnitPriceCents: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approvePurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default null */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                            }[];
+                            /** @description Bütçe kalanı bilgisi (K-131) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; yalnız bilgi (ON-245) */
+                                exceedsRemaining: boolean;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                decide: boolean;
+                            };
+                        };
                     };
                 };
             };

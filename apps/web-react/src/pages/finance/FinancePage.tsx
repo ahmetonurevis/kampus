@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { useFinanceTotals } from '@kampus/react-shared/use-finance-exports.ts'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -37,6 +38,15 @@ import { PaymentsSection } from './PaymentsSection.tsx'
 import { ContractsSection } from './ContractsSection.tsx'
 import { WithdrawalsSection } from './WithdrawalsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
+import { SummaryLoading } from '../management/SummaryParts.tsx'
+
+// Satın alma sekmeleri ayrı parçadır: Finans rota parçası 100 KB bütçesinin altında kalır.
+const FinanceSuppliersSection = lazy(async () => ({
+  default: (await import('./FinanceSuppliersSection.tsx')).FinanceSuppliersSection,
+}))
+const FinancePurchaseRequestsSection = lazy(async () => ({
+  default: (await import('./FinancePurchaseRequestsSection.tsx')).FinancePurchaseRequestsSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -57,6 +67,8 @@ const VIEWS = {
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   budget: { label: 'Bütçe', param: 'butce' },
   costs: { label: 'Maliyet', param: 'maliyet' },
+  suppliers: { label: 'Tedarikçiler', param: 'tedarikci' },
+  purchaseRequests: { label: 'Satın alma talepleri', param: 'satin-alma' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
@@ -71,6 +83,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008); bütçe (DOM-FIN-062, K-60), maliyet
  * raporları (DOM-FIN-065), gelir ve nakit akışı tahmini (DOM-FIN-063) ile yönetim kurulu raporu
  * (DOM-FIN-064, K-80) ve banka eşleştirme (DOM-FIN-069, K-105) yalnız yöneticidedir: kapalı sekme gizlenir, adresi taksitlere düşer.
+ * Tedarikçiler (DOM-FIN-070) ve satın alma talepleri (DOM-FIN-071) yönetici ve ön büroya açıktır;
+ * ön büro tedarikçiyi salt okur (K-126), yalnız kendi talebini değiştirir (K-128).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -206,6 +220,15 @@ export function FinancePage({ page }: { page: NavPage }) {
         />
       ) : null}
       {tab === 'costs' ? <FinanceCostReportsSection /> : null}
+      {tab === 'suppliers' || tab === 'purchaseRequests' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          {tab === 'suppliers' ? (
+            <FinanceSuppliersSection canManage={isManager} />
+          ) : (
+            <FinancePurchaseRequestsSection />
+          )}
+        </Suspense>
+      ) : null}
       {tab === 'boardReport' ? (
         <FinanceBoardReportSection
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}

@@ -1381,6 +1381,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: satın alma raporu (ON-227; DOM-FIN-075).
+  'GET /api/v1/finance/purchase-report': liste(
+    'finance-purchase-report.test.ts',
+    'DOM-FIN-075: başka kurumun dönemi 404; başka kurumun siparişi raporda yok',
+    'periodId=${String(b.period.id)}',
+  ),
 }
 
 /**

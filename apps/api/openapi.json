@@ -94001,6 +94001,641 @@
         }
       }
     },
+    "/api/v1/finance/budget-periods/{periodId}/actuals": {
+      "get": {
+        "operationId": "getBudgetActuals",
+        "summary": "Bütçe–gerçekleşen karşılaştırması",
+        "tags": [
+          "finance-budget"
+        ],
+        "description": "Seçilen bütçe döneminin planı kalem × maliyet merkezi × ay bazında gerçekleşenle karşılaştırılır (ON-244; DOM-FIN-066). `basis` `accrual` (varsayılan, K-85): taksit vade gününde, ayrılışta hak edilmeyen tahakkuk ayrılış gününde düşülür; `cash`: tahsilat ödeme gününde, iptal iptal gününde, ödenen iade ödeme gününde; dosyadan aktarılan geçmiş ödeme sayılır ve `openingImportCents`te ayrıca verilir. Hareket ücret türüyle (`fee_kind`) gelir kalemine eşlenir; eşlenmeyen ya da taksite dağıtılmamış tutar `unmatched`tadır. Merkez öğrencinin kampüs ve program bağından bulunur (K-86), gerçekleşen kalem için satırı olan en yakın merkeze yazılır; bulunamazsa `costCenterId` `null` (dağıtılmamış). Hareket dönem ve bugünle sınırlıdır; gelmemiş ayın gerçekleşeni `null`. Gider gerçekleşeni kaynağı yoktur (satın alma modülü kurulmadı): `expenseData` `none`, gider satırı `status` `no_expense_data`. Ay Europe/Istanbul ayı; tutarlar kuruş, oranlar on binde bir. Yanıt kişi verisi taşımaz. Olmayan ya da başka kurumun dönemi 404; bilinmeyen parametre 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "accrual",
+              "type": "string",
+              "enum": [
+                "accrual",
+                "cash"
+              ]
+            },
+            "in": "query",
+            "name": "basis",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "basis": {
+                          "type": "string",
+                          "enum": [
+                            "accrual",
+                            "cash"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "asOfDate": {
+                          "description": "Hareketlerin sayıldığı son gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "months": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "description": "Takvim ayı `YYYY-MM` (Europe/Istanbul)"
+                          }
+                        },
+                        "expenseData": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "available"
+                          ]
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "itemKind": {
+                                "type": "string",
+                                "enum": [
+                                  "income",
+                                  "expense"
+                                ]
+                              },
+                              "feeKind": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "tuition",
+                                      "breakfast",
+                                      "meal",
+                                      "transport",
+                                      "dormitory",
+                                      "stationery",
+                                      "uniform",
+                                      "tutoring"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "costCenterId": {
+                                "description": "`null`: dağıtılmamış",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "costCenterCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "costCenterName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "costCenterPath": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasLine": {
+                                "type": "boolean",
+                                "description": "Bu merkez ve kalem için bütçe satırı var mı"
+                              },
+                              "plannedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "plannedToDateCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bugüne kadarki ayların planı; dağılımsızsa boş"
+                              },
+                              "actualCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "varianceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "realizationBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Gerçekleşen ÷ plan, on binde bir"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "mapped",
+                                  "unmapped_item",
+                                  "no_expense_data",
+                                  "not_started"
+                                ]
+                              },
+                              "months": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "month": {
+                                      "type": "string",
+                                      "description": "Takvim ayı `YYYY-MM` (Europe/Istanbul)"
+                                    },
+                                    "plannedCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Aylık dağılım yoksa boş"
+                                    },
+                                    "actualCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gelmemiş ayda boş"
+                                    },
+                                    "varianceCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "realizationBasisPoints": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Gerçekleşen ÷ plan, on binde bir"
+                                    }
+                                  },
+                                  "required": [
+                                    "month",
+                                    "plannedCents",
+                                    "actualCents",
+                                    "varianceCents",
+                                    "realizationBasisPoints"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "itemKind",
+                              "feeKind",
+                              "costCenterId",
+                              "costCenterCode",
+                              "costCenterName",
+                              "costCenterPath",
+                              "hasLine",
+                              "plannedCents",
+                              "plannedToDateCents",
+                              "actualCents",
+                              "varianceCents",
+                              "realizationBasisPoints",
+                              "status",
+                              "months"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "unmatched": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "feeKind": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "tuition",
+                                      "breakfast",
+                                      "meal",
+                                      "transport",
+                                      "dormitory",
+                                      "stationery",
+                                      "uniform",
+                                      "tutoring"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "actualCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "months": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "month": {
+                                      "type": "string",
+                                      "description": "Takvim ayı `YYYY-MM` (Europe/Istanbul)"
+                                    },
+                                    "actualCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "month",
+                                    "actualCents"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "feeKind",
+                              "actualCents",
+                              "months"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "income": {
+                              "type": "object",
+                              "properties": {
+                                "plannedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "actualCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "varianceCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Gerçekleşen − plan"
+                                },
+                                "realizationBasisPoints": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Gerçekleşen ÷ plan, on binde bir"
+                                },
+                                "unmatchedCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "plannedCents",
+                                "actualCents",
+                                "varianceCents",
+                                "realizationBasisPoints",
+                                "unmatchedCents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "expense": {
+                              "type": "object",
+                              "properties": {
+                                "plannedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "actualCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "varianceCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Gerçekleşen − plan"
+                                },
+                                "realizationBasisPoints": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Gerçekleşen ÷ plan, on binde bir"
+                                }
+                              },
+                              "required": [
+                                "plannedCents",
+                                "actualCents",
+                                "varianceCents",
+                                "realizationBasisPoints"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "net": {
+                              "type": "object",
+                              "properties": {
+                                "plannedCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "actualCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "plannedCents",
+                                "actualCents"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "income",
+                            "expense",
+                            "net"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "openingImportCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "basis",
+                        "startDate",
+                        "endDate",
+                        "asOfDate",
+                        "months",
+                        "expenseData",
+                        "rows",
+                        "unmatched",
+                        "totals",
+                        "openingImportCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

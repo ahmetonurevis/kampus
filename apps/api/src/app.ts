@@ -34,6 +34,7 @@ import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceBudgetRoutes } from './routes/finance-budget.ts'
+import { registerFinanceBudgetActualsRoutes } from './routes/finance-budget-actuals.ts'
 import { registerFinanceCorporateRoutes } from './routes/finance-corporate.ts'
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
@@ -446,6 +447,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceForecastRoutes(app)
   registerFinanceOpeningWatchRoutes(app)
   registerFinanceBudgetRoutes(app)
+  registerFinanceBudgetActualsRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

@@ -98538,6 +98538,796 @@
         }
       }
     },
+    "/api/v1/finance/cost-per-student": {
+      "get": {
+        "operationId": "getFinanceCostPerStudent",
+        "summary": "Öğrenci başı maliyet",
+        "tags": [
+          "finance-cost-reports"
+        ],
+        "description": "Seçilen bütçe döneminin gider satırları maliyet merkezlerine dağıtılır (ON-249; DOM-FIN-065). Birim merkezlerinin (ortak) gideri yukarıdan aşağıya, kapsamındaki öğrencili kampüs ve program merkezlerine `key` anahtarıyla paylaştırılır: `students` (varsayılan) öğrenci sayısıyla orantılı, `equal` eşit; kalan kuruş en büyük kesre. Öğrenci dönemde kayıtlıysa sayılır (kayıt günü dönem bitişinden sonra değil; pasifse ayrılış ya da mezuniyet günü dönem başından önce değil); kampüs ve sınıf düzeyi güncel sınıftan, kur bağı dönemle kesişen grup üyeliğinden okunur. Öğrencisi `minGroupSize`'dan (5) az merkezde öğrenci başı değer boştur ve `suppressed` işaretlidir. Gelir satırı girmez. Tutarlar kuruş. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun dönemi 404. Bilinmeyen parametre 400. Yanıt kişi verisi taşımaz.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "default": "students",
+              "type": "string",
+              "enum": [
+                "students",
+                "equal"
+              ]
+            },
+            "in": "query",
+            "name": "key",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "period": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "open",
+                                "closed"
+                              ]
+                            },
+                            "startDate": {
+                              "type": "string"
+                            },
+                            "endDate": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "status",
+                            "startDate",
+                            "endDate"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "key": {
+                          "type": "string",
+                          "enum": [
+                            "students",
+                            "equal"
+                          ]
+                        },
+                        "minGroupSize": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğrenci başı değerin gösterildiği en küçük grup"
+                        },
+                        "centers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "campus",
+                                  "unit",
+                                  "program"
+                                ]
+                              },
+                              "path": {
+                                "type": "string",
+                                "description": "Kökten merkeze kod yolu"
+                              },
+                              "depth": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kökten düzey, 1 kök"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "campusId": {
+                                "description": "Merkezin ya da en yakın üst kampüs merkezinin kampüsü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "directCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Merkeze doğrudan yazılmış gider"
+                              },
+                              "shared": {
+                                "type": "boolean",
+                                "description": "Birim: gideri kapsamındaki merkezlere paylaştırıldı"
+                              },
+                              "sharedInCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yukarıdaki ortak giderden gelen pay"
+                              },
+                              "totalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Merkez ve altındaki giderler artı gelen pay; birimde kendi gideri"
+                              },
+                              "studentCount": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Dönemde sayılan öğrenci; birimde boş"
+                              },
+                              "perStudentCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Öğrenci başı maliyet; öğrencisiz ya da küçük grupta boş"
+                              },
+                              "suppressed": {
+                                "type": "boolean",
+                                "description": "Öğrenci sayısı eşiğin altında, değer gizlendi"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "type",
+                              "path",
+                              "depth",
+                              "isActive",
+                              "campusId",
+                              "directCents",
+                              "shared",
+                              "sharedInCents",
+                              "totalCents",
+                              "studentCount",
+                              "perStudentCents",
+                              "suppressed"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "expenseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemin gider satırları toplamı"
+                            },
+                            "studentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "perStudentCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Kurum geneli öğrenci başı maliyet"
+                            },
+                            "suppressed": {
+                              "type": "boolean"
+                            },
+                            "unallocatedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Öğrencili merkez olmadığı için paylaştırılamayan ortak gider"
+                            },
+                            "studentsWithoutCampus": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sınıfı ya da sınıf kampüsü olmayan"
+                            }
+                          },
+                          "required": [
+                            "expenseCents",
+                            "studentCount",
+                            "perStudentCents",
+                            "suppressed",
+                            "unallocatedCents",
+                            "studentsWithoutCampus"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "period",
+                        "key",
+                        "minGroupSize",
+                        "centers",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/campus-consolidation": {
+      "get": {
+        "operationId": "getFinanceCampusConsolidation",
+        "summary": "Çok kampüslü konsolide rapor",
+        "tags": [
+          "finance-cost-reports"
+        ],
+        "description": "Kampüsler bazında seçilen bütçe döneminin tahakkuk, tahsilat, tahsilat iptali, iade, net tahsilat, öğrenci sayısı ve bütçe gideri; kampüsler toplamı ve paylar (ON-250; DOM-FIN-065). Gelir dönemi bütçe döneminin günleridir; tahakkuk vade gününde, tahsilat ödeme gününde, iptal iptal gününde, iade ödeme gününde sayılır, toplam aynı dönemin `/finance/summary` toplamına eşittir. Öğrencinin kampüsü güncel sınıfının kampüsüdür; kampüssüz öğrencinin hareketi ve kampüs merkezine bağlanmamış gider `campusId: null` satırına yazılır. Bütçe gideri öğrenci başı maliyet raporundaki kampüs merkezinin toplamıdır (`key` ile aynı paylaştırma). Küçük grupta öğrenci başı değerler boştur. Kurum grubu konsolidasyonu kapsam dışıdır. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun dönemi 404. Bilinmeyen parametre 400. Yanıt kişi verisi taşımaz.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "default": "students",
+              "type": "string",
+              "enum": [
+                "students",
+                "equal"
+              ]
+            },
+            "in": "query",
+            "name": "key",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "period": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "open",
+                                "closed"
+                              ]
+                            },
+                            "startDate": {
+                              "type": "string"
+                            },
+                            "endDate": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "status",
+                            "startDate",
+                            "endDate"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "key": {
+                          "type": "string",
+                          "enum": [
+                            "students",
+                            "equal"
+                          ]
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "minGroupSize": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "campuses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "campusId": {
+                                "description": "Kampüse bağlı olmayan satırda boş",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "hasCostCenter": {
+                                "type": "boolean",
+                                "description": "Kampüse bağlı maliyet merkezi var"
+                              },
+                              "studentCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "accruedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Vadesi dönemde olan taksitler (tahakkuk)"
+                              },
+                              "collectedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödeme günü dönemde olan tahsilatlar"
+                              },
+                              "reversedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal günü dönemde olan tahsilat iptalleri"
+                              },
+                              "refundedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödeme günü dönemde olan iadeler"
+                              },
+                              "netCollectedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tahsilat − iptal − iade"
+                              },
+                              "budgetExpenseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bütçe gideri (ortak giderden pay dahil)"
+                              },
+                              "budgetSharedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bütçe giderinin ortak giderden gelen kısmı"
+                              },
+                              "accruedPerStudentCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Öğrenci başı tahakkuk; küçük grupta boş"
+                              },
+                              "budgetExpensePerStudentCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Öğrenci başı bütçe gideri; küçük grupta boş"
+                              },
+                              "suppressed": {
+                                "type": "boolean"
+                              },
+                              "studentShareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Öğrenci payı, on binde bir; toplam sıfırsa boş"
+                              },
+                              "accruedShareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Tahakkuk payı, on binde bir; toplam sıfırsa boş"
+                              },
+                              "netCollectedShareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Net tahsilat payı, on binde bir; toplam sıfırsa boş"
+                              },
+                              "budgetExpenseShareBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bütçe gideri payı, on binde bir; toplam sıfırsa boş"
+                              }
+                            },
+                            "required": [
+                              "campusId",
+                              "name",
+                              "isActive",
+                              "hasCostCenter",
+                              "studentCount",
+                              "accruedCents",
+                              "collectedCents",
+                              "reversedCents",
+                              "refundedCents",
+                              "netCollectedCents",
+                              "budgetExpenseCents",
+                              "budgetSharedCents",
+                              "accruedPerStudentCents",
+                              "budgetExpensePerStudentCents",
+                              "suppressed",
+                              "studentShareBasisPoints",
+                              "accruedShareBasisPoints",
+                              "netCollectedShareBasisPoints",
+                              "budgetExpenseShareBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "studentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "accruedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Vadesi dönemde olan taksitler (tahakkuk)"
+                            },
+                            "collectedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödeme günü dönemde olan tahsilatlar"
+                            },
+                            "reversedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal günü dönemde olan tahsilat iptalleri"
+                            },
+                            "refundedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödeme günü dönemde olan iadeler"
+                            },
+                            "netCollectedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tahsilat − iptal − iade"
+                            },
+                            "budgetExpenseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bütçe gideri (ortak giderden pay dahil)"
+                            },
+                            "budgetSharedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bütçe giderinin ortak giderden gelen kısmı"
+                            },
+                            "accruedPerStudentCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Öğrenci başı tahakkuk; küçük grupta boş"
+                            },
+                            "budgetExpensePerStudentCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Öğrenci başı bütçe gideri; küçük grupta boş"
+                            },
+                            "suppressed": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "studentCount",
+                            "accruedCents",
+                            "collectedCents",
+                            "reversedCents",
+                            "refundedCents",
+                            "netCollectedCents",
+                            "budgetExpenseCents",
+                            "budgetSharedCents",
+                            "accruedPerStudentCents",
+                            "budgetExpensePerStudentCents",
+                            "suppressed"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kampüsler toplamı"
+                        }
+                      },
+                      "required": [
+                        "period",
+                        "key",
+                        "from",
+                        "to",
+                        "minGroupSize",
+                        "campuses",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

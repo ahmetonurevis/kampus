@@ -55,6 +55,7 @@ import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.
 import { registerFinancePurchaseOrderRoutes } from './routes/finance-purchase-orders.ts'
 import { registerFinancePurchaseQuoteRoutes } from './routes/finance-purchase-quotes.ts'
 import { registerFinancePurchaseRequestRoutes } from './routes/finance-purchase-requests.ts'
+import { registerFinanceSupplierLedgerRoutes } from './routes/finance-supplier-ledger.ts'
 import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
@@ -485,6 +486,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePurchaseRequestRoutes(app)
   registerFinancePurchaseQuoteRoutes(app)
   registerFinancePurchaseOrderRoutes(app)
+  registerFinanceSupplierLedgerRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

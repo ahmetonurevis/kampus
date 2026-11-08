@@ -1381,6 +1381,47 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: tedarikçi carisi ve ödeme planı (ON-143; DOM-FIN-076).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/supplier-invoices', 'get(INVOICES, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/supplier-invoices', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/supplier-invoices/:invoiceId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/supplier-invoices/:invoiceId/plan', '`${bUrl}/plan`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/supplier-invoices/:invoiceId/cancel',
+          '`${bUrl}/cancel`, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/supplier-payments', 'get(PAYMENTS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/supplier-payments', 'payBody(a as Tenant, bInstallment)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/supplier-payments/:paymentId/cancel',
+          '`${PAYMENTS}/${String(bPayment.id)}/cancel`',
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/supplier-payments/instruction-file',
+          'paymentIds: [bPayment.id]',
+        ],
+        ['liste', 'GET /api/v1/finance/supplier-ledger', 'get(LEDGER, a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/supplier-ledger/:supplierId',
+          '`${LEDGER}/${String(b.alpha.id)}`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-supplier-ledger.test.ts',
+        'başka kurumun faturası, ödemesi ve carisi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

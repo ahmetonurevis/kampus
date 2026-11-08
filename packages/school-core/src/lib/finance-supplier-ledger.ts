@@ -278,6 +278,19 @@ export interface InvoiceBalance {
   status: SupplierInvoiceStatus
 }
 
+/** Fatura durumu toplamlardan: iptal, ödendi, vadesi geçti, kısmen ödendi ya da ödenmedi. */
+export function supplierInvoiceStatus(figures: {
+  grossCents: number
+  paidCents: number
+  overdueCents: number
+  cancelled: boolean
+}): SupplierInvoiceStatus {
+  if (figures.cancelled) return 'cancelled'
+  if (figures.paidCents >= figures.grossCents) return 'paid'
+  if (figures.overdueCents > 0) return 'overdue'
+  return figures.paidCents > 0 ? 'partially_paid' : 'open'
+}
+
 /** Faturanın ödenen, kalan ve vadesi geçmiş tutarı ile durumu (K-163). */
 export function supplierInvoiceBalance(
   invoice: { grossCents: number; cancelled: boolean },
@@ -296,11 +309,7 @@ export function supplierInvoiceBalance(
     (first, item) => (first === null || item.dueDate < first ? item.dueDate : first),
     null,
   )
-  let status: SupplierInvoiceStatus
-  if (invoice.cancelled) status = 'cancelled'
-  else if (remainingCents === 0) status = 'paid'
-  else if (overdueCents > 0) status = 'overdue'
-  else status = paidCents > 0 ? 'partially_paid' : 'open'
+  const status = supplierInvoiceStatus({ ...invoice, paidCents, overdueCents })
   return { paidCents, remainingCents, overdueCents, nextDueDate, status }
 }
 

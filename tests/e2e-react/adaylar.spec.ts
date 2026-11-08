@@ -985,6 +985,11 @@ test.describe('390 px genişlik', () => {
     await page.goto(MEETINGS_URL)
     await expect(page.getByRole('heading', { name: 'Tanışma Görüşmeleri', level: 1 })).toBeVisible()
     await expectNoHorizontalOverflow(page)
+    // Kayıt sezonu nöbeti (DOM-KAY-037, ON-077): takip tablosu dar ekranda da taşmaz.
+    await page.goto(`${MEETINGS_URL}?gorunum=nobet`)
+    await expect(page.getByRole('heading', { name: 'Geciken takipler' })).toBeVisible()
+    await expect(page.getByLabel('Sezon nöbeti özeti')).toContainText('Geciken takip11')
+    await expectNoHorizontalOverflow(page)
   })
 })
 
@@ -1246,5 +1251,175 @@ test.describe('Vue eşitliği: ön büro panosu aday sayaçları (ON-035)', () =
     await card('Toplam kesin kayıt').getByRole('link').click()
     await expect(page).toHaveURL(/\/onburo\/adaylar\?asama=/)
     await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
+  })
+})
+
+// Kayıt sezonu nöbeti (Tanışma Görüşmeleri `?gorunum=nobet`; DOM-KAY-037, ON-077; IST-079, IST-091).
+test.describe('kayıt sezonu nöbeti', () => {
+  const seasonMeeting = (date: string) => ({
+    date,
+    duration: 30,
+    room: 'Oda 7',
+    teacherId: null,
+    scheduledAt: at(-20, 9),
+    by: { role: 'onburo', userId: 'u-onburo' },
+  })
+
+  test('ON-077, DOM-KAY-037: ön büro geciken takipleri ve penceredeki görüşmeleri tek görünümde görür; pencere adreste kalır', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-sw-first',
+          name: 'Aranmamış Aday',
+          phone: '05550300201',
+          createdAt: at(-3, 9),
+        }),
+        prospect({
+          id: 'e2e-sw-outcome',
+          name: 'Görüşülmüş Aday',
+          phone: '05550300202',
+          stage: 'Görüşme planlandı',
+          createdAt: at(-6, 9),
+          trialAt: at(-2, 10),
+          meeting: seasonMeeting(at(-2, 10)),
+        }),
+        prospect({
+          id: 'e2e-sw-stale',
+          name: 'Soğuyan Aday',
+          phone: '05550300203',
+          stage: 'Teklif verildi',
+          createdAt: at(-30, 9),
+          notes: [{ id: 'n1', text: 'Fiyat soruldu.', date: at(-12, 9), author: 'Ön Büro' }],
+        }),
+        prospect({
+          id: 'e2e-sw-soon',
+          name: 'Yaklaşan Aday',
+          phone: '05550300204',
+          stage: 'Görüşme planlandı',
+          createdAt: at(-1, 9),
+          trialAt: at(2, 10),
+          meeting: seasonMeeting(at(2, 10)),
+        }),
+        prospect({
+          id: 'e2e-sw-late',
+          name: 'İleri Aday',
+          phone: '05550300205',
+          stage: 'Görüşme planlandı',
+          createdAt: at(-1, 9),
+          trialAt: at(10, 10),
+          meeting: seasonMeeting(at(10, 10)),
+        }),
+        prospect({
+          id: 'e2e-sw-lost',
+          name: 'Vazgeçen Aday',
+          phone: '05550300206',
+          stage: 'Vazgeçti',
+          lostReason: 'price',
+          createdAt: at(-9, 9),
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(MEETINGS_URL)
+    await page
+      .getByRole('toolbar', { name: 'Görünüm' })
+      .getByRole('button', { name: 'Sezon nöbeti' })
+      .click()
+    await expect(page).toHaveURL(/gorunum=nobet/)
+    await expect(page.getByRole('heading', { name: 'Kayıt sezonu nöbeti' })).toBeVisible()
+    await expect(page.getByLabel('Sezon nöbeti özeti')).toContainText('Geciken takip3')
+
+    const followUps = bodyRows(page, 'Geciken takipler')
+    await expect(followUps).toHaveCount(3)
+    await expect(followUps.filter({ hasText: 'Soğuyan Aday' })).toContainText('Temas kesildi')
+    await expect(followUps.filter({ hasText: 'Aranmamış Aday' })).toContainText(
+      'İlk temas bekliyor',
+    )
+    await expect(followUps.filter({ hasText: 'Görüşülmüş Aday' })).toContainText(
+      'Görüşme sonucu bekleniyor',
+    )
+    // En çok geciken önce; satır iletişim bilgisi taşımaz.
+    await expect(followUps.first()).toContainText('Soğuyan Aday')
+    await expect(page.getByText('05550300201')).toHaveCount(0)
+    await expect(page.getByText('Vazgeçen Aday')).toHaveCount(0)
+
+    const meetings = bodyRows(page, 'Tanışma görüşmeleri')
+    await expect(meetings).toHaveCount(1)
+    await expect(meetings.first()).toContainText('Yaklaşan Aday')
+    await expect(meetings.first()).toContainText('13:00 – 13:30')
+    await expect(meetings.first()).toContainText('Oda 7')
+
+    await page.getByLabel('Pencere').selectOption('14')
+    await expect(page).toHaveURL(/gun=14/)
+    await expect(meetings).toHaveCount(2)
+    await expect(meetings.nth(1)).toContainText('İleri Aday')
+
+    await page.reload()
+    await expect(page.getByLabel('Pencere')).toHaveValue('14')
+    await expect(meetings).toHaveCount(2)
+
+    await page.getByRole('link', { name: 'Aranmamış Aday adayını aç' }).click()
+    await expect(page).toHaveURL(/\/onburo\/aday\/e2e-sw-first$/)
+  })
+
+  test('ON-077, DOM-KAY-037: dil okulunda deneme dersleri ve sonucu yazılmamış deneme sonrası takip görünür', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const trialOf = (lessonId: string) => ({
+      lessonId,
+      classId: 'c1',
+      date: at(0, 0),
+      duration: 40,
+      guardianConsentAt: null,
+      scheduledAt: at(-10, 9),
+      by: { role: 'onburo', userId: 'u-onburo' },
+    })
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-sw-trial-next',
+          name: 'Deneme Bekleyen',
+          phone: '05550300211',
+          stage: 'Görüşme planlandı',
+          minor: false,
+          createdAt: at(-1, 9),
+          trialLesson: trialOf('e2e-sw-lesson-next'),
+        }),
+        prospect({
+          id: 'e2e-sw-trial-done',
+          name: 'Deneme Yapılmış',
+          phone: '05550300212',
+          stage: 'Görüşme planlandı',
+          minor: false,
+          createdAt: at(-8, 9),
+          trialLesson: trialOf('e2e-sw-lesson-done'),
+        }),
+        lesson('e2e-sw-lesson-next', at(3, 10)),
+        lesson('e2e-sw-lesson-done', at(-2, 10)),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(`${MEETINGS_URL}?gorunum=nobet`)
+    await expect(page.getByRole('heading', { name: 'Seviye tespiti görüşmeleri' })).toBeVisible()
+    const trials = bodyRows(page, 'Deneme dersleri')
+    await expect(trials).toHaveCount(1)
+    await expect(trials.first()).toContainText('Deneme Bekleyen')
+    await expect(trials.first()).toContainText('7-A')
+    await expect(trials.first()).toContainText('13:00 – 13:40')
+
+    const followUps = bodyRows(page, 'Geciken takipler')
+    await expect(followUps).toHaveCount(1)
+    await expect(followUps.first()).toContainText('Deneme Yapılmış')
+    await expect(followUps.first()).toContainText('Deneme sonrası takip')
+    await expect(followUps.first()).toContainText('Öğretmen sonucu bekleniyor')
   })
 })

@@ -5048,6 +5048,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/supplier-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçi faturalarını listele
+         * @description Yeni fatura tarihi önce; tedarikçi, sipariş ve durumla süzülür, `q` fatura numarasında ya da tedarikçi adında arar. Ödenen, kalan ve vadesi geçmiş tutar taksit ve etkin ödemelerden hesaplanır; gün Europe/Istanbul. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["listSupplierInvoices"];
+        put?: never;
+        /**
+         * Tedarikçi faturası ve ödeme planı kaydet
+         * @description Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["createSupplierInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-invoices/{invoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçi faturası ayrıntısı
+         * @description Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["getSupplierInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-invoices/{invoiceId}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Faturanın ödeme planını yeniden yaz
+         * @description Taksitleri değiştirir; toplam fatura tutarına eşit, vadeler fatura tarihinden önce değil. Ödemesi olan fatura 422 `supplier_invoice_plan_locked`, iptal edilmiş fatura 422 `supplier_invoice_cancelled`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["replanSupplierInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-invoices/{invoiceId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tedarikçi faturasını iptal et
+         * @description Gerekçeyle iptal eder; silme yoktur, iptal ekstrede iptal gününe yazılır. Ödemesi olan fatura 422 `supplier_invoice_has_payments` (önce ödemeler iptal edilir). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["cancelSupplierInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçi ödemelerini listele
+         * @description Yeni ödeme günü önce; tedarikçi, fatura, yöntem, gün aralığı ve durumla süzülür. `instruction=pending` talimat dosyası alınmamış etkin havale/EFT ödemelerini verir. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["listSupplierPayments"];
+        put?: never;
+        /**
+         * Taksite tedarikçi ödemesi kaydet
+         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["createSupplierPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-payments/{paymentId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tedarikçi ödemesini iptal et
+         * @description Gerekçeyle iptal eder; silme yoktur, taksit yeniden açılır, iptal ekstrede iptal gününe yazılır. Nakit ödemede bugün kapatılmışsa 422 `finance_day_closed` (K-166). Talimat dosyası alınmış ödemenin bankadaki talimatı ayrıca durdurulur. Zaten iptal 422 `supplier_payment_cancelled`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["cancelSupplierPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-payments/instruction-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ödeme talimatı dosyası (genel CSV)
+         * @description Seçilen havale ve EFT ödemeleri için bankaya yüklenecek genel CSV: Alıcı unvanı, Alıcı IBAN (açık), Tutar, Para birimi, Açıklama, Ödeme günü, Gönderen IBAN; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Belirli bir bankanın toplu ödeme biçimi değildir (K-164). Ödemeler aynı işlemde "talimatı alındı" işaretlenir ve denetim kaydına düşer; dosya saklanmaz. Daha önce alınmış ödeme 409 `supplier_payment_instruction_exported_warning`, `confirmReexport: true` ile yeniden alınır (K-165). İptal edilmiş ödeme 422 `supplier_payment_cancelled`, havale/EFT dışı yöntem 422 `supplier_payment_instruction_method`, IBAN'sız tedarikçi 422 `supplier_payment_instruction_iban_missing`, bulunmayan ödeme 422 `supplier_payment_not_found`. Taze oturum ister (403 `reauthentication_required`); kullanıcı başına 10/dk. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["exportSupplierPaymentInstructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçi carisi özeti
+         * @description Faturası olan tedarikçiler: etkin fatura toplamı, ödenen, bakiye (kurumun tedarikçiye borcu), vadesi geçmiş kalan ve ilk açık vade; vadesi geçmiş tutar büyük olan önce. `meta.totals` kurumun bütün tedarikçi carisidir. Kampüs muhasebe defteri tutmaz (IST-142): yönetim takibidir. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["listSupplierLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-ledger/{supplierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tedarikçi ekstresi
+         * @description Tedarikçinin fatura, ödeme ve iptal hareketleri yürüyen bakiyeyle (iptal iptal gününe ters hareket), yeni önce sayfalı; toplamlar bütün hareketlerden. IBAN ve şahıs TCKN'si maskeli. Olmayan ya da başka kurumun tedarikçisi 404. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["getSupplierStatement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -53524,6 +53712,1806 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSupplierInvoices: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Fatura numarasında ya da tedarikçi adında arama */
+                q?: string;
+                /** @description Tedarikçi */
+                supplierId?: string;
+                /** @description Bağlı sipariş */
+                purchaseOrderId?: string;
+                /** @description Durum (Europe/Istanbul bugünü) */
+                status?: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    supplierId: string;
+                    invoiceNumber: string;
+                    /** @description Fatura tarihi `YYYY-MM-DD` */
+                    invoiceDate: string;
+                    /** @description Tek vadeli faturanın vade günü */
+                    dueDate?: string;
+                    /** @description Ödeme planı; toplamı fatura tutarıdır */
+                    installments?: {
+                        /** @description Taksitin vade günü `YYYY-MM-DD` */
+                        dueDate: string;
+                        amountCents: number;
+                    }[];
+                    amountCents: number;
+                    amountIncludesVat: boolean;
+                    vatCents: number;
+                    /** @default null */
+                    purchaseOrderId?: string | null;
+                    /** @default null */
+                    note?: string | null;
+                    confirmOverOrder?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Tutar girişte KDV dahil mi yazıldı */
+                            amountIncludesVat: boolean;
+                            note: string | null;
+                            /** @description Bağlı satın alma siparişi (DOM-FIN-073) */
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            } | null;
+                            /** @description Ödeme planı, vade sırasıyla */
+                            installments: {
+                                id: string;
+                                position: number;
+                                /** @description Vade `YYYY-MM-DD` */
+                                dueDate: string;
+                                /** @description Taksit tutarı */
+                                amountCents: number;
+                                /** @description Taksite yazılmış etkin ödemeler */
+                                paidCents: number;
+                                /** @description Taksit kalanı */
+                                remainingCents: number;
+                                /** @description Vadesi geçti ve kalanı var */
+                                overdue: boolean;
+                            }[];
+                            /** @description Faturanın ödemeleri (iptal edilenler dahil) */
+                            payments: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                };
+                                invoice: {
+                                    id: string;
+                                    invoiceNumber: string;
+                                };
+                                installmentId: string;
+                                /** @description Ödeme günü `YYYY-MM-DD` */
+                                paidDate: string;
+                                /** @description Ödenen tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "transfer" | "eft" | "cash" | "cheque";
+                                /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                                bankAccount: {
+                                    id: string;
+                                    /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                    label: string;
+                                } | null;
+                                /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                                description: string;
+                                createdAt: string;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                                instructionExportedAt: string | null;
+                                instructionExportCount: number;
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
+                            actions: {
+                                pay: boolean;
+                                replan: boolean;
+                                cancel: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Tutar girişte KDV dahil mi yazıldı */
+                            amountIncludesVat: boolean;
+                            note: string | null;
+                            /** @description Bağlı satın alma siparişi (DOM-FIN-073) */
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            } | null;
+                            /** @description Ödeme planı, vade sırasıyla */
+                            installments: {
+                                id: string;
+                                position: number;
+                                /** @description Vade `YYYY-MM-DD` */
+                                dueDate: string;
+                                /** @description Taksit tutarı */
+                                amountCents: number;
+                                /** @description Taksite yazılmış etkin ödemeler */
+                                paidCents: number;
+                                /** @description Taksit kalanı */
+                                remainingCents: number;
+                                /** @description Vadesi geçti ve kalanı var */
+                                overdue: boolean;
+                            }[];
+                            /** @description Faturanın ödemeleri (iptal edilenler dahil) */
+                            payments: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                };
+                                invoice: {
+                                    id: string;
+                                    invoiceNumber: string;
+                                };
+                                installmentId: string;
+                                /** @description Ödeme günü `YYYY-MM-DD` */
+                                paidDate: string;
+                                /** @description Ödenen tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "transfer" | "eft" | "cash" | "cheque";
+                                /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                                bankAccount: {
+                                    id: string;
+                                    /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                    label: string;
+                                } | null;
+                                /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                                description: string;
+                                createdAt: string;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                                instructionExportedAt: string | null;
+                                instructionExportCount: number;
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
+                            actions: {
+                                pay: boolean;
+                                replan: boolean;
+                                cancel: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replanSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    installments: {
+                        /** @description Taksitin vade günü `YYYY-MM-DD` */
+                        dueDate: string;
+                        amountCents: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Tutar girişte KDV dahil mi yazıldı */
+                            amountIncludesVat: boolean;
+                            note: string | null;
+                            /** @description Bağlı satın alma siparişi (DOM-FIN-073) */
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            } | null;
+                            /** @description Ödeme planı, vade sırasıyla */
+                            installments: {
+                                id: string;
+                                position: number;
+                                /** @description Vade `YYYY-MM-DD` */
+                                dueDate: string;
+                                /** @description Taksit tutarı */
+                                amountCents: number;
+                                /** @description Taksite yazılmış etkin ödemeler */
+                                paidCents: number;
+                                /** @description Taksit kalanı */
+                                remainingCents: number;
+                                /** @description Vadesi geçti ve kalanı var */
+                                overdue: boolean;
+                            }[];
+                            /** @description Faturanın ödemeleri (iptal edilenler dahil) */
+                            payments: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                };
+                                invoice: {
+                                    id: string;
+                                    invoiceNumber: string;
+                                };
+                                installmentId: string;
+                                /** @description Ödeme günü `YYYY-MM-DD` */
+                                paidDate: string;
+                                /** @description Ödenen tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "transfer" | "eft" | "cash" | "cheque";
+                                /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                                bankAccount: {
+                                    id: string;
+                                    /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                    label: string;
+                                } | null;
+                                /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                                description: string;
+                                createdAt: string;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                                instructionExportedAt: string | null;
+                                instructionExportCount: number;
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
+                            actions: {
+                                pay: boolean;
+                                replan: boolean;
+                                cancel: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Tutar girişte KDV dahil mi yazıldı */
+                            amountIncludesVat: boolean;
+                            note: string | null;
+                            /** @description Bağlı satın alma siparişi (DOM-FIN-073) */
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            } | null;
+                            /** @description Ödeme planı, vade sırasıyla */
+                            installments: {
+                                id: string;
+                                position: number;
+                                /** @description Vade `YYYY-MM-DD` */
+                                dueDate: string;
+                                /** @description Taksit tutarı */
+                                amountCents: number;
+                                /** @description Taksite yazılmış etkin ödemeler */
+                                paidCents: number;
+                                /** @description Taksit kalanı */
+                                remainingCents: number;
+                                /** @description Vadesi geçti ve kalanı var */
+                                overdue: boolean;
+                            }[];
+                            /** @description Faturanın ödemeleri (iptal edilenler dahil) */
+                            payments: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                };
+                                invoice: {
+                                    id: string;
+                                    invoiceNumber: string;
+                                };
+                                installmentId: string;
+                                /** @description Ödeme günü `YYYY-MM-DD` */
+                                paidDate: string;
+                                /** @description Ödenen tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "transfer" | "eft" | "cash" | "cheque";
+                                /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                                bankAccount: {
+                                    id: string;
+                                    /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                    label: string;
+                                } | null;
+                                /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                                description: string;
+                                createdAt: string;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                                instructionExportedAt: string | null;
+                                instructionExportCount: number;
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
+                            actions: {
+                                pay: boolean;
+                                replan: boolean;
+                                cancel: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSupplierPayments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                supplierId?: string;
+                invoiceId?: string;
+                method?: "transfer" | "eft" | "cash" | "cheque";
+                /** @description Ödeme günü başı */
+                from?: string;
+                /** @description Ödeme günü sonu */
+                to?: string;
+                /** @description Etkin ya da iptal edilmiş */
+                status?: "active" | "cancelled";
+                /** @description Talimat dosyası: `pending` alınmamış, `exported` alınmış etkin havale/EFT ödemeleri */
+                instruction?: "pending" | "exported";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            invoice: {
+                                id: string;
+                                invoiceNumber: string;
+                            };
+                            installmentId: string;
+                            /** @description Ödeme günü `YYYY-MM-DD` */
+                            paidDate: string;
+                            /** @description Ödenen tutar, kuruş */
+                            amountCents: number;
+                            /** @enum {string} */
+                            method: "transfer" | "eft" | "cash" | "cheque";
+                            /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                            bankAccount: {
+                                id: string;
+                                /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                label: string;
+                            } | null;
+                            /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                            description: string;
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                            instructionExportedAt: string | null;
+                            instructionExportCount: number;
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSupplierPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    installmentId: string;
+                    /** @description Ödeme günü `YYYY-MM-DD` (Europe/Istanbul) */
+                    paidDate: string;
+                    amountCents: number;
+                    /** @enum {string} */
+                    method: "transfer" | "eft" | "cash" | "cheque";
+                    /** @default null */
+                    bankAccountId?: string | null;
+                    /**
+                     * @description Banka açıklaması; boşsa `Fatura <no> ödemesi`
+                     * @default null
+                     */
+                    description?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            invoice: {
+                                id: string;
+                                invoiceNumber: string;
+                            };
+                            installmentId: string;
+                            /** @description Ödeme günü `YYYY-MM-DD` */
+                            paidDate: string;
+                            /** @description Ödenen tutar, kuruş */
+                            amountCents: number;
+                            /** @enum {string} */
+                            method: "transfer" | "eft" | "cash" | "cheque";
+                            /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                            bankAccount: {
+                                id: string;
+                                /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                label: string;
+                            } | null;
+                            /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                            description: string;
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                            instructionExportedAt: string | null;
+                            instructionExportCount: number;
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelSupplierPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            invoice: {
+                                id: string;
+                                invoiceNumber: string;
+                            };
+                            installmentId: string;
+                            /** @description Ödeme günü `YYYY-MM-DD` */
+                            paidDate: string;
+                            /** @description Ödenen tutar, kuruş */
+                            amountCents: number;
+                            /** @enum {string} */
+                            method: "transfer" | "eft" | "cash" | "cheque";
+                            /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                            bankAccount: {
+                                id: string;
+                                /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                label: string;
+                            } | null;
+                            /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                            description: string;
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                            instructionExportedAt: string | null;
+                            instructionExportCount: number;
+                            actions: {
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportSupplierPaymentInstructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    paymentIds: string[];
+                    confirmReexport?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description CSV dosyası */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSupplierLedger: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Tedarikçi adında arama */
+                q?: string;
+                /** @description `open` bakiyesi olan, `overdue` vadesi geçmiş tutarı olan tedarikçiler */
+                balance?: "open" | "overdue";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            supplier: {
+                                id: string;
+                                name: string;
+                                isActive: boolean;
+                            };
+                            invoiceCount: number;
+                            /** @description Etkin faturaların KDV dahil toplamı */
+                            invoicedCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Bakiye: kurumun tedarikçiye borcu */
+                            balanceCents: number;
+                            /** @description Vadesi geçmiş kalan */
+                            overdueCents: number;
+                            nextDueDate: string | null;
+                        }[];
+                        meta: {
+                            page: number;
+                            pageSize: number;
+                            /** @description Süzgece uyan tedarikçi sayısı */
+                            total: number;
+                            /** @description Kurumun bütün tedarikçi carisi (süzgeçten bağımsız) */
+                            totals: {
+                                /** @description Etkin faturaların KDV dahil toplamı */
+                                invoicedCents: number;
+                                /** @description Etkin ödemelerin toplamı */
+                                paidCents: number;
+                                /** @description Bakiye: kurumun tedarikçiye borcu */
+                                balanceCents: number;
+                                /** @description Vadesi geçmiş kalan */
+                                overdueCents: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSupplierStatement: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            supplier: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "company" | "individual";
+                                /** @description VKN; şahıs TCKN’si maskeli */
+                                taxNumber: string;
+                                /** @description Maskeli IBAN; tam değer yalnız talimat dosyasında */
+                                iban: string | null;
+                                isActive: boolean;
+                            };
+                            /** @description Etkin faturaların KDV dahil toplamı */
+                            invoicedCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Bakiye: kurumun tedarikçiye borcu */
+                            balanceCents: number;
+                            /** @description Vadesi geçmiş kalan */
+                            overdueCents: number;
+                            /** @description Hareketler, yeni önce; bakiye eskiden yeniye yürür */
+                            movements: {
+                                /** @enum {string} */
+                                kind: "invoice" | "invoice_cancel" | "payment" | "payment_cancel";
+                                /** @description Hareket günü; iptal iptal gününe yazılır `YYYY-MM-DD` */
+                                date: string;
+                                invoiceId: string;
+                                invoiceNumber: string;
+                                paymentId: string | null;
+                                method: ("transfer" | "eft" | "cash" | "cheque") | null;
+                                /** @description Borcu artıran tutar (fatura, ödeme iptali) */
+                                debitCents: number;
+                                /** @description Borcu azaltan tutar (ödeme, fatura iptali) */
+                                creditCents: number;
+                                /** @description Hareket sonrası bakiye */
+                                balanceCents: number;
+                            }[];
+                        };
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -575,6 +575,13 @@
       "when": 1794124943327,
       "tag": "0081_create_purchase_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794128267630,
+      "tag": "0082_create_supplier_ledger",
+      "breakpoints": true
     }
   ]
 }

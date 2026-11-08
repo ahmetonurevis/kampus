@@ -75,6 +75,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/purchase-orders',
   // Mal kabul gider gerçekleşeni yazar (routes/finance-purchase-receipts.ts; DOM-FIN-074).
   'POST /api/v1/finance/purchase-orders/{orderId}/receipts',
+  // Tedarikçi faturası ödeme planı yazar, ödeme para hareketidir (routes/finance-supplier-ledger.ts;
+  // DOM-FIN-076).
+  'POST /api/v1/finance/supplier-invoices',
+  'POST /api/v1/finance/supplier-payments',
 ]
 // Onur: kayıt ve finans sonu
 

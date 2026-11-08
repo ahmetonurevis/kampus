@@ -42,6 +42,7 @@ import { registerFinanceCostReportRoutes } from './routes/finance-cost-reports.t
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.ts'
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
@@ -493,6 +494,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePurchaseReceiptRoutes(app)
   registerFinancePurchaseReportRoutes(app)
   registerFinanceSupplierLedgerRoutes(app)
+  registerFinanceFixedAssetRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

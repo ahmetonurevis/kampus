@@ -1046,6 +1046,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-FIN-059: başka kurumun kursiyeri 404, B kurumunun sözleşmesi değişmez',
     'get(url(B_ONLY), await a.learner(ADULT))',
   ),
+  // Onur: açılış nöbeti (ON-095, DOM-FIN-061).
+  'GET /api/v1/finance/opening-watch': liste(
+    'finance-opening-watch.test.ts',
+    'başka kurumun taksiti, sözleşmesi ve iadesi açılış nöbetinde yok',
+    'URL_BASE',
+  ),
 }
 
 /**

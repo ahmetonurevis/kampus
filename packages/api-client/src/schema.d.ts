@@ -3768,6 +3768,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/opening-watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Açılış nöbeti: ilk taksitler, onaysız sözleşmeler, kayıt değişiklikleri, iadeler
+         * @description Yeni öğretim yılı ya da dönem açılışında izlenecekler (DOM-FIN-061). `firstInstallments`: seçilen yılın sözleşme zinciri başına en küçük numaralı güncel taksiti; kalanı olan ve vadesi geçmiş ya da 7 gün içinde gelecek olanlar (kısmi ödeme düşülür). `unapprovedContracts`: seçilen yılın kurum imzası ya da ödeyici onayı bekleyen sürümleri (ek protokol dahil; ayrılan öğrenci hariç). `enrollmentChanges`: pencereye düşen kesin kayıt, yenileme planı, dönem geçişi, mezuniyet ve ayrılış (DOM-KAY-026); yenileme modülü kapalıysa geçiş olayı yoktur (`renewalModule`). `refunds`: pencereden bağımsız ödenmemiş bütün ayrılış iadeleri. Her bölüm sayılarla birlikte en çok 20 satır döner. `academicYear` verilmezse kurumun etkin yılı; pencere yıl (ya da `termId` dönemi) başlangıcından 30 gün önce ile 41 gün sonrası arasıdır, `from`/`to` birlikte verilirse onlar (yalnız biri 400). Ters pencere 422 `opening_window_invalid`, 120 günü aşan 422 `opening_window_too_long`, yılda olmayan dönem 422 `opening_term_not_found`. Hiçbir şey yazmaz. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceOpeningWatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -39806,6 +39826,202 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceOpeningWatch: {
+        parameters: {
+            query?: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027); verilmezse kurumun etkin yılı */
+                academicYear?: number;
+                /** @description Dönem kimliği: pencere dönemin başlangıç gününe göre kurulur */
+                termId?: string;
+                /** @description Pencere başlangıcı (YYYY-MM-DD) */
+                from?: string;
+                /** @description Pencere bitişi (YYYY-MM-DD) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            today: string;
+                            from: string;
+                            to: string;
+                            /** @description Pencerenin dayandığı yıl ya da dönem başlangıç günü */
+                            anchorDate: string;
+                            termId: string | null;
+                            /** @description Seçilen yılın dönemleri (başlangıç sırasıyla) */
+                            terms: {
+                                id: string;
+                                name: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description Yenileme modülü açık mı; kapalıysa geçiş olayı yoktur */
+                            renewalModule: boolean;
+                            firstInstallments: {
+                                overdueCount: number;
+                                overdueCents: number;
+                                dueSoonCount: number;
+                                dueSoonCents: number;
+                                rows: {
+                                    invoiceId: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    className: string | null;
+                                    contractId: string | null;
+                                    installment: number;
+                                    dueDate: string;
+                                    amountCents: number;
+                                    /** @description Kısmi ödeme düşülmüş kalan (DOM-FIN-030) */
+                                    remainingCents: number;
+                                    /** @enum {string} */
+                                    status: "overdue" | "due_soon";
+                                    /** @description Vadeden sonraki ilk günden sayılan gecikme; yoksa 0 */
+                                    overdueDays: number;
+                                }[];
+                            };
+                            unapprovedContracts: {
+                                awaitingSignatoryCount: number;
+                                awaitingApprovalCount: number;
+                                rows: {
+                                    contractId: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @enum {string} */
+                                    status: "awaiting_signatory" | "awaiting_approval";
+                                    revision: number;
+                                    contractAt: string;
+                                }[];
+                            };
+                            enrollmentChanges: {
+                                counts: {
+                                    enrolled: number;
+                                    renewed: number;
+                                    promoted: number;
+                                    graduated: number;
+                                    withdrawn: number;
+                                };
+                                withdrawnWithoutRenewal: number;
+                                rows: {
+                                    /** @enum {string} */
+                                    kind: "enrolled" | "renewed" | "promoted" | "graduated" | "withdrawn";
+                                    date: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    fromClassName: string | null;
+                                    toClassName: string | null;
+                                    /** @description Ayrılışta: seçilen yıla yenileme hiç planlanmamış */
+                                    withoutRenewal: boolean;
+                                }[];
+                            };
+                            refunds: {
+                                pendingCount: number;
+                                pendingCents: number;
+                                overdueCount: number;
+                                overdueCents: number;
+                                rows: {
+                                    withdrawalId: string;
+                                    studentId: string;
+                                    /** @description Öğrenci ya da kursiyer adı; kayıt yoksa "—" */
+                                    studentName: string;
+                                    withdrawalDate: string;
+                                    refundCents: number;
+                                    refundDueDate: string;
+                                    overdueDays: number;
+                                }[];
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -70,6 +70,7 @@ test('IST-116: taşınan kartların kimlikleri korunur', () => {
     'onburo.gecikmis-taksitler',
     'onburo.yaklasan-taksitler',
     'onburo.son-tahsilatlar',
+    'finans.kritik-stok',
     'veli.guncel-bakiye',
   ])
   // Taşınan iki kartın kimliği korunur; ON-035 Vue eşitliği iki sayaç ekledi, ON-036 tahsilat

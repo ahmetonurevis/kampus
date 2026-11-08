@@ -764,7 +764,7 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     assert.equal(((await actuals(a)).row as Json).actualCents, 0)
   })
 
-  test('DOM-FIN-078, K-184: stok kartı seçilen kalem kabulde depoya girer; kabul iptali girişi geri alır, kullanılmış giriş iptali reddeder', async () => {
+  test('DOM-FIN-078, K-184: stok kartı seçilen kalem kabulde depoya girer; kabul iptali girişi geri alır, kullanılmış giriş iptali reddeder; son alış fiyatı kritik listede (DOM-FIN-079, K-202)', async () => {
     const t = await institution()
     const branches = createSeed(FIXED_NOW).branches
     await insertMissingRecords(
@@ -781,6 +781,7 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       name: 'Klavye',
       category: 'it',
       unit: 'piece',
+      minQuantity: 10,
     })
     const boxed = await post('/stock-items', {
       code: 'KLV-KOLI',
@@ -834,6 +835,21 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       ['receipt', 6, '2026-10-06', t.order.number],
     )
     assert.deepEqual(received.actions, { cancel: false })
+    // K-202: kritik listede son alış fiyatı sipariş birim fiyatıdır (KDV hariç).
+    const criticalRow = async () =>
+      (ok(await get(`${FINANCE}/stock-items/critical`, t.admin)) as unknown as Json[]).find(
+        (row) => row.id === keyboardCard.id,
+      )
+    const priced = await criticalRow()
+    assert.deepEqual(
+      [
+        priced?.quantity,
+        priced?.lastUnitPriceCents,
+        priced?.lastReceiptDate,
+        priced?.lastOrderNumber,
+      ],
+      [6, 19_000, '2026-10-06', t.order.number],
+    )
     assertError(
       await call(
         'POST',
@@ -873,6 +889,8 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     ok(await cancel(t.admin, t, receipt))
     const card = ok(await get(`${FINANCE}/stock-items/${String(keyboardCard.id)}`, t.admin))
     assert.equal(card.quantity, 0)
+    // İptal edilen kabulün fiyatı son alış fiyatı sayılmaz.
+    assert.equal((await criticalRow())?.lastUnitPriceCents, null)
     const [stored] = (await stockRows()).filter((row) => row.type === 'receipt')
     assert.equal(stored?.cancelReason, 'Hatalı kayıt')
   })

@@ -28,6 +28,9 @@ export type StockItemRow =
 export type StockItemDetail =
   operations['getStockItem']['responses'][200]['content']['application/json']['data']
 export type StockItemQuery = Query<'listStockItems'>
+export type CriticalStockRow =
+  operations['listCriticalStockItems']['responses'][200]['content']['application/json']['data'][number]
+export type CriticalStockQuery = Query<'listCriticalStockItems'>
 
 export type CreateStockWarehouseBody = JsonBody<'createStockWarehouse'>
 export type UpdateStockWarehouseBody = JsonBody<'updateStockWarehouse'>
@@ -60,6 +63,21 @@ export function useStockItems(query: StockItemQuery, enabled = true) {
       key: [...INVENTORY_KEY, 'items', query],
       request: (client, signal) =>
         client.GET('/api/v1/finance/stock-items', { params: { query }, signal }),
+    },
+    { enabled },
+  )
+}
+
+/**
+ * Kritik stok listesi (DOM-FIN-079, K-200): kurum toplamı kritik seviyede ya da altında olan etkin
+ * kartlar; stok anahtarı altında olduğundan her stok yazması listeyi tazeler.
+ */
+export function useCriticalStockItems(query: CriticalStockQuery, enabled = true) {
+  return useFinanceListQuery(
+    {
+      key: [...INVENTORY_KEY, 'critical', query],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/stock-items/critical', { params: { query }, signal }),
     },
     { enabled },
   )

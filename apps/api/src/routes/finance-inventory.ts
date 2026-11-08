@@ -24,6 +24,7 @@ import {
   createStockTransferCommand,
   createStockWarehouseCommand,
   getStockItemFor,
+  listCriticalStockFor,
   listStockItemsFor,
   listStockMovementsFor,
   listStockWarehousesFor,
@@ -34,6 +35,8 @@ import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
+  criticalStockListQuery,
+  criticalStockListResponse,
   stockItemListQuery,
   stockItemListResponse,
   stockItemParams,
@@ -106,6 +109,30 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         pageSize,
         ...filters,
         critical: critical === 'true',
+      })
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.get(
+    `${ITEMS}/critical`,
+    {
+      preValidation: guarded(STOCK_READ_ROLES),
+      schema: {
+        operationId: 'listCriticalStockItems',
+        tags,
+        summary: 'Kritik stok listesi',
+        description: `Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201) ve son alış fiyatı (K-202). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep \`POST /finance/purchase-requests\` ile açılır (K-203). ${READERS}`,
+        querystring: criticalStockListQuery,
+        response: { 200: criticalStockListResponse, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize, ...filters } = request.query
+      const { items, total } = await listCriticalStockFor(contextOf(request), {
+        page,
+        pageSize,
+        ...filters,
       })
       return { data: items, meta: { page, pageSize, total } }
     },

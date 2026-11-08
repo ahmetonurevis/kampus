@@ -1504,6 +1504,7 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     (
       [
         ['liste', 'GET /api/v1/finance/stock-items', 'listOf(ITEMS)'],
+        ['liste', 'GET /api/v1/finance/stock-items/critical', 'listOf(CRITICAL)'],
         ['gövde', 'POST /api/v1/finance/stock-items', 'institutionId: b.id'],
         ['kayıt', 'GET /api/v1/finance/stock-items/:itemId', 'get(bItemUrl, a.admin)'],
         ['kayıt', 'PATCH /api/v1/finance/stock-items/:itemId', 'patchB(bItemUrl, b.paper.version)'],

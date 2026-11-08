@@ -26,8 +26,8 @@ import type {
 
 import type { Database } from './client.ts'
 import { stockItems, stockMovements, stockWarehouses } from './schema/finance-inventory.ts'
-import { purchaseOrders } from './schema/finance-purchase-orders.ts'
-import { purchaseReceipts } from './schema/finance-purchase-receipts.ts'
+import { purchaseOrderItems, purchaseOrders } from './schema/finance-purchase-orders.ts'
+import { purchaseReceiptItems, purchaseReceipts } from './schema/finance-purchase-receipts.ts'
 
 /**
  * Stok kartı, depo ve hareket deposu (DOM-FIN-077, DOM-FIN-078; ON-228, ON-229). Kurum
@@ -493,4 +493,70 @@ export async function loadReceiptOrders(
       ),
     )
   return new Map(rows.map(({ receiptId, ...order }) => [receiptId, order]))
+}
+
+export interface LastReceiptPrice {
+  /** Sipariş kaleminin KDV hariç birim fiyatı (kuruş). */
+  unitPriceCents: number
+  receiptDate: string
+  orderNumber: string
+}
+
+/**
+ * Kartların son alış fiyatı (DOM-FIN-079, K-202): iptal edilmemiş en son mal kabul girişinin
+ * sipariş kalemi birim fiyatı, KDV hariç. "Son" hareket günü, eşitlikte kayıt anı ve kimlikle
+ * belirlenir (deterministik). Mal kabulden girmemiş kart haritada yoktur.
+ */
+export async function loadLastReceiptPrices(
+  db: Database,
+  institutionId: string,
+  itemIds: readonly string[],
+): Promise<Map<string, LastReceiptPrice>> {
+  if (itemIds.length === 0) return new Map()
+  const rows = await db
+    .select({
+      itemId: stockMovements.itemId,
+      unitPriceCents: purchaseOrderItems.unitPriceCents,
+      receiptDate: stockMovements.movementDate,
+      orderNumber: purchaseOrders.number,
+    })
+    .from(stockMovements)
+    .innerJoin(
+      purchaseReceiptItems,
+      and(
+        eq(purchaseReceiptItems.institutionId, stockMovements.institutionId),
+        eq(purchaseReceiptItems.id, stockMovements.receiptItemId),
+      ),
+    )
+    .innerJoin(
+      purchaseOrderItems,
+      and(
+        eq(purchaseOrderItems.institutionId, purchaseReceiptItems.institutionId),
+        eq(purchaseOrderItems.id, purchaseReceiptItems.orderItemId),
+      ),
+    )
+    .innerJoin(
+      purchaseOrders,
+      and(
+        eq(purchaseOrders.institutionId, purchaseOrderItems.institutionId),
+        eq(purchaseOrders.id, purchaseOrderItems.orderId),
+      ),
+    )
+    .where(
+      and(
+        movementsOf(institutionId),
+        eq(stockMovements.type, 'receipt'),
+        isNull(stockMovements.cancelledAt),
+        inArray(stockMovements.itemId, [...new Set(itemIds)]),
+      ),
+    )
+    .orderBy(
+      asc(stockMovements.itemId),
+      desc(stockMovements.movementDate),
+      desc(stockMovements.createdAt),
+      desc(stockMovements.id),
+    )
+  const prices = new Map<string, LastReceiptPrice>()
+  for (const { itemId, ...price } of rows) if (!prices.has(itemId)) prices.set(itemId, price)
+  return prices
 }

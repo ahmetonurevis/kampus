@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import {
+  packageSaleAlerts,
+  type PackageAlert,
+} from '@kampus/school-core/lib/finance-package-alerts.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   createPackageSchema,
@@ -43,6 +47,7 @@ import {
   insertPackageHourEntry,
   insertPackageSale,
   isPackageNameTaken,
+  listAllPackageSales,
   listLessonPackages,
   listPackageSales,
   loadPackageHourEntries,
@@ -313,14 +318,13 @@ function saleView(
   today: string,
 ) {
   const balance = packageHourBalance(sale.purchasedHours, entries)
+  const facts = { expiresDate: sale.expiresDate, remainingHours: balance.remainingHours }
   return {
     ...sale,
     ...balance,
     usedHoursRecorded: packageUsedHoursRecorded(entries),
-    status: packageSaleStatus(
-      { expiresDate: sale.expiresDate, remainingHours: balance.remainingHours },
-      today,
-    ),
+    status: packageSaleStatus(facts, today),
+    alerts: packageSaleAlerts({ ...facts, purchasedHours: sale.purchasedHours }, today),
   }
 }
 
@@ -435,6 +439,8 @@ export async function listPackageSalesFor(
     pageSize: number
     studentId?: string | undefined
     packageId?: string | undefined
+    /** Yalnız bu uyarıyı taşıyan satışlar (K-248, K-249). */
+    alert?: PackageAlert | undefined
   },
 ) {
   const scope = await readScope(ctx)
@@ -449,24 +455,16 @@ export async function listPackageSalesFor(
       : wide
         ? undefined
         : [...permitted]
-  const { items, total } = await listPackageSales(ctx.db, ctx.institutionId, {
-    page: query.page,
-    pageSize: query.pageSize,
-    studentIds,
-    packageId: query.packageId,
-  })
-  const [entries, names] = await Promise.all([
-    loadPackageHourEntries(
-      ctx.db,
-      ctx.institutionId,
-      items.map((item) => item.id),
-    ),
-    studentNames(
-      ctx,
-      items.map((item) => item.studentId),
-    ),
-  ])
+  const filter = { studentIds, packageId: query.packageId }
   const today = dayKey(ctx.now)
+  const { items, total, entries } =
+    query.alert === undefined
+      ? await pagedSales(ctx, { ...filter, page: query.page, pageSize: query.pageSize })
+      : await alertedSales(ctx, filter, query, today, query.alert)
+  const names = await studentNames(
+    ctx,
+    items.map((item) => item.studentId),
+  )
   return {
     items: items.map((sale) =>
       forReader(ctx, {
@@ -477,6 +475,41 @@ export async function listPackageSalesFor(
     total,
   }
 }
+
+type SaleListFilter = { studentIds: string[] | undefined; packageId: string | undefined }
+
+async function pagedSales(ctx: ServiceContext, query: SaleListFilter & PageQuery) {
+  const { items, total } = await listPackageSales(ctx.db, ctx.institutionId, query)
+  const entries = await loadPackageHourEntries(
+    ctx.db,
+    ctx.institutionId,
+    items.map((item) => item.id),
+  )
+  return { items, total, entries }
+}
+
+/** Uyarı süzgeci bakiyeden türer: bütün satışlar hesaplanır, sayfa sonra kesilir (K-248, K-249). */
+async function alertedSales(
+  ctx: ServiceContext,
+  filter: SaleListFilter,
+  page: PageQuery,
+  today: string,
+  alert: PackageAlert,
+) {
+  const all = await listAllPackageSales(ctx.db, ctx.institutionId, filter)
+  const entries = await loadPackageHourEntries(
+    ctx.db,
+    ctx.institutionId,
+    all.map((item) => item.id),
+  )
+  const matched = all.filter((sale) =>
+    saleView(sale, entries.get(sale.id) ?? [], today).alerts.includes(alert),
+  )
+  const start = (page.page - 1) * page.pageSize
+  return { items: matched.slice(start, start + page.pageSize), total: matched.length, entries }
+}
+
+type PageQuery = { page: number; pageSize: number }
 
 const storedInvoiceSchema = z.object({
   installment: z.number(),

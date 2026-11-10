@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { PROGRESSION_OUTCOMES } from '@kampus/school-core/cefr/progression.ts'
 import { enumKeys } from '@kampus/school-core/content/taxonomy.ts'
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
+import { PACKAGE_ALERTS } from '@kampus/school-core/lib/finance-package-alerts.ts'
 import { PACKAGE_KINDS, PACKAGE_SALE_STATUSES } from '@kampus/school-core/lib/finance-packages.ts'
 import { contractPaymentTermSchema } from '@kampus/school-core/lib/payment-terms.ts'
 import { COURSE_OFFER_ROW_STATUSES } from '@kampus/school-core/lib/renewal-course-offer-list.ts'
@@ -63,6 +64,12 @@ export const quoteResponse = dataResponse(
   }),
 )
 
+const alertsSchema = z
+  .array(z.enum(PACKAGE_ALERTS))
+  .describe(
+    'Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur.',
+  )
+
 const saleSchema = z.object({
   id: z.string(),
   version: z.number().int().describe('`If-Match` için kayıt sürümü'),
@@ -91,6 +98,8 @@ const saleSchema = z.object({
   status: z
     .enum(PACKAGE_SALE_STATUSES)
     .describe('`expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir.'),
+  // Eski idempotency yanıtı bu alanı taşımaz: tekrar yanıtı şemadan geçerken düşmesin.
+  alerts: alertsSchema.default([]),
   soldAt: z.string(),
 })
 export const saleResponse = dataResponse(saleSchema)
@@ -150,6 +159,10 @@ export const saleListQuery = z.strictObject({
   ...pageQuerySchema.shape,
   studentId: z.string().min(1).max(200).optional().describe('Öğrenci; kapsamı daraltır'),
   packageId: z.uuid('Paket geçersiz.').optional(),
+  alert: z
+    .enum(PACKAGE_ALERTS, 'Uyarı geçersiz.')
+    .optional()
+    .describe('Yalnız bu uyarıyı taşıyan satışlar (K-248, K-249)'),
 })
 
 /** Kur yenileme ve üst kur teklif listesi (IST-088, ON-082; DOM-DIL-070, DOM-DIL-050). */
@@ -247,6 +260,7 @@ export const packageBalanceResponse = dataResponse(
         remainingHours: z.number().int(),
         expiredHours: z.number().int(),
         usedHoursRecorded: z.boolean(),
+        alerts: alertsSchema,
         amounts: balanceAmountsSchema.optional(),
       }),
     ),

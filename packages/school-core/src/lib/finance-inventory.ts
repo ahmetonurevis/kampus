@@ -19,7 +19,8 @@ import { SUPPLIER_CATEGORIES } from './finance-suppliers.ts'
  * düşürmemelidir. Transfer tek işlemde iki harekettir. Hareket silinmez, yönetici gerekçeyle iptal
  * eder; mal kabulden gelen giriş yalnız kabul iptaliyle geri alınır (DOM-FIN-074). Materyal seti
  * teslimi (DOM-FIN-080) setin kalemleri kadar `delivery` çıkışı yazar; bu çıkışlar yalnız teslim
- * iptaliyle geri alınır.
+ * iptaliyle geri alınır. Sarf talebinin karşılanması (DOM-FIN-091) `supply` çıkışı yazar; bu çıkış
+ * hareket listesinden iptal edilmez, iade elle giriştir (`returned`, K-245).
  *
  * Fonksiyonlar saftır; zaman `today` parametresiyle gelir.
  */
@@ -58,6 +59,7 @@ export const STOCK_MOVEMENT_TYPES = [
   'transfer_out',
   'receipt',
   'delivery',
+  'supply',
 ] as const
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]
 export const STOCK_MOVEMENT_TYPE_LABELS = {
@@ -67,6 +69,7 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   transfer_out: 'Transfer çıkışı',
   receipt: 'Mal kabul girişi',
   delivery: 'Materyal seti teslimi',
+  supply: 'Sarf talebi karşılama',
 } as const satisfies Record<StockMovementType, string>
 const INBOUND: ReadonlySet<StockMovementType> = new Set(['in', 'transfer_in', 'receipt'])
 export const isInbound = (type: StockMovementType) => INBOUND.has(type)
@@ -655,6 +658,11 @@ export function planStockMovementCancel(
     throw ruleError(
       'stock_movement_from_delivery',
       'Materyal seti teslimindeki çıkış buradan iptal edilmez; teslimi iptal edin.',
+    )
+  if (movement.type === 'supply')
+    throw ruleError(
+      'stock_movement_from_supply',
+      'Sarf talebi karşılamasındaki çıkış iptal edilmez; geri gelen malzemeyi "Kullanımdan iade" girişiyle yazın.',
     )
   const ids =
     movement.transferId === null

@@ -570,7 +570,8 @@ async function movementViews(
           canCancel &&
           movement.cancelledAt === null &&
           movement.receiptId === null &&
-          movement.type !== 'delivery',
+          movement.type !== 'delivery' &&
+          movement.type !== 'supply',
       },
       version: movement.version,
     }

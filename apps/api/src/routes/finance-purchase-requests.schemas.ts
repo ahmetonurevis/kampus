@@ -104,6 +104,10 @@ const detailSchema = z.object({
       decide: z.boolean(),
     })
     .describe('Oturumdaki kullanıcının bu talepte yapabileceği işlemler'),
+  supplyRequest: z
+    .object({ id: z.string(), number: z.string().describe('Sarf talebi numarası, ör. `SM-0001`') })
+    .nullable()
+    .describe('Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246)'),
 })
 export const purchaseRequestResponse = dataResponse(detailSchema)
 

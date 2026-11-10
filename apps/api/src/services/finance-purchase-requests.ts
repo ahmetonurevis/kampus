@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import { supplyRequestNumber } from '@kampus/school-core/lib/finance-supply-requests.ts'
 import {
   confirmPurchaseBudget,
   itemTotalCents,
@@ -34,6 +35,7 @@ import {
   type StoredPurchaseRequest,
 } from '../db/finance-purchase-requests.ts'
 import { listSuppliers, loadSupplierRefs } from '../db/finance-suppliers.ts'
+import { findSupplyRequestForPurchase } from '../db/finance-supply-requests.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -66,7 +68,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  * Talebin bağlı kayıtları; kurumun merkez, kalem ve dönem sayısı küçüktür, tamamı yüklenir. Stok
  * kartı yalnız etkin kurumda aranır: başka kurumun kartı bulunmaz (K-221).
  */
-async function refsFor(tx: Database, ctx: ServiceContext, key: Key): Promise<PurchaseRequestRefs> {
+export async function purchaseRequestRefsFor(
+  tx: Database,
+  ctx: ServiceContext,
+  key: Key,
+): Promise<PurchaseRequestRefs> {
   const [centers, items, periods, supplierRefs, cards] = await Promise.all([
     loadCostCenters(tx, ctx.institutionId),
     loadBudgetItems(tx, ctx.institutionId),
@@ -178,11 +184,14 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
     ),
   ])
   const nameOf = (userId: string | null) => (userId === null ? null : (names.get(userId) ?? null))
-  const cards = await loadStockItemLabels(
-    db,
-    ctx.institutionId,
-    items.map((item) => item.stockItemId),
-  )
+  const [cards, supply] = await Promise.all([
+    loadStockItemLabels(
+      db,
+      ctx.institutionId,
+      items.map((item) => item.stockItemId),
+    ),
+    findSupplyRequestForPurchase(db, ctx.institutionId, id),
+  ])
   return {
     ...summaryView(request, names),
     items: items.map(({ stockItemId, ...item }) => ({
@@ -197,6 +206,9 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
     cancelledByName: nameOf(request.cancelledByUserId),
     cancelReason: request.cancelReason,
     actions: purchaseRequestActions(request, ctx.actor),
+    // Talep bir sarf talebinin kalanından açıldıysa (DOM-FIN-091, K-246) o talep.
+    supplyRequest:
+      supply === null ? null : { id: supply.id, number: supplyRequestNumber(supply.sequence) },
   }
 }
 
@@ -283,7 +295,7 @@ export function createPurchaseRequestCommand(
       collections: [],
       entity,
       load: async (tx) => {
-        const refs = await refsFor(tx, ctx, rawKey(input))
+        const refs = await purchaseRequestRefsFor(tx, ctx, rawKey(input))
         const sequence = await nextPurchaseRequestSequence(tx, ctx.institutionId)
         return { run: () => ({ plan: planPurchaseRequest(input, refs), sequence }) }
       },
@@ -327,7 +339,7 @@ export function updatePurchaseRequestCommand(
         if (current.version !== expectedVersion) throw new ConflictError()
         const raw = (input ?? {}) as Record<string, unknown>
         const given = rawKey(input)
-        const refs = await refsFor(tx, ctx, {
+        const refs = await purchaseRequestRefsFor(tx, ctx, {
           costCenterId: 'costCenterId' in raw ? given.costCenterId : current.costCenterId,
           periodId: 'periodId' in raw ? given.periodId : current.periodId,
           budgetItemId: 'budgetItemId' in raw ? given.budgetItemId : current.budgetItemId,
@@ -388,7 +400,7 @@ export function transitionPurchaseRequestCommand(
       load: async (tx) => {
         const current = await requestOf(tx, ctx, id)
         if (current.version !== expectedVersion) throw new ConflictError()
-        const refs = await refsFor(tx, ctx, current)
+        const refs = await purchaseRequestRefsFor(tx, ctx, current)
         const budget =
           transition === 'submit' || transition === 'approve'
             ? purchaseBudgetInfo(

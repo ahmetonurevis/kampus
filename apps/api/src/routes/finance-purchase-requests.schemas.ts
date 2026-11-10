@@ -13,6 +13,9 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 const cents = (description: string) => z.number().int().describe(description)
 const version = z.number().int().describe('`If-Match` için kayıt sürümü')
 const ref = z.object({ id: z.string(), code: z.string(), name: z.string() })
+const stockItemLink = ref
+  .nullable()
+  .describe('Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş')
 
 const budgetStatusShape = {
   plannedCents: cents('Dönem × merkez × kalem satırının planı; satır yoksa boş').nullable(),
@@ -84,6 +87,7 @@ const detailSchema = z.object({
       unit: z.enum(PURCHASE_UNITS),
       estimatedUnitPriceCents: cents('Tahmini birim fiyat, kuruş'),
       totalCents: cents('Miktar × birim fiyat, kuruş'),
+      stockItem: stockItemLink,
     }),
   ),
   budget: budgetInfoSchema,

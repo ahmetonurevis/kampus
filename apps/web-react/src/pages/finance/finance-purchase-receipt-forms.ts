@@ -2,7 +2,8 @@
 // muayene notu ve kalanı olan her sipariş kalemi için kabul ve ret miktarı. Formda miktar metindir,
 // boş sıfır sayılır; gövdeye yalnız miktar girilen kalemler gider. Kalanı aşma sunucuda kurum kilidi
 // altında yeniden denetlenir (K-150). Kaleme stok kartı seçilirse kabul edilen miktar seçilen depoya
-// girer (DOM-FIN-078, K-184); kart boşsa kalem yalnız kabul edilir.
+// girer (DOM-FIN-078, K-184); kart boşsa kalem yalnız kabul edilir. Talepten gelen kart bağı
+// kalemin kartını önceden doldurur, kullanıcı değiştirebilir ya da kaldırabilir (ON-339).
 import { z } from 'zod'
 import type {
   CreatePurchaseReceiptBody,
@@ -71,7 +72,16 @@ export const receiptFormSchema = z
           message: 'Reddedilen miktar için nedeni en az 3 karakterle yazın.',
         })
     })
-    if (values.warehouseId === '' && values.lines.some((line) => line.stockItemId !== ''))
+    // Depo yalnız gövdeye giden (miktarı girilen) ve kartı seçili kalemler için gerekir: talepten
+    // gelen kart bağı miktarı girilmemiş kalemde depo istemez (ON-339).
+    const stocked = values.lines.some(
+      (line) =>
+        line.stockItemId !== '' &&
+        QUANTITY.test(line.accepted) &&
+        QUANTITY.test(line.rejected) &&
+        count(line.accepted) + count(line.rejected) > 0,
+    )
+    if (values.warehouseId === '' && stocked)
       ctx.addIssue({
         code: 'custom',
         path: ['warehouseId'],
@@ -86,7 +96,7 @@ export const receiptFormSchema = z
   })
 export type ReceiptFormValues = z.input<typeof receiptFormSchema>
 
-/** Başlangıç: bugün, kalanı olan her kalem için boş miktar. */
+/** Başlangıç: bugün, kalanı olan her kalem için boş miktar; kart bağı siparişten. */
 export function receiptDefaults(
   board: Pick<PurchaseReceiptBoard, 'items'>,
   today: string,
@@ -104,7 +114,8 @@ export function receiptDefaults(
         accepted: '',
         rejected: '',
         rejectReason: '',
-        stockItemId: '',
+        // Talepten siparişe kopyalanan kart bağı kalemin kartını doldurur (ON-339, K-221).
+        stockItemId: item.stockItem?.id ?? '',
       })),
   }
 }

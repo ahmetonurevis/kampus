@@ -7,6 +7,7 @@ import type {
   PurchaseRequestItem,
   PurchaseRequestStatus,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
+import { OPEN_PURCHASE_REQUEST_STATUSES } from '@kampus/school-core/lib/finance-stock-alerts.ts'
 
 import type { Database } from './client.ts'
 import { loadOrderBudgetFigures, requestHasLiveOrder } from './finance-purchase-receipts.ts'
@@ -252,6 +253,7 @@ export async function loadPurchaseRequestItems(
       quantity: purchaseRequestItems.quantity,
       unit: purchaseRequestItems.unit,
       estimatedUnitPriceCents: purchaseRequestItems.estimatedUnitPriceCents,
+      stockItemId: purchaseRequestItems.stockItemId,
     })
     .from(purchaseRequestItems)
     .where(
@@ -420,6 +422,57 @@ export async function loadPurchaseBudgetFigures(
     pendingCents: sumOf('submitted'),
     ...orders,
   }
+}
+
+/**
+ * Stok kartlarının açık talepteki miktarı (ON-339, K-222): kartı bağlı etkin kalemlerin miktar
+ * toplamı ve talep sayısı; taslak, gönderilmiş ve etkin siparişi olmayan onaylanmış talepler.
+ * Kalemin birimi bağlanırken kartın birimine eşitlenir, miktar kart biriminde toplanır.
+ */
+export async function loadOpenRequestQuantities(
+  db: Database,
+  institutionId: string,
+  stockItemIds: readonly string[],
+): Promise<Map<string, { quantity: number; requestCount: number }>> {
+  if (stockItemIds.length === 0) return new Map()
+  const rows = await db
+    .select({
+      stockItemId: purchaseRequestItems.stockItemId,
+      quantity: sql<string>`coalesce(sum(${purchaseRequestItems.quantity}), 0)`,
+      requestCount: sql<number>`count(distinct ${purchaseRequests.id})::int`,
+    })
+    .from(purchaseRequestItems)
+    .innerJoin(
+      purchaseRequests,
+      and(
+        eq(purchaseRequests.institutionId, purchaseRequestItems.institutionId),
+        eq(purchaseRequests.id, purchaseRequestItems.requestId),
+      ),
+    )
+    .where(
+      and(
+        eq(purchaseRequestItems.institutionId, institutionId),
+        inArray(purchaseRequestItems.stockItemId, [...new Set(stockItemIds)]),
+        isNull(purchaseRequestItems.archivedAt),
+        isNull(purchaseRequests.archivedAt),
+        inArray(purchaseRequests.status, [...OPEN_PURCHASE_REQUEST_STATUSES]),
+        // Siparişe dönen talebin miktarı siparişe geçmiştir (K-222).
+        sql`not ${requestHasLiveOrder}`,
+      ),
+    )
+    .groupBy(purchaseRequestItems.stockItemId)
+  return new Map(
+    rows.flatMap((row) =>
+      row.stockItemId === null
+        ? []
+        : [
+            [
+              row.stockItemId,
+              { quantity: Number(row.quantity), requestCount: Number(row.requestCount) },
+            ],
+          ],
+    ),
+  )
 }
 
 /** Talepteki kişilerin adı; kurum üyeliği olmayan kimlik görünmez. */

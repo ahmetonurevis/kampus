@@ -1,5 +1,5 @@
 {
-  "id": "c6bd1521-c9d7-47ac-9ed0-1cb78d3f6687",
+  "id": "dd8b8d59-566c-403f-97e7-0ea4b7276272",
   "prevId": "9ffb2476-4a32-40f2-9ba3-8488c769204b",
   "version": "7",
   "dialect": "postgresql",
@@ -9406,7 +9406,7 @@
       "checkConstraints": {
         "stock_movements_type_check": {
           "name": "stock_movements_type_check",
-          "value": "\"stock_movements\".\"type\" in ('in', 'out', 'transfer_in', 'transfer_out', 'receipt', 'delivery', 'adjustment_in', 'adjustment_out')"
+          "value": "\"stock_movements\".\"type\" in ('in', 'out', 'transfer_in', 'transfer_out', 'receipt', 'delivery')"
         },
         "stock_movements_quantity_check": {
           "name": "stock_movements_quantity_check",
@@ -9414,7 +9414,7 @@
         },
         "stock_movements_source_check": {
           "name": "stock_movements_source_check",
-          "value": "(\"stock_movements\".\"type\" = 'in' and \"stock_movements\".\"reason\" is not null and \"stock_movements\".\"reason\" in ('opening', 'donation', 'count_surplus', 'returned', 'other') and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" = 'out' and \"stock_movements\".\"reason\" is not null and \"stock_movements\".\"reason\" in ('usage', 'damage', 'loss', 'count_shortage', 'other') and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" in ('transfer_in', 'transfer_out') and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is not null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" = 'receipt' and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is not null and \"stock_movements\".\"receipt_item_id\" is not null)\n        or (\"stock_movements\".\"type\" = 'delivery' and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" in ('adjustment_in', 'adjustment_out') and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)"
+          "value": "(\"stock_movements\".\"type\" = 'in' and \"stock_movements\".\"reason\" is not null and \"stock_movements\".\"reason\" in ('opening', 'donation', 'count_surplus', 'returned', 'other') and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" = 'out' and \"stock_movements\".\"reason\" is not null and \"stock_movements\".\"reason\" in ('usage', 'damage', 'loss', 'count_shortage', 'other') and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" in ('transfer_in', 'transfer_out') and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is not null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)\n        or (\"stock_movements\".\"type\" = 'receipt' and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is not null and \"stock_movements\".\"receipt_item_id\" is not null)\n        or (\"stock_movements\".\"type\" = 'delivery' and \"stock_movements\".\"reason\" is null and \"stock_movements\".\"transfer_id\" is null and \"stock_movements\".\"receipt_id\" is null and \"stock_movements\".\"receipt_item_id\" is null)"
         },
         "stock_movements_text_check": {
           "name": "stock_movements_text_check",
@@ -11343,6 +11343,12 @@
           "notNull": true,
           "default": "'TRY'"
         },
+        "stock_item_id": {
+          "name": "stock_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -11440,6 +11446,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "purchase_order_items_stock_item_idx": {
+          "name": "purchase_order_items_stock_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stock_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -11454,6 +11481,21 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_order_items_stock_item_fkey": {
+          "name": "purchase_order_items_stock_item_fkey",
+          "tableFrom": "purchase_order_items",
+          "tableTo": "stock_items",
+          "columnsFrom": [
+            "institution_id",
+            "stock_item_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "purchase_order_items_order_fkey": {
@@ -12899,6 +12941,12 @@
           "notNull": true,
           "default": "'TRY'"
         },
+        "stock_item_id": {
+          "name": "stock_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -12976,6 +13024,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "purchase_request_items_stock_item_idx": {
+          "name": "purchase_request_items_stock_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stock_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -12999,6 +13068,21 @@
           "columnsFrom": [
             "institution_id",
             "request_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "purchase_request_items_stock_item_fkey": {
+          "name": "purchase_request_items_stock_item_fkey",
+          "tableFrom": "purchase_request_items",
+          "tableTo": "stock_items",
+          "columnsFrom": [
+            "institution_id",
+            "stock_item_id"
           ],
           "columnsTo": [
             "institution_id",
@@ -14681,499 +14765,6 @@
         "scholarship_programs_capacity_check": {
           "name": "scholarship_programs_capacity_check",
           "value": "\"scholarship_programs\".\"capacity\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stock_count_lines": {
-      "name": "stock_count_lines",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "count_id": {
-          "name": "count_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "item_id": {
-          "name": "item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "system_quantity": {
-          "name": "system_quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "counted_quantity": {
-          "name": "counted_quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "counted_at": {
-          "name": "counted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "counted_by_user_id": {
-          "name": "counted_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expected_quantity": {
-          "name": "expected_quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "unit_cost_cents": {
-          "name": "unit_cost_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "stock_movement_id": {
-          "name": "stock_movement_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stock_count_lines_count_item_key": {
-          "name": "stock_count_lines_count_item_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "count_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_count_lines_item_idx": {
-          "name": "stock_count_lines_item_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_count_lines_movement_key": {
-          "name": "stock_count_lines_movement_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "stock_movement_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"stock_count_lines\".\"stock_movement_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stock_count_lines_institution_id_institutions_id_fk": {
-          "name": "stock_count_lines_institution_id_institutions_id_fk",
-          "tableFrom": "stock_count_lines",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "stock_count_lines_count_fkey": {
-          "name": "stock_count_lines_count_fkey",
-          "tableFrom": "stock_count_lines",
-          "tableTo": "stock_counts",
-          "columnsFrom": [
-            "institution_id",
-            "count_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stock_count_lines_item_fkey": {
-          "name": "stock_count_lines_item_fkey",
-          "tableFrom": "stock_count_lines",
-          "tableTo": "stock_items",
-          "columnsFrom": [
-            "institution_id",
-            "item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stock_count_lines_movement_fkey": {
-          "name": "stock_count_lines_movement_fkey",
-          "tableFrom": "stock_count_lines",
-          "tableTo": "stock_movements",
-          "columnsFrom": [
-            "institution_id",
-            "stock_movement_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_count_lines_pkey": {
-          "name": "stock_count_lines_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_count_lines_quantity_check": {
-          "name": "stock_count_lines_quantity_check",
-          "value": "\"stock_count_lines\".\"system_quantity\" >= 0\n        and (\"stock_count_lines\".\"counted_quantity\" is null or \"stock_count_lines\".\"counted_quantity\" between 0 and 1000000)\n        and ((\"stock_count_lines\".\"counted_quantity\" is null) = (\"stock_count_lines\".\"counted_at\" is null))\n        and ((\"stock_count_lines\".\"counted_at\" is null) = (\"stock_count_lines\".\"counted_by_user_id\" is null))\n        and (\"stock_count_lines\".\"stock_movement_id\" is null or \"stock_count_lines\".\"expected_quantity\" is not null)\n        and (\"stock_count_lines\".\"unit_cost_cents\" is null or \"stock_count_lines\".\"unit_cost_cents\" > 0)"
-        },
-        "stock_count_lines_currency_check": {
-          "name": "stock_count_lines_currency_check",
-          "value": "\"stock_count_lines\".\"currency\" = 'TRY'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stock_counts": {
-      "name": "stock_counts",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "warehouse_id": {
-          "name": "warehouse_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "started_by_user_id": {
-          "name": "started_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_by_user_id": {
-          "name": "completed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "adjustment_date": {
-          "name": "adjustment_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stock_counts_open_key": {
-          "name": "stock_counts_open_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "warehouse_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"stock_counts\".\"status\" = 'open' and \"stock_counts\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_counts_warehouse_idx": {
-          "name": "stock_counts_warehouse_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "warehouse_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_counts_started_idx": {
-          "name": "stock_counts_started_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "started_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stock_counts_institution_id_institutions_id_fk": {
-          "name": "stock_counts_institution_id_institutions_id_fk",
-          "tableFrom": "stock_counts",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "stock_counts_warehouse_fkey": {
-          "name": "stock_counts_warehouse_fkey",
-          "tableFrom": "stock_counts",
-          "tableTo": "stock_warehouses",
-          "columnsFrom": [
-            "institution_id",
-            "warehouse_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_counts_pkey": {
-          "name": "stock_counts_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_counts_status_check": {
-          "name": "stock_counts_status_check",
-          "value": "\"stock_counts\".\"status\" in ('open', 'completed', 'cancelled')"
-        },
-        "stock_counts_state_check": {
-          "name": "stock_counts_state_check",
-          "value": "(\"stock_counts\".\"status\" = 'open' and \"stock_counts\".\"completed_at\" is null and \"stock_counts\".\"completed_by_user_id\" is null and \"stock_counts\".\"adjustment_date\" is null and \"stock_counts\".\"cancelled_at\" is null and \"stock_counts\".\"cancelled_by_user_id\" is null and \"stock_counts\".\"cancel_reason\" is null)\n        or (\"stock_counts\".\"status\" = 'completed' and \"stock_counts\".\"completed_at\" is not null and \"stock_counts\".\"completed_by_user_id\" is not null and \"stock_counts\".\"adjustment_date\" is not null and \"stock_counts\".\"cancelled_at\" is null and \"stock_counts\".\"cancelled_by_user_id\" is null and \"stock_counts\".\"cancel_reason\" is null)\n        or (\"stock_counts\".\"status\" = 'cancelled' and \"stock_counts\".\"completed_at\" is null and \"stock_counts\".\"completed_by_user_id\" is null and \"stock_counts\".\"adjustment_date\" is null and \"stock_counts\".\"cancelled_at\" is not null and \"stock_counts\".\"cancelled_by_user_id\" is not null and \"stock_counts\".\"cancel_reason\" is not null)"
-        },
-        "stock_counts_text_check": {
-          "name": "stock_counts_text_check",
-          "value": "(\"stock_counts\".\"note\" is null or char_length(\"stock_counts\".\"note\") <= 500)\n        and (\"stock_counts\".\"cancel_reason\" is null or char_length(\"stock_counts\".\"cancel_reason\") <= 500)"
         }
       },
       "isRLSEnabled": false

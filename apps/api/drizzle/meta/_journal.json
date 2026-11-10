@@ -628,8 +628,29 @@
     {
       "idx": 89,
       "version": "7",
-      "when": 1794306223323,
-      "tag": "0089_create_stock_counts",
+      "when": 1794306113956,
+      "tag": "0089_purchase_request_stock_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794310716692,
+      "tag": "0090_create_fixed_asset_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794311343976,
+      "tag": "0091_fixed_asset_depreciation",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794312162792,
+      "tag": "0092_create_stock_counts",
       "breakpoints": true
     }
   ]

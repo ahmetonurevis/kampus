@@ -15,6 +15,7 @@ import {
   PURCHASE_BUDGET_WARNING_CODES,
   PURCHASE_ITEMS_MAX,
   PURCHASE_REQUEST_STATUS_LABELS,
+  PURCHASE_UNIT_LABELS,
   PURCHASE_UNIT_PRICE_MAX_CENTS,
   PURCHASE_UNITS,
   purchaseRequestItemSchema,
@@ -159,6 +160,21 @@ export const parseUnitPrice = (text: string) =>
 const requestShape = purchaseRequestSchema.shape
 const itemShape = purchaseRequestItemSchema.shape
 
+/**
+ * Kalemin bağlı stok kartı (ON-339, K-221): kimlik, gösterim adı ("ad (kod)") ve kartın birimi.
+ * Gövdeye yalnız kimlik gider.
+ */
+const stockItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  unit: z.enum(PURCHASE_UNITS),
+})
+export type RequestStockItem = z.infer<typeof stockItemSchema>
+
+/** Stok kartının talep formundaki adı: "A4 kâğıt (KAG-A4)" (kritik stok önerisiyle aynı biçim). */
+export const stockItemLabel = (card: { code: string; name: string }) =>
+  `${card.name} (${card.code})`
+
 export const requestFormSchema = z.object({
   costCenterId: z.string().min(1, 'Talep eden birimi seçin.'),
   periodId: z.string().min(1, 'Bütçe dönemini seçin.'),
@@ -167,19 +183,30 @@ export const requestFormSchema = z.object({
   justification: requestShape.justification,
   items: z
     .array(
-      z.object({
-        name: itemShape.name,
-        quantity: z
-          .string()
-          .regex(/^\d{1,7}$/, 'Miktarı tam sayı girin.')
-          .refine((value) => Number(value) >= 1 && Number(value) <= 1_000_000, {
-            message: 'Miktar 1 ile 1.000.000 arasında olmalıdır.',
+      z
+        .object({
+          name: itemShape.name,
+          quantity: z
+            .string()
+            .regex(/^\d{1,7}$/, 'Miktarı tam sayı girin.')
+            .refine((value) => Number(value) >= 1 && Number(value) <= 1_000_000, {
+              message: 'Miktar 1 ile 1.000.000 arasında olmalıdır.',
+            }),
+          unit: z.enum(PURCHASE_UNITS, 'Birimi seçin.'),
+          price: z.string().refine((value) => parseUnitPrice(value) !== null, {
+            message: PRICE_MESSAGE,
           }),
-        unit: z.enum(PURCHASE_UNITS, 'Birimi seçin.'),
-        price: z.string().refine((value) => parseUnitPrice(value) !== null, {
-          message: PRICE_MESSAGE,
+          stockItem: stockItemSchema.nullable(),
+        })
+        // Kart birimi kalemin birimidir (ON-339, K-221); sunucu aynı kuralı 422 ile denetler.
+        .superRefine((item, context) => {
+          if (item.stockItem !== null && item.stockItem.unit !== item.unit)
+            context.addIssue({
+              code: 'custom',
+              path: ['stockItem'],
+              message: `Birim stok kartının birimiyle (${PURCHASE_UNIT_LABELS[item.stockItem.unit]}) aynı olmalıdır.`,
+            })
         }),
-      }),
     )
     .min(1, 'En az bir kalem ekleyin.')
     .max(PURCHASE_ITEMS_MAX, `En fazla ${String(PURCHASE_ITEMS_MAX)} kalem eklenebilir.`),
@@ -187,19 +214,31 @@ export const requestFormSchema = z.object({
 export type RequestFormValues = z.input<typeof requestFormSchema>
 export type RequestFormItem = RequestFormValues['items'][number]
 
-export const EMPTY_ITEM: RequestFormItem = { name: '', quantity: '1', unit: 'piece', price: '' }
+export const EMPTY_ITEM: RequestFormItem = {
+  name: '',
+  quantity: '1',
+  unit: 'piece',
+  price: '',
+  stockItem: null,
+}
+
+type RequestItemField = 'name' | 'quantity' | 'unit' | 'price' | 'stockItem'
+const ITEM_FIELDS = {
+  name: 'name',
+  quantity: 'quantity',
+  unit: 'unit',
+  estimatedUnitPriceCents: 'price',
+  stockItemId: 'stockItem',
+} as const satisfies Record<string, RequestItemField>
 
 /** Sunucu alan yolu (`items.0.estimatedUnitPriceCents`) form alanına çevrilir. */
 export function requestFormField(
   name: string,
-):
-  | `items.${number}.${'name' | 'quantity' | 'unit' | 'price'}`
-  | keyof RequestFormValues
-  | undefined {
-  const item = /^items\.(\d+)\.(name|quantity|unit|estimatedUnitPriceCents)$/.exec(name)
+): `items.${number}.${RequestItemField}` | keyof RequestFormValues | undefined {
+  const item = /^items\.(\d+)\.(name|quantity|unit|estimatedUnitPriceCents|stockItemId)$/.exec(name)
   if (item) {
-    const field = item[2] === 'estimatedUnitPriceCents' ? 'price' : item[2]
-    return `items.${Number(item[1])}.${field as 'name' | 'quantity' | 'unit' | 'price'}`
+    const field = ITEM_FIELDS[item[2] as keyof typeof ITEM_FIELDS]
+    return `items.${Number(item[1])}.${field}`
   }
   return fieldOf([
     'costCenterId',
@@ -224,6 +263,11 @@ export function requestDefaults(request?: PurchaseRequestDetail): RequestFormVal
           quantity: String(item.quantity),
           unit: item.unit,
           price: amountInputValue(item.estimatedUnitPriceCents),
+          // Bağ kaydedilirken birim kartın birimine eşitti (K-221).
+          stockItem:
+            item.stockItem === null
+              ? null
+              : { id: item.stockItem.id, label: stockItemLabel(item.stockItem), unit: item.unit },
         }))
       : [{ ...EMPTY_ITEM }],
   }
@@ -232,6 +276,7 @@ export function requestDefaults(request?: PurchaseRequestDetail): RequestFormVal
 /**
  * Kritik stoktan talep önerisi (DOM-FIN-079, K-203): kalemler ve gerekçe öneriden, birim, dönem,
  * gider kalemi ve tedarikçi boş; fiyatı bilinmeyen kalemin fiyatı boş kalır, kullanıcı girer.
+ * Kalemler stok kartına bağlıdır (ON-339).
  */
 export function requestDefaultsFromDraft(draft: StockPurchaseDraft): RequestFormValues {
   return {
@@ -243,6 +288,8 @@ export function requestDefaultsFromDraft(draft: StockPurchaseDraft): RequestForm
       unit: item.unit,
       price:
         item.estimatedUnitPriceCents === null ? '' : amountInputValue(item.estimatedUnitPriceCents),
+      // Kritik stoktan açılan talebin kalemi kartına bağlı gelir (ON-339, K-221).
+      stockItem: { id: item.stockItemId, label: item.name, unit: item.unit },
     })),
   }
 }
@@ -259,6 +306,7 @@ export function requestBody(values: RequestFormValues): CreatePurchaseRequestBod
       quantity: Number(item.quantity),
       unit: item.unit,
       estimatedUnitPriceCents: parseUnitPrice(item.price) ?? 0,
+      stockItemId: item.stockItem?.id ?? null,
     })),
   }
 }

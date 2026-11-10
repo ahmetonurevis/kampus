@@ -18,6 +18,7 @@ import {
 
 import type { Database } from '../db/client.ts'
 import { loadBudgetItems, loadBudgetPeriods, loadCostCenters } from '../db/finance-budget.ts'
+import { loadStockItemLabels, loadStockItemsByIds } from '../db/finance-inventory.ts'
 import {
   findPurchaseRequest,
   insertPurchaseRequest,
@@ -43,8 +44,9 @@ import { auditWork } from './task-work.ts'
  * servis kurum kilidi altında talebi ve bağlı kayıtları (merkez, dönem, gider kalemi, tedarikçi)
  * yükler, core'a karar verdirir, aynı transaction'da yazar ve denetim kaydı bırakır. Bütçe kalanı
  * okumada hesaplanır, saklanmaz (K-145). Gönderim ve onayda kalan kurum kilidi altında yeniden
- * hesaplanır; aşım ya da bütçesiz talep açık onay ister (ON-245, K-146). Onaylanan talep sipariş ya
- * da gider gerçekleşenine (DOM-FIN-066) bugün bağlanmaz. Rol ve modül denetimi rotadadır.
+ * hesaplanır; aşım ya da bütçesiz talep açık onay ister (ON-245, K-146). Kalem isteğe bağlı olarak
+ * kurumun stok kartına bağlanır; bağ siparişe kopyalanır (ON-339, K-221). Rol ve modül denetimi
+ * rotadadır.
  */
 
 const ENTITY = 'purchase_requests'
@@ -54,21 +56,36 @@ type Key = {
   periodId: string
   budgetItemId: string
   supplierId: string | null
+  /** Kalemlerin bağladığı stok kartları (ON-339); yalnız kurumun kartları yüklenir. */
+  stockItemIds?: readonly string[]
 }
 
-/** Talebin bağlı kayıtları; kurumun merkez, kalem ve dönem sayısı küçüktür, tamamı yüklenir. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Talebin bağlı kayıtları; kurumun merkez, kalem ve dönem sayısı küçüktür, tamamı yüklenir. Stok
+ * kartı yalnız etkin kurumda aranır: başka kurumun kartı bulunmaz (K-221).
+ */
 async function refsFor(tx: Database, ctx: ServiceContext, key: Key): Promise<PurchaseRequestRefs> {
-  const [centers, items, periods, supplierRefs] = await Promise.all([
+  const [centers, items, periods, supplierRefs, cards] = await Promise.all([
     loadCostCenters(tx, ctx.institutionId),
     loadBudgetItems(tx, ctx.institutionId),
     loadBudgetPeriods(tx, ctx.institutionId),
     loadSupplierRefs(tx, ctx.institutionId, key.supplierId === null ? [] : [key.supplierId]),
+    loadStockItemsByIds(
+      tx,
+      ctx.institutionId,
+      (key.stockItemIds ?? []).filter((id) => UUID.test(id)),
+    ),
   ])
   return {
     period: periods.find((row) => row.id === key.periodId) ?? null,
     costCenter: centers.find((row) => row.id === key.costCenterId) ?? null,
     budgetItem: items.find((row) => row.id === key.budgetItemId) ?? null,
     ...(key.supplierId === null ? {} : { supplier: supplierRefs.get(key.supplierId) ?? null }),
+    stockItems: new Map(
+      cards.map((card) => [card.id, { name: card.name, unit: card.unit, isActive: card.isActive }]),
+    ),
   }
 }
 
@@ -81,6 +98,12 @@ function rawKey(input: unknown): Key {
     periodId: text(raw.periodId),
     budgetItemId: text(raw.budgetItemId),
     supplierId: typeof raw.supplierId === 'string' ? raw.supplierId : null,
+    stockItemIds: Array.isArray(raw.items)
+      ? raw.items.flatMap((item: unknown) => {
+          const value = (item ?? {}) as Record<string, unknown>
+          return typeof value.stockItemId === 'string' ? [value.stockItemId] : []
+        })
+      : [],
   }
 }
 
@@ -155,9 +178,18 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
     ),
   ])
   const nameOf = (userId: string | null) => (userId === null ? null : (names.get(userId) ?? null))
+  const cards = await loadStockItemLabels(
+    db,
+    ctx.institutionId,
+    items.map((item) => item.stockItemId),
+  )
   return {
     ...summaryView(request, names),
-    items: items.map((item) => ({ ...item, totalCents: itemTotalCents(item) })),
+    items: items.map(({ stockItemId, ...item }) => ({
+      ...item,
+      totalCents: itemTotalCents(item),
+      stockItem: stockItemId === null ? null : (cards.get(stockItemId) ?? null),
+    })),
     budget: purchaseBudgetInfo(figures, request.totalCents),
     submittedByName: nameOf(request.submittedByUserId),
     decidedByName: nameOf(request.decidedByUserId),
@@ -300,6 +332,7 @@ export function updatePurchaseRequestCommand(
           periodId: 'periodId' in raw ? given.periodId : current.periodId,
           budgetItemId: 'budgetItemId' in raw ? given.budgetItemId : current.budgetItemId,
           supplierId: 'supplierId' in raw ? given.supplierId : current.supplierId,
+          stockItemIds: given.stockItemIds ?? [],
         })
         return { run: () => planPurchaseRequestUpdate(current, input, refs, ctx.actor) }
       },

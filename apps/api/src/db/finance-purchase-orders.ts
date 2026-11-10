@@ -262,6 +262,8 @@ export interface StoredOrderItem {
   unit: PurchaseUnit
   unitPriceCents: number
   vatRate: VatRate
+  /** Talep kaleminden kopyalanan stok kartı bağı (ON-339); yoksa `null`. */
+  stockItemId: string | null
 }
 
 export interface StoredOrder {
@@ -402,6 +404,7 @@ export async function loadOrderItems(
       unit: purchaseOrderItems.unit,
       unitPriceCents: purchaseOrderItems.unitPriceCents,
       vatRate: purchaseOrderItems.vatRate,
+      stockItemId: purchaseOrderItems.stockItemId,
     })
     .from(purchaseOrderItems)
     .where(

@@ -28,6 +28,7 @@ import {
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 import { budgetItems, budgetPeriods, costCenters } from './finance-budget.ts'
+import { stockItems } from './finance-inventory.ts'
 import { suppliers } from './finance-suppliers.ts'
 
 const n = (value: number) => sql.raw(String(value))
@@ -120,8 +121,9 @@ export const purchaseRequests = pgTable(
 )
 
 /**
- * Talep kalemi (DOM-FIN-071): ad, tam sayı miktar, birim ve tahmini birim fiyat (kuruş). Taslak
- * düzeltilince eski kalemler arşivlenir, yenileri yazılır; etkin kalemler `position` ile sıralanır.
+ * Talep kalemi (DOM-FIN-071): ad, tam sayı miktar, birim ve tahmini birim fiyat (kuruş); isteğe
+ * bağlı stok kartı bağı (ON-339). Taslak düzeltilince eski kalemler arşivlenir, yenileri yazılır;
+ * etkin kalemler `position` ile sıralanır.
  */
 export const purchaseRequestItems = pgTable(
   'purchase_request_items',
@@ -137,6 +139,7 @@ export const purchaseRequestItems = pgTable(
     unit: text('unit').$type<PurchaseUnit>().notNull(),
     estimatedUnitPriceCents: bigint('estimated_unit_price_cents', { mode: 'number' }).notNull(),
     currency: text('currency').notNull().default('TRY'),
+    stockItemId: uuid('stock_item_id'),
     ...requiredColumns(),
   },
   (table) => [
@@ -145,6 +148,12 @@ export const purchaseRequestItems = pgTable(
       name: 'purchase_request_items_request_fkey',
       columns: [table.institutionId, table.requestId],
       foreignColumns: [purchaseRequests.institutionId, purchaseRequests.id],
+    }).onDelete('restrict'),
+    // Kurum içi bağ: bileşik anahtar başka kurumun kartını veritabanında da dışlar (ON-339).
+    foreignKey({
+      name: 'purchase_request_items_stock_item_fkey',
+      columns: [table.institutionId, table.stockItemId],
+      foreignColumns: [stockItems.institutionId, stockItems.id],
     }).onDelete('restrict'),
     check('purchase_request_items_position_check', sql`${table.position} >= 0`),
     check(
@@ -165,5 +174,6 @@ export const purchaseRequestItems = pgTable(
       .on(table.institutionId, table.requestId, table.position)
       .where(sql`${table.archivedAt} is null`),
     index('purchase_request_items_request_idx').on(table.institutionId, table.requestId),
+    index('purchase_request_items_stock_item_idx').on(table.institutionId, table.stockItemId),
   ],
 )

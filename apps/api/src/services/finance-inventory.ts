@@ -49,7 +49,7 @@ import {
   type StoredStockMovement,
   type StoredStockWarehouse,
 } from '../db/finance-inventory.ts'
-import { purchaseActorNames } from '../db/finance-purchase-requests.ts'
+import { loadOpenRequestQuantities, purchaseActorNames } from '../db/finance-purchase-requests.ts'
 import { loadMovementCounts } from '../db/finance-stock-counts.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { foldSearch } from '../db/text-search.ts'
@@ -157,7 +157,8 @@ export interface CriticalStockQuery extends Page {
 /**
  * Kritik stok listesi (DOM-FIN-079, K-200): etkin kartlardan kurum toplamı kritik seviyeye eşit ya
  * da altında olanlar, aciliyet sırasında; depo kırılımı, öneri miktarı (K-201) ve son alış fiyatı
- * (K-202). Arama kod ve adda, kategori süzgeci kartta.
+ * (K-202); siparişe dönmemiş açık taleplerdeki miktar (ON-339, K-222). Arama kod ve adda, kategori
+ * süzgeci kartta.
  */
 export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalStockQuery) {
   const [items, warehouses, balances] = await Promise.all([
@@ -177,21 +178,20 @@ export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalS
   )
   const shownWarehouses = new Set(page.flatMap((row) => row.warehouses.map((w) => w.warehouseId)))
   const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]))
-  const [campuses, prices] = await Promise.all([
+  const pageIds = page.map((row) => row.item.id)
+  const [campuses, prices, openRequests] = await Promise.all([
     campusRecords(
       ctx.db,
       ctx.institutionId,
       warehouses.filter((warehouse) => shownWarehouses.has(warehouse.id)).map((w) => w.campusId),
     ),
-    loadLastReceiptPrices(
-      ctx.db,
-      ctx.institutionId,
-      page.map((row) => row.item.id),
-    ),
+    loadLastReceiptPrices(ctx.db, ctx.institutionId, pageIds),
+    loadOpenRequestQuantities(ctx.db, ctx.institutionId, pageIds),
   ])
   return {
     items: page.map((row) => {
       const price = prices.get(row.item.id)
+      const open = openRequests.get(row.item.id)
       return {
         id: row.item.id,
         code: row.item.code,
@@ -205,6 +205,8 @@ export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalS
         lastUnitPriceCents: price?.unitPriceCents ?? null,
         lastReceiptDate: price?.receiptDate ?? null,
         lastOrderNumber: price?.orderNumber ?? null,
+        openRequestQuantity: open?.quantity ?? 0,
+        openRequestCount: open?.requestCount ?? 0,
         warehouses: row.warehouses.map((balance) => {
           const warehouse = warehouseById.get(balance.warehouseId)
           return {

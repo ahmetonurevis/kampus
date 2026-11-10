@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
-import { useFieldArray, useForm, useWatch } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import {
   useCreatePurchaseRequest,
   usePurchaseBudgetStatus,
@@ -43,6 +43,7 @@ import {
   type ReasonFormValues,
   type RequestFormValues,
 } from './finance-procurement-forms.ts'
+import { StockItemPicker } from './StockItemPicker.tsx'
 
 const REQUEST_FORM = 'satin-alma-talebi-formu'
 const REASON_FORM = 'satin-alma-karar-formu'
@@ -144,17 +145,21 @@ function FormBudgetStatus({
 /**
  * Satın alma talebi formu (DOM-FIN-071): birim, bütçe dönemi, gider kalemi, isteğe bağlı tedarikçi,
  * gerekçe ve kalemler. Seçenekler `GET /finance/purchase-requests/options`'tan gelir (ön büro bütçe
- * uçlarını okumaz). Tahmini toplam formda anlık hesaplanır; sunucu aynı hesabı yapar.
+ * uçlarını okumaz). Tahmini toplam formda anlık hesaplanır; sunucu aynı hesabı yapar. Kalem
+ * isteğe bağlı olarak aranarak seçilen stok kartına bağlanır (ON-339, K-221).
  */
 export function PurchaseRequestFormModal({
   request,
   initial,
+  notice,
   onClose,
   onSaved,
 }: {
   request?: PurchaseRequestDetail
   /** Yeni talebin ön doldurulmuş değerleri (kritik stok önerisi, DOM-FIN-079). */
   initial?: RequestFormValues
+  /** Formun üstünde engellemeyen uyarı (açık talep, ON-339, K-222). */
+  notice?: string | null
   onClose: () => void
   onSaved?: (id: string) => void
 }) {
@@ -175,6 +180,7 @@ export function PurchaseRequestFormModal({
           title={title}
           request={request}
           initial={initial}
+          notice={notice ?? null}
           options={options.data.data}
           onClose={onClose}
           onSaved={onSaved}
@@ -192,6 +198,7 @@ function RequestForm({
   title,
   request,
   initial,
+  notice,
   options,
   onClose,
   onSaved,
@@ -199,6 +206,7 @@ function RequestForm({
   title: string
   request: PurchaseRequestDetail | undefined
   initial: RequestFormValues | undefined
+  notice: string | null
   options: Options
   onClose: () => void
   onSaved: ((id: string) => void) | undefined
@@ -276,6 +284,11 @@ function RequestForm({
       onSubmit={(event) => void onSubmit(event)}
       className="grid grid-cols-2 gap-4 max-[650px]:grid-cols-1"
     >
+      {notice ? (
+        <p role="status" className="col-span-full rounded-md border border-warning p-3 text-sm">
+          {notice}
+        </p>
+      ) : null}
       {missing ? (
         <p role="status" className="col-span-full text-sm text-muted-foreground">
           Talep için etkin bir maliyet merkezi, gider kalemi ve açık ya da taslak bütçe dönemi
@@ -407,6 +420,35 @@ function RequestForm({
             >
               <Icon name="Trash2" size={17} aria-hidden="true" />
             </Button>
+            <div className="col-span-4 max-[650px]:col-span-2">
+              <FormField
+                id={`talep-kalem-${String(index)}-stok`}
+                label={`${String(index + 1)}. kalem stok kartı (isteğe bağlı)`}
+                error={errors.items?.[index]?.stockItem}
+              >
+                {(control) => (
+                  <Controller
+                    control={form.control}
+                    name={`items.${index}.stockItem`}
+                    render={({ field: stock }) => (
+                      <StockItemPicker
+                        control={control}
+                        value={stock.value}
+                        disabled={busy}
+                        onChange={(card) => {
+                          stock.onChange(card)
+                          // Kart birimi kalemin birimidir; ad boşsa kartın adı yazılır (K-221).
+                          if (card === null) return
+                          form.setValue(`items.${index}.unit`, card.unit, { shouldDirty: true })
+                          if (form.getValues(`items.${index}.name`).trim() === '')
+                            form.setValue(`items.${index}.name`, card.label, { shouldDirty: true })
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              </FormField>
+            </div>
           </div>
         ))}
         {errors.items?.message ? (

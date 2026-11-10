@@ -264,6 +264,7 @@ export const signedQuantity = (type: StockMovementType, quantity: number, unitLa
 
 /** Kritik satırın talep önerisine giden alanları (K-202, K-203). */
 export const suggestionLine = (row: CriticalStockRow): StockSuggestionLine => ({
+  id: row.id,
   code: row.code,
   name: row.name,
   unit: row.unit,
@@ -288,3 +289,14 @@ export function warehouseBreakdown(row: Pick<CriticalStockRow, 'warehouses'>): s
 export const criticalQuantityText = (
   row: Pick<CriticalStockRow, 'quantity' | 'minQuantity' | 'unit'>,
 ) => `${String(row.quantity)} / ${String(row.minQuantity)} ${STOCK_UNIT_LABELS[row.unit]}`
+
+/**
+ * Açık talepteki miktar (ON-339, K-222): "20 paket · 2 talep"; siparişe dönmemiş açık talep yoksa
+ * tire.
+ */
+export function openRequestText(
+  row: Pick<CriticalStockRow, 'openRequestQuantity' | 'openRequestCount' | 'unit'>,
+): string {
+  if (row.openRequestQuantity <= 0) return '—'
+  return `${String(row.openRequestQuantity)} ${STOCK_UNIT_LABELS[row.unit]} · ${String(row.openRequestCount)} talep`
+}

@@ -381,6 +381,7 @@ describe('DOM-FIN-080: materyal seti uçları', () => {
     )
     assert.deepEqual(Object.keys(all.data[0] ?? {}).sort(), [
       'actions',
+      'cancelledDelivery',
       'className',
       'delivery',
       'hasMaterialFee',
@@ -585,6 +586,76 @@ describe('DOM-FIN-080: materyal seti uçları', () => {
     assert.equal(await quantityOf(t, t.book), 4)
   })
 
+  test('DOM-FIN-080, K-218: teslim ayrıntısı tutanak alanlarını verir; iptal edilen teslim okunur ve listede görünür', async () => {
+    const t = await institution()
+    const delivery = ok(
+      await deliver(t.admin, t, { recipientKind: 'guardian', guardianId: t.guardian }),
+      201,
+    )
+    const url = `${DELIVERIES}/${String(delivery.id)}`
+    const detail = ok(await get(url, t.admin))
+    assert.deepEqual(
+      [
+        detail.setName,
+        detail.academicYear,
+        detail.studentName,
+        detail.studentNumber,
+        detail.className,
+        detail.hasMaterialFee,
+        detail.recipientKind,
+        detail.recipientName,
+        detail.deliveryDate,
+        detail.warehouseName,
+        detail.cancelledAt,
+      ],
+      [
+        '7. Sınıf Seti',
+        2026,
+        'Deniz Yılmaz',
+        SEED.students.find((row) => row.id === 's1')?.number ?? null,
+        '7-A',
+        true,
+        'guardian',
+        'Ayşe Yılmaz',
+        '2026-10-06',
+        'Ana depo',
+        null,
+      ],
+    )
+    assert.ok(typeof detail.createdByName === 'string' && detail.createdByName !== '')
+    assert.deepEqual(
+      (detail.items as Json[]).map((item) => [item.code, item.name, item.quantity, item.unit]),
+      [
+        ['KIT-7', '7. sınıf kitabı', 1, 'piece'],
+        ['DFT', 'Defter', 3, 'piece'],
+      ],
+    )
+    // Tutar ve ödeme durumu yanıtta yoktur (K-207, K-218).
+    assert.equal(
+      Object.keys(detail).some((name) => /amount|paid|cents/i.test(name)),
+      false,
+    )
+    // Ücret kalemi olmayan öğrencide işaret düşer.
+    const other = ok(await deliver(t.admin, t, { studentId: 's25' }), 201)
+    assert.equal(ok(await get(`${DELIVERIES}/${String(other.id)}`, t.admin)).hasMaterialFee, false)
+    assert.equal((await students(t)).data[0]?.cancelledDelivery, null)
+
+    const cancelled = ok(await cancel(t.admin, delivery))
+    const after = ok(await get(url, t.admin))
+    assert.equal(after.cancelledAt, cancelled.cancelledAt)
+    assert.equal(after.cancelReason, 'Yanlış öğrenciye yazıldı')
+    assert.ok(typeof after.cancelledByName === 'string')
+    const row = (await students(t)).data.find((item) => item.studentId === 's1')
+    assert.equal(row?.delivery, null)
+    assert.deepEqual(row?.cancelledDelivery, {
+      id: delivery.id,
+      deliveryDate: '2026-10-06',
+      cancelledAt: cancelled.cancelledAt,
+    })
+    assertError(await get(`${DELIVERIES}/${randomUUID()}`, t.admin), 404, 'not_found')
+    assertError(await get(`${DELIVERIES}/gecersiz`, t.admin), 400, 'validation_failed')
+  })
+
   test('DOM-FIN-080, K-208: teslimi başlamış setin hedefi değişmez; kalem değişikliği önceki teslimi bozmaz', async () => {
     const t = await institution()
     const delivery = ok(await deliver(t.admin, t), 201)
@@ -663,6 +734,14 @@ describe('DOM-FIN-080: materyal seti uçları', () => {
       assertError(await deliver(cookie, t), 403, 'forbidden')
     }
     const desk = await member(t.id, 'onburo')
+    const own = ok(await deliver(t.admin, t, { studentId: 's25' }), 201)
+    const ownUrl = `${DELIVERIES}/${String(own.id)}`
+    assertError(await get(ownUrl, null), 401)
+    assertError(await get(ownUrl, await member(t.id, 'ogretmen')), 403, 'forbidden')
+    assert.equal(
+      ok(await get(ownUrl, desk)).studentName,
+      SEED.students.find((row) => row.id === 's25')?.name,
+    )
     assert.equal((await get(SETS, desk)).statusCode, 200)
     assert.equal((await students(t, '', desk)).data.length, 2)
     assertError(
@@ -690,6 +769,7 @@ describe('DOM-FIN-080: materyal seti uçları', () => {
     const t = await institution({ enabledModules: { finance: false } })
     assertError(await get(SETS, t.admin), 403, 'module_disabled')
     assertError(await get(`${RECIPIENTS}?studentId=s1`, t.admin), 403, 'module_disabled')
+    assertError(await get(`${DELIVERIES}/${randomUUID()}`, t.admin), 403, 'module_disabled')
   })
 
   test('DOM-FIN-080: dil okulunda set kura bağlanır; hedef kurun etkin kursiyerleridir', async () => {
@@ -754,7 +834,13 @@ describe('DOM-FIN-080: materyal seti uçları', () => {
       ['s2'],
     )
     assertError(await deliver(t.admin, own), 422, 'material_delivery_student_not_eligible')
-    ok(await deliver(t.admin, own, { studentId: 's2' }), 201)
+    const delivery = ok(await deliver(t.admin, own, { studentId: 's2' }), 201)
+    // Sınıfsız kursiyerde sınıf yerine kurun grubu yazılır (ON-338 tutanak "sınıf / grup").
+    assert.equal(delivery.className, 'B1 Akşam')
+    assert.equal(
+      ok(await get(`${DELIVERIES}/${String(delivery.id)}`, t.admin)).className,
+      'B1 Akşam',
+    )
   })
 
   test('DOM-FIN-080: başka kurumun seti ve teslimi 404 ve B değişmez; listede B yok; gövdedeki institutionId etkisiz', async () => {
@@ -773,6 +859,7 @@ describe('DOM-FIN-080: materyal seti uçları', () => {
     assertError(await get(`${bSetUrl}/students`, a.admin), 404, 'not_found')
     assertError(await deliver(a.admin, a, {}, key(), b.set.id), 404, 'not_found')
     assertError(await cancel(a.admin, bDelivery), 404, 'not_found')
+    assertError(await get(`${DELIVERIES}/${String(bDelivery.id)}`, a.admin), 404, 'not_found')
     assertError(await sign(a.admin, bDelivery), 404, 'not_found')
     // B'nin deposu ve kartları A'nın teslim ve setinde etkisizdir.
     assertError(

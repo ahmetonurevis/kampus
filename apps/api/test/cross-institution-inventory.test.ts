@@ -1499,6 +1499,41 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: demirbaş sayımı (ON-237; DOM-FIN-087).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/fixed-asset-counts', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/fixed-asset-counts', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/fixed-asset-counts/:countId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/fixed-asset-counts/:countId/items', '`${bUrl}/items`'],
+        ['kayıt', 'POST /api/v1/finance/fixed-asset-counts/:countId/scans', 'scan(a.admin, bCount'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/fixed-asset-counts/:countId/complete',
+          "finish(a.admin, bCount, 'complete')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/fixed-asset-counts/:countId/cancel',
+          "finish(a.admin, bCount, 'cancel')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/fixed-asset-counts/:countId/items/:itemId/relocate',
+          'relocate(a.admin, bCount, bItem)',
+        ],
+        ['liste', 'GET /api/v1/finance/fixed-asset-places', 'get(PLACES, a.admin)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-fixed-asset-counts.test.ts',
+        'başka kurumun sayımı ve satırı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
   // Onur: stok kartı, depo ve hareket (ON-228, ON-229; DOM-FIN-077, DOM-FIN-078).
   ...Object.fromEntries(
     (

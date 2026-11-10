@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+
 import { pdfText } from './support/finance-pdf-text.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
@@ -7,7 +9,10 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // yönetici etiketi boş bırakıp demirbaş kaydeder (DB-<yıl>-<sıra>, K-185), durumunu değiştirir ve
 // gerekçeyle hurdaya ayırır (K-188); ön büro sekmeyi görmez (K-189). Zimmet (ON-236; DOM-FIN-086):
 // yönetici personel listesinden öğretmenin açık zimmetini görür, demirbaşı öğretmene zimmetler,
-// tutanak PDF'ini indirir ve hasarlı iade alır (K-210…K-214).
+// tutanak PDF'ini indirir ve hasarlı iade alır (K-210…K-214). Sayım (ON-237; DOM-FIN-087): yönetici
+// karekodlu etiket PDF'ini alır, oda sayımı başlatır, kodları klavyeyle okutur (bulundu, yanlış
+// konumda, bilinmeyen kod reddi), tamamlar, konumu tek tıkla düzeltir ve sonucu CSV indirir
+// (K-232…K-235).
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
@@ -167,5 +172,98 @@ test.describe('DOM-FIN-085: demirbaş ekranı', () => {
           .data
       })
       .toEqual([expect.objectContaining({ returnCondition: 'damaged', note: 'Şarj aletiyle' })])
+  })
+
+  test('DOM-FIN-087: yönetici etiket PDF alır, oda sayımında kod okutur, tamamlar, konumu düzeltir ve CSV indirir', async ({
+    api,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [] })
+    const admin = await api(school.user('yonetici'))
+    const asset = async (name: string, location: string) => {
+      const created = await admin.post('/api/v1/finance/fixed-assets', {
+        name,
+        category: 'laboratory',
+        location,
+        acquisitionValueCents: 900_000,
+        acquisitionDate: '2025-01-15',
+      })
+      expect(created.status).toBe(201)
+      return (created.body as { data: { id: string; tagNumber: string } }).data
+    }
+    const microscope = await asset('Mikroskop', 'Fen laboratuvarı')
+    const scale = await asset('Hassas terazi', 'Fen laboratuvarı')
+    const printer = await asset('Yazıcı', 'Müdür odası')
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN}?gorunum=demirbas`)
+    const assets = page.getByRole('region', { name: 'Demirbaşlar' })
+    await assets.getByRole('checkbox', { name: `${microscope.tagNumber} etiketini seç` }).click()
+    await assets.getByRole('button', { name: "Seçili demirbaşların etiket PDF'i" }).click()
+    const preview = page.getByRole('dialog', { name: 'Demirbaş etiketleri · Önizleme' })
+    const labelDownload = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    const labels = await labelDownload
+    expect(labels.suggestedFilename()).toBe(`demirbas-etiketi-${microscope.tagNumber}.pdf`)
+    expect(await pdfText(labels)).toContain(microscope.tagNumber)
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+
+    const counts = page.getByRole('region', { name: 'Demirbaş sayımları' })
+    await counts.getByRole('button', { name: 'Yeni sayım' }).click()
+    const start = page.getByRole('dialog', { name: 'Yeni sayım' })
+    await start.getByLabel('Oda / konum').fill('fen LABORATUVARI')
+    await start.getByRole('button', { name: 'Sayımı başlat' }).click()
+    const panel = page.getByRole('dialog', { name: 'Demirbaş sayımı' })
+    const summary = panel.getByLabel('Sayım özeti')
+    await expect(panel.getByRole('heading', { name: 'fen LABORATUVARI' })).toBeVisible()
+
+    const scan = panel.getByRole('form', { name: 'Etiket okutma' })
+    const code = scan.getByLabel('Demirbaş kodu')
+    await code.fill(microscope.tagNumber.toLowerCase())
+    await code.press('Enter')
+    const status = panel.getByRole('status')
+    await expect(status).toContainText(`${microscope.tagNumber} · Mikroskop: bulundu.`)
+    await expect(code).toHaveValue('')
+    await code.fill(printer.tagNumber)
+    await code.press('Enter')
+    await expect(status).toContainText('yanlış konumda. Kayıtlı yer: Müdür odası.')
+    await code.fill('YOK-0001')
+    await code.press('Enter')
+    await expect(
+      scan.getByText('Bu kod kurumun demirbaşlarında yok. Etiketi kontrol edin.'),
+    ).toBeVisible()
+
+    await panel.getByRole('button', { name: 'Sayımı tamamla' }).click()
+    await panel.getByRole('button', { name: 'Evet, tamamla' }).click()
+    await expect(panel.getByText('Tamamlandı', { exact: true })).toBeVisible()
+    await expect(summary.getByText('Bulunamadı')).toBeVisible()
+    const rows = panel.getByRole('list', { name: 'Sayım satırları' })
+    await expect(rows.getByText(`${scale.tagNumber} · Hassas terazi`)).toBeVisible()
+    await rows
+      .getByRole('button', { name: `${printer.tagNumber} konumunu sayılan yere düzelt` })
+      .click()
+    await expect(rows.getByText('Kayıt sayılan yere taşındı.')).toBeVisible()
+
+    const csvDownload = page.waitForEvent('download')
+    await panel.getByRole('button', { name: 'Sonucu CSV indir' }).click()
+    const csv = await readFile(await (await csvDownload).path(), 'utf8')
+    expect(csv).toContain(`"${scale.tagNumber}";"Hassas terazi";"Bulunamadı"`)
+    expect(csv).toContain(`"${printer.tagNumber}";"Yazıcı";"Yanlış konumda"`)
+
+    await expect
+      .poll(async () => {
+        const moved = await admin.get(`/api/v1/finance/fixed-assets/${printer.id}`)
+        return (moved.body as { data: { location: string } }).data.location
+      })
+      .toBe('fen LABORATUVARI')
+    const missing = await admin.get(`/api/v1/finance/fixed-assets/${scale.id}`)
+    expect((missing.body as { data: { status: string; lastCount: unknown } }).data).toEqual(
+      expect.objectContaining({
+        status: 'in_use',
+        lastCount: expect.objectContaining({ outcome: 'missing' }),
+      }),
+    )
   })
 })

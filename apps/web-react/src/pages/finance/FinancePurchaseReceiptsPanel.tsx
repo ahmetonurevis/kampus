@@ -49,7 +49,8 @@ type Dialog = { kind: 'receive' } | { kind: 'cancel'; receipt: PurchaseReceipt }
  * Siparişin mal kabulü (DOM-FIN-074; ON-226): kalem başına sipariş, kabul, ret ve kalan miktar,
  * KDV hariç gerçekleşen tutar, kabul formu ve kabul geçmişi. Kabulü yönetici ve ön büro kaydeder,
  * iptal yalnız yöneticidedir (K-153). Taslak siparişte gösterilmez: önce gönderildi işaretlenir.
- * Kaleme stok kartı seçilirse kabul edilen miktar seçilen depoya girer (DOM-FIN-078, K-184).
+ * Kaleme stok kartı seçilirse kabul edilen miktar seçilen depoya girer (DOM-FIN-078, K-184); talepten
+ * siparişe gelen kart bağı kalemin kartını önceden doldurur (ON-339).
  * Her kabulün tutanak PDF'i geçmişten alınır; iptal edilmiş kabulünki "İPTAL" işaretlidir (ON-337).
  */
 export function FinancePurchaseReceiptsPanel({ orderId }: { orderId: string }) {
@@ -365,8 +366,17 @@ function ReceiveModal({ board, onClose }: { board: PurchaseReceiptBoard; onClose
                       disabled={busy}
                     >
                       <NativeSelectOption value="">Stok kartı yok</NativeSelectOption>
+                      {/* Talepten gelen kart her zaman ayrı seçenektir: liste yüklenince seçili
+                          seçenek yerinden kalkmaz, pasif kart da seçili kalır (ON-339). */}
+                      {item?.stockItem ? (
+                        <NativeSelectOption value={item.stockItem.id}>
+                          {`${item.stockItem.code} · ${item.stockItem.name} (talepten)`}
+                        </NativeSelectOption>
+                      ) : null}
                       {(stockItems.data?.data ?? [])
-                        .filter((stock) => stock.unit === item?.unit)
+                        .filter(
+                          (stock) => stock.unit === item?.unit && stock.id !== item.stockItem?.id,
+                        )
                         .map((stock) => (
                           <NativeSelectOption key={stock.id} value={stock.id}>
                             {`${stock.code} · ${stock.name}`}

@@ -49,6 +49,8 @@ const STAFF =
   'Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.'
 const MANAGER = 'Rol: `yonetici` (K-129). Modül `finance`.'
 const IF_MATCH = '`If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`.'
+const STOCK_LINK =
+  'Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır.'
 const BUDGET_WARNING =
   'Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir.'
 
@@ -175,7 +177,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
         operationId: 'createPurchaseRequest',
         tags,
         summary: 'Satın alma talebi aç',
-        description: `Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat). Bağlı kayıt yok ya da uygun değilse 422 (\`purchase_request_period_closed\`, \`purchase_request_cost_center_inactive\`, \`purchase_request_budget_item_not_expense\`, \`purchase_request_supplier_inactive\` …). ${STAFF}`,
+        description: `Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat, isteğe bağlı \`stockItemId\`). Bağlı kayıt yok ya da uygun değilse 422 (\`purchase_request_period_closed\`, \`purchase_request_cost_center_inactive\`, \`purchase_request_budget_item_not_expense\`, \`purchase_request_supplier_inactive\` …). ${STOCK_LINK} ${STAFF}`,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: purchaseRequestSchema,
         response: { 201: purchaseRequestResponse, ...commandErrors },
@@ -219,7 +221,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
         operationId: 'updatePurchaseRequest',
         tags,
         summary: 'Taslak talebi düzelt',
-        description: `Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 \`purchase_request_not_draft\`. ${IF_MATCH} ${STAFF}`,
+        description: `Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 \`purchase_request_not_draft\`. ${STOCK_LINK} ${IF_MATCH} ${STAFF}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: purchaseRequestParams,
         body: updatePurchaseRequestSchema,

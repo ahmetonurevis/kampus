@@ -628,8 +628,22 @@
     {
       "idx": 89,
       "version": "7",
-      "when": 1794306164758,
-      "tag": "0089_fixed_asset_depreciation",
+      "when": 1794306113956,
+      "tag": "0089_purchase_request_stock_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794310716692,
+      "tag": "0090_create_fixed_asset_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794311343976,
+      "tag": "0091_fixed_asset_depreciation",
       "breakpoints": true
     }
   ]

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   useFixedAsset,
@@ -7,6 +7,10 @@ import {
   useScrapFixedAsset,
   type FixedAssetDetail,
 } from '@kampus/react-shared/use-finance-fixed-assets.ts'
+import {
+  FIXED_ASSET_COUNT_OUTCOME_LABELS,
+  type FixedAssetCountOutcome,
+} from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
 import {
   DEPRECIATION_METHOD_LABELS,
   FIXED_ASSET_CATEGORIES,
@@ -24,21 +28,29 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
+import {
+  useFixedAssetLabelPdf,
+  type LabelAsset,
+} from '@/hooks/use-finance-fixed-asset-label-pdf.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
+import { FIXED_ASSET_LABELS_TITLE } from '@/lib/pdf/templates/finance-fixed-asset-labels.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { PdfDialogButton } from './CorporateParts.tsx'
 import { FixedAssetAssignmentSection, holderText } from './FinanceFixedAssetAssignments.tsx'
 import {
   FinanceFixedAssetDepreciationSection,
   FixedAssetDepreciationSchedule,
 } from './FinanceFixedAssetDepreciation.tsx'
+import { FinanceFixedAssetCountsSection } from './FinanceFixedAssetCountsSection.tsx'
 import { FixedAssetFormModal } from './FinanceFixedAssetForm.tsx'
 import { FinanceFixedAssetStaffSection } from './FinanceFixedAssetStaffSection.tsx'
 import {
@@ -48,7 +60,9 @@ import {
 } from './finance-fixed-asset-forms.ts'
 
 const NO_SORT: readonly string[] = []
-const MOBILE = ['tagNumber', 'name', 'status']
+const MOBILE = ['select', 'tagNumber', 'name', 'status']
+const SELECT_KEY = 'select'
+const OUTCOME_TEXT: Record<FixedAssetCountOutcome, string> = FIXED_ASSET_COUNT_OUTCOME_LABELS
 const STATUS_OPTIONS = FIXED_ASSET_STATUSES.map((value) => ({
   value,
   label: FIXED_ASSET_STATUS_LABELS[value],
@@ -81,7 +95,8 @@ type Row = {
  * Demirbaşlar (`?gorunum=demirbas`; DOM-FIN-085, ON-235). Yalnız yönetici (K-189): kayıt,
  * düzeltme ve ayrıntı panelinde (`?demirbas=`) zimmet ve iade (DOM-FIN-086) ile gerekçeli hurdaya
  * ayırma (K-188). Liste etiket, ad ve konumda aranır; durum, kategori ve kampüs süzgeçlidir, sunucu
- * sayfalıdır. Altında personel zimmetleri listesi (K-214) ve amortisman ön hesabı raporu
+ * sayfalıdır. Seçilen demirbaşların karekodlu etiket sayfası alınır (DOM-FIN-087). Altında personel
+ * zimmetleri (K-214), demirbaş sayımları (K-232…K-235) ve amortisman ön hesabı raporu
  * (DOM-FIN-088; yönetim raporu, defter kaydı yok).
  */
 export function FinanceFixedAssetsSection() {
@@ -90,6 +105,7 @@ export function FinanceFixedAssetsSection() {
       <FixedAssetsList />
       <FinanceFixedAssetStaffSection />
       <FinanceFixedAssetDepreciationSection />
+      <FinanceFixedAssetCountsSection />
     </div>
   )
 }
@@ -112,6 +128,24 @@ function FixedAssetsList() {
   const panel = useDetailPanel('demirbas')
   const openAsset = panel.open
   const [creating, setCreating] = useState(false)
+  // Etiket seçimi sayfa ve süzgeç değişince korunur: birkaç sayfadan etiket toplanabilir.
+  const [selected, setSelected] = useState<ReadonlyMap<string, LabelAsset>>(() => new Map())
+  const toggle = useCallback((asset: LabelAsset, checked: boolean) => {
+    setSelected((previous) => {
+      const next = new Map(previous)
+      if (checked) next.set(asset.id, asset)
+      else next.delete(asset.id)
+      return next
+    })
+  }, [])
+  const labels = useMemo(() => [...selected.values()], [selected])
+  const pageAssets = useMemo(
+    () =>
+      (assets.data?.data ?? [])
+        .filter((item) => item.status !== 'scrapped')
+        .map((item) => ({ id: item.id, tagNumber: item.tagNumber, name: item.name })),
+    [assets.data],
+  )
 
   const filters = useMemo(
     () => [
@@ -147,6 +181,24 @@ function FixedAssetsList() {
   )
   const columns = useMemo<DataColumn<Row>[]>(
     () => [
+      {
+        key: SELECT_KEY,
+        label: 'Etikete ekle',
+        cell: (row) =>
+          row.status === 'scrapped' ? (
+            '—'
+          ) : (
+            <label className="inline-grid size-8 cursor-pointer place-items-center">
+              <Checkbox
+                checked={selected.has(row.id)}
+                aria-label={`${row.tagNumber} etiketini seç`}
+                onCheckedChange={(checked) =>
+                  toggle({ id: row.id, tagNumber: row.tagNumber, name: row.name }, checked === true)
+                }
+              />
+            </label>
+          ),
+      },
       { key: 'tagNumber', label: 'Etiket' },
       { key: 'name', label: 'Ad' },
       { key: 'category', label: 'Kategori' },
@@ -180,7 +232,7 @@ function FixedAssetsList() {
         ),
       },
     ],
-    [openAsset],
+    [openAsset, selected, toggle],
   )
 
   return (
@@ -202,6 +254,42 @@ function FixedAssetsList() {
           Yeni demirbaş
         </Button>
       </header>
+      <div
+        role="group"
+        aria-label="Etiket seçimi"
+        className="flex flex-wrap items-center gap-2 px-6 pb-2 text-sm"
+      >
+        <span className="text-muted-foreground" aria-live="polite">
+          {selected.size === 0
+            ? 'Etiket basmak için demirbaş seçin.'
+            : `${String(selected.size)} demirbaş seçildi.`}
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={pageAssets.length === 0}
+          onClick={() => {
+            for (const asset of pageAssets) toggle(asset, true)
+          }}
+        >
+          Bu sayfayı seç
+        </Button>
+        {selected.size > 0 ? (
+          <>
+            <PdfDialogButton
+              label={`Etiket PDF (${String(selected.size)})`}
+              accessibleName="Seçili demirbaşların etiket PDF'i"
+              title={FIXED_ASSET_LABELS_TITLE}
+              id={labels}
+              usePdf={useFixedAssetLabelPdf}
+            />
+            <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Map())}>
+              Seçimi temizle
+            </Button>
+          </>
+        ) : null}
+      </div>
       <ServerDataTable
         list={list}
         rows={rows}
@@ -266,6 +354,12 @@ function FixedAssetDetailView({ assetId }: { assetId: string }) {
             <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
               Düzenle
             </Button>
+            <PdfDialogButton
+              label="Etiket PDF"
+              title={FIXED_ASSET_LABELS_TITLE}
+              id={[{ id: asset.id, tagNumber: asset.tagNumber, name: asset.name }]}
+              usePdf={useFixedAssetLabelPdf}
+            />
           </div>
         )}
       </section>
@@ -297,6 +391,12 @@ function FixedAssetFacts({ asset }: { asset: FixedAssetDetail }) {
             receipt.receiptCancelled ? ' (kabul iptal edildi)' : ''
           }`
         : '—',
+    ],
+    [
+      'Son sayım',
+      asset.lastCount
+        ? `${dateLabel(asset.lastCount.completedAt, { year: 'numeric' })} · ${OUTCOME_TEXT[asset.lastCount.outcome]}`
+        : 'Henüz sayılmadı',
     ],
     ...(asset.status === 'scrapped'
       ? ([

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { FIXED_ASSET_ASSIGNEE_TYPES } from '@kampus/school-core/lib/finance-fixed-asset-assignments.ts'
+import { FIXED_ASSET_COUNT_OUTCOMES } from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
 import {
   DEPRECIATION_METHODS,
   FIXED_ASSET_CATEGORIES,
@@ -70,6 +71,16 @@ const fixedAssetDetailSchema = fixedAssetListItemSchema.extend({
     .describe('Mal kabul bağı (DOM-FIN-074)'),
   scrappedAt: z.string().nullable(),
   scrapReason: z.string().nullable(),
+  lastCount: z
+    .object({
+      countId: z.string(),
+      completedAt: z.string().describe('Sayımın tamamlandığı zaman'),
+      outcome: z
+        .enum(FIXED_ASSET_COUNT_OUTCOMES)
+        .describe('`found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı'),
+    })
+    .nullable()
+    .describe('Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş'),
   createdAt: z.string(),
   depreciation: z
     .object({

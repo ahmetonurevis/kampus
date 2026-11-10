@@ -25,11 +25,19 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
+import {
+  useMaterialDeliveryListPdf,
+  useMaterialDeliveryPdf,
+} from '@/hooks/use-finance-material-set-pdf.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
+import {
+  MATERIAL_DELIVERY_LIST_TITLE,
+  MATERIAL_DELIVERY_TITLE,
+} from '@/lib/pdf/templates/finance-material-set-delivery.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
-import { CsvButton } from './CorporateParts.tsx'
+import { CsvButton, PdfDialogButton } from './CorporateParts.tsx'
 import {
   CancelMaterialDeliveryModal,
   MaterialDeliveryModal,
@@ -295,6 +303,17 @@ const STUDENT_FILTERS = [
   },
 ]
 
+/** Ekrandaki süzgecin belgeye yazılan kısa açıklaması (toplu liste "Liste" alanı). */
+function filterText(filters: MaterialStudentQuery): string {
+  const parts = STUDENT_FILTERS.flatMap((filter) => {
+    const value = filters[filter.key as 'status' | 'fee' | 'signature']
+    const option = filter.options.find((item) => item.value === value)
+    return option ? [`${filter.label}: ${option.label}`] : []
+  })
+  if (filters.q !== undefined) parts.push(`Arama: “${filters.q}”`)
+  return parts.length === 0 ? 'Bütün öğrenciler' : parts.join(' · ')
+}
+
 function recipientText(delivery: NonNullable<MaterialStudentRow['delivery']>) {
   return delivery.recipientKind === 'student'
     ? MATERIAL_RECIPIENT_KIND_LABELS.student
@@ -332,6 +351,8 @@ function SetDetail({
     ...(fee === 'charged' || fee === 'none' ? { fee } : {}),
     ...(signature === 'received' || signature === 'missing' ? { signature } : {}),
   }
+  // Toplu liste ekrandaki süzgeci izler (K-219); sorgu anahtarı içerikten kurulur.
+  const listRef = { setId, query: filters, filter: filterText(filters) }
   const students = useMaterialStudents(setId, {
     page: list.state.page,
     pageSize: list.state.pageSize,
@@ -357,7 +378,7 @@ function SetDetail({
     () => [
       { key: 'name', label: 'Öğrenci' },
       { key: 'number', label: 'No' },
-      { key: 'className', label: 'Sınıf' },
+      { key: 'className', label: 'Sınıf / grup' },
       {
         key: 'fee',
         label: 'Materyal ücreti',
@@ -392,8 +413,26 @@ function SetDetail({
         label: 'İşlemler',
         cell: (row) => {
           const delivery = row.student.delivery
+          const cancelled = row.student.cancelledDelivery
           return (
             <div className="flex flex-wrap gap-2">
+              {delivery !== null ? (
+                <PdfDialogButton
+                  label="Tutanak PDF"
+                  title={MATERIAL_DELIVERY_TITLE}
+                  id={delivery.id}
+                  usePdf={useMaterialDeliveryPdf}
+                  accessibleName={`Tutanak PDF · ${row.name}`}
+                />
+              ) : cancelled !== null ? (
+                <PdfDialogButton
+                  label="İptal tutanağı"
+                  title={MATERIAL_DELIVERY_TITLE}
+                  id={cancelled.id}
+                  usePdf={useMaterialDeliveryPdf}
+                  accessibleName={`İptal tutanağı · ${row.name}`}
+                />
+              ) : null}
               {row.student.actions.deliver ? (
                 <Button
                   size="sm"
@@ -474,6 +513,12 @@ function SetDetail({
           ))}
         </ul>
         <div className="flex flex-wrap gap-2">
+          <PdfDialogButton
+            label="Teslim listesi PDF"
+            title={MATERIAL_DELIVERY_LIST_TITLE}
+            id={listRef}
+            usePdf={useMaterialDeliveryListPdf}
+          />
           <CsvButton
             label="Öğrenci listesi CSV"
             filename={`materyal-seti-${String(set.academicYear)}-${dayKey()}.csv`}

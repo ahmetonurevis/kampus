@@ -12,7 +12,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { stockMovements } from '../src/db/schema/finance-inventory.ts'
-import { purchaseOrders } from '../src/db/schema/finance-purchase-orders.ts'
+import { purchaseOrderItems, purchaseOrders } from '../src/db/schema/finance-purchase-orders.ts'
 import {
   purchaseReceiptItems,
   purchaseReceipts,
@@ -93,9 +93,19 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
 
   /** Kurum, onaylı talep, seçili teklif ve taslak sipariş; `sent` ise gönderildi işaretli. */
   async function institution(
-    overrides: Partial<InstitutionOverrides> & { sent?: boolean; individual?: boolean } = {},
+    overrides: Partial<InstitutionOverrides> & {
+      sent?: boolean
+      individual?: boolean
+      /** Klavye kalemi kritik seviyeli stok kartına bağlı açılır (ON-339). */
+      linkKeyboard?: boolean
+    } = {},
   ) {
-    const { sent = true, individual = false, ...institutionOverrides } = overrides
+    const {
+      sent = true,
+      individual = false,
+      linkKeyboard = false,
+      ...institutionOverrides
+    } = overrides
     clientIp = `10.74.${String((tenantCount += 1))}.1`
     const created = await createInstitution(app, institutionOverrides)
     const admin = await signInAs(app, created.admin)
@@ -138,7 +148,16 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
             categories: ['it'],
           },
     )
-    const request = await approvedRequest(admin, { center, period, expense })
+    const keyboardCard = linkKeyboard
+      ? await post('/stock-items', {
+          code: 'KLV',
+          name: 'Klavye',
+          category: 'it',
+          unit: 'piece',
+          minQuantity: 20,
+        })
+      : null
+    const request = await approvedRequest(admin, { center, period, expense }, keyboardCard?.id)
     const [keyboard, mouse] = (request.items as Json[]).map((item) => item.id)
     const board = ok(
       await call('POST', `${REQUESTS}/${String(request.id)}/quotes`, admin, {
@@ -184,6 +203,7 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
       order,
       keyboard: String(items[0]?.id),
       mouse: String(items[1]?.id),
+      keyboardCard,
     }
   }
   type Tenant = {
@@ -196,11 +216,13 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     order: Json
     keyboard: string
     mouse: string
+    keyboardCard?: Json | null
   }
 
   async function approvedRequest(
     admin: string,
     refs: { center: Json; period: Json; expense: Json },
+    keyboardStockItemId?: unknown,
   ) {
     const created = ok(
       await call('POST', REQUESTS, admin, {
@@ -209,7 +231,13 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
         budgetItemId: refs.expense.id,
         justification: 'Bilgisayar laboratuvarı için yedek parça',
         items: [
-          { name: 'Klavye', quantity: 10, unit: 'piece', estimatedUnitPriceCents: 25_000 },
+          {
+            name: 'Klavye',
+            quantity: 10,
+            unit: 'piece',
+            estimatedUnitPriceCents: 25_000,
+            ...(keyboardStockItemId === undefined ? {} : { stockItemId: keyboardStockItemId }),
+          },
           { name: 'Fare', quantity: 3, unit: 'piece', estimatedUnitPriceCents: 15_000 },
         ],
       }),
@@ -893,5 +921,77 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     assert.equal((await criticalRow())?.lastUnitPriceCents, null)
     const [stored] = (await stockRows()).filter((row) => row.type === 'receipt')
     assert.equal(stored?.cancelReason, 'Hatalı kayıt')
+  })
+  test('ON-339, K-221, K-222: talep kaleminin stok kartı siparişe ve kabul panosuna taşınır; kritik listede açık talep miktarı siparişe dönünce düşer', async () => {
+    const t = await institution({ linkKeyboard: true })
+    const card = t.keyboardCard as Json
+    const link = { id: card.id, code: 'KLV', name: 'Klavye' }
+    const orderItems = t.order.items as Json[]
+    assert.deepEqual(
+      orderItems.map((item) => item.stockItem),
+      [link, null],
+    )
+    const stored = await db
+      .select()
+      .from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.institutionId, t.id))
+    assert.deepEqual(stored.map((row) => row.stockItemId).sort(), [card.id, null].sort())
+    const board = ok(await get(receiptsUrl(t), t.admin))
+    assert.deepEqual(
+      (board.items as Json[]).map((item) => item.stockItem),
+      [link, null],
+    )
+
+    const critical = async () => {
+      const rows = ok(await get(`${FINANCE}/stock-items/critical`, t.admin)) as unknown as Json[]
+      const row = rows.find((item) => item.id === card.id)
+      return [row?.openRequestQuantity, row?.openRequestCount]
+    }
+    // Siparişe dönen talebin miktarı açık talepte sayılmaz.
+    assert.deepEqual(await critical(), [0, 0])
+    const linked = async (quantity: number) =>
+      ok(
+        await call('POST', REQUESTS, t.admin, {
+          costCenterId: t.center.id,
+          periodId: t.period.id,
+          budgetItemId: t.expense.id,
+          justification: 'Kritik seviyedeki klavye için ikinci talep',
+          items: [
+            {
+              name: 'Klavye',
+              quantity,
+              unit: 'piece',
+              estimatedUnitPriceCents: 25_000,
+              stockItemId: card.id,
+            },
+          ],
+        }),
+        201,
+      )
+    await linked(4)
+    assert.deepEqual(await critical(), [4, 1])
+    const cancelled = await linked(7)
+    ok(
+      await call(
+        'POST',
+        `${REQUESTS}/${String(cancelled.id)}/cancel`,
+        t.admin,
+        { reason: 'Mükerrer talep' },
+        ifMatch(cancelled.version),
+      ),
+    )
+    // İptal edilen talep sayılmaz; açık talep uyarısı yeni talebi engellemez.
+    assert.deepEqual(await critical(), [4, 1])
+    ok(
+      await call(
+        'POST',
+        `${ORDERS}/${String(t.order.id)}/cancel`,
+        t.admin,
+        { reason: 'Tedarikçi stokta yok' },
+        ifMatch(t.order.version),
+      ),
+    )
+    // Sipariş iptal edilince onaylı talep yeniden açık talep olur.
+    assert.deepEqual(await critical(), [14, 2])
   })
 })

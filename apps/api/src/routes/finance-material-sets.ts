@@ -23,6 +23,7 @@ import {
   cancelMaterialDeliveryCommand,
   createMaterialDeliveryCommand,
   createMaterialSetCommand,
+  getMaterialDeliveryFor,
   getMaterialSetFor,
   listMaterialRecipientsFor,
   listMaterialSetsFor,
@@ -201,7 +202,7 @@ export function registerFinanceMaterialSetRoutes(app: FastifyInstance) {
         operationId: 'listMaterialSetStudents',
         tags,
         summary: 'Setin teslim edilen ve edilmeyen öğrencileri',
-        description: `Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (\`hasMaterialFee\`; ödeme durumu değil, K-207) ve iptal edilmemiş teslim. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. \`Accept: text/csv\` ile süzgeçle eşleşen bütün satırlar CSV iner (\`;\` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 \`reauthentication_required\`), kullanıcı başına 10/dk, denetim \`finance.material_set_export\` (K-209). Olmayan ya da başka kurumun seti 404. ${READERS}`,
+        description: `Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (\`hasMaterialFee\`; ödeme durumu değil, K-207), iptal edilmemiş teslim ve bu setteki son iptal edilmiş teslim (\`cancelledDelivery\`; iptal tutanağı, K-218). Kura bağlı sette sınıf yerine o kurun grubu, sınıfsız öğrencide etkin kur grupları yazılır. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. \`Accept: text/csv\` ile süzgeçle eşleşen bütün satırlar CSV iner (\`;\` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 \`reauthentication_required\`), kullanıcı başına 10/dk, denetim \`finance.material_set_export\` (K-209). Olmayan ya da başka kurumun seti 404. ${READERS}`,
         params: materialSetParams,
         querystring: materialStudentQuery,
         // CSV gövdesi `reply.serializer` ile gider; şemada yalnız JSON durur.
@@ -269,6 +270,24 @@ export function registerFinanceMaterialSetRoutes(app: FastifyInstance) {
     },
     async (request) => ({
       data: await listMaterialRecipientsFor(contextOf(request), request.query.studentId),
+    }),
+  )
+
+  typed.get(
+    `${DELIVERIES}/:deliveryId`,
+    {
+      preValidation: guarded(MATERIAL_SET_READ_ROLES),
+      schema: {
+        operationId: 'getMaterialDelivery',
+        tags,
+        summary: 'Teslim ayrıntısı (teslim tutanağı)',
+        description: `İptal edilmiş teslim dahil: set, eğitim yılı, öğrenci adı, numarası, sınıfı ya da kur grubu, kalemler, teslim alan, teslim eden (kaydeden), teslim günü, iptal bilgisi ve setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (\`hasMaterialFee\`; tutar ve ödeme durumu yok, K-207). Teslim tutanağı PDF'i web'de bu yanıttan üretilir (ON-338). Olmayan ya da başka kurumun teslimi 404. ${READERS}`,
+        params: materialDeliveryParams,
+        response: { 200: materialDeliveryResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await getMaterialDeliveryFor(contextOf(request), request.params.deliveryId),
     }),
   )
 

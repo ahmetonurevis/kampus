@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import { fixedAssetCountOutcome } from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
 import {
   depreciationRateBasisPoints,
   depreciationReport,
@@ -21,6 +22,7 @@ import {
 } from '@kampus/school-core/lib/finance-fixed-assets.ts'
 
 import type { Database } from '../db/client.ts'
+import { loadLastCounts } from '../db/finance-fixed-asset-counts.ts'
 import {
   loadAssignmentState,
   loadOpenAssignments,
@@ -153,15 +155,17 @@ function listView(
 }
 
 async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedAsset) {
-  const [{ campuses, holders }, receipts] = await Promise.all([
+  const [{ campuses, holders }, receipts, lastCounts] = await Promise.all([
     holdersAndCampuses(db, ctx.institutionId, [asset]),
     loadReceiptItemViews(
       db,
       ctx.institutionId,
       asset.receiptItemId === null ? [] : [asset.receiptItemId],
     ),
+    loadLastCounts(db, ctx.institutionId, [asset.id]),
   ])
   const receipt = asset.receiptItemId === null ? null : receipts.get(asset.receiptItemId)
+  const lastCount = lastCounts.get(asset.id)
   return {
     ...listView(asset, campuses, holders),
     receipt:
@@ -180,6 +184,15 @@ async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedA
           },
     scrappedAt: asset.scrappedAt,
     scrapReason: asset.scrapReason,
+    // Son tamamlanmış sayım (DOM-FIN-087, K-235): demirbaş kaydında saklanmaz, sayım satırından okunur.
+    lastCount:
+      lastCount === undefined
+        ? null
+        : {
+            countId: lastCount.countId,
+            completedAt: lastCount.completedAt,
+            outcome: fixedAssetCountOutcome(lastCount.result, 'completed'),
+          },
     createdAt: asset.createdAt,
     // Amortisman ön hesabı (DOM-FIN-088): saklanmaz, her okumada hesaplanır; defter kaydı değildir.
     depreciation: {

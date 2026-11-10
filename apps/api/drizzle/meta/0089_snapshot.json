@@ -1,5 +1,5 @@
 {
-  "id": "1a95cc49-3cdc-44d5-8fd9-7caa4862803f",
+  "id": "dd8b8d59-566c-403f-97e7-0ea4b7276272",
   "prevId": "9ffb2476-4a32-40f2-9ba3-8488c769204b",
   "version": "7",
   "dialect": "postgresql",
@@ -8671,19 +8671,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "useful_life_years": {
-          "name": "useful_life_years",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "depreciation_method": {
-          "name": "depreciation_method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'normal'"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -8896,14 +8883,6 @@
         "fixed_assets_value_check": {
           "name": "fixed_assets_value_check",
           "value": "\"fixed_assets\".\"acquisition_value_cents\" between 1 and 10000000000"
-        },
-        "fixed_assets_useful_life_check": {
-          "name": "fixed_assets_useful_life_check",
-          "value": "\"fixed_assets\".\"useful_life_years\" between 1 and 50"
-        },
-        "fixed_assets_depreciation_method_check": {
-          "name": "fixed_assets_depreciation_method_check",
-          "value": "\"fixed_assets\".\"depreciation_method\" in ('normal', 'declining')"
         },
         "fixed_assets_currency_check": {
           "name": "fixed_assets_currency_check",
@@ -11364,6 +11343,12 @@
           "notNull": true,
           "default": "'TRY'"
         },
+        "stock_item_id": {
+          "name": "stock_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -11461,6 +11446,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "purchase_order_items_stock_item_idx": {
+          "name": "purchase_order_items_stock_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stock_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -11475,6 +11481,21 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_order_items_stock_item_fkey": {
+          "name": "purchase_order_items_stock_item_fkey",
+          "tableFrom": "purchase_order_items",
+          "tableTo": "stock_items",
+          "columnsFrom": [
+            "institution_id",
+            "stock_item_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "purchase_order_items_order_fkey": {
@@ -12920,6 +12941,12 @@
           "notNull": true,
           "default": "'TRY'"
         },
+        "stock_item_id": {
+          "name": "stock_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -12997,6 +13024,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "purchase_request_items_stock_item_idx": {
+          "name": "purchase_request_items_stock_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stock_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13020,6 +13068,21 @@
           "columnsFrom": [
             "institution_id",
             "request_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "purchase_request_items_stock_item_fkey": {
+          "name": "purchase_request_items_stock_item_fkey",
+          "tableFrom": "purchase_request_items",
+          "tableTo": "stock_items",
+          "columnsFrom": [
+            "institution_id",
+            "stock_item_id"
           ],
           "columnsTo": [
             "institution_id",

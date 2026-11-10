@@ -38,6 +38,7 @@ import { SUPPLIER_TYPES, type SupplierType } from '@kampus/school-core/lib/finan
 
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
+import { stockItems } from './finance-inventory.ts'
 import { purchaseRequestItems, purchaseRequests } from './finance-purchase-requests.ts'
 import { suppliers } from './finance-suppliers.ts'
 
@@ -244,7 +245,10 @@ export const purchaseOrders = pgTable(
   ],
 )
 
-/** Sipariş kalemi: talep kalemi ve teklif fiyatının açılış anındaki kopyası. */
+/**
+ * Sipariş kalemi: talep kalemi ve teklif fiyatının açılış anındaki kopyası; talep kaleminin stok
+ * kartı bağı da kopyalanır ve mal kabul formunu doldurur (ON-339).
+ */
 export const purchaseOrderItems = pgTable(
   'purchase_order_items',
   {
@@ -261,10 +265,16 @@ export const purchaseOrderItems = pgTable(
     unitPriceCents: bigint('unit_price_cents', { mode: 'number' }).notNull(),
     vatRate: integer('vat_rate').$type<VatRate>().notNull(),
     currency: text('currency').notNull().default('TRY'),
+    stockItemId: uuid('stock_item_id'),
     ...requiredColumns(),
   },
   (table) => [
     primaryKey({ name: 'purchase_order_items_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'purchase_order_items_stock_item_fkey',
+      columns: [table.institutionId, table.stockItemId],
+      foreignColumns: [stockItems.institutionId, stockItems.id],
+    }).onDelete('restrict'),
     foreignKey({
       name: 'purchase_order_items_order_fkey',
       columns: [table.institutionId, table.orderId],
@@ -298,5 +308,6 @@ export const purchaseOrderItems = pgTable(
     ),
     index('purchase_order_items_order_idx').on(table.institutionId, table.orderId),
     index('purchase_order_items_request_item_idx').on(table.institutionId, table.requestItemId),
+    index('purchase_order_items_stock_item_idx').on(table.institutionId, table.stockItemId),
   ],
 )

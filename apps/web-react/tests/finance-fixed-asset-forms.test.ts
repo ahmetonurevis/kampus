@@ -45,6 +45,7 @@ const ASSET: FixedAssetDetail = {
   receipt: null,
   scrappedAt: null,
   scrapReason: null,
+  lastCount: null,
   createdAt: '2026-10-06T09:00:00.000Z',
   depreciation: { rateBasisPoints: 2_000, rows: [] },
 }

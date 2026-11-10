@@ -35,6 +35,9 @@ export type MaterialStudentQuery = Query<'listMaterialSetStudents'>
 export type MaterialDeliveryBody = JsonBody<'createMaterialDelivery'>
 export type MaterialDelivery =
   operations['createMaterialDelivery']['responses'][201]['content']['application/json']['data']
+/** Teslim ayrıntısı (iptal edilmiş dahil); teslim tutanağı PDF'inin verisi (ON-338). */
+export type MaterialDeliveryDetail =
+  operations['getMaterialDelivery']['responses'][200]['content']['application/json']['data']
 export type MaterialRecipient =
   operations['listMaterialRecipients']['responses'][200]['content']['application/json']['data'][number]
 

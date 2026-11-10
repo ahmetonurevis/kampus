@@ -1,4 +1,5 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
+import type { PackageAlert } from '@kampus/school-core/lib/finance-package-alerts.ts'
 
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
@@ -130,6 +131,8 @@ export function usePackageSales(query: {
   pageSize: number
   studentId?: string
   packageId?: string
+  /** Yalnız bu uyarıyı taşıyan satışlar (K-248, K-249). */
+  alert?: PackageAlert
 }) {
   return useFinanceListQuery({
     key: [...PACKAGES_KEY, 'sales', query],

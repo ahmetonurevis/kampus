@@ -6,6 +6,11 @@ import {
   usePackageSales,
 } from '@kampus/react-shared/use-finance-packages.ts'
 import {
+  PACKAGE_ALERT_LABELS,
+  PACKAGE_ALERTS,
+  type PackageAlert,
+} from '@kampus/school-core/lib/finance-package-alerts.ts'
+import {
   PACKAGE_KIND_LABELS,
   PACKAGE_KINDS,
   type PackageKind,
@@ -38,6 +43,12 @@ const KIND_OPTIONS = PACKAGE_KINDS.map((kind) => ({
   value: kind,
   label: PACKAGE_KIND_LABELS[kind],
 }))
+const ALERT_OPTIONS = PACKAGE_ALERTS.map((alert) => ({
+  value: alert,
+  label: PACKAGE_ALERT_LABELS[alert],
+}))
+const isPackageAlert = (value: string | null): value is PackageAlert =>
+  PACKAGE_ALERTS.some((alert) => alert === value)
 const filterText = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null)
 const isPackageKind = (value: string | null): value is PackageKind =>
   PACKAGE_KINDS.some((kind) => kind === value)
@@ -71,6 +82,7 @@ type SaleRow = {
   hours: string
   expiresDate: string | null
   status: keyof typeof PACKAGE_SALE_STATUS_VIEW
+  alerts: PackageAlert[]
 }
 
 function SalesTable({
@@ -84,11 +96,13 @@ function SalesTable({
   const list = useListState('paket-satislari', { urlPrefix: 'satis_' })
   const studentId = filterText(list.state.filters.studentId)
   const packageId = filterText(list.state.filters.packageId)
+  const alert = filterText(list.state.filters.alert)
   const sales = usePackageSales({
     page: list.state.page,
     pageSize: list.state.pageSize,
     ...(studentId ? { studentId } : {}),
     ...(packageId ? { packageId } : {}),
+    ...(isPackageAlert(alert) ? { alert } : {}),
   })
   const students = useCoreAll('students')
   const packages = useLessonPackages({ page: 1, pageSize: OPTION_PAGE_SIZE })
@@ -105,6 +119,7 @@ function SalesTable({
         hours: `${String(sale.remainingHours)} / ${String(sale.purchasedHours)} saat`,
         expiresDate: sale.expiresDate,
         status: sale.status,
+        alerts: sale.alerts,
       })),
     [sales.data],
   )
@@ -124,7 +139,14 @@ function SalesTable({
         label: 'Durum',
         cell: (row) => {
           const view = PACKAGE_SALE_STATUS_VIEW[row.status]
-          return <StatusBadge text={view.label} tone={view.tone} />
+          return (
+            <span className="flex flex-wrap gap-1">
+              <StatusBadge text={view.label} tone={view.tone} />
+              {row.alerts.map((item) => (
+                <StatusBadge key={item} text={PACKAGE_ALERT_LABELS[item]} tone="amber" />
+              ))}
+            </span>
+          )
         },
       },
       {
@@ -155,6 +177,12 @@ function SalesTable({
           .sort((a, b) => a.label.localeCompare(b.label, 'tr')),
       },
       {
+        key: 'alert',
+        label: 'Uyarı',
+        type: 'select' as const,
+        options: ALERT_OPTIONS,
+      },
+      {
         key: 'packageId',
         label: 'Paket',
         type: 'select' as const,
@@ -178,7 +206,8 @@ function SalesTable({
             Paket satışları
           </h2>
           <p className="text-sm text-muted-foreground">
-            Fiyat yayımdaki tarifeden hesaplanır. Süresi dolan paketin kalan saati silinmez.
+            Fiyat yayımdaki tarifeden hesaplanır. Süresi dolan paketin kalan saati silinmez. Kalan
+            saati satın alınanın %20'sine inen ya da süresi 14 gün içinde dolan satış işaretlenir.
           </p>
         </div>
         <Button onClick={() => setSelling(true)}>

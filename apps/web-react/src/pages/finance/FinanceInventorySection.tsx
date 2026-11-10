@@ -45,6 +45,7 @@ import {
   StockMovementFormModal,
   StockWarehouseFormModal,
 } from './FinanceInventoryForms.tsx'
+import { FinanceStockCountsPanel } from './FinanceStockCountsPanel.tsx'
 import { MOVEMENT_TYPE_VIEW, signedQuantity, type MovementKind } from './finance-inventory-forms.ts'
 
 const NO_SORT: readonly string[] = []
@@ -54,6 +55,7 @@ const SUBVIEWS = [
   { value: 'critical', label: 'Kritik stok', param: 'kritik' },
   { value: 'movements', label: 'Hareketler', param: 'hareket' },
   { value: 'warehouses', label: 'Depolar', param: 'depo' },
+  { value: 'counts', label: 'Sayımlar', param: 'sayim' },
 ] as const
 type SubView = (typeof SUBVIEWS)[number]['value']
 const STATUS_OPTIONS = [
@@ -80,11 +82,13 @@ const reasonText = (row: StockMovementRow) => {
         ? STOCK_ENTRY_REASON_LABELS[row.reason as keyof typeof STOCK_ENTRY_REASON_LABELS]
         : STOCK_ISSUE_REASON_LABELS[row.reason as keyof typeof STOCK_ISSUE_REASON_LABELS]
   const source =
-    row.orderNumber !== null
-      ? `Sipariş ${row.orderNumber}`
-      : row.counterpartWarehouseName !== null
-        ? `${row.type === 'transfer_out' ? 'Giriş' : 'Çıkış'} deposu ${row.counterpartWarehouseName}`
-        : null
+    row.countId !== null
+      ? 'Stok sayımı'
+      : row.orderNumber !== null
+        ? `Sipariş ${row.orderNumber}`
+        : row.counterpartWarehouseName !== null
+          ? `${row.type === 'transfer_out' ? 'Giriş' : 'Çıkış'} deposu ${row.counterpartWarehouseName}`
+          : null
   return [reason, source, row.note].filter(Boolean).join(' · ') || '—'
 }
 
@@ -100,7 +104,9 @@ type Dialog =
  * miktar, hareketler, depolar. Yönetici kart ve depo açar, giriş ve transfer yazar, hareketi iptal
  * eder; ön büro okur ve çıkış yazar (K-180). Miktar hareketlerden türetilir; satın alınan ürün mal
  * kabulle girer (K-184). "Kritik stok" görünümü kritik seviyedeki ürünleri ve talep önerisini
- * gösterir (DOM-FIN-079); stok kartları listesi kritik ürün sayısını duyurur (K-204).
+ * gösterir (DOM-FIN-079); stok kartları listesi kritik ürün sayısını duyurur (K-204). "Sayımlar"
+ * görünümü depo sayımını, okutmayı ve fark raporunu taşır (DOM-FIN-081); sayım düzeltmesi hareket
+ * listesinde sayıma bağlantı verir.
  */
 export function FinanceInventorySection({ role }: { role: string }) {
   const actions = stockActions(role)
@@ -118,6 +124,8 @@ export function FinanceInventorySection({ role }: { role: string }) {
     const param = SUBVIEWS.find((view) => view.value === next)?.param ?? ''
     if (param === '') nextParams.delete(SUB_PARAM)
     else nextParams.set(SUB_PARAM, param)
+    // Açık sayım ekranı yalnız "Sayımlar" görünümünde anlamlıdır.
+    nextParams.delete('sayim_id')
     setParams(nextParams)
   }
   return (
@@ -177,7 +185,15 @@ export function FinanceInventorySection({ role }: { role: string }) {
         />
       ) : null}
       {sub === 'movements' ? (
-        <MovementsPanel onCancel={(movement) => setDialog({ kind: 'cancel', movement })} />
+        <MovementsPanel
+          onCancel={(movement) => setDialog({ kind: 'cancel', movement })}
+          onOpenCount={(countId) => {
+            const nextParams = new URLSearchParams(params)
+            nextParams.set(SUB_PARAM, 'sayim')
+            nextParams.set('sayim_id', countId)
+            setParams(nextParams)
+          }}
+        />
       ) : null}
       {sub === 'warehouses' ? (
         <WarehousesPanel
@@ -187,6 +203,7 @@ export function FinanceInventorySection({ role }: { role: string }) {
           }
         />
       ) : null}
+      {sub === 'counts' ? <FinanceStockCountsPanel role={role} /> : null}
       {dialog?.kind === 'item' ? <StockItemFormModal onClose={close} /> : null}
       {dialog?.kind === 'warehouse' ? (
         <StockWarehouseFormModal
@@ -488,7 +505,13 @@ const TYPE_OPTIONS = STOCK_MOVEMENT_TYPES.map((value) => ({
   label: STOCK_MOVEMENT_TYPE_LABELS[value],
 }))
 
-function MovementsPanel({ onCancel }: { onCancel: (movement: StockMovementRow) => void }) {
+function MovementsPanel({
+  onCancel,
+  onOpenCount,
+}: {
+  onCancel: (movement: StockMovementRow) => void
+  onOpenCount: (countId: string) => void
+}) {
   const list = useListState('stok-hareketleri', { urlPrefix: 'hareket_' })
   const warehouses = useStockWarehouses({ page: 1, pageSize: 100 })
   const type = text(list.state.filters.type)
@@ -566,8 +589,20 @@ function MovementsPanel({ onCancel }: { onCancel: (movement: StockMovementRow) =
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
-        cell: (row) =>
-          row.movement.actions.cancel ? (
+        cell: (row) => {
+          const { countId } = row.movement
+          if (countId !== null)
+            return (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`${row.date} ${row.item} düzeltmesinin sayımını aç`}
+                onClick={() => onOpenCount(countId)}
+              >
+                Sayımı aç
+              </Button>
+            )
+          return row.movement.actions.cancel ? (
             <Button
               size="sm"
               variant="ghost"
@@ -576,10 +611,11 @@ function MovementsPanel({ onCancel }: { onCancel: (movement: StockMovementRow) =
             >
               İptal et
             </Button>
-          ) : null,
+          ) : null
+        },
       },
     ],
-    [onCancel],
+    [onCancel, onOpenCount],
   )
   return (
     <div className="pt-3">

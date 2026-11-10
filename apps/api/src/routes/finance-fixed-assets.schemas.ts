@@ -42,6 +42,10 @@ const fixedAssetListItemSchema = z.object({
     })
     .nullable()
     .describe('Açık zimmet (DOM-FIN-086); zimmetsizse boş'),
+  openMaintenanceCount: z
+    .number()
+    .int()
+    .describe('Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239)'),
   version,
 })
 export const fixedAssetListResponse = z.object({

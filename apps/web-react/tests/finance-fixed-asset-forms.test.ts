@@ -35,6 +35,7 @@ const ASSET: FixedAssetDetail = {
   status: 'in_use',
   scrapDate: null,
   assignment: null,
+  openMaintenanceCount: 0,
   version: 1,
   receipt: null,
   scrappedAt: null,

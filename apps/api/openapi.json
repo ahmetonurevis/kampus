@@ -127632,6 +127632,12 @@
                             ],
                             "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
                           },
+                          "openMaintenanceCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239)"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -127655,6 +127661,7 @@
                           "status",
                           "scrapDate",
                           "assignment",
+                          "openMaintenanceCount",
                           "version"
                         ],
                         "additionalProperties": false
@@ -128064,6 +128071,12 @@
                           ],
                           "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
                         },
+                        "openMaintenanceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -128199,6 +128212,7 @@
                         "status",
                         "scrapDate",
                         "assignment",
+                        "openMaintenanceCount",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -128709,6 +128723,12 @@
                           ],
                           "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
                         },
+                        "openMaintenanceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -128844,6 +128864,7 @@
                         "status",
                         "scrapDate",
                         "assignment",
+                        "openMaintenanceCount",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -129253,6 +129274,12 @@
                           ],
                           "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
                         },
+                        "openMaintenanceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -129388,6 +129415,7 @@
                         "status",
                         "scrapDate",
                         "assignment",
+                        "openMaintenanceCount",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -129732,6 +129760,12 @@
                           ],
                           "description": "Açık zimmet (DOM-FIN-086); zimmetsizse boş"
                         },
+                        "openMaintenanceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -129867,6 +129901,7 @@
                         "status",
                         "scrapDate",
                         "assignment",
+                        "openMaintenanceCount",
                         "version",
                         "receipt",
                         "scrappedAt",
@@ -137172,6 +137207,4710 @@
                   "required": [
                     "data",
                     "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests": {
+      "get": {
+        "operationId": "listMaintenanceRequests",
+        "summary": "Arıza ve bakım taleplerini listele",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Kapatılmamış ve iptal edilmemiş talepler önce; içlerinde acil önce, yeni bildirim önce. `status`, `state` (`active`/`done`), `priority` ve `assetId` (demirbaşın arıza geçmişi) süzer; `q` başlık, yer, demirbaş etiketi ve adında ya da talep numarasında arar (DOM-FIN-089). Öğretmen yalnız kendi bildirimlerini görür; maliyet yalnız yönetici yanıtındadır. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlık, yer, demirbaş etiketi ve adında ya da talep numarasında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "assigned",
+                "in_progress",
+                "resolved",
+                "closed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "done"
+              ]
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "`active` kapatılmamış ve iptal edilmemiş, `done` kapatılmış ya da iptal edilmiş"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "urgent"
+              ]
+            },
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "description": "Öncelik"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "assetId",
+            "required": false,
+            "description": "Demirbaşın arıza geçmişi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string",
+                            "description": "Talep numarası (`AT-0007`)"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "campusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "campusName": {
+                            "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "type": "string",
+                            "description": "Oda ya da yer"
+                          },
+                          "asset": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "tagNumber": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "category": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "furniture",
+                                          "it",
+                                          "audiovisual",
+                                          "office",
+                                          "laboratory",
+                                          "sports",
+                                          "kitchen",
+                                          "appliance",
+                                          "vehicle",
+                                          "other"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "tagNumber",
+                                  "name",
+                                  "category"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bağlı demirbaş (DOM-FIN-085)"
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "low",
+                              "normal",
+                              "urgent"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "assigned",
+                              "in_progress",
+                              "resolved",
+                              "closed",
+                              "cancelled"
+                            ]
+                          },
+                          "reportedByName": {
+                            "description": "Bildiren kişinin adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reportedByMe": {
+                            "type": "boolean",
+                            "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                          },
+                          "reportedAt": {
+                            "type": "string"
+                          },
+                          "assignee": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "staff",
+                                      "supplier"
+                                    ],
+                                    "description": "`staff` personel, `supplier` tedarikçi"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                  },
+                                  "name": {
+                                    "description": "Personel adı ya da tedarikçi unvanı",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Şimdiki sorumlu; atanmamışsa boş"
+                          },
+                          "assignedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "startedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "resolvedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "resolvedDate": {
+                            "description": "Çözüm günü (YYYY-MM-DD)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "resolution": {
+                            "description": "Yapılan iş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "resolutionCostCents": {
+                            "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "resolutionSupplier": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İşi yapan tedarikçi"
+                          },
+                          "closedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actions": {
+                            "type": "object",
+                            "properties": {
+                              "assign": {
+                                "type": "boolean"
+                              },
+                              "start": {
+                                "type": "boolean"
+                              },
+                              "resolve": {
+                                "type": "boolean"
+                              },
+                              "close": {
+                                "type": "boolean"
+                              },
+                              "cancel": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "assign",
+                              "start",
+                              "resolve",
+                              "close",
+                              "cancel"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "title",
+                          "description",
+                          "campusId",
+                          "campusName",
+                          "location",
+                          "asset",
+                          "priority",
+                          "status",
+                          "reportedByName",
+                          "reportedByMe",
+                          "reportedAt",
+                          "assignee",
+                          "assignedAt",
+                          "startedAt",
+                          "resolvedAt",
+                          "resolvedDate",
+                          "resolution",
+                          "resolutionSupplier",
+                          "closedAt",
+                          "cancelledAt",
+                          "cancelReason",
+                          "actions",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "reportMaintenanceRequest",
+        "summary": "Arıza bildir",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Başlık, açıklama, isteğe bağlı kampüs, yer, isteğe bağlı demirbaş etiketi ve öncelik (K-236); talep `open` durumunda ve `AT-<sıra>` numarasıyla açılır. Kurumda olmayan etiket (başka kurumun etiketi dahil) 422 `maintenance_asset_not_found`, hurdaya ayrılmış demirbaş 422 `maintenance_asset_scrapped`, olmayan kampüs 422 `maintenance_campus_not_found`. Gövdedeki `institutionId` 400. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 2000
+                  },
+                  "campusId": {
+                    "default": null,
+                    "description": "Kampüs (branches kaydı); tek kampüslü kurumda boş",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Oda ya da yer, serbest metin"
+                  },
+                  "assetTagNumber": {
+                    "description": "İsteğe bağlı demirbaş etiketi; kurumun hurdaya ayrılmamış demirbaşı olmalıdır",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "priority": {
+                    "default": "normal",
+                    "description": "`low` düşük, `normal`, `urgent` acil",
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "normal",
+                      "urgent"
+                    ]
+                  }
+                },
+                "required": [
+                  "title",
+                  "description",
+                  "location"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests/{requestId}": {
+      "get": {
+        "operationId": "getMaintenanceRequest",
+        "summary": "Arıza talebi ayrıntısı ve iş emri geçmişi",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Talep, sorumlu, çözüm ve iş emri geçmişi (kim, ne zaman, not; K-237); iş emri PDF'inin verisi. Olmayan, başka kurumun ya da öğretmen için başkasının talebi 404. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests/{requestId}/assign": {
+      "post": {
+        "operationId": "assignMaintenanceRequest",
+        "summary": "İş emrini ata",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Personele (`assigneeType: staff`, kurumun etkin yönetici, öğretmen ya da ön büro üyeliği) ya da tedarikçiye (`assigneeType: supplier`, etkin tedarikçi) atar; açık talep `assigned` olur, atanmış ya da üzerinde çalışılan talepte yalnız sorumlu değişir (K-237). Olmayan üyelik 422 `maintenance_assignee_not_found`, öğrenci ya da veli 422 `maintenance_assignee_not_staff`, pasif personel 422 `maintenance_assignee_inactive`, olmayan tedarikçi 422 `maintenance_supplier_not_found`, pasif tedarikçi 422 `maintenance_supplier_inactive`, aynı sorumlu 422 `maintenance_same_assignee`. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "assigneeType": {
+                        "type": "string",
+                        "enum": [
+                          "staff"
+                        ]
+                      },
+                      "membershipId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Sorumlu personelin kurum üyeliği"
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 500 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "assigneeType",
+                      "membershipId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "assigneeType": {
+                        "type": "string",
+                        "enum": [
+                          "supplier"
+                        ]
+                      },
+                      "supplierId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "description": "İşi yapacak dış tedarikçi (DOM-FIN-070)"
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 500 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "assigneeType",
+                      "supplierId"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests/{requestId}/start": {
+      "post": {
+        "operationId": "startMaintenanceRequest",
+        "summary": "İşe başla",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Atanmış talep `in_progress` olur; isteğe bağlı not. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 500 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests/{requestId}/resolve": {
+      "post": {
+        "operationId": "resolveMaintenanceRequest",
+        "summary": "İş emrini çöz",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Atanmış ya da üzerinde çalışılan talep `resolved` olur: çözüm günü, yapılan iş, isteğe bağlı maliyet (kuruş) ve tedarikçi (K-237). Gelecek gün 422 `maintenance_date_in_future`, bildirim gününden önce 422 `maintenance_resolved_before_report`, olmayan tedarikçi 422 `maintenance_supplier_not_found`. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resolvedDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Çözüm günü; bildirim gününden önce, bugünden sonra olamaz"
+                  },
+                  "resolution": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  },
+                  "costCents": {
+                    "default": null,
+                    "description": "İsteğe bağlı onarım maliyeti, KDV dahil, kuruş; yalnız yönetici görür",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "supplierId": {
+                    "default": null,
+                    "description": "İşi yapan tedarikçi (pasif tedarikçi dahil)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "resolvedDate",
+                  "resolution"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests/{requestId}/close": {
+      "post": {
+        "operationId": "closeMaintenanceRequest",
+        "summary": "İş emrini kapat",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Çözülmüş talep `closed` olur; kapatılan talep yeniden açılmaz. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 500 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/maintenance-requests/{requestId}/cancel": {
+      "post": {
+        "operationId": "cancelMaintenanceRequest",
+        "summary": "Arıza talebini iptal et",
+        "tags": [
+          "finance-maintenance"
+        ],
+        "description": "Gerekçeyle iptal (K-237). Yönetici açık, atanmış ya da üzerinde çalışılan talebi iptal eder; ön büro ve öğretmen yalnız kendi bildirimini ve atanmamışken (başkasının bildirimi 403 `maintenance_not_owner`, atanmış talep 422 `maintenance_not_cancellable`). Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Talep numarası (`AT-0007`)"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kampüs adı; kampüs yoksa ya da arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string",
+                          "description": "Oda ya da yer"
+                        },
+                        "asset": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "tagNumber": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "furniture",
+                                        "it",
+                                        "audiovisual",
+                                        "office",
+                                        "laboratory",
+                                        "sports",
+                                        "kitchen",
+                                        "appliance",
+                                        "vehicle",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tagNumber",
+                                "name",
+                                "category"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı demirbaş (DOM-FIN-085)"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "resolved",
+                            "closed",
+                            "cancelled"
+                          ]
+                        },
+                        "reportedByName": {
+                          "description": "Bildiren kişinin adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportedByMe": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bildirdiyse `true`"
+                        },
+                        "reportedAt": {
+                          "type": "string"
+                        },
+                        "assignee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "supplier"
+                                  ],
+                                  "description": "`staff` personel, `supplier` tedarikçi"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                },
+                                "name": {
+                                  "description": "Personel adı ya da tedarikçi unvanı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Şimdiki sorumlu; atanmamışsa boş"
+                        },
+                        "assignedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedDate": {
+                          "description": "Çözüm günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolution": {
+                          "description": "Yapılan iş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolutionCostCents": {
+                          "description": "Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238)",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolutionSupplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İşi yapan tedarikçi"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "assign": {
+                              "type": "boolean"
+                            },
+                            "start": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "boolean"
+                            },
+                            "close": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "assign",
+                            "start",
+                            "resolve",
+                            "close",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "event": {
+                                "type": "string",
+                                "enum": [
+                                  "reported",
+                                  "assigned",
+                                  "started",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "fromStatus": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "assigned",
+                                      "in_progress",
+                                      "resolved",
+                                      "closed",
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "assigned",
+                                  "in_progress",
+                                  "resolved",
+                                  "closed",
+                                  "cancelled"
+                                ]
+                              },
+                              "note": {
+                                "description": "Adımın notu; çözümde yapılan iş, iptalde gerekçe",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actorName": {
+                                "description": "Adımı yapan kişi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "assignee": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "staff",
+                                          "supplier"
+                                        ],
+                                        "description": "`staff` personel, `supplier` tedarikçi"
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Personel üyeliği ya da tedarikçi kimliği"
+                                      },
+                                      "name": {
+                                        "description": "Personel adı ya da tedarikçi unvanı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Atama adımında sorumlu"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "event",
+                              "fromStatus",
+                              "toStatus",
+                              "note",
+                              "actorName",
+                              "assignee",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İş emri geçmişi, eskiden yeniye (K-237)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "title",
+                        "description",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "asset",
+                        "priority",
+                        "status",
+                        "reportedByName",
+                        "reportedByMe",
+                        "reportedAt",
+                        "assignee",
+                        "assignedAt",
+                        "startedAt",
+                        "resolvedAt",
+                        "resolvedDate",
+                        "resolution",
+                        "resolutionSupplier",
+                        "closedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "actions",
+                        "version",
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
                   ],
                   "additionalProperties": false
                 }

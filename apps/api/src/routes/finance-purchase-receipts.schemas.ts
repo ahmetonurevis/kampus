@@ -46,6 +46,12 @@ const receiptBoardSchema = z.object({
           'İptal edilmemiş kabullerde reddedilen toplam; karşılanmış sayılmaz',
         ),
         remainingQuantity: count('Sipariş miktarı eksi kabul edilen'),
+        stockItem: z
+          .object({ id: z.string(), code: z.string(), name: z.string() })
+          .nullable()
+          .describe(
+            'Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur',
+          ),
       }),
     )
     .describe('Sipariş kalemleri ve teslim durumu'),

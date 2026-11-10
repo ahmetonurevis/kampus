@@ -5,14 +5,20 @@ import {
   STOCK_UNIT_LABELS,
   type StockUnit,
 } from './finance-inventory.ts'
-import { PURCHASE_ITEMS_MAX, PURCHASE_JUSTIFICATION_MAX } from './finance-purchase-requests.ts'
+import {
+  PURCHASE_ITEMS_MAX,
+  PURCHASE_JUSTIFICATION_MAX,
+  type PurchaseRequestStatus,
+} from './finance-purchase-requests.ts'
 
 /**
  * Kritik stok uyarısı ve satın alma talebi önerisi (docs/domain/finans.md DOM-FIN-079; ON-230).
  * Kritik seviye kartın kurum toplamına uygulanır (DOM-FIN-077, K-200): toplam miktar kritik seviyeye
  * eşit ya da altındaysa etkin kart kritik listededir; depo kırılımı bilgi içindir. Öneri miktarı
  * stoku kritik seviyenin iki katına tamamlar (K-201). Talep önerisi yalnız taslak formunu doldurur;
- * talep bugünkü satın alma talebi kurallarıyla açılır (DOM-FIN-071, K-203).
+ * talep bugünkü satın alma talebi kurallarıyla açılır (DOM-FIN-071, K-203). Önerinin kalemleri
+ * stok kartına bağlıdır; siparişe dönmemiş açık talepteki miktar uyarı olarak gösterilir (ON-339,
+ * K-221, K-222).
  *
  * Fonksiyonlar saftır; girdi servisin yüklediği kart, depo ve miktar satırlarıdır.
  */
@@ -116,6 +122,8 @@ export function criticalStockRows<TItem extends CriticalStockItem>(source: {
 
 /** Talep önerisine giren kritik kalem (ekranın seçtiği satır). */
 export interface StockSuggestionLine {
+  /** Stok kartı kimliği; talep kalemine bağ olarak geçer (ON-339). */
+  id: string
   code: string
   name: string
   unit: StockUnit
@@ -134,6 +142,8 @@ export interface StockPurchaseDraft {
     unit: StockUnit
     /** Bilinmiyorsa `null`: kullanıcı tahmini fiyatı girer. */
     estimatedUnitPriceCents: number | null
+    /** Kalemin bağlı olduğu stok kartı (ON-339, K-221). */
+    stockItemId: string
   }[]
 }
 
@@ -189,6 +199,38 @@ export function stockPurchaseDraft(lines: readonly StockSuggestionLine[]): Stock
         line.lastUnitPriceCents !== null && line.lastUnitPriceCents > 0
           ? line.lastUnitPriceCents
           : null,
+      stockItemId: line.id,
     })),
   }
+}
+
+/**
+ * Açık talep (ON-339, K-222): stok kartına bağlı kalemi olan, henüz siparişe dönmemiş talep. Taslak,
+ * gönderilmiş ve etkin (iptal edilmemiş) siparişi olmayan onaylanmış talepler sayılır; reddedilen
+ * ve iptal edilen talep sayılmaz. Etkin siparişi olan talebin miktarı siparişe geçmiştir.
+ */
+export const OPEN_PURCHASE_REQUEST_STATUSES = [
+  'draft',
+  'submitted',
+  'approved',
+] as const satisfies readonly PurchaseRequestStatus[]
+
+/** Açık talep uyarısının satırı: kritik listeden seçilen kart ve açık talepteki miktarı. */
+export interface OpenRequestLine {
+  code: string
+  unit: StockUnit
+  openRequestQuantity: number
+}
+
+/**
+ * Aynı ürün için ikinci talep uyarısı (ON-339, K-222): seçilen kartlardan açık talepte miktarı
+ * olanlar sayılır; uyarı engellemez, talep yine açılabilir. Açık talep yoksa `null`.
+ */
+export function openRequestWarning(lines: readonly OpenRequestLine[]): string | null {
+  const open = lines.filter((line) => line.openRequestQuantity > 0)
+  if (open.length === 0) return null
+  const parts = open.map(
+    (line) => `${line.code} ${String(line.openRequestQuantity)} ${STOCK_UNIT_LABELS[line.unit]}`,
+  )
+  return `Seçilen ${String(open.length)} ürünün siparişe dönmemiş açık talebi var (${parts.join(', ')}). Yeni talep mükerrer alıma yol açabilir; yine de açabilirsiniz.`
 }

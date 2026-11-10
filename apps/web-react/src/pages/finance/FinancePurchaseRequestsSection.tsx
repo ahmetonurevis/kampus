@@ -334,6 +334,11 @@ function RequestDetail({ requestId }: { requestId: string }) {
                 <span className="block text-muted-foreground">
                   {`${String(line.quantity)} ${PURCHASE_UNIT_LABELS[line.unit]} × ${money(line.estimatedUnitPriceCents)}`}
                 </span>
+                {line.stockItem ? (
+                  <span className="block text-muted-foreground">
+                    {`Stok kartı: ${line.stockItem.code} · ${line.stockItem.name}`}
+                  </span>
+                ) : null}
               </span>
               <span className="font-medium tabular-nums">{money(line.totalCents)}</span>
             </li>

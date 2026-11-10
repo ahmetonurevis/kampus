@@ -25,6 +25,7 @@ import {
   loadOrderReceipts,
   type StoredReceipt,
 } from '../db/finance-purchase-receipts.ts'
+import { loadStockItemLabels } from '../db/finance-inventory.ts'
 import { purchaseActorNames } from '../db/finance-purchase-requests.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -67,6 +68,7 @@ function boardView(
   receipts: readonly StoredReceipt[],
   names: ReadonlyMap<string, string>,
   stock: Awaited<ReturnType<typeof receiptStockLinks>>,
+  cards: Awaited<ReturnType<typeof loadStockItemLabels>>,
 ) {
   const progress = receiptProgress(items, receipts)
   const actions = purchaseReceiptActions(order, ctx.actor)
@@ -107,6 +109,8 @@ function boardView(
         acceptedQuantity: entry?.accepted ?? 0,
         rejectedQuantity: entry?.rejected ?? 0,
         remainingQuantity: entry?.remaining ?? item.quantity,
+        // Talepten gelen stok kartı bağı kabul formunu doldurur (ON-339, K-221).
+        stockItem: item.stockItemId === null ? null : (cards.get(item.stockItemId) ?? null),
       }
     }),
     receivedNetCents: live.reduce(
@@ -158,7 +162,7 @@ function boardView(
 
 async function board(db: Database, ctx: ServiceContext, orderId: string) {
   const { order, items, receipts } = await loadOrder(db, ctx, orderId)
-  const [names, stock] = await Promise.all([
+  const [names, stock, cards] = await Promise.all([
     purchaseActorNames(
       db,
       ctx.institutionId,
@@ -173,8 +177,13 @@ async function board(db: Database, ctx: ServiceContext, orderId: string) {
       ctx,
       receipts.map((receipt) => receipt.id),
     ),
+    loadStockItemLabels(
+      db,
+      ctx.institutionId,
+      items.map((item) => item.stockItemId),
+    ),
   ])
-  return boardView(ctx, order, items, receipts, names, stock)
+  return boardView(ctx, order, items, receipts, names, stock, cards)
 }
 
 export const getPurchaseReceiptBoardFor = (ctx: ServiceContext, orderId: string) =>

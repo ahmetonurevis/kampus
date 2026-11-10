@@ -10,8 +10,9 @@ import { DomainError } from './errors.ts'
  * (kuruş), alım günü, isteğe bağlı tedarikçi (DOM-FIN-070) ve mal kabul kalemi (DOM-FIN-074) bağı,
  * durum. Kayıt silinmez; hurdaya ayırma gerekçe ve gün ister, geri alınmaz (K-188). Zimmet
  * `lib/finance-fixed-asset-assignments.ts`'tedir (DOM-FIN-086); sayım (ON-237) ve amortisman (ON-238)
- * bu kuralın dışındadır. Fonksiyonlar saftır; bugün `today`
- * (Europe/Istanbul günü) parametresiyle gelir.
+ * bu kuralın dışındadır. Amortisman ön hesabının girdileri (faydalı ömür, yöntem; DOM-FIN-088) bu
+ * kayıttadır, hesap `lib/finance-fixed-asset-depreciation.ts`'tedir. Fonksiyonlar saftır; bugün
+ * `today` (Europe/Istanbul günü) parametresiyle gelir.
  */
 
 /** Demirbaşı okuyan ve yazan rol (K-189); muhasebe rolü açılınca listeye girer. */
@@ -55,6 +56,39 @@ export const FIXED_ASSET_STATUS_LABELS = {
   broken: 'Arızalı',
   scrapped: 'Hurdaya ayrıldı',
 } as const satisfies Record<FixedAssetStatus, string>
+
+/**
+ * Amortisman yöntemi (DOM-FIN-088, K-224): `normal` doğrusal (VUK md. 315), `declining` azalan
+ * bakiyeler (VUK md. 316; oran normalin iki katı, en çok %50).
+ */
+export const DEPRECIATION_METHODS = ['normal', 'declining'] as const
+export type DepreciationMethod = (typeof DEPRECIATION_METHODS)[number]
+export const DEPRECIATION_METHOD_LABELS = {
+  normal: 'Normal (doğrusal)',
+  declining: 'Azalan bakiyeler',
+} as const satisfies Record<DepreciationMethod, string>
+
+/** Faydalı ömür sınırları (yıl). */
+export const USEFUL_LIFE_MIN = 1
+export const USEFUL_LIFE_MAX = 50
+
+/**
+ * Kategoriye göre önerilen faydalı ömür (yıl; K-224). VUK amortisman listesindeki (333, 339, 365
+ * sıra no. VUK Genel Tebliğleri) en yakın kalemden alınmıştır; mali müşavir doğrulaması bekler
+ * (M-31). Öneridir: kayıtta ömür boş bırakılırsa bu değer yazılır, kullanıcı değiştirebilir.
+ */
+export const DEFAULT_USEFUL_LIFE = {
+  furniture: 5,
+  it: 4,
+  audiovisual: 5,
+  office: 5,
+  laboratory: 5,
+  sports: 5,
+  kitchen: 10,
+  appliance: 5,
+  vehicle: 5,
+  other: 5,
+} as const satisfies Record<FixedAssetCategory, number>
 
 export const FIXED_ASSET_TAG_MAX = 40
 export const FIXED_ASSET_NAME_MAX = 200
@@ -125,6 +159,15 @@ const valueSchema = z
   .max(FIXED_ASSET_VALUE_MAX_CENTS, 'Alım değeri çok büyük.')
 const supplierSchema = z.uuid('Tedarikçi geçersiz.').nullable()
 const receiptItemSchema = z.uuid('Mal kabul kalemi geçersiz.').nullable()
+const usefulLifeSchema = z
+  .number('Faydalı ömrü yıl olarak girin.')
+  .int('Faydalı ömür tam yıl olmalıdır.')
+  .min(USEFUL_LIFE_MIN, `Faydalı ömür en az ${String(USEFUL_LIFE_MIN)} yıl olmalıdır.`)
+  .max(USEFUL_LIFE_MAX, `Faydalı ömür en çok ${String(USEFUL_LIFE_MAX)} yıl olabilir.`)
+const depreciationMethodSchema = z.enum(
+  DEPRECIATION_METHODS,
+  'Amortisman yöntemini seçin: normal ya da azalan bakiyeler.',
+)
 const openStatusSchema = z.enum(
   FIXED_ASSET_OPEN_STATUSES,
   'Durum kullanımda, depoda ya da arızalı olmalıdır; hurdaya ayırma ayrı işlemdir.',
@@ -147,6 +190,13 @@ export const fixedAssetSchema = z.strictObject({
   supplierId: supplierSchema.default(null),
   receiptItemId: receiptItemSchema.default(null).describe('Mal kabul kalemi (DOM-FIN-074)'),
   status: openStatusSchema.default('in_use'),
+  usefulLifeYears: usefulLifeSchema
+    .nullable()
+    .default(null)
+    .describe('Faydalı ömür, yıl (1–50); boşsa kategorinin önerisi yazılır (DOM-FIN-088)'),
+  depreciationMethod: depreciationMethodSchema
+    .default('normal')
+    .describe('Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler'),
 })
 export type FixedAssetInput = z.input<typeof fixedAssetSchema>
 export type FixedAssetFields = z.output<typeof fixedAssetSchema>
@@ -164,6 +214,8 @@ export const updateFixedAssetSchema = z
     supplierId: supplierSchema.optional(),
     receiptItemId: receiptItemSchema.optional(),
     status: openStatusSchema.optional(),
+    usefulLifeYears: usefulLifeSchema.optional(),
+    depreciationMethod: depreciationMethodSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'Değiştirilecek bir alan girin.')
 export type UpdateFixedAssetInput = z.input<typeof updateFixedAssetSchema>
@@ -201,9 +253,22 @@ export interface FixedAssetReceiptRef {
 }
 
 /** Kaydın son hali (yeni kayıt ya da düzeltmeyle birleşmiş). */
-export type FixedAssetDraft = Omit<FixedAssetFields, 'tagNumber' | 'status'> & {
+export type FixedAssetDraft = Omit<FixedAssetFields, 'tagNumber' | 'status' | 'usefulLifeYears'> & {
   tagNumber: string
   status: FixedAssetStatus
+  usefulLifeYears: number
+}
+
+/**
+ * Yeni kaydın taslağı: etiket servisin verdiğidir (K-185); faydalı ömür boşsa kategorinin önerisi
+ * (`DEFAULT_USEFUL_LIFE`, K-224) yazılır.
+ */
+export function fixedAssetDraft(fields: FixedAssetFields, tagNumber: string): FixedAssetDraft {
+  return {
+    ...fields,
+    tagNumber,
+    usefulLifeYears: fields.usefulLifeYears ?? DEFAULT_USEFUL_LIFE[fields.category],
+  }
 }
 
 /**

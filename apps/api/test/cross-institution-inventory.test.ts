@@ -1534,6 +1534,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: amortisman ön hesabı (ON-238; DOM-FIN-088).
+  'GET /api/v1/finance/fixed-assets/depreciation-report': liste(
+    'finance-fixed-asset-depreciation.test.ts',
+    'DOM-FIN-088: başka kurumun demirbaşı raporda ve CSV dosyasında yok',
+    'get(`${REPORT}?year=2026`, a.admin)',
+  ),
   // Onur: stok kartı, depo ve hareket (ON-228, ON-229; DOM-FIN-077, DOM-FIN-078).
   ...Object.fromEntries(
     (
@@ -1615,6 +1621,31 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         'başka kurumun seti ve teslimi 404 ve B değişmez',
         marker,
       ),
+    ]),
+  ),
+  // Onur: stok sayımı (ON-231; DOM-FIN-081).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/stock-counts', 'listOf()'],
+        ['gövde', 'POST /api/v1/finance/stock-counts', '{ institutionId: b.id }'],
+        ['kayıt', 'GET /api/v1/finance/stock-counts/:countId', 'get(bCountUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/scans', 'scan(a.admin, bCount'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/quantities',
+          'setQuantity(a.admin, bCount',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/complete',
+          'complete(a.admin, bCount)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/cancel', 'cancel(a.admin, bCount)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-stock-counts.test.ts', 'başka kurumun sayımı 404 ve B değişmez', marker),
     ]),
   ),
   // Onur: laboratuvar kimyasal envanteri (ON-234; DOM-FIN-090).

@@ -2477,3 +2477,130 @@ test.describe('Finans: materyal seti', () => {
     await expect(second.getByText(/çıkılabilecek en çok 0 adet/)).toBeVisible()
   })
 })
+
+test.describe('Finans: stok sayımı', () => {
+  test('DOM-FIN-081: yönetici sayım başlatır, barkodla okutur, fark raporunu CSV ve PDF alır, tamamlar', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'onburo'], students: [] })
+    // Depo, iki kart (biri barkod koduyla) ve açılış stoku API'den kurulur; sayım arayüzden yapılır.
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const warehouse = await client.post('/api/v1/finance/stock-warehouses', {
+        name: 'Ana depo',
+        campusId: 'b1',
+      })
+      expect(warehouse.status, JSON.stringify(warehouse.body)).toBe(201)
+      const warehouseId = (warehouse.body as { data: { id: string } }).data.id
+      for (const [code, name, unit, quantity] of [
+        ['KAG-A4', 'A4 kâğıt', 'pack', 20],
+        ['8690000000017', 'Tükenmez kalem', 'piece', 6],
+      ] as const) {
+        const item = await client.post('/api/v1/finance/stock-items', {
+          code,
+          name,
+          category: 'stationery',
+          unit,
+        })
+        expect(item.status, JSON.stringify(item.body)).toBe(201)
+        const entry = await client.post(
+          '/api/v1/finance/stock-entries',
+          {
+            itemId: (item.body as { data: { id: string } }).data.id,
+            warehouseId,
+            quantity,
+            movementDate: '2026-01-02',
+            reason: 'opening',
+          },
+          { 'idempotency-key': randomUUID() },
+        )
+        expect(entry.status, JSON.stringify(entry.body)).toBe(201)
+      }
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=stok&stok=sayim`)
+    await page.getByRole('button', { name: 'Sayım başlat' }).click()
+    const start = page.getByRole('dialog', { name: 'Sayım başlat' })
+    await start.getByLabel('Depo').selectOption({ label: 'Ana depo · Kadıköy Kampüsü' })
+    await start.getByRole('button', { name: 'Sayımı başlat' }).click()
+    await expect(page.getByRole('heading', { name: 'Ana depo sayımı' })).toBeVisible()
+    const uncounted = page.getByRole('list', { name: 'Sayılmayan ürünler' })
+    await expect(uncounted).toContainText('sistemde 20 paket')
+
+    // Barkod okuyucu klavye gibi yazar ve Enter gönderir; kod alanı odakta kalır.
+    const code = page.getByLabel('Kart kodu ya da barkod')
+    await expect(code).toBeFocused()
+    const status = page.getByRole('status').filter({ hasText: 'sayıldı' })
+    await code.pressSequentially('kag-a4')
+    await code.press('Enter')
+    await expect(status).toHaveText('A4 kâğıt (KAG-A4): 1 paket sayıldı.')
+    await expect(code).toBeFocused()
+    await page.getByLabel('Eklenecek miktar').fill('16')
+    await code.fill('KAG-A4')
+    await code.press('Enter')
+    await expect(status).toHaveText('A4 kâğıt (KAG-A4): 17 paket sayıldı.')
+    await code.fill('8690000000017')
+    await code.press('Enter')
+    await expect(status).toHaveText('Tükenmez kalem (8690000000017): 1 adet sayıldı.')
+    // Elle düzeltme: kalem 8 bulundu.
+    const counted = page.getByRole('table', { name: 'Sayılan ürünler' })
+    await counted.getByRole('button', { name: 'Tükenmez kalem sayılan miktarını düzelt' }).click()
+    const quantity = page.getByRole('dialog', { name: 'Sayılan miktar' })
+    await quantity.getByRole('textbox', { name: 'Sayılan miktar (adet)' }).fill('8')
+    await quantity.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Tükenmez kalem: 8 adet yazıldı.')).toBeVisible()
+    await expect(counted.locator('tbody tr').filter({ hasText: 'KAG-A4' })).toContainText('−3')
+    await expect(counted.locator('tbody tr').filter({ hasText: 'Tükenmez kalem' })).toContainText(
+      '+2',
+    )
+    await expect(page.getByText('Sayılmayan ürün yok.')).toBeVisible()
+
+    const csvDownload = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Fark raporu CSV' }).click()
+    const csv = await readCsv(await csvDownload)
+    expect(csv[0]?.slice(0, 4)).toEqual(['Kod', 'Ürün', 'Birim', 'Sistem (anlık görüntü)'])
+    expect(csv.find((row) => row[0] === 'KAG-A4')?.slice(6, 8)).toEqual(['17', '-3'])
+
+    await page.getByRole('button', { name: 'Fark raporu PDF' }).click()
+    const preview = page.getByRole('dialog', { name: 'Stok sayımı fark raporu · Önizleme' })
+    const pdfDownload = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    const pdf = await pdfDownload
+    expect(pdf.suggestedFilename()).toMatch(/^stok-sayimi-SAY-\d{8}-[0-9A-F]{8}\.pdf$/)
+    const text = await pdfText(pdf)
+    for (const part of ['STOK SAYIMI', 'TASLAK', 'A4 kâğıt', 'Ana depo'])
+      expect(text).toContain(part)
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+
+    await page.getByRole('button', { name: 'Sayımı tamamla' }).click()
+    const complete = page.getByRole('dialog', { name: 'Sayımı tamamla' })
+    await expect(complete).toContainText(
+      '1 kalem için fazla, 1 kalem için eksik düzeltmesi yazılacak.',
+    )
+    await complete.getByRole('button', { name: 'Tamamla' }).click()
+    await expect(page.getByText('Sayım tamamlandı; farklar stoka yazıldı.')).toBeVisible()
+    await expect(page.getByLabel('Kart kodu ya da barkod')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Sayımı tamamla' })).toHaveCount(0)
+
+    // Düzeltme hareket listesinde sayıma bağlıdır, iptal düğmesi yoktur.
+    await page.getByRole('button', { name: 'Hareketler' }).click()
+    const movements = page.getByRole('table', { name: 'Stok hareketleri' })
+    await expect(movements).toContainText('Sayım eksiği düzeltmesi')
+    await expect(movements).toContainText('Sayım fazlası düzeltmesi')
+    await movements.getByRole('button', { name: /A4 kâğıt düzeltmesinin sayımını aç/ }).click()
+    await expect(page.getByRole('heading', { name: 'Ana depo sayımı' })).toBeVisible()
+
+    await page.context().clearCookies()
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=stok&stok=sayim`)
+    await expect(page.getByRole('table', { name: 'Stok sayımları' })).toContainText('Tamamlandı')
+    await expect(page.getByRole('button', { name: 'Sayım başlat' })).toHaveCount(0)
+  })
+})

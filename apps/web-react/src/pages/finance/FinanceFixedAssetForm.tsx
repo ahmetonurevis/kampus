@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   useCreateFixedAsset,
   useFixedAssetReceiptItems,
@@ -9,6 +9,9 @@ import {
 } from '@kampus/react-shared/use-finance-fixed-assets.ts'
 import { useSuppliers } from '@kampus/react-shared/use-finance-procurement.ts'
 import {
+  DEFAULT_USEFUL_LIFE,
+  DEPRECIATION_METHOD_LABELS,
+  DEPRECIATION_METHODS,
   FIXED_ASSET_CATEGORIES,
   FIXED_ASSET_CATEGORY_LABELS,
   FIXED_ASSET_OPEN_STATUSES,
@@ -30,6 +33,7 @@ import {
   fixedAssetDefaults,
   fixedAssetFormField,
   fixedAssetFormSchema,
+  suggestedLife,
   type FixedAssetFormValues,
 } from './finance-fixed-asset-forms.ts'
 
@@ -44,7 +48,9 @@ const receiptLabel = (item: FixedAssetReceiptItem) =>
 /**
  * Demirbaş kaydı ve düzeltmesi (DOM-FIN-085). Etiket boş bırakılırsa sunucu `DB-<yıl>-<sıra>`
  * verir (K-185). Mal kabul kalemi seçilince tedarikçi, alım günü ve KDV hariç birim fiyat kabulden
- * önerilir; değer kullanıcıda kalır (K-187). Düzeltmede yalnız değişen alanlar gönderilir.
+ * önerilir; değer kullanıcıda kalır (K-187). Faydalı ömür kategorinin önerisiyle dolar; yeni kayıtta
+ * kategori değişince ömre dokunulmadıysa yeni öneri yazılır (K-224, DOM-FIN-088). Düzeltmede yalnız
+ * değişen alanlar gönderilir.
  */
 export function FixedAssetFormModal({
   asset,
@@ -97,6 +103,13 @@ export function FixedAssetFormModal({
     if (form.getValues('name').trim() === '') form.setValue('name', item.itemName)
   }
 
+  const onCategoryChange = (category: string) => {
+    const known = FIXED_ASSET_CATEGORIES.find((value) => value === category)
+    if (!asset && known && !form.getFieldState('usefulLifeYears').isDirty)
+      form.setValue('usefulLifeYears', suggestedLife(known))
+  }
+  const category = useWatch({ control: form.control, name: 'category' })
+
   const onSubmit = form.handleSubmit(async (values) => {
     if (asset) {
       const body = fixedAssetChanges(values, asset)
@@ -125,8 +138,8 @@ export function FixedAssetFormModal({
   const text = (
     id: string,
     label: string,
-    name: 'tagNumber' | 'name' | 'location' | 'value' | 'acquisitionDate',
-    extra: { description?: string; inputMode?: 'decimal'; type?: 'date' } = {},
+    name: 'tagNumber' | 'name' | 'location' | 'value' | 'acquisitionDate' | 'usefulLifeYears',
+    extra: { description?: string; inputMode?: 'decimal' | 'numeric'; type?: 'date' } = {},
   ) => (
     <FormField id={id} label={label} error={errors[name]} description={extra.description}>
       {(control) => (
@@ -143,7 +156,8 @@ export function FixedAssetFormModal({
   const select = (
     id: string,
     label: string,
-    name: 'category' | 'campusId' | 'supplierId' | 'receiptItemId' | 'status',
+    name:
+      'category' | 'campusId' | 'supplierId' | 'receiptItemId' | 'status' | 'depreciationMethod',
     choices: readonly { value: string; label: string }[],
     placeholder?: string,
     onChange?: (value: string) => void,
@@ -220,6 +234,8 @@ export function FixedAssetFormModal({
             value,
             label: FIXED_ASSET_CATEGORY_LABELS[value],
           })),
+          undefined,
+          onCategoryChange,
         )}
         {select(
           'demirbas-kampus',
@@ -253,6 +269,19 @@ export function FixedAssetFormModal({
           FIXED_ASSET_OPEN_STATUSES.map((value) => ({
             value,
             label: FIXED_ASSET_STATUS_LABELS[value],
+          })),
+        )}
+        {text('demirbas-omur', 'Faydalı ömür (yıl)', 'usefulLifeYears', {
+          inputMode: 'numeric',
+          description: `Bu kategori için öneri ${String(DEFAULT_USEFUL_LIFE[category])} yıl (VUK listesi; mali müşavirce doğrulanmalı).`,
+        })}
+        {select(
+          'demirbas-yontem',
+          'Amortisman yöntemi',
+          'depreciationMethod',
+          DEPRECIATION_METHODS.map((value) => ({
+            value,
+            label: DEPRECIATION_METHOD_LABELS[value],
           })),
         )}
         {asset?.receipt ? (

@@ -281,7 +281,7 @@ export function stockMovementFormField(name: string): MovementField | undefined 
 
 // --- Gösterim ------------------------------------------------------------------------------------
 
-/** Hareket türü rozeti: giriş yeşil, çıkış kırmızı, transfer mor tonlu. */
+/** Hareket türü rozeti: giriş yeşil, çıkış kırmızı, transfer mor, sayım düzeltmesi gri tonlu. */
 export const MOVEMENT_TYPE_VIEW: Readonly<
   Record<StockMovementType, { label: string; tone: BadgeTone; sign: 1 | -1 }>
 > = {
@@ -291,6 +291,8 @@ export const MOVEMENT_TYPE_VIEW: Readonly<
   transfer_in: { label: STOCK_MOVEMENT_TYPE_LABELS.transfer_in, tone: 'purple', sign: 1 },
   transfer_out: { label: STOCK_MOVEMENT_TYPE_LABELS.transfer_out, tone: 'purple', sign: -1 },
   delivery: { label: STOCK_MOVEMENT_TYPE_LABELS.delivery, tone: 'amber', sign: -1 },
+  adjustment_in: { label: STOCK_MOVEMENT_TYPE_LABELS.adjustment_in, tone: 'gray', sign: 1 },
+  adjustment_out: { label: STOCK_MOVEMENT_TYPE_LABELS.adjustment_out, tone: 'gray', sign: -1 },
 }
 
 /** İşaretli miktar metni: `+20 paket`, `−5 adet`. */

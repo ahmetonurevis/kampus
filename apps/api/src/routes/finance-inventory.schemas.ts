@@ -156,7 +156,9 @@ const stockMovementSchema = z.object({
   reason: z
     .enum([...STOCK_ENTRY_REASONS, ...STOCK_ISSUE_REASONS])
     .nullable()
-    .describe('Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş'),
+    .describe(
+      'Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş',
+    ),
   note: z.string().nullable(),
   transferId: z.string().nullable(),
   counterpartWarehouseName: z.string().nullable().describe('Transferde karşı depo'),
@@ -164,6 +166,12 @@ const stockMovementSchema = z.object({
   orderNumber: z.string().nullable(),
   lotNumber: z.string().nullable().describe('Kimyasal girişinin partisi (DOM-FIN-090)'),
   expiryDate: daySchema.nullable().describe('Partinin son kullanma günü'),
+  countId: z
+    .string()
+    .nullable()
+    .describe(
+      'Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı',
+    ),
   createdAt: z.string(),
   createdByName: z.string().nullable(),
   cancelledAt: z.string().nullable(),

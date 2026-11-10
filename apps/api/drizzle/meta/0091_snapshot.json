@@ -1,5 +1,5 @@
 {
-  "id": "691bef01-4ba1-4d2e-a8d4-de7d2bd658bc",
+  "id": "f71baec2-0aff-4c16-ae70-92317d65d547",
   "prevId": "c940c2e3-6413-4f03-97d6-d691325b7309",
   "version": "7",
   "dialect": "postgresql",
@@ -6961,271 +6961,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.stock_chemical_profiles": {
-      "name": "stock_chemical_profiles",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "item_id": {
-          "name": "item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hazard_pictograms": {
-          "name": "hazard_pictograms",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "signal_word": {
-          "name": "signal_word",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cas_number": {
-          "name": "cas_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "storage_class": {
-          "name": "storage_class",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "incompatibility_note": {
-          "name": "incompatibility_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sds_url": {
-          "name": "sds_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sds_document_number": {
-          "name": "sds_document_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sds_revision_date": {
-          "name": "sds_revision_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "stock_chemical_profiles_institution_id_institutions_id_fk": {
-          "name": "stock_chemical_profiles_institution_id_institutions_id_fk",
-          "tableFrom": "stock_chemical_profiles",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "stock_chemical_profiles_item_fkey": {
-          "name": "stock_chemical_profiles_item_fkey",
-          "tableFrom": "stock_chemical_profiles",
-          "tableTo": "stock_items",
-          "columnsFrom": [
-            "institution_id",
-            "item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_chemical_profiles_pkey": {
-          "name": "stock_chemical_profiles_pkey",
-          "columns": [
-            "institution_id",
-            "item_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_chemical_profiles_pictograms_check": {
-          "name": "stock_chemical_profiles_pictograms_check",
-          "value": "\"stock_chemical_profiles\".\"hazard_pictograms\" <@ array['GHS01', 'GHS02', 'GHS03', 'GHS04', 'GHS05', 'GHS06', 'GHS07', 'GHS08', 'GHS09']::text[]"
-        },
-        "stock_chemical_profiles_signal_word_check": {
-          "name": "stock_chemical_profiles_signal_word_check",
-          "value": "\"stock_chemical_profiles\".\"signal_word\" is null or \"stock_chemical_profiles\".\"signal_word\" in ('danger', 'warning')"
-        },
-        "stock_chemical_profiles_cas_check": {
-          "name": "stock_chemical_profiles_cas_check",
-          "value": "\"stock_chemical_profiles\".\"cas_number\" is null or \"stock_chemical_profiles\".\"cas_number\" ~ '^[0-9]{2,7}-[0-9]{2}-[0-9]$'"
-        },
-        "stock_chemical_profiles_text_check": {
-          "name": "stock_chemical_profiles_text_check",
-          "value": "(\"stock_chemical_profiles\".\"storage_class\" is null or char_length(\"stock_chemical_profiles\".\"storage_class\") between 1 and 80)\n        and (\"stock_chemical_profiles\".\"incompatibility_note\" is null or char_length(\"stock_chemical_profiles\".\"incompatibility_note\") between 1 and 500)\n        and (\"stock_chemical_profiles\".\"sds_document_number\" is null or char_length(\"stock_chemical_profiles\".\"sds_document_number\") between 1 and 60)"
-        },
-        "stock_chemical_profiles_sds_url_check": {
-          "name": "stock_chemical_profiles_sds_url_check",
-          "value": "\"stock_chemical_profiles\".\"sds_url\" is null or (\"stock_chemical_profiles\".\"sds_url\" ~ '^https://' and char_length(\"stock_chemical_profiles\".\"sds_url\") <= 500)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stock_movement_lots": {
-      "name": "stock_movement_lots",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "movement_id": {
-          "name": "movement_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lot_number": {
-          "name": "lot_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expiry_date": {
-          "name": "expiry_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "stock_movement_lots_institution_id_institutions_id_fk": {
-          "name": "stock_movement_lots_institution_id_institutions_id_fk",
-          "tableFrom": "stock_movement_lots",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "stock_movement_lots_movement_fkey": {
-          "name": "stock_movement_lots_movement_fkey",
-          "tableFrom": "stock_movement_lots",
-          "tableTo": "stock_movements",
-          "columnsFrom": [
-            "institution_id",
-            "movement_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_movement_lots_pkey": {
-          "name": "stock_movement_lots_pkey",
-          "columns": [
-            "institution_id",
-            "movement_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_movement_lots_lot_number_check": {
-          "name": "stock_movement_lots_lot_number_check",
-          "value": "char_length(\"stock_movement_lots\".\"lot_number\") between 1 and 40"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.corporate_customer_employees": {
       "name": "corporate_customer_employees",
       "schema": "",
@@ -9438,6 +9173,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "useful_life_years": {
+          "name": "useful_life_years",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "depreciation_method": {
+          "name": "depreciation_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -9650,6 +9398,14 @@
         "fixed_assets_value_check": {
           "name": "fixed_assets_value_check",
           "value": "\"fixed_assets\".\"acquisition_value_cents\" between 1 and 10000000000"
+        },
+        "fixed_assets_useful_life_check": {
+          "name": "fixed_assets_useful_life_check",
+          "value": "\"fixed_assets\".\"useful_life_years\" between 1 and 50"
+        },
+        "fixed_assets_depreciation_method_check": {
+          "name": "fixed_assets_depreciation_method_check",
+          "value": "\"fixed_assets\".\"depreciation_method\" in ('normal', 'declining')"
         },
         "fixed_assets_currency_check": {
           "name": "fixed_assets_currency_check",

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   isBelowMinimum,
+  isCountAdjustment,
   planReceiptStockCancel,
   planReceiptStockEntries,
   planStockEntry,
@@ -55,6 +56,7 @@ import {
   type StoredStockWarehouse,
 } from '../db/finance-inventory.ts'
 import { loadOpenRequestQuantities, purchaseActorNames } from '../db/finance-purchase-requests.ts'
+import { loadMovementCounts } from '../db/finance-stock-counts.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { foldSearch } from '../db/text-search.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -530,7 +532,10 @@ async function movementViews(
   const receiptIds = movements.flatMap((movement) =>
     movement.receiptId === null ? [] : [movement.receiptId],
   )
-  const [items, warehouses, transfers, orders, names, lots] = await Promise.all([
+  const adjustmentIds = movements.flatMap((movement) =>
+    isCountAdjustment(movement.type) ? [movement.id] : [],
+  )
+  const [items, warehouses, transfers, orders, names, counts, lots] = await Promise.all([
     loadStockItemsByIds(
       db,
       ctx.institutionId,
@@ -548,6 +553,7 @@ async function movementViews(
           : [movement.createdByUserId, movement.cancelledByUserId],
       ),
     ),
+    loadMovementCounts(db, ctx.institutionId, adjustmentIds),
     loadMovementLots(
       db,
       ctx.institutionId,
@@ -595,6 +601,7 @@ async function movementViews(
           : (warehouseById.get(counterpart.warehouseId)?.name ?? null),
       orderId: order?.orderId ?? null,
       orderNumber: order?.orderNumber ?? null,
+      countId: counts.get(movement.id) ?? null,
       lotNumber: lot?.lotNumber ?? null,
       expiryDate: lot?.expiryDate ?? null,
       createdAt: movement.createdAt,
@@ -607,7 +614,8 @@ async function movementViews(
           canCancel &&
           movement.cancelledAt === null &&
           movement.receiptId === null &&
-          movement.type !== 'delivery',
+          movement.type !== 'delivery' &&
+          !isCountAdjustment(movement.type),
       },
       version: movement.version,
     }

@@ -5613,7 +5613,7 @@ export interface paths {
         };
         /**
          * Setin teslim edilen ve edilmeyen öğrencileri
-         * @description Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207) ve iptal edilmemiş teslim. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         * @description Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207), iptal edilmemiş teslim ve bu setteki son iptal edilmiş teslim (`cancelledDelivery`; iptal tutanağı, K-218). Kura bağlı sette sınıf yerine o kurun grubu, sınıfsız öğrencide etkin kur grupları yazılır. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
          */
         get: operations["listMaterialSetStudents"];
         put?: never;
@@ -5656,6 +5656,26 @@ export interface paths {
          * @description Öğrencinin etkin veli bağları, ad ve yakınlıkla; iletişim kısıtlı veli listelenmez (K-206). Olmayan, arşivli ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
          */
         get: operations["listMaterialRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-deliveries/{deliveryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teslim ayrıntısı (teslim tutanağı)
+         * @description İptal edilmiş teslim dahil: set, eğitim yılı, öğrenci adı, numarası, sınıfı ya da kur grubu, kalemler, teslim alan, teslim eden (kaydeden), teslim günü, iptal bilgisi ve setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; tutar ve ödeme durumu yok, K-207). Teslim tutanağı PDF'i web'de bu yanıttan üretilir (ON-338). Olmayan ya da başka kurumun teslimi 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        get: operations["getMaterialDelivery"];
         put?: never;
         post?: never;
         delete?: never;
@@ -60072,6 +60092,7 @@ export interface operations {
                             studentId: string;
                             studentName: string;
                             studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
                             className: string | null;
                             /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207; ödeme durumu değil) */
                             hasMaterialFee: boolean;
@@ -60089,6 +60110,13 @@ export interface operations {
                                 warehouseName: string;
                                 /** @description `If-Match` için kayıt sürümü */
                                 version: number;
+                            } | null;
+                            /** @description Bu setteki son iptal edilmiş teslim (iptal tutanağı için, K-218); yoksa boş */
+                            cancelledDelivery: {
+                                id: string;
+                                /** @description Teslim günü `YYYY-MM-DD` */
+                                deliveryDate: string;
+                                cancelledAt: string;
                             } | null;
                             /** @description Oturumdaki kullanıcının bu satırda yapabilecekleri */
                             actions: {
@@ -60218,8 +60246,15 @@ export interface operations {
                             id: string;
                             setId: string;
                             setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
                             studentId: string;
                             studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
                             warehouseId: string;
                             warehouseName: string;
                             deliveryDate: string;
@@ -60431,6 +60466,145 @@ export interface operations {
             };
         };
     };
+    getMaterialDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            setId: string;
+                            setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
+                            studentId: string;
+                            studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
+                            warehouseId: string;
+                            warehouseName: string;
+                            deliveryDate: string;
+                            /** @enum {string} */
+                            recipientKind: "student" | "guardian" | "other";
+                            recipientName: string | null;
+                            signatureReceived: boolean;
+                            signatureRecordedAt: string | null;
+                            note: string | null;
+                            /** @description Teslim anındaki kalemler; her biri bir stok çıkışıdır */
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Teslim edilen adet */
+                                quantity: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            actions: {
+                                cancel: boolean;
+                                sign: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     cancelMaterialDelivery: {
         parameters: {
             query?: never;
@@ -60464,8 +60638,15 @@ export interface operations {
                             id: string;
                             setId: string;
                             setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
                             studentId: string;
                             studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
                             warehouseId: string;
                             warehouseName: string;
                             deliveryDate: string;
@@ -60601,8 +60782,15 @@ export interface operations {
                             id: string;
                             setId: string;
                             setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
                             studentId: string;
                             studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
                             warehouseId: string;
                             warehouseName: string;
                             deliveryDate: string;

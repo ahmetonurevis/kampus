@@ -2349,6 +2349,36 @@ test.describe('Finans: materyal seti', () => {
       0,
     )
 
+    // Teslim tutanağı ve toplu teslim listesi PDF'i (ON-338): önizleme açılır, indirilen belge okunur.
+    const downloadPdf = async (button: string, title: string) => {
+      await page.getByRole('button', { name: button }).click()
+      const preview = page.getByRole('dialog', { name: `${title} · Önizleme` })
+      const downloading = page.waitForEvent('download')
+      await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+      const download = await downloading
+      const text = await pdfText(download)
+      await page.keyboard.press('Escape')
+      await expect(preview).toBeHidden()
+      return { name: download.suggestedFilename(), text }
+    }
+    const receipt = await downloadPdf('Tutanak PDF · Deniz Yılmaz', 'Materyal teslim tutanağı')
+    expect(receipt.name).toMatch(/^materyal-teslim-tutanagi-MT-[0-9A-F]{8}\.pdf$/)
+    for (const part of [
+      'MATERYAL TESLİM TUTANAĞI',
+      '7. Sınıf Seti',
+      'Deniz Yılmaz',
+      '7. sınıf kitabı',
+      'Materyal ücreti',
+      'Teslim eden',
+    ])
+      expect(receipt.text).toContain(part)
+    expect(receipt.text).toMatch(/Tahakkuk edil(di|medi)/)
+    expect(receipt.text).not.toContain('₺')
+    const sheet = await downloadPdf('Teslim listesi PDF', 'Materyal teslim listesi')
+    expect(sheet.name).toMatch(/^materyal-teslim-listesi-ML-[0-9A-F]{8}-\d{4}-\d{2}-\d{2}\.pdf$/)
+    for (const part of ['MATERYAL TESLİM LİSTESİ', 'Deniz Yılmaz', 'Bütün öğrenciler', 'İmza'])
+      expect(sheet.text).toContain(part)
+
     const other = students.locator('tbody tr').filter({ hasNotText: 'Deniz Yılmaz' })
     await other.getByRole('button', { name: /için teslim et$/ }).click()
     const second = page.getByRole('dialog', { name: 'Seti teslim et' })

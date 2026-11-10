@@ -1,6 +1,18 @@
 import { randomUUID } from 'node:crypto'
 
-import { and, asc, count, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import {
@@ -233,6 +245,20 @@ function feeMatch(institutionId: string, academicYear: number): SQL {
 
 const activeStudent = recordFilter({ kind: 'active', field: 'isActive', active: true })
 
+/**
+ * Öğrencinin sınıfı ya da kur grubu (ON-338 teslim tutanağı ve listesi "sınıf / grup"). Kura bağlı
+ * sette o kurun etkin grubu önce gelir; diğer sette sınıf, sınıfsız öğrencide (dil okulu) etkin kur
+ * grupları ada göre virgülle.
+ */
+function classOrGroupName(institutionId: string, courseId: string | null) {
+  const course = courseId === null ? sql`` : sql` and ${languageGroups.courseId} = ${courseId}`
+  const groups = sql`(select string_agg(${languageGroups.name}, ', ' order by ${languageGroups.name}) from ${languageGroupMembers} inner join ${languageGroups} on ${languageGroups.institutionId} = ${languageGroupMembers.institutionId} and ${languageGroups.id} = ${languageGroupMembers.groupId} where ${languageGroupMembers.institutionId} = ${institutionId} and ${languageGroupMembers.studentId} = ${records.id} and ${languageGroupMembers.archivedAt} is null and ${languageGroupMembers.status} = 'active' and ${languageGroups.archivedAt} is null and ${languageGroups.state} <> 'cancelled'${course})`
+  const className = sql`${classRecord.data} ->> 'name'`
+  return courseId === null
+    ? sql<string | null>`coalesce(${className}, ${groups})`
+    : sql<string | null>`coalesce(${groups}, ${className})`
+}
+
 /** Setin öğrenci evreni: hedefteki etkin öğrenci ya da bu setin iptal edilmemiş teslimi olan öğrenci. */
 function studentsFrom(institutionId: string, set: MaterialSetTarget) {
   const eligible = eligibleMatch(institutionId, set)
@@ -310,7 +336,7 @@ export async function loadMaterialStudentPage(
         id: records.id,
         name,
         number,
-        className: sql<string | null>`${classRecord.data} ->> 'name'`,
+        className: classOrGroupName(institutionId, set.courseId),
         hasMaterialFee: sql<boolean>`${fee}`,
         deliveryId: materialDeliveries.id,
       })
@@ -374,6 +400,39 @@ export async function loadDeliveryStudent(
     )
     .limit(1)
   return row ?? null
+}
+
+/**
+ * Teslim tutanağındaki öğrenci bilgisi (ON-338): numara, sınıf ya da kur grubu ve setin yılında
+ * kitap ve kırtasiye ücret kalemi olup olmadığı (K-207; tutar ve ödeme durumu değil). Arşivlenmiş
+ * öğrenci de okunur ki eski teslimin tutanağı alınabilsin.
+ */
+export async function loadDeliveryStudentFacts(
+  db: Database,
+  institutionId: string,
+  set: Pick<StoredMaterialSet, 'academicYear' | 'courseId'>,
+  ids: readonly string[],
+): Promise<
+  Map<string, { number: string | null; className: string | null; hasMaterialFee: boolean }>
+> {
+  if (ids.length === 0) return new Map()
+  const rows = await db
+    .select({
+      id: records.id,
+      number: sql<string | null>`${records.data} ->> 'number'`,
+      className: classOrGroupName(institutionId, set.courseId),
+      hasMaterialFee: sql<boolean>`${feeMatch(institutionId, set.academicYear)}`,
+    })
+    .from(records)
+    .leftJoin(classRecord, classJoin(institutionId))
+    .where(
+      and(
+        eq(records.institutionId, institutionId),
+        eq(records.collection, 'students'),
+        inArray(records.id, [...new Set(ids)]),
+      ),
+    )
+  return new Map(rows.map(({ id, ...facts }) => [id, facts]))
 }
 
 /** Öğrenci adları (teslim yanıtı). */
@@ -472,6 +531,46 @@ export async function loadMaterialDeliveries(
     createdAt: row.createdAt.toISOString(),
     cancelledAt: iso(row.cancelledAt),
   }))
+}
+
+/**
+ * Öğrencilerin bu setteki son iptal edilmiş teslimi (iptal tutanağı düğmesi, ON-338): iptal anı
+ * yeni olan önce, eşitlikte kimlik.
+ */
+export async function loadLastCancelledDeliveries(
+  db: Database,
+  institutionId: string,
+  setId: string,
+  studentIds: readonly string[],
+): Promise<Map<string, { id: string; deliveryDate: string; cancelledAt: string }>> {
+  const last = new Map<string, { id: string; deliveryDate: string; cancelledAt: string }>()
+  if (studentIds.length === 0) return last
+  const rows = await db
+    .select({
+      id: materialDeliveries.id,
+      studentId: materialDeliveries.studentId,
+      deliveryDate: materialDeliveries.deliveryDate,
+      cancelledAt: materialDeliveries.cancelledAt,
+    })
+    .from(materialDeliveries)
+    .where(
+      and(
+        eq(materialDeliveries.institutionId, institutionId),
+        eq(materialDeliveries.setId, setId),
+        inArray(materialDeliveries.studentId, [...new Set(studentIds)]),
+        isNotNull(materialDeliveries.cancelledAt),
+        isNull(materialDeliveries.archivedAt),
+      ),
+    )
+    .orderBy(desc(materialDeliveries.cancelledAt), desc(materialDeliveries.id))
+  for (const row of rows)
+    if (row.cancelledAt !== null && !last.has(row.studentId))
+      last.set(row.studentId, {
+        id: row.id,
+        deliveryDate: row.deliveryDate,
+        cancelledAt: row.cancelledAt.toISOString(),
+      })
+  return last
 }
 
 /** Öğrenciye bu setin iptal edilmemiş teslimi var mı. */

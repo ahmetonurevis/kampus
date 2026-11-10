@@ -81,11 +81,22 @@ const materialStudentSchema = z.object({
   studentId: z.string(),
   studentName: z.string(),
   studentNumber: z.string().nullable(),
-  className: z.string().nullable(),
+  className: z
+    .string()
+    .nullable()
+    .describe('Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları'),
   hasMaterialFee: z
     .boolean()
     .describe('Setin yılında kitap ve kırtasiye ücret kalemi var (K-207; ödeme durumu değil)'),
   delivery: deliverySummarySchema.nullable().describe('İptal edilmemiş teslim; yoksa boş'),
+  cancelledDelivery: z
+    .object({
+      id: z.string(),
+      deliveryDate: z.string().describe('Teslim günü `YYYY-MM-DD`'),
+      cancelledAt: z.string(),
+    })
+    .nullable()
+    .describe('Bu setteki son iptal edilmiş teslim (iptal tutanağı için, K-218); yoksa boş'),
   actions: z
     .object({ deliver: z.boolean(), sign: z.boolean(), cancel: z.boolean() })
     .describe('Oturumdaki kullanıcının bu satırda yapabilecekleri'),
@@ -115,8 +126,19 @@ const materialDeliverySchemaOut = z.object({
   id: z.string(),
   setId: z.string(),
   setName: z.string(),
+  academicYear: z.number().int().describe('Setin eğitim yılı'),
   studentId: z.string(),
   studentName: z.string(),
+  studentNumber: z.string().nullable(),
+  className: z
+    .string()
+    .nullable()
+    .describe('Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları'),
+  hasMaterialFee: z
+    .boolean()
+    .describe(
+      'Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil)',
+    ),
   warehouseId: z.string(),
   warehouseName: z.string(),
   deliveryDate: z.string(),

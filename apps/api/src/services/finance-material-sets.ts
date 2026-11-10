@@ -32,6 +32,8 @@ import {
   insertMaterialDelivery,
   insertMaterialSet,
   loadDeliveryStudent,
+  loadDeliveryStudentFacts,
+  loadLastCancelledDeliveries,
   loadMaterialDeliveries,
   loadMaterialDeliveryItems,
   loadMaterialSetItems,
@@ -321,17 +323,42 @@ async function deliveryViews(
       )
     ).map((item) => [item.id, item]),
   )
-  const setName = new Map(sets.map((set) => [set.id, set.name]))
+  const setOf = new Map(sets.map((set) => [set.id, set]))
+  // Öğrenci bilgisi setin yılına (ücret kalemi) ve kuruna (grup) göredir; teslimler sete göre okunur.
+  const facts = new Map(
+    await Promise.all(
+      sets.map(
+        async (set) =>
+          [
+            set.id,
+            await loadDeliveryStudentFacts(
+              db,
+              ctx.institutionId,
+              set,
+              deliveries
+                .filter((delivery) => delivery.setId === set.id)
+                .map((delivery) => delivery.studentId),
+            ),
+          ] as const,
+      ),
+    ),
+  )
   const actions = materialSetActions(ctx.actor.role)
   const nameOf = (userId: string | null) => (userId === null ? null : (names.get(userId) ?? null))
   return deliveries.map((delivery) => {
     const live = delivery.cancelledAt === null
+    const set = setOf.get(delivery.setId)
+    const student = facts.get(delivery.setId)?.get(delivery.studentId)
     return {
       id: delivery.id,
       setId: delivery.setId,
-      setName: setName.get(delivery.setId) ?? '',
+      setName: set?.name ?? '',
+      academicYear: set?.academicYear ?? 0,
       studentId: delivery.studentId,
       studentName: students.get(delivery.studentId) ?? '',
+      studentNumber: student?.number ?? null,
+      className: student?.className ?? null,
+      hasMaterialFee: student?.hasMaterialFee ?? false,
       warehouseId: delivery.warehouseId,
       warehouseName: delivery.warehouseName,
       deliveryDate: delivery.deliveryDate,
@@ -373,15 +400,20 @@ async function studentRows(
   query: MaterialStudentQuery,
 ) {
   const { rows, total } = await loadMaterialStudentPage(db, ctx.institutionId, set, query)
-  const deliveries = new Map(
-    (
-      await loadMaterialDeliveries(
-        db,
-        ctx.institutionId,
-        rows.flatMap((row) => (row.deliveryId === null ? [] : [row.deliveryId])),
-      )
-    ).map((delivery) => [delivery.id, delivery]),
-  )
+  const [live, cancelled] = await Promise.all([
+    loadMaterialDeliveries(
+      db,
+      ctx.institutionId,
+      rows.flatMap((row) => (row.deliveryId === null ? [] : [row.deliveryId])),
+    ),
+    loadLastCancelledDeliveries(
+      db,
+      ctx.institutionId,
+      set.id,
+      rows.map((row) => row.id),
+    ),
+  ])
+  const deliveries = new Map(live.map((delivery) => [delivery.id, delivery]))
   const actions = materialSetActions(ctx.actor.role)
   return {
     total,
@@ -405,6 +437,7 @@ async function studentRows(
                 warehouseName: delivery.warehouseName,
                 version: delivery.version,
               },
+        cancelledDelivery: cancelled.get(row.id) ?? null,
         actions: {
           deliver: actions.deliver && delivery === undefined && set.isActive,
           sign: actions.sign && delivery !== undefined && !delivery.signatureReceived,
@@ -525,6 +558,14 @@ export async function listMaterialRecipientsFor(ctx: ServiceContext, studentId: 
 }
 
 // --- Teslim --------------------------------------------------------------------------------------
+
+/**
+ * Teslim ayrıntısı (iptal edilmiş dahil; ON-338 teslim tutanağı). Olmayan ya da başka kurumun teslimi
+ * 404.
+ */
+export async function getMaterialDeliveryFor(ctx: ServiceContext, id: string) {
+  return (await deliveryBody(ctx.db, ctx, id)).data
+}
 
 async function deliveryBody(tx: Database, ctx: ServiceContext, id: string) {
   const [view] = await deliveryViews(

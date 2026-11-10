@@ -18,6 +18,7 @@ import {
   purchaseRequestNumber,
   purchaseRequestSchema,
   requestTotalCents,
+  type PurchaseStockItemRef,
   type PurchaseRequestRefs,
   type PurchaseRequestState,
 } from '../packages/school-core/src/lib/finance-purchase-requests.ts'
@@ -314,5 +315,73 @@ test('DOM-FIN-071: rol ve duruma göre ekran işlemleri', () => {
       role: 'ogretmen',
     }),
     { edit: false, submit: false, cancel: false, decide: false },
+  )
+})
+
+const CARD = '00000000-0000-4000-8000-0000000000d1'
+const OTHER_CARD = '00000000-0000-4000-8000-0000000000d2'
+const stock = (card: Partial<PurchaseStockItemRef> = {}) =>
+  new Map<string, PurchaseStockItemRef>([
+    [CARD, { name: 'Deney tüpü', unit: 'piece', isActive: true, ...card }],
+  ])
+const linked = (stockItemId: string, unit = 'piece') => ({
+  ...INPUT,
+  items: [{ ...INPUT.items[0], unit, stockItemId }, INPUT.items[1]],
+})
+const zodPath = (path: (string | number)[]) => (error: unknown) =>
+  ZodError(error) &&
+  (error as { issues: { path: (string | number)[] }[] }).issues.some(
+    (issue) => issue.path.join('.') === path.join('.'),
+  )
+
+test('ON-339, K-221: kalem isteğe bağlı olarak kurumun etkin, aynı birimdeki stok kartına bağlanır', () => {
+  const plan = planPurchaseRequest(linked(CARD), { ...REFS, stockItems: stock() })
+  assert.equal(plan.items[0]?.stockItemId, CARD)
+  assert.equal(plan.items[1]?.stockItemId, null)
+  // Bağsız talep kart sözlüğü olmadan da açılır.
+  assert.equal(planPurchaseRequest(INPUT, REFS).items[0]?.stockItemId, null)
+})
+
+test('ON-339, K-221: bilinmeyen ya da başka kurumun kartı 400 alan hatası; pasif kart ve birim farkı 422', () => {
+  assert.throws(
+    () => planPurchaseRequest(linked(OTHER_CARD), { ...REFS, stockItems: stock() }),
+    zodPath(['items', 0, 'stockItemId']),
+  )
+  assert.throws(() => planPurchaseRequest(linked(CARD), REFS), zodPath(['items', 0, 'stockItemId']))
+  assert.throws(
+    () => planPurchaseRequest(linked(CARD), { ...REFS, stockItems: stock({ isActive: false }) }),
+    isDomainError('purchase_request_stock_item_inactive'),
+  )
+  assert.throws(
+    () => planPurchaseRequest(linked(CARD, 'box'), { ...REFS, stockItems: stock() }),
+    isDomainError('purchase_request_stock_unit_mismatch'),
+  )
+  assert.throws(
+    () => planPurchaseRequest(linked('kart'), { ...REFS, stockItems: stock() }),
+    zodPath(['items', 0, 'stockItemId']),
+  )
+})
+
+test('ON-339, K-221: taslak düzeltmesi kalemler gelince kart bağını yeniden denetler', () => {
+  const changes = planPurchaseRequestUpdate(
+    draft(),
+    { items: linked(CARD).items },
+    { ...REFS, stockItems: stock() },
+    FRONT,
+  )
+  assert.equal(changes.items?.[0]?.stockItemId, CARD)
+  assert.throws(
+    () => planPurchaseRequestUpdate(draft(), { items: linked(CARD).items }, REFS, FRONT),
+    zodPath(['items', 0, 'stockItemId']),
+  )
+  // Kalemsiz düzeltme bağı denetlemez.
+  assert.deepEqual(
+    planPurchaseRequestUpdate(
+      draft(),
+      { justification: 'Yeni gerekçe metni yazıldı' },
+      REFS,
+      FRONT,
+    ),
+    { justification: 'Yeni gerekçe metni yazıldı' },
   )
 })

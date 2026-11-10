@@ -106644,7 +106644,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat, isteğe bağlı `stockItemId`). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -106721,6 +106721,19 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 100000000000
+                        },
+                        "stockItemId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -106965,6 +106978,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -106974,7 +107015,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -107909,6 +107951,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -107918,7 +107988,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -108190,7 +108261,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -108266,6 +108337,19 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 100000000000
+                        },
+                        "stockItemId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -108523,6 +108607,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -108532,7 +108644,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -109070,6 +109183,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -109079,7 +109220,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -109622,6 +109764,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -109631,7 +109801,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -110167,6 +110338,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -110176,7 +110375,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -110712,6 +110912,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
                               }
                             },
                             "required": [
@@ -110721,7 +110949,8 @@
                               "quantity",
                               "unit",
                               "estimatedUnitPriceCents",
-                              "totalCents"
+                              "totalCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -114272,6 +114501,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "KDV dahil tutar, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş"
                               }
                             },
                             "required": [
@@ -114284,7 +114541,8 @@
                               "vatRate",
                               "netCents",
                               "vatCents",
-                              "grossCents"
+                              "grossCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -114679,6 +114937,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "KDV dahil tutar, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş"
                               }
                             },
                             "required": [
@@ -114691,7 +114977,8 @@
                               "vatRate",
                               "netCents",
                               "vatCents",
-                              "grossCents"
+                              "grossCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -115106,6 +115393,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "KDV dahil tutar, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş"
                               }
                             },
                             "required": [
@@ -115118,7 +115433,8 @@
                               "vatRate",
                               "netCents",
                               "vatCents",
-                              "grossCents"
+                              "grossCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -115554,6 +115870,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "KDV dahil tutar, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş"
                               }
                             },
                             "required": [
@@ -115566,7 +115910,8 @@
                               "vatRate",
                               "netCents",
                               "vatCents",
-                              "grossCents"
+                              "grossCents",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           }
@@ -115879,6 +116224,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Sipariş miktarı eksi kabul edilen"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur"
                               }
                             },
                             "required": [
@@ -115890,7 +116263,8 @@
                               "unitPriceCents",
                               "acceptedQuantity",
                               "rejectedQuantity",
-                              "remainingQuantity"
+                              "remainingQuantity",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           },
@@ -116505,6 +116879,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Sipariş miktarı eksi kabul edilen"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur"
                               }
                             },
                             "required": [
@@ -116516,7 +116918,8 @@
                               "unitPriceCents",
                               "acceptedQuantity",
                               "rejectedQuantity",
-                              "remainingQuantity"
+                              "remainingQuantity",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           },
@@ -117066,6 +117469,34 @@
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991,
                                 "description": "Sipariş miktarı eksi kabul edilen"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur"
                               }
                             },
                             "required": [
@@ -117077,7 +117508,8 @@
                               "unitPriceCents",
                               "acceptedQuantity",
                               "rejectedQuantity",
-                              "remainingQuantity"
+                              "remainingQuantity",
+                              "stockItem"
                             ],
                             "additionalProperties": false
                           },
@@ -123647,6 +124079,18 @@
                               "null"
                             ]
                           },
+                          "openRequestQuantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Açık talepte: karta bağlı kalemi olan taslak, gönderilmiş ya da siparişe dönmemiş onaylı taleplerdeki miktar (ON-339, K-222)"
+                          },
+                          "openRequestCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Bu miktarın geçtiği açık talep sayısı"
+                          },
                           "warehouses": {
                             "type": "array",
                             "items": {
@@ -123699,6 +124143,8 @@
                           "lastUnitPriceCents",
                           "lastReceiptDate",
                           "lastOrderNumber",
+                          "openRequestQuantity",
+                          "openRequestCount",
                           "warehouses"
                         ],
                         "additionalProperties": false
@@ -130730,7 +131176,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207) ve iptal edilmemiş teslim. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.",
+        "description": "Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207), iptal edilmemiş teslim ve bu setteki son iptal edilmiş teslim (`cancelledDelivery`; iptal tutanağı, K-218). Kura bağlı sette sınıf yerine o kurun grubu, sınıfsız öğrencide etkin kur grupları yazılır. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -130843,6 +131289,7 @@
                             ]
                           },
                           "className": {
+                            "description": "Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları",
                             "type": [
                               "string",
                               "null"
@@ -130910,6 +131357,35 @@
                             ],
                             "description": "İptal edilmemiş teslim; yoksa boş"
                           },
+                          "cancelledDelivery": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "deliveryDate": {
+                                    "type": "string",
+                                    "description": "Teslim günü `YYYY-MM-DD`"
+                                  },
+                                  "cancelledAt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "deliveryDate",
+                                  "cancelledAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bu setteki son iptal edilmiş teslim (iptal tutanağı için, K-218); yoksa boş"
+                          },
                           "actions": {
                             "type": "object",
                             "properties": {
@@ -130939,6 +131415,7 @@
                           "className",
                           "hasMaterialFee",
                           "delivery",
+                          "cancelledDelivery",
                           "actions"
                         ],
                         "additionalProperties": false
@@ -131167,11 +131644,34 @@
                         "setName": {
                           "type": "string"
                         },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Setin eğitim yılı"
+                        },
                         "studentId": {
                           "type": "string"
                         },
                         "studentName": {
                           "type": "string"
+                        },
+                        "studentNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "description": "Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMaterialFee": {
+                          "type": "boolean",
+                          "description": "Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil)"
                         },
                         "warehouseId": {
                           "type": "string"
@@ -131308,8 +131808,12 @@
                         "id",
                         "setId",
                         "setName",
+                        "academicYear",
                         "studentId",
                         "studentName",
+                        "studentNumber",
+                        "className",
+                        "hasMaterialFee",
                         "warehouseId",
                         "warehouseName",
                         "deliveryDate",
@@ -131572,35 +132076,14 @@
         }
       }
     },
-    "/api/v1/finance/material-deliveries/{deliveryId}/cancel": {
-      "post": {
-        "operationId": "cancelMaterialDelivery",
-        "summary": "Teslimi iptal et",
+    "/api/v1/finance/material-deliveries/{deliveryId}": {
+      "get": {
+        "operationId": "getMaterialDelivery",
+        "summary": "Teslim ayrıntısı (teslim tutanağı)",
         "tags": [
           "finance-inventory"
         ],
-        "description": "Gerekçeyle (5–500 karakter) iptal; teslim silinmez, stok çıkışları aynı gerekçeyle iptal edilir ve öğrenciye set yeniden teslim edilebilir (K-209). Zaten iptal edilmiş 422 `material_delivery_already_cancelled`. `If-Match` teslimin sürümüdür. Rol: `yonetici` (K-205). Modül `finance`.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "reason": {
-                    "type": "string",
-                    "minLength": 5,
-                    "maxLength": 500
-                  }
-                },
-                "required": [
-                  "reason"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
+        "description": "İptal edilmiş teslim dahil: set, eğitim yılı, öğrenci adı, numarası, sınıfı ya da kur grubu, kalemler, teslim alan, teslim eden (kaydeden), teslim günü, iptal bilgisi ve setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; tutar ve ödeme durumu yok, K-207). Teslim tutanağı PDF'i web'de bu yanıttan üretilir (ON-338). Olmayan ya da başka kurumun teslimi 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -131611,26 +132094,6 @@
             "in": "path",
             "name": "deliveryId",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{8,128}$"
-            },
-            "in": "header",
-            "name": "idempotency-key",
-            "required": false,
-            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
-          },
-          {
-            "schema": {
-              "type": "string",
-              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
-            },
-            "in": "header",
-            "name": "if-match",
-            "required": true,
-            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
           }
         ],
         "responses": {
@@ -131653,11 +132116,34 @@
                         "setName": {
                           "type": "string"
                         },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Setin eğitim yılı"
+                        },
                         "studentId": {
                           "type": "string"
                         },
                         "studentName": {
                           "type": "string"
+                        },
+                        "studentNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "description": "Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMaterialFee": {
+                          "type": "boolean",
+                          "description": "Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil)"
                         },
                         "warehouseId": {
                           "type": "string"
@@ -131794,8 +132280,374 @@
                         "id",
                         "setId",
                         "setName",
+                        "academicYear",
                         "studentId",
                         "studentName",
+                        "studentNumber",
+                        "className",
+                        "hasMaterialFee",
+                        "warehouseId",
+                        "warehouseName",
+                        "deliveryDate",
+                        "recipientKind",
+                        "recipientName",
+                        "signatureReceived",
+                        "signatureRecordedAt",
+                        "note",
+                        "items",
+                        "createdAt",
+                        "createdByName",
+                        "cancelledAt",
+                        "cancelledByName",
+                        "cancelReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/material-deliveries/{deliveryId}/cancel": {
+      "post": {
+        "operationId": "cancelMaterialDelivery",
+        "summary": "Teslimi iptal et",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Gerekçeyle (5–500 karakter) iptal; teslim silinmez, stok çıkışları aynı gerekçeyle iptal edilir ve öğrenciye set yeniden teslim edilebilir (K-209). Zaten iptal edilmiş 422 `material_delivery_already_cancelled`. `If-Match` teslimin sürümüdür. Rol: `yonetici` (K-205). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "deliveryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "setId": {
+                          "type": "string"
+                        },
+                        "setName": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Setin eğitim yılı"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "studentNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "description": "Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMaterialFee": {
+                          "type": "boolean",
+                          "description": "Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil)"
+                        },
+                        "warehouseId": {
+                          "type": "string"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "deliveryDate": {
+                          "type": "string"
+                        },
+                        "recipientKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "guardian",
+                            "other"
+                          ]
+                        },
+                        "recipientName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "signatureReceived": {
+                          "type": "boolean"
+                        },
+                        "signatureRecordedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "stockItemId": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Teslim edilen adet"
+                              }
+                            },
+                            "required": [
+                              "stockItemId",
+                              "code",
+                              "name",
+                              "unit",
+                              "quantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Teslim anındaki kalemler; her biri bir stok çıkışıdır"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "cancel": {
+                              "type": "boolean"
+                            },
+                            "sign": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "cancel",
+                            "sign"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "setId",
+                        "setName",
+                        "academicYear",
+                        "studentId",
+                        "studentName",
+                        "studentNumber",
+                        "className",
+                        "hasMaterialFee",
                         "warehouseId",
                         "warehouseName",
                         "deliveryDate",
@@ -131967,11 +132819,34 @@
                         "setName": {
                           "type": "string"
                         },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Setin eğitim yılı"
+                        },
                         "studentId": {
                           "type": "string"
                         },
                         "studentName": {
                           "type": "string"
+                        },
+                        "studentNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "description": "Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMaterialFee": {
+                          "type": "boolean",
+                          "description": "Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil)"
                         },
                         "warehouseId": {
                           "type": "string"
@@ -132108,8 +132983,12 @@
                         "id",
                         "setId",
                         "setName",
+                        "academicYear",
                         "studentId",
                         "studentName",
+                        "studentNumber",
+                        "className",
+                        "hasMaterialFee",
                         "warehouseId",
                         "warehouseName",
                         "deliveryDate",

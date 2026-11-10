@@ -697,4 +697,113 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
     assert.equal(second.json().data.number, first.json().data.number)
     assert.equal((await rowsOf(t.id)).length, 1)
   })
+  /** Kurumun stok kartı (ON-339); birim adet, isteğe bağlı kritik seviye. */
+  const stockCard = async (t: Tenant, overrides: Json = {}) =>
+    ok(
+      await call('POST', `${BUDGET}/stock-items`, t.admin, {
+        code: 'KLV',
+        name: 'Klavye',
+        category: 'it',
+        unit: 'piece',
+        ...overrides,
+      }),
+      201,
+    )
+  const linkedBody = (t: Record<string, Json>, stockItemId: unknown, unit = 'piece') =>
+    body(t, {
+      items: [
+        { name: 'Klavye', quantity: 10, unit, estimatedUnitPriceCents: 25_000, stockItemId },
+        { name: 'Fare', quantity: 10, unit: 'piece', estimatedUnitPriceCents: 15_000 },
+      ],
+    })
+  const issuePaths = (response: Response) =>
+    ((response.json() as { issues?: { path: (string | number)[] }[] }).issues ?? []).map((issue) =>
+      issue.path.join('.'),
+    )
+
+  test('ON-339, K-221: talep kalemi kurumun stok kartına bağlanır; ayrıntıda kart, düzeltmede bağ yenilenir', async () => {
+    const t = await ready()
+    const card = await stockCard(t)
+    const created = await create(t.admin, linkedBody(t, card.id))
+    const items = created.items as Json[]
+    assert.deepEqual(items[0]?.stockItem, { id: card.id, code: 'KLV', name: 'Klavye' })
+    assert.equal(items[1]?.stockItem, null)
+    const stored = await activeItems(t.id)
+    assert.deepEqual(stored.map((row) => row.stockItemId).sort(), [card.id, null].sort())
+
+    // Düzeltmede kalemler bütün yazılır: bağ kaldırılabilir.
+    const updated = ok(
+      await call(
+        'PATCH',
+        `${REQUESTS}/${String(created.id)}`,
+        t.admin,
+        {
+          items: [{ name: 'Klavye', quantity: 5, unit: 'piece', estimatedUnitPriceCents: 25_000 }],
+        },
+        ifMatch(created.version),
+      ),
+    )
+    assert.equal((updated.items as Json[])[0]?.stockItem, null)
+    assert.deepEqual(
+      (await activeItems(t.id)).map((row) => row.stockItemId),
+      [null],
+    )
+  })
+
+  test('ON-339, K-221: başka kurumun ya da bilinmeyen kartı 400 alan hatası, pasif kart ve birim farkı 422; kayıt yazılmaz', async () => {
+    const a = await ready()
+    const b = await ready()
+    const bCard = await stockCard(b)
+    const passive = await stockCard(a, { code: 'ESKI', name: 'Eski klavye' })
+    ok(
+      await call(
+        'PATCH',
+        `${BUDGET}/stock-items/${String(passive.id)}`,
+        a.admin,
+        { isActive: false },
+        ifMatch(passive.version),
+      ),
+    )
+    const boxed = await stockCard(a, { code: 'KOLI', name: 'Klavye kolisi', unit: 'box' })
+    for (const stockItemId of [bCard.id, randomUUID()]) {
+      const response = await call('POST', REQUESTS, a.admin, linkedBody(a, stockItemId))
+      assertError(response, 400, 'validation_failed')
+      assert.deepEqual(issuePaths(response), ['items.0.stockItemId'])
+    }
+    assertError(
+      await call('POST', REQUESTS, a.admin, linkedBody(a, 'kart')),
+      400,
+      'validation_failed',
+    )
+    assertError(
+      await call('POST', REQUESTS, a.admin, linkedBody(a, passive.id)),
+      422,
+      'purchase_request_stock_item_inactive',
+    )
+    assertError(
+      await call('POST', REQUESTS, a.admin, linkedBody(a, boxed.id)),
+      422,
+      'purchase_request_stock_unit_mismatch',
+    )
+    assert.equal((await rowsOf(a.id)).length, 0)
+    assert.equal((await activeItems(a.id)).length, 0)
+
+    // Taslak düzeltmesinde de B'nin kartı bağlanamaz; taslak değişmez.
+    const draft = await create(a.admin, body(a))
+    const response = await call(
+      'PATCH',
+      `${REQUESTS}/${String(draft.id)}`,
+      a.admin,
+      { items: linkedBody(a, bCard.id).items },
+      ifMatch(draft.version),
+    )
+    assertError(response, 400, 'validation_failed')
+    assert.deepEqual(issuePaths(response), ['items.0.stockItemId'])
+    const [row] = await rowsOf(a.id)
+    assert.equal(row?.version, 1)
+    assert.deepEqual(
+      (await activeItems(a.id)).map((item) => item.stockItemId),
+      [null, null],
+    )
+  })
 })

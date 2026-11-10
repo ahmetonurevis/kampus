@@ -270,6 +270,11 @@ function OrderDetail({ orderId }: { orderId: string }) {
                 <span className="block text-muted-foreground">
                   {`${String(line.quantity)} ${PURCHASE_UNIT_LABELS[line.unit]} × ${money(line.unitPriceCents)} + %${String(line.vatRate)} KDV`}
                 </span>
+                {line.stockItem ? (
+                  <span className="block text-muted-foreground">
+                    {`Stok kartı: ${line.stockItem.code} · ${line.stockItem.name}`}
+                  </span>
+                ) : null}
               </span>
               <span className="font-medium tabular-nums">{money(line.grossCents)}</span>
             </li>

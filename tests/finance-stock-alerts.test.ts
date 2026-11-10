@@ -9,6 +9,8 @@ import {
 } from '../packages/school-core/src/lib/finance-purchase-requests.ts'
 import {
   criticalStockRows,
+  OPEN_PURCHASE_REQUEST_STATUSES,
+  openRequestWarning,
   stockPurchaseDraft,
   suggestedReorderQuantity,
   type CriticalStockItem,
@@ -139,7 +141,10 @@ test('DOM-FIN-079, K-201: öneri stoku kritik seviyenin iki katına tamamlar, en
   assert.equal(suggestedReorderQuantity(0, STOCK_QUANTITY_MAX), STOCK_QUANTITY_MAX)
 })
 
+const PAPER_ID = '00000000-0000-4000-8000-0000000000c1'
+const TONER_ID = '00000000-0000-4000-8000-0000000000c2'
 const line = (overrides: Partial<StockSuggestionLine> = {}): StockSuggestionLine => ({
+  id: PAPER_ID,
   code: 'KAG-A4',
   name: 'A4 kâğıt',
   unit: 'pack',
@@ -154,6 +159,7 @@ test('DOM-FIN-079, K-202, K-203: öneri kalemleri ad (kod), öneri miktarı, kar
   const draft = stockPurchaseDraft([
     line(),
     line({
+      id: TONER_ID,
       code: 'TONER',
       name: 'Toner',
       unit: 'piece',
@@ -163,9 +169,22 @@ test('DOM-FIN-079, K-202, K-203: öneri kalemleri ad (kod), öneri miktarı, kar
       lastUnitPriceCents: null,
     }),
   ])
+  // ON-339, K-221: öneri kalemi stok kartına bağlıdır.
   assert.deepEqual(draft.items, [
-    { name: 'A4 kâğıt (KAG-A4)', quantity: 18, unit: 'pack', estimatedUnitPriceCents: 12_500 },
-    { name: 'Toner (TONER)', quantity: 4, unit: 'piece', estimatedUnitPriceCents: null },
+    {
+      name: 'A4 kâğıt (KAG-A4)',
+      quantity: 18,
+      unit: 'pack',
+      estimatedUnitPriceCents: 12_500,
+      stockItemId: PAPER_ID,
+    },
+    {
+      name: 'Toner (TONER)',
+      quantity: 4,
+      unit: 'piece',
+      estimatedUnitPriceCents: null,
+      stockItemId: TONER_ID,
+    },
   ])
   assert.equal(
     draft.justification,
@@ -202,4 +221,18 @@ test('DOM-FIN-079, K-203: uzun gerekçe üst sınıra sığdırılır, sığmaya
   const listed = draft.justification.split('; ').filter((part) => part.includes('KOD-')).length
   assert.equal(listed + Number(summary[1]), 50)
   assert.equal(draft.items.length, 50)
+})
+
+test('ON-339, K-222: açık talep uyarısı yalnız açık talepte miktarı olan seçili kartları sayar; engellemez', () => {
+  assert.deepEqual([...OPEN_PURCHASE_REQUEST_STATUSES], ['draft', 'submitted', 'approved'])
+  assert.equal(openRequestWarning([]), null)
+  assert.equal(openRequestWarning([{ code: 'KAG-A4', unit: 'pack', openRequestQuantity: 0 }]), null)
+  assert.equal(
+    openRequestWarning([
+      { code: 'KAG-A4', unit: 'pack', openRequestQuantity: 20 },
+      { code: 'KALEM', unit: 'piece', openRequestQuantity: 0 },
+      { code: 'TONER', unit: 'piece', openRequestQuantity: 4 },
+    ]),
+    'Seçilen 2 ürünün siparişe dönmemiş açık talebi var (KAG-A4 20 paket, TONER 4 adet). Yeni talep mükerrer alıma yol açabilir; yine de açabilirsiniz.',
+  )
 })

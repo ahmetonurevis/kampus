@@ -4699,7 +4699,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebi aç
-         * @description Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat, isteğe bağlı `stockItemId`). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["createPurchaseRequest"];
         delete?: never;
@@ -4767,7 +4767,7 @@ export interface paths {
         head?: never;
         /**
          * Taslak talebi düzelt
-         * @description Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         patch: operations["updatePurchaseRequest"];
         trace?: never;
@@ -5613,7 +5613,7 @@ export interface paths {
         };
         /**
          * Setin teslim edilen ve edilmeyen öğrencileri
-         * @description Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207) ve iptal edilmemiş teslim. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         * @description Setin hedefindeki (sınıf düzeyi, kur; hedefsizse bütün) etkin öğrenciler ile seti teslim almış öğrenciler, ada göre. Satırda öğrenci adı, numarası, sınıfı, setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; ödeme durumu değil, K-207), iptal edilmemiş teslim ve bu setteki son iptal edilmiş teslim (`cancelledDelivery`; iptal tutanağı, K-218). Kura bağlı sette sınıf yerine o kurun grubu, sınıfsız öğrencide etkin kur grupları yazılır. Durum, ücret kalemi, imza ve ad/numara aramasıyla süzülür. `Accept: text/csv` ile süzgeçle eşleşen bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, formül kaçışı); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.material_set_export` (K-209). Olmayan ya da başka kurumun seti 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
          */
         get: operations["listMaterialSetStudents"];
         put?: never;
@@ -5656,6 +5656,26 @@ export interface paths {
          * @description Öğrencinin etkin veli bağları, ad ve yakınlıkla; iletişim kısıtlı veli listelenmez (K-206). Olmayan, arşivli ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
          */
         get: operations["listMaterialRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/material-deliveries/{deliveryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teslim ayrıntısı (teslim tutanağı)
+         * @description İptal edilmiş teslim dahil: set, eğitim yılı, öğrenci adı, numarası, sınıfı ya da kur grubu, kalemler, teslim alan, teslim eden (kaydeden), teslim günü, iptal bilgisi ve setin yılında kitap ve kırtasiye ücret kalemi olup olmadığı (`hasMaterialFee`; tutar ve ödeme durumu yok, K-207). Teslim tutanağı PDF'i web'de bu yanıttan üretilir (ON-338). Olmayan ya da başka kurumun teslimi 404. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
+         */
+        get: operations["getMaterialDelivery"];
         put?: never;
         post?: never;
         delete?: never;
@@ -50794,6 +50814,8 @@ export interface operations {
                         /** @enum {string} */
                         unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
                         estimatedUnitPriceCents: number;
+                        /** @default null */
+                        stockItemId?: string | null;
                     }[];
                 };
             };
@@ -50857,6 +50879,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51273,6 +51301,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51415,6 +51449,8 @@ export interface operations {
                         /** @enum {string} */
                         unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
                         estimatedUnitPriceCents: number;
+                        /** @default null */
+                        stockItemId?: string | null;
                     }[];
                 };
             };
@@ -51478,6 +51514,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51669,6 +51711,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51862,6 +51910,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -52053,6 +52107,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -52244,6 +52304,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -53558,6 +53624,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -53721,6 +53793,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -53889,6 +53967,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -54063,6 +54147,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -54201,6 +54291,12 @@ export interface operations {
                                 rejectedQuantity: number;
                                 /** @description Sipariş miktarı eksi kabul edilen */
                                 remainingQuantity: number;
+                                /** @description Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
                             receivedNetCents: number;
@@ -54413,6 +54509,12 @@ export interface operations {
                                 rejectedQuantity: number;
                                 /** @description Sipariş miktarı eksi kabul edilen */
                                 remainingQuantity: number;
+                                /** @description Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
                             receivedNetCents: number;
@@ -54612,6 +54714,12 @@ export interface operations {
                                 rejectedQuantity: number;
                                 /** @description Sipariş miktarı eksi kabul edilen */
                                 remainingQuantity: number;
+                                /** @description Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
                             receivedNetCents: number;
@@ -57141,6 +57249,10 @@ export interface operations {
                             lastReceiptDate: string | null;
                             /** @description Son alış fiyatının siparişi */
                             lastOrderNumber: string | null;
+                            /** @description Açık talepte: karta bağlı kalemi olan taslak, gönderilmiş ya da siparişe dönmemiş onaylı taleplerdeki miktar (ON-339, K-222) */
+                            openRequestQuantity: number;
+                            /** @description Bu miktarın geçtiği açık talep sayısı */
+                            openRequestCount: number;
                             /** @description Depo kırılımı: etkin depolar ve miktarı olan pasif depolar, ada göre */
                             warehouses: {
                                 warehouseId: string;
@@ -60188,6 +60300,7 @@ export interface operations {
                             studentId: string;
                             studentName: string;
                             studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
                             className: string | null;
                             /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207; ödeme durumu değil) */
                             hasMaterialFee: boolean;
@@ -60205,6 +60318,13 @@ export interface operations {
                                 warehouseName: string;
                                 /** @description `If-Match` için kayıt sürümü */
                                 version: number;
+                            } | null;
+                            /** @description Bu setteki son iptal edilmiş teslim (iptal tutanağı için, K-218); yoksa boş */
+                            cancelledDelivery: {
+                                id: string;
+                                /** @description Teslim günü `YYYY-MM-DD` */
+                                deliveryDate: string;
+                                cancelledAt: string;
                             } | null;
                             /** @description Oturumdaki kullanıcının bu satırda yapabilecekleri */
                             actions: {
@@ -60334,8 +60454,15 @@ export interface operations {
                             id: string;
                             setId: string;
                             setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
                             studentId: string;
                             studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
                             warehouseId: string;
                             warehouseName: string;
                             deliveryDate: string;
@@ -60547,6 +60674,145 @@ export interface operations {
             };
         };
     };
+    getMaterialDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            setId: string;
+                            setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
+                            studentId: string;
+                            studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
+                            warehouseId: string;
+                            warehouseName: string;
+                            deliveryDate: string;
+                            /** @enum {string} */
+                            recipientKind: "student" | "guardian" | "other";
+                            recipientName: string | null;
+                            signatureReceived: boolean;
+                            signatureRecordedAt: string | null;
+                            note: string | null;
+                            /** @description Teslim anındaki kalemler; her biri bir stok çıkışıdır */
+                            items: {
+                                stockItemId: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Teslim edilen adet */
+                                quantity: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            actions: {
+                                cancel: boolean;
+                                sign: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     cancelMaterialDelivery: {
         parameters: {
             query?: never;
@@ -60580,8 +60846,15 @@ export interface operations {
                             id: string;
                             setId: string;
                             setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
                             studentId: string;
                             studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
                             warehouseId: string;
                             warehouseName: string;
                             deliveryDate: string;
@@ -60717,8 +60990,15 @@ export interface operations {
                             id: string;
                             setId: string;
                             setName: string;
+                            /** @description Setin eğitim yılı */
+                            academicYear: number;
                             studentId: string;
                             studentName: string;
+                            studentNumber: string | null;
+                            /** @description Sınıf; kura bağlı sette o kurun grubu, sınıfsız öğrencide etkin kur grupları */
+                            className: string | null;
+                            /** @description Setin yılında kitap ve kırtasiye ücret kalemi var (K-207, K-218; tutar ve ödeme durumu değil) */
+                            hasMaterialFee: boolean;
                             warehouseId: string;
                             warehouseName: string;
                             deliveryDate: string;

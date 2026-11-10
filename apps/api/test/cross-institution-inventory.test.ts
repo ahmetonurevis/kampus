@@ -1599,6 +1599,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         ],
         [
           'kayıt',
+          'GET /api/v1/finance/material-deliveries/:deliveryId',
+          '`${DELIVERIES}/${String(bDelivery.id)}`',
+        ],
+        [
+          'kayıt',
           'POST /api/v1/finance/material-deliveries/:deliveryId/signature',
           'sign(a.admin, bDelivery)',
         ],

@@ -1,5 +1,5 @@
 {
-  "id": "6264bed0-f786-4ce2-9ebb-278f21075f81",
+  "id": "dd8b8d59-566c-403f-97e7-0ea4b7276272",
   "prevId": "9ffb2476-4a32-40f2-9ba3-8488c769204b",
   "version": "7",
   "dialect": "postgresql",
@@ -8557,508 +8557,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.fixed_asset_count_items": {
-      "name": "fixed_asset_count_items",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "count_id": {
-          "name": "count_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "asset_id": {
-          "name": "asset_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "in_scope": {
-          "name": "in_scope",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tag_number": {
-          "name": "tag_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "asset_name": {
-          "name": "asset_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_campus_id": {
-          "name": "recorded_campus_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recorded_location": {
-          "name": "recorded_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "observed_campus_id": {
-          "name": "observed_campus_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "observed_location": {
-          "name": "observed_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scanned_at": {
-          "name": "scanned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scanned_by_user_id": {
-          "name": "scanned_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "relocated_at": {
-          "name": "relocated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "relocated_by_user_id": {
-          "name": "relocated_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "fixed_asset_count_items_asset_key": {
-          "name": "fixed_asset_count_items_asset_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "count_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "asset_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "fixed_asset_count_items_count_idx": {
-          "name": "fixed_asset_count_items_count_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "count_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "result",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tag_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "fixed_asset_count_items_asset_idx": {
-          "name": "fixed_asset_count_items_asset_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "asset_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "fixed_asset_count_items_institution_id_institutions_id_fk": {
-          "name": "fixed_asset_count_items_institution_id_institutions_id_fk",
-          "tableFrom": "fixed_asset_count_items",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "fixed_asset_count_items_count_fkey": {
-          "name": "fixed_asset_count_items_count_fkey",
-          "tableFrom": "fixed_asset_count_items",
-          "tableTo": "fixed_asset_counts",
-          "columnsFrom": [
-            "institution_id",
-            "count_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "fixed_asset_count_items_asset_fkey": {
-          "name": "fixed_asset_count_items_asset_fkey",
-          "tableFrom": "fixed_asset_count_items",
-          "tableTo": "fixed_assets",
-          "columnsFrom": [
-            "institution_id",
-            "asset_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "fixed_asset_count_items_pkey": {
-          "name": "fixed_asset_count_items_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "fixed_asset_count_items_result_check": {
-          "name": "fixed_asset_count_items_result_check",
-          "value": "\"fixed_asset_count_items\".\"result\" in ('pending', 'found', 'misplaced')"
-        },
-        "fixed_asset_count_items_scan_check": {
-          "name": "fixed_asset_count_items_scan_check",
-          "value": "((\"fixed_asset_count_items\".\"result\" = 'pending') = (\"fixed_asset_count_items\".\"scanned_at\" is null))\n        and ((\"fixed_asset_count_items\".\"scanned_at\" is null) = (\"fixed_asset_count_items\".\"scanned_by_user_id\" is null))\n        and ((\"fixed_asset_count_items\".\"scanned_at\" is null) = (\"fixed_asset_count_items\".\"observed_location\" is null))\n        and (\"fixed_asset_count_items\".\"scanned_at\" is not null or \"fixed_asset_count_items\".\"observed_campus_id\" is null)\n        and (\"fixed_asset_count_items\".\"in_scope\" or \"fixed_asset_count_items\".\"result\" <> 'pending')\n        and ((\"fixed_asset_count_items\".\"relocated_at\" is null) = (\"fixed_asset_count_items\".\"relocated_by_user_id\" is null))\n        and (\"fixed_asset_count_items\".\"relocated_at\" is null or \"fixed_asset_count_items\".\"result\" = 'misplaced')"
-        },
-        "fixed_asset_count_items_text_check": {
-          "name": "fixed_asset_count_items_text_check",
-          "value": "char_length(\"fixed_asset_count_items\".\"recorded_location\") between 2 and 120\n        and (\"fixed_asset_count_items\".\"observed_location\" is null\n          or char_length(\"fixed_asset_count_items\".\"observed_location\") between 2 and 120)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.fixed_asset_counts": {
-      "name": "fixed_asset_counts",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scope_type": {
-          "name": "scope_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "campus_id": {
-          "name": "campus_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scope_key": {
-          "name": "scope_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "started_by_user_id": {
-          "name": "started_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_by_user_id": {
-          "name": "completed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "fixed_asset_counts_open_key": {
-          "name": "fixed_asset_counts_open_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scope_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"fixed_asset_counts\".\"status\" = 'open' and \"fixed_asset_counts\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "fixed_asset_counts_status_idx": {
-          "name": "fixed_asset_counts_status_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "started_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "fixed_asset_counts_institution_id_institutions_id_fk": {
-          "name": "fixed_asset_counts_institution_id_institutions_id_fk",
-          "tableFrom": "fixed_asset_counts",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "fixed_asset_counts_pkey": {
-          "name": "fixed_asset_counts_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "fixed_asset_counts_scope_type_check": {
-          "name": "fixed_asset_counts_scope_type_check",
-          "value": "\"fixed_asset_counts\".\"scope_type\" in ('institution', 'campus', 'location')"
-        },
-        "fixed_asset_counts_scope_check": {
-          "name": "fixed_asset_counts_scope_check",
-          "value": "(\"fixed_asset_counts\".\"scope_type\" = 'institution' and \"fixed_asset_counts\".\"campus_id\" is null and \"fixed_asset_counts\".\"location\" is null)\n        or (\"fixed_asset_counts\".\"scope_type\" = 'campus' and \"fixed_asset_counts\".\"campus_id\" is not null and \"fixed_asset_counts\".\"location\" is null)\n        or (\"fixed_asset_counts\".\"scope_type\" = 'location' and \"fixed_asset_counts\".\"location\" is not null\n          and char_length(\"fixed_asset_counts\".\"location\") between 2 and 120)"
-        },
-        "fixed_asset_counts_note_check": {
-          "name": "fixed_asset_counts_note_check",
-          "value": "\"fixed_asset_counts\".\"note\" is null or char_length(\"fixed_asset_counts\".\"note\") between 1 and 200"
-        },
-        "fixed_asset_counts_status_check": {
-          "name": "fixed_asset_counts_status_check",
-          "value": "\"fixed_asset_counts\".\"status\" in ('open', 'completed', 'cancelled')"
-        },
-        "fixed_asset_counts_close_check": {
-          "name": "fixed_asset_counts_close_check",
-          "value": "((\"fixed_asset_counts\".\"status\" = 'completed') = (\"fixed_asset_counts\".\"completed_at\" is not null))\n        and ((\"fixed_asset_counts\".\"completed_at\" is null) = (\"fixed_asset_counts\".\"completed_by_user_id\" is null))\n        and ((\"fixed_asset_counts\".\"status\" = 'cancelled') = (\"fixed_asset_counts\".\"cancelled_at\" is not null))\n        and ((\"fixed_asset_counts\".\"cancelled_at\" is null) = (\"fixed_asset_counts\".\"cancelled_by_user_id\" is null))"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.fixed_assets": {
       "name": "fixed_assets",
       "schema": "",
@@ -11845,6 +11343,12 @@
           "notNull": true,
           "default": "'TRY'"
         },
+        "stock_item_id": {
+          "name": "stock_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -11942,6 +11446,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "purchase_order_items_stock_item_idx": {
+          "name": "purchase_order_items_stock_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stock_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -11956,6 +11481,21 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "purchase_order_items_stock_item_fkey": {
+          "name": "purchase_order_items_stock_item_fkey",
+          "tableFrom": "purchase_order_items",
+          "tableTo": "stock_items",
+          "columnsFrom": [
+            "institution_id",
+            "stock_item_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "purchase_order_items_order_fkey": {
@@ -13401,6 +12941,12 @@
           "notNull": true,
           "default": "'TRY'"
         },
+        "stock_item_id": {
+          "name": "stock_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -13478,6 +13024,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "purchase_request_items_stock_item_idx": {
+          "name": "purchase_request_items_stock_item_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stock_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13501,6 +13068,21 @@
           "columnsFrom": [
             "institution_id",
             "request_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "purchase_request_items_stock_item_fkey": {
+          "name": "purchase_request_items_stock_item_fkey",
+          "tableFrom": "purchase_request_items",
+          "tableTo": "stock_items",
+          "columnsFrom": [
+            "institution_id",
+            "stock_item_id"
           ],
           "columnsTo": [
             "institution_id",

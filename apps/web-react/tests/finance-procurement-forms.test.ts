@@ -6,6 +6,7 @@ import {
   requestDefaults,
   requestFormField,
   requestFormSchema,
+  stockItemLabel,
   supplierBody,
   supplierDefaults,
   supplierFormSchema,
@@ -45,7 +46,9 @@ test('DOM-FIN-071: talep formu tutarı kuruşa çevirir, tedarikçisiz talepte n
     periodId: 'p1',
     budgetItemId: 'i1',
     justification: 'Laboratuvar için malzeme',
-    items: [{ name: 'Tüp', quantity: '40', unit: 'piece' as const, price: '25,50' }],
+    items: [
+      { name: 'Tüp', quantity: '40', unit: 'piece' as const, price: '25,50', stockItem: null },
+    ],
   }
   assert.equal(requestFormSchema.safeParse(values).success, true)
   assert.deepEqual(requestBody(values), {
@@ -54,12 +57,20 @@ test('DOM-FIN-071: talep formu tutarı kuruşa çevirir, tedarikçisiz talepte n
     budgetItemId: 'i1',
     supplierId: null,
     justification: 'Laboratuvar için malzeme',
-    items: [{ name: 'Tüp', quantity: 40, unit: 'piece', estimatedUnitPriceCents: 2_550 }],
+    items: [
+      {
+        name: 'Tüp',
+        quantity: 40,
+        unit: 'piece',
+        estimatedUnitPriceCents: 2_550,
+        stockItemId: null,
+      },
+    ],
   })
   for (const item of [
-    { name: 'Tüp', quantity: '1,5', unit: 'piece' as const, price: '1' },
-    { name: 'Tüp', quantity: '0', unit: 'piece' as const, price: '1' },
-    { name: 'Tüp', quantity: '1', unit: 'piece' as const, price: '0' },
+    { name: 'Tüp', quantity: '1,5', unit: 'piece' as const, price: '1', stockItem: null },
+    { name: 'Tüp', quantity: '0', unit: 'piece' as const, price: '1', stockItem: null },
+    { name: 'Tüp', quantity: '1', unit: 'piece' as const, price: '0', stockItem: null },
   ])
     assert.equal(requestFormSchema.safeParse({ ...values, items: [item] }).success, false)
 })
@@ -77,4 +88,31 @@ test('DOM-FIN-071: anlık toplam geçersiz satırı saymaz; sunucu alan yolu for
   assert.equal(requestFormField('items.0.quantity'), 'items.0.quantity')
   assert.equal(requestFormField('periodId'), 'periodId')
   assert.equal(requestFormField('institutionId'), undefined)
+  // ON-339: kart bağı hatası kalemin stok kartı alanına düşer.
+  assert.equal(requestFormField('items.1.stockItemId'), 'items.1.stockItem')
+})
+
+test('ON-339, K-221: kalemin stok kartı bağı gövdeye kimlikle gider; kart birimi kalemin birimidir', () => {
+  const card = { id: 'kart-1', label: 'Klavye (KLV)', unit: 'piece' as const }
+  const values = {
+    ...requestDefaults(),
+    costCenterId: 'c1',
+    periodId: 'p1',
+    budgetItemId: 'i1',
+    justification: 'Laboratuvar için malzeme',
+    items: [
+      { name: 'Klavye', quantity: '4', unit: 'piece' as const, price: '250,00', stockItem: card },
+    ],
+  }
+  assert.equal(requestFormSchema.safeParse(values).success, true)
+  assert.equal(requestBody(values).items[0]?.stockItemId, 'kart-1')
+  const mismatch = requestFormSchema.safeParse({
+    ...values,
+    items: [{ ...values.items[0], unit: 'box' }],
+  })
+  assert.deepEqual(
+    mismatch.error?.issues.map((issue) => [issue.path.join('.'), issue.message]),
+    [['items.0.stockItem', 'Birim stok kartının birimiyle (adet) aynı olmalıdır.']],
+  )
+  assert.equal(stockItemLabel({ code: 'KLV', name: 'Klavye' }), 'Klavye (KLV)')
 })

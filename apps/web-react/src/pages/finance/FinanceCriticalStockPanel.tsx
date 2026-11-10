@@ -7,7 +7,10 @@ import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
 import { STOCK_CATEGORIES, STOCK_UNIT_LABELS } from '@kampus/school-core/lib/finance-inventory.ts'
 import { PURCHASE_ITEMS_MAX } from '@kampus/school-core/lib/finance-purchase-requests.ts'
-import { stockPurchaseDraft } from '@kampus/school-core/lib/finance-stock-alerts.ts'
+import {
+  openRequestWarning,
+  stockPurchaseDraft,
+} from '@kampus/school-core/lib/finance-stock-alerts.ts'
 import { SUPPLIER_CATEGORY_LABELS } from '@kampus/school-core/lib/finance-suppliers.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -21,6 +24,7 @@ import { notify } from '@/lib/notify.ts'
 import { PurchaseRequestFormModal } from './FinancePurchaseRequestForms.tsx'
 import {
   criticalQuantityText,
+  openRequestText,
   suggestionLine,
   warehouseBreakdown,
 } from './finance-inventory-forms.ts'
@@ -46,6 +50,7 @@ type Row = {
   quantity: string
   warehouses: string
   suggested: string
+  openRequests: string
   lastPrice: string
   row: CriticalStockRow
 }
@@ -55,6 +60,8 @@ type Row = {
  * da altındaki etkin kartlar, aciliyet sırasında (K-200); depo kırılımı, öneri miktarı (K-201) ve son
  * alış fiyatı (K-202). Seçilen kalemlerden "Talep öner" taslak satın alma talebi formunu doldurur;
  * talep bugünkü talep kurallarıyla açılır (K-203). Seçim sayfalar arasında korunur, en çok 50 kalem.
+ * Önerinin kalemleri stok kartına bağlıdır; "Açık talepte" sütunu siparişe dönmemiş taleplerdeki
+ * miktarı gösterir, seçilen üründe açık talep varsa uyarı çıkar ama talep engellenmez (ON-339, K-222).
  */
 export function FinanceCriticalStockPanel({
   canRequest,
@@ -75,6 +82,8 @@ export function FinanceCriticalStockPanel({
   // Seçim kullanıcı girdisidir: sayfa değişse de satır verisiyle birlikte tutulur.
   const [selected, setSelected] = useState<ReadonlyMap<string, CriticalStockRow>>(() => new Map())
   const [draft, setDraft] = useState<RequestFormValues | null>(null)
+  // Aynı ürün için ikinci talep uyarısı (ON-339, K-222); seçimden türetilir, engellemez.
+  const duplicateWarning = openRequestWarning([...selected.values()])
   const full = selected.size >= PURCHASE_ITEMS_MAX
   const toggle = (row: CriticalStockRow, checked: boolean) =>
     setSelected((current) => {
@@ -102,6 +111,7 @@ export function FinanceCriticalStockPanel({
         quantity: criticalQuantityText(item),
         warehouses: warehouseBreakdown(item),
         suggested: `${String(item.suggestedQuantity)} ${STOCK_UNIT_LABELS[item.unit]}`,
+        openRequests: openRequestText(item),
         lastPrice: item.lastUnitPriceCents === null ? '—' : money(item.lastUnitPriceCents),
         row: item,
       })),
@@ -138,6 +148,7 @@ export function FinanceCriticalStockPanel({
     },
     { key: 'warehouses', label: 'Depolar' },
     { key: 'suggested', label: 'Öneri' },
+    { key: 'openRequests', label: 'Açık talepte' },
     { key: 'lastPrice', label: 'Son alış (KDV hariç)' },
   ]
   return (
@@ -157,6 +168,11 @@ export function FinanceCriticalStockPanel({
               <Button variant="ghost" onClick={() => setSelected(new Map())}>
                 Seçimi temizle
               </Button>
+            ) : null}
+            {duplicateWarning ? (
+              <p role="status" className="basis-full text-sm text-muted-foreground">
+                {duplicateWarning}
+              </p>
             ) : null}
             {full ? (
               <p role="status" className="text-sm text-muted-foreground">
@@ -188,6 +204,7 @@ export function FinanceCriticalStockPanel({
       {draft ? (
         <PurchaseRequestFormModal
           initial={draft}
+          notice={duplicateWarning}
           onClose={() => setDraft(null)}
           onSaved={(id) => {
             setDraft(null)

@@ -144,6 +144,10 @@ const orderDetailSchema = z.object({
       unitPriceCents: cents('KDV hariç birim fiyat, kuruş'),
       vatRate,
       ...amounts,
+      stockItem: z
+        .object({ id: z.string(), code: z.string(), name: z.string() })
+        .nullable()
+        .describe('Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş'),
     }),
   ),
   createdByName: z.string().nullable(),

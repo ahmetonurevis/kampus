@@ -24,6 +24,12 @@ import { criticalStockRows } from '@kampus/school-core/lib/finance-stock-alerts.
 
 import type { Database } from '../db/client.ts'
 import {
+  insertMovementLot,
+  loadChemicalProfiles,
+  loadMovementLots,
+  type StoredChemicalProfile,
+} from '../db/finance-chemicals.ts'
+import {
   cancelStockMovements,
   findStockMovement,
   insertStockItem,
@@ -79,7 +85,7 @@ const pageOf = <T>(items: readonly T[], query: Page) => ({
 const matches = (search: string | undefined, ...values: string[]) =>
   search === undefined || values.some((value) => foldSearch(value).includes(search))
 
-async function campusRecords(db: Database, institutionId: string, ids: readonly string[]) {
+export async function campusRecords(db: Database, institutionId: string, ids: readonly string[]) {
   const rows = await loadRecordsByIds(db, institutionId, 'branches', [...new Set(ids)])
   return new Map(
     rows.map((row) => [
@@ -109,10 +115,24 @@ function quantities(
   return totals
 }
 
-const itemRow = (item: StoredStockItem, quantity: number) => ({
+const itemRow = (item: StoredStockItem, quantity: number, isChemical: boolean) => ({
   ...item,
   quantity,
   isBelowMinimum: isBelowMinimum(quantity, item.minQuantity),
+  isChemical,
+})
+
+/** Kimyasal bilgisinin yanıt biçimi (DOM-FIN-090): kart kimliği yanıtta ayrıca yer almaz. */
+const chemicalView = (profile: StoredChemicalProfile) => ({
+  hazardPictograms: profile.hazardPictograms,
+  signalWord: profile.signalWord,
+  casNumber: profile.casNumber,
+  storageClass: profile.storageClass,
+  incompatibilityNote: profile.incompatibilityNote,
+  sdsUrl: profile.sdsUrl,
+  sdsDocumentNumber: profile.sdsDocumentNumber,
+  sdsRevisionDate: profile.sdsRevisionDate,
+  version: profile.version,
 })
 
 export interface StockItemListQuery extends Page {
@@ -121,28 +141,33 @@ export interface StockItemListQuery extends Page {
   status?: 'active' | 'inactive' | undefined
   critical?: boolean | undefined
   warehouseId?: string | undefined
+  /** Yalnız kimyasal bilgisi olan kartlar (DOM-FIN-090). */
+  chemical?: boolean | undefined
 }
 
 /** Kartlar koda göre; miktar hareketlerden. `critical` yalnız kritik seviyedeki etkin kartlar. */
 export async function listStockItemsFor(ctx: ServiceContext, query: StockItemListQuery) {
-  const [items, balances] = await Promise.all([
+  const [items, balances, profiles] = await Promise.all([
     loadStockItems(ctx.db, ctx.institutionId),
     loadStockBalances(
       ctx.db,
       ctx.institutionId,
       query.warehouseId === undefined ? {} : { warehouseId: query.warehouseId },
     ),
+    loadChemicalProfiles(ctx.db, ctx.institutionId),
   ])
   const totals = quantities(balances)
+  const chemicals = new Set(profiles.map((profile) => profile.itemId))
   const search = query.q === undefined ? undefined : foldSearch(query.q)
   const rows = items
-    .map((item) => itemRow(item, totals.get(item.id) ?? 0))
+    .map((item) => itemRow(item, totals.get(item.id) ?? 0, chemicals.has(item.id)))
     .filter(
       (row) =>
         matches(search, row.code, row.name) &&
         (query.category === undefined || row.category === query.category) &&
         (query.status === undefined || row.isActive === (query.status === 'active')) &&
-        (query.critical !== true || (row.isActive && row.isBelowMinimum)),
+        (query.critical !== true || (row.isActive && row.isBelowMinimum)) &&
+        (query.chemical !== true || row.isChemical),
     )
   return pageOf(rows, query)
 }
@@ -222,12 +247,14 @@ export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalS
   }
 }
 
-async function itemDetail(db: Database, ctx: ServiceContext, id: string) {
-  const [items, warehouses, balances, hasMovements] = await Promise.all([
+/** Kart ayrıntısı: depo başına miktar ve kimyasal bilgisi (DOM-FIN-077, DOM-FIN-090). */
+export async function itemDetail(db: Database, ctx: ServiceContext, id: string) {
+  const [items, warehouses, balances, hasMovements, profiles] = await Promise.all([
     loadStockItemsByIds(db, ctx.institutionId, [id]),
     loadStockWarehouses(db, ctx.institutionId),
     loadStockBalances(db, ctx.institutionId, { itemId: id }),
     stockItemHasMovements(db, ctx.institutionId, id),
+    loadChemicalProfiles(db, ctx.institutionId, [id]),
   ])
   const item = items[0]
   if (item === undefined) throw new NotFoundError()
@@ -241,9 +268,11 @@ async function itemDetail(db: Database, ctx: ServiceContext, id: string) {
     shown.map((warehouse) => warehouse.campusId),
   )
   const quantity = balances.reduce((total, row) => total + row.quantity, 0)
+  const profile = profiles[0]
   return {
-    ...itemRow(item, quantity),
+    ...itemRow(item, quantity, profile !== undefined),
     hasMovements,
+    chemical: profile === undefined ? null : chemicalView(profile),
     balances: shown.map((warehouse) => ({
       warehouseId: warehouse.id,
       warehouseName: warehouse.name,
@@ -501,7 +530,7 @@ async function movementViews(
   const receiptIds = movements.flatMap((movement) =>
     movement.receiptId === null ? [] : [movement.receiptId],
   )
-  const [items, warehouses, transfers, orders, names] = await Promise.all([
+  const [items, warehouses, transfers, orders, names, lots] = await Promise.all([
     loadStockItemsByIds(
       db,
       ctx.institutionId,
@@ -518,6 +547,11 @@ async function movementViews(
           ? [movement.createdByUserId]
           : [movement.createdByUserId, movement.cancelledByUserId],
       ),
+    ),
+    loadMovementLots(
+      db,
+      ctx.institutionId,
+      movements.filter((movement) => movement.type === 'in').map((movement) => movement.id),
     ),
   ])
   const itemById = new Map(items.map((item) => [item.id, item]))
@@ -539,6 +573,7 @@ async function movementViews(
             (other) => other.transferId === movement.transferId && other.id !== movement.id,
           )
     const order = movement.receiptId === null ? undefined : orders.get(movement.receiptId)
+    const lot = lots.get(movement.id)
     return {
       id: movement.id,
       type: movement.type,
@@ -560,6 +595,8 @@ async function movementViews(
           : (warehouseById.get(counterpart.warehouseId)?.name ?? null),
       orderId: order?.orderId ?? null,
       orderNumber: order?.orderNumber ?? null,
+      lotNumber: lot?.lotNumber ?? null,
+      expiryDate: lot?.expiryDate ?? null,
       createdAt: movement.createdAt,
       createdByName: nameOf(movement.createdByUserId),
       cancelledAt: movement.cancelledAt,
@@ -654,18 +691,30 @@ export function createStockMovementCommand(
       collections: [],
       entity,
       load: async (tx) => {
-        const context = await movementContext(
-          tx,
-          ctx,
-          [uuidLike(field(input, 'itemId'))],
-          kind === 'issue' ? pairFrom(input, 'warehouseId') : [],
-        )
+        const itemId = uuidLike(field(input, 'itemId'))
+        const [context, profiles] = await Promise.all([
+          movementContext(
+            tx,
+            ctx,
+            [itemId],
+            kind === 'issue' ? pairFrom(input, 'warehouseId') : [],
+          ),
+          kind === 'entry' && itemId !== undefined
+            ? loadChemicalProfiles(tx, ctx.institutionId, [itemId])
+            : Promise.resolve([]),
+        ])
         const today = dayKey(ctx.now)
+        // Kimyasal kartın girişi parti ister (DOM-FIN-090, K-241).
+        const chemicalItemIds = new Set(profiles.map((profile) => profile.itemId))
         return {
           run: () =>
             kind === 'entry'
-              ? planStockEntry(input, { ...context, today })
-              : planStockIssue(input, { ...context, today }),
+              ? planStockEntry(input, { ...context, today, chemicalItemIds })
+              : {
+                  ...planStockIssue(input, { ...context, today }),
+                  lotNumber: null,
+                  expiryDate: null,
+                },
         }
       },
       after: async (tx, data) => {
@@ -689,6 +738,13 @@ export function createStockMovementCommand(
           createdByUserId: ctx.actor.userId,
           now: ctx.now,
         })
+        if (data.lotNumber !== null && data.expiryDate !== null)
+          await insertMovementLot(tx, ctx.institutionId, {
+            movementId: id,
+            lotNumber: data.lotNumber,
+            expiryDate: data.expiryDate,
+            now: ctx.now,
+          })
         await auditWork(tx, ctx, action, entity, [
           'itemId',
           'warehouseId',
@@ -696,6 +752,7 @@ export function createStockMovementCommand(
           'movementDate',
           'reason',
           ...(data.note === null ? [] : ['note']),
+          ...(data.lotNumber === null ? [] : ['lotNumber', 'expiryDate']),
         ])
         const [view] = await movementBody(tx, ctx, [id])
         body = { data: view }

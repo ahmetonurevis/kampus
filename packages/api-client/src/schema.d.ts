@@ -5265,7 +5265,7 @@ export interface paths {
         };
         /**
          * Stok kartlarını listele
-         * @description Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); `warehouseId` verilirse yalnız o depodaki miktar. `critical=true` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları verir. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         * @description Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); `warehouseId` verilirse yalnız o depodaki miktar. `critical=true` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları, `chemical=true` kimyasal kartları verir (DOM-FIN-090). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
          */
         get: operations["listStockItems"];
         put?: never;
@@ -5309,7 +5309,7 @@ export interface paths {
         };
         /**
          * Stok kartı ayrıntısı
-         * @description Kart, toplam miktar ve depo başına miktar. Olmayan ya da başka kurumun kartı 404. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         * @description Kart, toplam miktar, depo başına miktar ve kimyasal bilgisi (`chemical`, DOM-FIN-090). Olmayan ya da başka kurumun kartı 404. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
          */
         get: operations["getStockItem"];
         put?: never;
@@ -5399,7 +5399,7 @@ export interface paths {
         put?: never;
         /**
          * Stok girişi yaz
-         * @description Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.
+         * @description Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kimyasal kartın girişi parti numarası (`lotNumber`) ve son kullanma günü (`expiryDate`) ister (422 `stock_lot_required`); kimyasal olmayan kartta parti 422 `stock_lot_not_allowed` (DOM-FIN-090, K-241). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.
          */
         post: operations["createStockEntry"];
         delete?: never;
@@ -5419,7 +5419,7 @@ export interface paths {
         put?: never;
         /**
          * Stok çıkışı yaz
-         * @description Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 `stock_insufficient`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         * @description Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 `stock_insufficient`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kimyasal kartta çıkış en yakın son kullanma tarihli partiden düşer (FEFO, K-242). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); "Diğer" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
          */
         post: operations["createStockIssue"];
         delete?: never;
@@ -5980,6 +5980,70 @@ export interface paths {
          * @description Hurdaya ayrılmamış demirbaşların kampüs ve konumları, her yerde kayıtlı demirbaş sayısıyla; sayım kapsamı ve sayılan oda seçimi için öneri. `q` konumda arar, `campusId` süzer. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         get: operations["listFixedAssetPlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-items/{itemId}/chemical-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok kartını kimyasal olarak işaretle
+         * @description Karta kimyasal bilgisi ekler (DOM-FIN-090): GHS piktogramları (`GHS01`…`GHS09`, çoklu), sinyal kelimesi (`danger` Tehlike, `warning` Dikkat), CAS numarası (biçim ve sağlama basamağı), depolama sınıfı (≤ 80), uyumsuzluk notu (≤ 500), GBF bağlantısı (yalnız https), GBF belge numarası ve revizyon günü (bugünden sonra olamaz, 422 `chemical_sds_date_future`); hepsi isteğe bağlı. GBF dosyası saklanmaz (K-240). Kartın kimyasal bilgisi zaten varsa 409 `stock_item_chemical_exists`; olmayan ya da başka kurumun kartı 404. Kimyasal kartın girişi bundan sonra parti ve son kullanma günü ister (K-241). Yanıt kart ayrıntısıdır. Rol: `yonetici` (K-180, K-240). Modül `finance`.
+         */
+        post: operations["createStockChemicalProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Kimyasal bilgisini düzelt
+         * @description Kısmi düzeltme (DOM-FIN-090): GHS piktogramları (`GHS01`…`GHS09`, çoklu), sinyal kelimesi (`danger` Tehlike, `warning` Dikkat), CAS numarası (biçim ve sağlama basamağı), depolama sınıfı (≤ 80), uyumsuzluk notu (≤ 500), GBF bağlantısı (yalnız https), GBF belge numarası ve revizyon günü (bugünden sonra olamaz, 422 `chemical_sds_date_future`); hepsi isteğe bağlı. GBF dosyası saklanmaz (K-240). Kimyasal bilgisi yoksa ya da kart başka kurumunsa 404; sürüm tutmazsa 409 `version_conflict`. `If-Match` kimyasal bilgisinin sürümüdür (`chemical.version`). Kimyasal bilgisi kaldırılmaz. Rol: `yonetici` (K-180, K-240). Modül `finance`.
+         */
+        patch: operations["updateStockChemicalProfile"];
+        trace?: never;
+    };
+    "/api/v1/finance/chemical-lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kimyasal partileri ve son kullanma uyarısı
+         * @description Stoktaki (miktarı sıfırdan büyük) kimyasal partiler, depo başına (DOM-FIN-090). Miktar saklanmaz: çıkış en yakın son kullanma tarihli partiden düşer (FEFO), transfer partileri taşır, mal kabul girişi "parti bilgisi yok" satırındadır (K-241, K-242). Sıra en yakın son kullanma önce, partisiz sonda. `status=attention` süresi geçen (son kullanma günü bugünden önce) ve 30 gün içinde dolan partileri verir (uyarı listesi, K-243). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["listChemicalLots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/chemical-inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kimyasal envanter raporu
+         * @description Depo × kimyasal, stokta olanlar (DOM-FIN-090): kod, ad, CAS, GHS piktogramları, sinyal kelimesi, depolama sınıfı, GBF durumu, miktar, en yakın son kullanma, süresi geçen ve yaklaşan miktar ve FEFO sırasıyla partiler. Depo adı ve kart koduna göre; depo ve metinle (kod, ad, CAS) süzülür. `Accept: text/csv` süzgeçle eşleşen bütün satırları parti başına bir satır olarak verir: `;` ayırıcı, UTF-8 BOM, formül kaçışı, piktogramlar kod olarak; kişi verisi yoktur, taze oturum ve denetim istemez, kullanıcı başına 10/dk (K-243). PDF web'de bu yanıttan üretilir. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         */
+        get: operations["getChemicalInventory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -56953,6 +57017,8 @@ export interface operations {
                 critical?: "true";
                 /** @description Miktar yalnız bu depodan */
                 warehouseId?: string;
+                /** @description `true`: yalnız kimyasal kartlar (DOM-FIN-090) */
+                chemical?: "true";
             };
             header?: never;
             path?: never;
@@ -56982,6 +57048,8 @@ export interface operations {
                             quantity: number;
                             /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
                             isBelowMinimum: boolean;
+                            /** @description Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090) */
+                            isChemical: boolean;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         }[];
@@ -57110,10 +57178,28 @@ export interface operations {
                             quantity: number;
                             /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
                             isBelowMinimum: boolean;
+                            /** @description Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090) */
+                            isChemical: boolean;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Hareketi varsa birim değişmez (K-182) */
                             hasMovements: boolean;
+                            chemical: {
+                                /** @description GHS piktogram kodları, kod sırasıyla */
+                                hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                                /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                                signalWord: ("danger" | "warning") | null;
+                                casNumber: string | null;
+                                storageClass: string | null;
+                                incompatibilityNote: string | null;
+                                /** @description GBF bağlantısı (https) */
+                                sdsUrl: string | null;
+                                /** @description GBF belge numarası */
+                                sdsDocumentNumber: string | null;
+                                sdsRevisionDate: string | null;
+                                /** @description `If-Match` için kimyasal bilgisinin sürümü */
+                                version: number;
+                            } | null;
                             /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
                             balances: {
                                 warehouseId: string;
@@ -57374,10 +57460,28 @@ export interface operations {
                             quantity: number;
                             /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
                             isBelowMinimum: boolean;
+                            /** @description Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090) */
+                            isChemical: boolean;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Hareketi varsa birim değişmez (K-182) */
                             hasMovements: boolean;
+                            chemical: {
+                                /** @description GHS piktogram kodları, kod sırasıyla */
+                                hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                                /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                                signalWord: ("danger" | "warning") | null;
+                                casNumber: string | null;
+                                storageClass: string | null;
+                                incompatibilityNote: string | null;
+                                /** @description GBF bağlantısı (https) */
+                                sdsUrl: string | null;
+                                /** @description GBF belge numarası */
+                                sdsDocumentNumber: string | null;
+                                sdsRevisionDate: string | null;
+                                /** @description `If-Match` için kimyasal bilgisinin sürümü */
+                                version: number;
+                            } | null;
                             /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
                             balances: {
                                 warehouseId: string;
@@ -57516,10 +57620,28 @@ export interface operations {
                             quantity: number;
                             /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
                             isBelowMinimum: boolean;
+                            /** @description Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090) */
+                            isChemical: boolean;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Hareketi varsa birim değişmez (K-182) */
                             hasMovements: boolean;
+                            chemical: {
+                                /** @description GHS piktogram kodları, kod sırasıyla */
+                                hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                                /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                                signalWord: ("danger" | "warning") | null;
+                                casNumber: string | null;
+                                storageClass: string | null;
+                                incompatibilityNote: string | null;
+                                /** @description GBF bağlantısı (https) */
+                                sdsUrl: string | null;
+                                /** @description GBF belge numarası */
+                                sdsDocumentNumber: string | null;
+                                sdsRevisionDate: string | null;
+                                /** @description `If-Match` için kimyasal bilgisinin sürümü */
+                                version: number;
+                            } | null;
                             /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
                             balances: {
                                 warehouseId: string;
@@ -58020,6 +58142,10 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Kimyasal girişinin partisi (DOM-FIN-090) */
+                            lotNumber: string | null;
+                            /** @description Partinin son kullanma günü */
+                            expiryDate: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -58132,6 +58258,9 @@ export interface operations {
                     warehouseId: string;
                     /** @enum {string} */
                     reason: "opening" | "donation" | "count_surplus" | "returned" | "other";
+                    lotNumber?: string | null;
+                    /** @default null */
+                    expiryDate?: string | null;
                 };
             };
         };
@@ -58168,6 +58297,10 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Kimyasal girişinin partisi (DOM-FIN-090) */
+                            lotNumber: string | null;
+                            /** @description Partinin son kullanma günü */
+                            expiryDate: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -58315,6 +58448,10 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Kimyasal girişinin partisi (DOM-FIN-090) */
+                            lotNumber: string | null;
+                            /** @description Partinin son kullanma günü */
+                            expiryDate: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -58465,6 +58602,10 @@ export interface operations {
                                 /** @description Mal kabul girişinde sipariş */
                                 orderId: string | null;
                                 orderNumber: string | null;
+                                /** @description Kimyasal girişinin partisi (DOM-FIN-090) */
+                                lotNumber: string | null;
+                                /** @description Partinin son kullanma günü */
+                                expiryDate: string | null;
                                 createdAt: string;
                                 createdByName: string | null;
                                 cancelledAt: string | null;
@@ -58609,6 +58750,10 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Kimyasal girişinin partisi (DOM-FIN-090) */
+                            lotNumber: string | null;
+                            /** @description Partinin son kullanma günü */
+                            expiryDate: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -62968,6 +63113,607 @@ export interface operations {
                             location: string;
                             /** @description Bu yerde kayıtlı, hurdaya ayrılmamış demirbaş sayısı */
                             assetCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStockChemicalProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    hazardPictograms?: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                    /** @default null */
+                    signalWord?: ("danger" | "warning") | null;
+                    casNumber?: string | null;
+                    storageClass?: string | null;
+                    incompatibilityNote?: string | null;
+                    sdsUrl?: string | null;
+                    sdsDocumentNumber?: string | null;
+                    /** @default null */
+                    sdsRevisionDate?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090) */
+                            isChemical: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            chemical: {
+                                /** @description GHS piktogram kodları, kod sırasıyla */
+                                hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                                /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                                signalWord: ("danger" | "warning") | null;
+                                casNumber: string | null;
+                                storageClass: string | null;
+                                incompatibilityNote: string | null;
+                                /** @description GBF bağlantısı (https) */
+                                sdsUrl: string | null;
+                                /** @description GBF belge numarası */
+                                sdsDocumentNumber: string | null;
+                                sdsRevisionDate: string | null;
+                                /** @description `If-Match` için kimyasal bilgisinin sürümü */
+                                version: number;
+                            } | null;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStockChemicalProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    hazardPictograms?: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                    signalWord?: ("danger" | "warning") | null;
+                    casNumber?: string | null;
+                    storageClass?: string | null;
+                    incompatibilityNote?: string | null;
+                    sdsUrl?: string | null;
+                    sdsDocumentNumber?: string | null;
+                    sdsRevisionDate?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Kritik seviye; boşsa yok */
+                            minQuantity: number | null;
+                            isActive: boolean;
+                            /** @description Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo) */
+                            quantity: number;
+                            /** @description Miktar kritik seviyeye eşit ya da altında (K-182) */
+                            isBelowMinimum: boolean;
+                            /** @description Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090) */
+                            isChemical: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hareketi varsa birim değişmez (K-182) */
+                            hasMovements: boolean;
+                            chemical: {
+                                /** @description GHS piktogram kodları, kod sırasıyla */
+                                hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                                /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                                signalWord: ("danger" | "warning") | null;
+                                casNumber: string | null;
+                                storageClass: string | null;
+                                incompatibilityNote: string | null;
+                                /** @description GBF bağlantısı (https) */
+                                sdsUrl: string | null;
+                                /** @description GBF belge numarası */
+                                sdsDocumentNumber: string | null;
+                                sdsRevisionDate: string | null;
+                                /** @description `If-Match` için kimyasal bilgisinin sürümü */
+                                version: number;
+                            } | null;
+                            /** @description Depo başına miktar: etkin depolar ve miktarı olan pasif depolar */
+                            balances: {
+                                warehouseId: string;
+                                warehouseName: string;
+                                campusName: string | null;
+                                isActive: boolean;
+                                /** @description Bu depodaki miktar */
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listChemicalLots: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `attention`: süresi geçen ve 30 gün içinde dolan partiler (uyarı listesi) */
+                status?: "attention" | "expired" | "expiring" | "ok" | "unknown";
+                /** @description Stok kartı */
+                itemId?: string;
+                /** @description Depo */
+                warehouseId?: string;
+                /** @description Kod, ad, CAS ve parti numarasında arama, Türkçe harf duyarsız */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Satır anahtarı: kart, depo, parti ve son kullanma */
+                            key: string;
+                            itemId: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description GHS piktogram kodları, kod sırasıyla */
+                            hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                            /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                            signalWord: ("danger" | "warning") | null;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            warehouseIsActive: boolean;
+                            /** @description Parti numarası; boşsa parti bilgisi olmayan miktar */
+                            lotNumber: string | null;
+                            /** @description Son kullanma günü */
+                            expiryDate: string | null;
+                            /** @description Partide kalan miktar (FEFO ile türetilir, K-242) */
+                            quantity: number;
+                            /**
+                             * @description `expired` süresi geçti, `expiring` 30 gün içinde doluyor, `ok`, `unknown` parti bilgisi yok (K-243)
+                             * @enum {string}
+                             */
+                            status: "expired" | "expiring" | "ok" | "unknown";
+                            /** @description Son kullanmaya kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getChemicalInventory: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Depo */
+                warehouseId?: string;
+                /** @description Kod, ad ve CAS numarasında arama, Türkçe harf duyarsız */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Satır anahtarı: depo ve kart */
+                            key: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            itemId: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            casNumber: string | null;
+                            /** @description GHS piktogram kodları, kod sırasıyla */
+                            hazardPictograms: ("GHS01" | "GHS02" | "GHS03" | "GHS04" | "GHS05" | "GHS06" | "GHS07" | "GHS08" | "GHS09")[];
+                            /** @description Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat */
+                            signalWord: ("danger" | "warning") | null;
+                            storageClass: string | null;
+                            /** @description GBF bağlantısı ya da belge numarası var */
+                            hasSds: boolean;
+                            /** @description Depodaki miktar */
+                            quantity: number;
+                            nearestExpiryDate: string | null;
+                            expiredQuantity: number;
+                            expiringQuantity: number;
+                            /** @description Partiler, FEFO sırasıyla */
+                            lots: {
+                                /** @description Parti numarası; boşsa parti bilgisi olmayan miktar */
+                                lotNumber: string | null;
+                                /** @description Son kullanma günü */
+                                expiryDate: string | null;
+                                /** @description Partide kalan miktar (FEFO ile türetilir, K-242) */
+                                quantity: number;
+                                /**
+                                 * @description `expired` süresi geçti, `expiring` 30 gün içinde doluyor, `ok`, `unknown` parti bilgisi yok (K-243)
+                                 * @enum {string}
+                                 */
+                                status: "expired" | "expiring" | "ok" | "unknown";
+                                /** @description Son kullanmaya kalan gün; geçtiyse eksi */
+                                daysLeft: number | null;
+                            }[];
                         }[];
                         meta: components["schemas"]["PageMeta"];
                     };

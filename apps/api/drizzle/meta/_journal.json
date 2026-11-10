@@ -624,6 +624,13 @@
       "when": 1794171517093,
       "tag": "0088_create_material_sets",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794306323603,
+      "tag": "0089_create_fixed_asset_counts",
+      "breakpoints": true
     }
   ]
 }

@@ -5804,6 +5804,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/fixed-asset-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demirbaş sayımlarını listele
+         * @description Süren sayımlar önce, sonra yeni başlayan önce; her satırda beklenen, bulunan, yanlış konumda, okunmayan ve listede olmayan sayıları. `status` ile süzülür (DOM-FIN-087). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssetCounts"];
+        put?: never;
+        /**
+         * Demirbaş sayımı başlat
+         * @description Kapsam bütün kurum (`institution`), bir kampüs (`campus`, `campusId`) ya da bir oda (`location`, isteğe bağlı `campusId` ve `location`). Başlarken kapsamdaki hurdaya ayrılmamış demirbaşlar beklenen liste olarak dondurulur; oda konumla harf ve boşluk farkı gözetmeden eşleşir (K-232). Aynı kapsamda süren sayım 409 `fixed_asset_count_open_exists` (K-234); olmayan kampüs 422 `fixed_asset_campus_not_found`; kapsamda demirbaş yoksa 422 `fixed_asset_count_empty`, 5000'den fazlaysa 422 `fixed_asset_count_too_large`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["startFixedAssetCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sayım ayrıntısı
+         * @description Kapsam, durum ve özet. Olmayan ya da başka kurumun sayımı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["getFixedAssetCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sayım satırları (sonuç raporu)
+         * @description Etiket sırasıyla beklenen ve okutulan demirbaşlar: kayıtlı yer, sayılan yer, sonuç (`pending` tamamlanmış sayımda bulunamadı), okutma zamanı ve konum düzeltmesi. `result`, `inScope` ve `q` (etiket, ad) ile süzülür. Rapor CSV'si ve PDF'i istemcide bu satırlardan üretilir; kişi verisi yoktur. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssetCountItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etiket okut
+         * @description Karekod okuyucunun ya da elle yazılan etiket kodu (büyük harfe çevrilir; Türkçe Q düzeninde gelen `*` ve `ç` geri çevrilir). Kurum ve kampüs sayımında sayılan oda (`location`, kurum sayımında isteğe bağlı `campusId`) zorunlu, eksikse 422 `fixed_asset_count_location_required`; oda sayımında yer sayımın odasıdır. Sayılan yer kayıtlı yerle aynıysa `found`, değilse `misplaced`; beklenen listede olmayan kurum demirbaşı `inScope: false` satırıyla eklenir. Daha önce okunan demirbaş `already_counted` döner, değişmez (K-233). Kurumda olmayan kod (başka kurumun etiketi dahil) 422 `fixed_asset_count_code_unknown`, hurdaya ayrılmış demirbaş 422 `fixed_asset_count_asset_scrapped`, kapanmış sayım 422 `fixed_asset_count_closed`, olmayan kampüs 422 `fixed_asset_campus_not_found`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["scanFixedAssetCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sayımı tamamla
+         * @description Okunmayan beklenen demirbaşlar bulunamadı raporlanır; demirbaş kayıtları değişmez, bulunamayan hurdaya ayrılmaz (K-235). Yalnız süren sayım kapanır, değilse 422 `fixed_asset_count_closed`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["completeFixedAssetCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sayımı iptal et
+         * @description Okutmalar saklanır, sayım raporda iptal görünür; aynı kapsamda yeni sayım açılabilir (K-234). Yalnız süren sayım kapanır, değilse 422 `fixed_asset_count_closed`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["cancelFixedAssetCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}/items/{itemId}/relocate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demirbaşın konumunu sayılan yere düzelt
+         * @description Tamamlanmış sayımda yanlış konumda bulunan demirbaşın kampüsü ve konumu okutulduğu yere yazılır; durum ve zimmet değişmez (K-235). Tamamlanmamış sayım 422 `fixed_asset_count_not_completed`, yanlış konumda olmayan satır 422 `fixed_asset_count_item_not_misplaced`, düzeltilmiş satır 422 `fixed_asset_count_item_relocated`, hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`, artık olmayan kampüs 422 `fixed_asset_campus_not_found`. `If-Match` satırın sürümüdür. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["relocateFixedAssetCountItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demirbaşların bulunduğu yerler
+         * @description Hurdaya ayrılmamış demirbaşların kampüs ve konumları, her yerde kayıtlı demirbaş sayısıyla; sayım kapsamı ve sayılan oda seçimi için öneri. `q` konumda arar, `campusId` süzer. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        get: operations["listFixedAssetPlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -58691,6 +58855,17 @@ export interface operations {
                             } | null;
                             scrappedAt: string | null;
                             scrapReason: string | null;
+                            /** @description Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş */
+                            lastCount: {
+                                countId: string;
+                                /** @description Sayımın tamamlandığı zaman */
+                                completedAt: string;
+                                /**
+                                 * @description `found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı
+                                 * @enum {string}
+                                 */
+                                outcome: "found" | "misplaced" | "missing" | "pending";
+                            } | null;
                             createdAt: string;
                         };
                     };
@@ -58967,6 +59142,17 @@ export interface operations {
                             } | null;
                             scrappedAt: string | null;
                             scrapReason: string | null;
+                            /** @description Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş */
+                            lastCount: {
+                                countId: string;
+                                /** @description Sayımın tamamlandığı zaman */
+                                completedAt: string;
+                                /**
+                                 * @description `found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı
+                                 * @enum {string}
+                                 */
+                                outcome: "found" | "misplaced" | "missing" | "pending";
+                            } | null;
                             createdAt: string;
                         };
                     };
@@ -59148,6 +59334,17 @@ export interface operations {
                             } | null;
                             scrappedAt: string | null;
                             scrapReason: string | null;
+                            /** @description Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş */
+                            lastCount: {
+                                countId: string;
+                                /** @description Sayımın tamamlandığı zaman */
+                                completedAt: string;
+                                /**
+                                 * @description `found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı
+                                 * @enum {string}
+                                 */
+                                outcome: "found" | "misplaced" | "missing" | "pending";
+                            } | null;
                             createdAt: string;
                         };
                     };
@@ -59320,6 +59517,17 @@ export interface operations {
                             } | null;
                             scrappedAt: string | null;
                             scrapReason: string | null;
+                            /** @description Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş */
+                            lastCount: {
+                                countId: string;
+                                /** @description Sayımın tamamlandığı zaman */
+                                completedAt: string;
+                                /**
+                                 * @description `found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı
+                                 * @enum {string}
+                                 */
+                                outcome: "found" | "misplaced" | "missing" | "pending";
+                            } | null;
                             createdAt: string;
                         };
                     };
@@ -61244,6 +61452,1242 @@ export interface operations {
                             active: boolean;
                             /** @description Üzerindeki açık zimmet sayısı */
                             openAssignmentCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssetCounts: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Durum */
+                status?: "open" | "completed" | "cancelled";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `institution` bütün kurum, `campus` kampüs, `location` oda/konum
+                             * @enum {string}
+                             */
+                            scopeType: "institution" | "campus" | "location";
+                            campusId: string | null;
+                            /** @description Kapsam kampüsünün adı; arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda sayımında oda ya da yer */
+                            location: string | null;
+                            note: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            startedAt: string;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için sürüm (tamamlama, iptal) */
+                            version: number;
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startFixedAssetCount: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    scopeType: "institution";
+                    /** @description İsteğe bağlı açıklama (ör. 2026 yıl sonu sayımı) */
+                    note?: string | null;
+                } | {
+                    /** @enum {string} */
+                    scopeType: "campus";
+                    /** @description Sayılan kampüs (branches kaydı) */
+                    campusId: string;
+                    /** @description İsteğe bağlı açıklama */
+                    note?: string | null;
+                } | {
+                    /** @enum {string} */
+                    scopeType: "location";
+                    /**
+                     * @description Odanın kampüsü; tek kampüslü kurumda boş
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /** @description Sayılan oda ya da yer */
+                    location: string;
+                    /** @description İsteğe bağlı açıklama */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `institution` bütün kurum, `campus` kampüs, `location` oda/konum
+                             * @enum {string}
+                             */
+                            scopeType: "institution" | "campus" | "location";
+                            campusId: string | null;
+                            /** @description Kapsam kampüsünün adı; arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda sayımında oda ya da yer */
+                            location: string | null;
+                            note: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            startedAt: string;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için sürüm (tamamlama, iptal) */
+                            version: number;
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFixedAssetCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `institution` bütün kurum, `campus` kampüs, `location` oda/konum
+                             * @enum {string}
+                             */
+                            scopeType: "institution" | "campus" | "location";
+                            campusId: string | null;
+                            /** @description Kapsam kampüsünün adı; arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda sayımında oda ya da yer */
+                            location: string | null;
+                            note: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            startedAt: string;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için sürüm (tamamlama, iptal) */
+                            version: number;
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssetCountItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Sonuç */
+                result?: "pending" | "found" | "misplaced";
+                /** @description `false` yalnız beklenen listede olmayan okutmalar */
+                inScope?: "true" | "false";
+                /** @description Etiket ve adda arama */
+                q?: string;
+            };
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assetId: string;
+                            /** @description Sayım başlarken beklenen listede miydi */
+                            inScope: boolean;
+                            /** @description Etiketin sayım anındaki kopyası */
+                            tagNumber: string;
+                            assetName: string;
+                            recordedCampusId: string | null;
+                            recordedCampusName: string | null;
+                            /** @description Demirbaş kaydındaki konum (sayım anı) */
+                            recordedLocation: string;
+                            /**
+                             * @description `pending` okunmadı (tamamlanmışta bulunamadı), `found`, `misplaced`
+                             * @enum {string}
+                             */
+                            result: "pending" | "found" | "misplaced";
+                            observedCampusId: string | null;
+                            observedCampusName: string | null;
+                            /** @description Okutulduğu yer */
+                            observedLocation: string | null;
+                            scannedAt: string | null;
+                            /** @description Konumu sayılan yere düzeltildiyse zamanı */
+                            relocatedAt: string | null;
+                            /** @description `If-Match` için sürüm (konum düzeltmesi) */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scanFixedAssetCount: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Etiket numarası (karekod içeriği) */
+                    code: string;
+                    /**
+                     * @description Kurum sayımında sayılan kampüs; kampüs ve oda sayımında yok sayılır
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /**
+                     * @description Kurum ve kampüs sayımında sayılan oda ya da yer (zorunlu); oda sayımında yok sayılır
+                     * @default null
+                     */
+                    location?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `found`, `misplaced` ya da daha önce okunmuş `already_counted`
+                             * @enum {string}
+                             */
+                            outcome: "found" | "misplaced" | "already_counted";
+                            item: {
+                                id: string;
+                                assetId: string;
+                                /** @description Sayım başlarken beklenen listede miydi */
+                                inScope: boolean;
+                                /** @description Etiketin sayım anındaki kopyası */
+                                tagNumber: string;
+                                assetName: string;
+                                recordedCampusId: string | null;
+                                recordedCampusName: string | null;
+                                /** @description Demirbaş kaydındaki konum (sayım anı) */
+                                recordedLocation: string;
+                                /**
+                                 * @description `pending` okunmadı (tamamlanmışta bulunamadı), `found`, `misplaced`
+                                 * @enum {string}
+                                 */
+                                result: "pending" | "found" | "misplaced";
+                                observedCampusId: string | null;
+                                observedCampusName: string | null;
+                                /** @description Okutulduğu yer */
+                                observedLocation: string | null;
+                                scannedAt: string | null;
+                                /** @description Konumu sayılan yere düzeltildiyse zamanı */
+                                relocatedAt: string | null;
+                                /** @description `If-Match` için sürüm (konum düzeltmesi) */
+                                version: number;
+                            };
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeFixedAssetCount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `institution` bütün kurum, `campus` kampüs, `location` oda/konum
+                             * @enum {string}
+                             */
+                            scopeType: "institution" | "campus" | "location";
+                            campusId: string | null;
+                            /** @description Kapsam kampüsünün adı; arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda sayımında oda ya da yer */
+                            location: string | null;
+                            note: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            startedAt: string;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için sürüm (tamamlama, iptal) */
+                            version: number;
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelFixedAssetCount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `institution` bütün kurum, `campus` kampüs, `location` oda/konum
+                             * @enum {string}
+                             */
+                            scopeType: "institution" | "campus" | "location";
+                            campusId: string | null;
+                            /** @description Kapsam kampüsünün adı; arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda sayımında oda ya da yer */
+                            location: string | null;
+                            note: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            startedAt: string;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için sürüm (tamamlama, iptal) */
+                            version: number;
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    relocateFixedAssetCountItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                countId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assetId: string;
+                            /** @description Sayım başlarken beklenen listede miydi */
+                            inScope: boolean;
+                            /** @description Etiketin sayım anındaki kopyası */
+                            tagNumber: string;
+                            assetName: string;
+                            recordedCampusId: string | null;
+                            recordedCampusName: string | null;
+                            /** @description Demirbaş kaydındaki konum (sayım anı) */
+                            recordedLocation: string;
+                            /**
+                             * @description `pending` okunmadı (tamamlanmışta bulunamadı), `found`, `misplaced`
+                             * @enum {string}
+                             */
+                            result: "pending" | "found" | "misplaced";
+                            observedCampusId: string | null;
+                            observedCampusName: string | null;
+                            /** @description Okutulduğu yer */
+                            observedLocation: string | null;
+                            scannedAt: string | null;
+                            /** @description Konumu sayılan yere düzeltildiyse zamanı */
+                            relocatedAt: string | null;
+                            /** @description `If-Match` için sürüm (konum düzeltmesi) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFixedAssetPlaces: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Konumda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Kampüs */
+                campusId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            campusId: string | null;
+                            campusName: string | null;
+                            location: string;
+                            /** @description Bu yerde kayıtlı, hurdaya ayrılmamış demirbaş sayısı */
+                            assetCount: number;
                         }[];
                         meta: components["schemas"]["PageMeta"];
                     };

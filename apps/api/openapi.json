@@ -127697,6 +127697,42 @@
                             "null"
                           ]
                         },
+                        "lastCount": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "countId": {
+                                  "type": "string"
+                                },
+                                "completedAt": {
+                                  "type": "string",
+                                  "description": "Sayımın tamamlandığı zaman"
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "found",
+                                    "misplaced",
+                                    "missing",
+                                    "pending"
+                                  ],
+                                  "description": "`found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı"
+                                }
+                              },
+                              "required": [
+                                "countId",
+                                "completedAt",
+                                "outcome"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş"
+                        },
                         "createdAt": {
                           "type": "string"
                         }
@@ -127721,6 +127757,7 @@
                         "receipt",
                         "scrappedAt",
                         "scrapReason",
+                        "lastCount",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -128305,6 +128342,42 @@
                             "null"
                           ]
                         },
+                        "lastCount": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "countId": {
+                                  "type": "string"
+                                },
+                                "completedAt": {
+                                  "type": "string",
+                                  "description": "Sayımın tamamlandığı zaman"
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "found",
+                                    "misplaced",
+                                    "missing",
+                                    "pending"
+                                  ],
+                                  "description": "`found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı"
+                                }
+                              },
+                              "required": [
+                                "countId",
+                                "completedAt",
+                                "outcome"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş"
+                        },
                         "createdAt": {
                           "type": "string"
                         }
@@ -128329,6 +128402,7 @@
                         "receipt",
                         "scrappedAt",
                         "scrapReason",
+                        "lastCount",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -128812,6 +128886,42 @@
                             "null"
                           ]
                         },
+                        "lastCount": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "countId": {
+                                  "type": "string"
+                                },
+                                "completedAt": {
+                                  "type": "string",
+                                  "description": "Sayımın tamamlandığı zaman"
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "found",
+                                    "misplaced",
+                                    "missing",
+                                    "pending"
+                                  ],
+                                  "description": "`found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı"
+                                }
+                              },
+                              "required": [
+                                "countId",
+                                "completedAt",
+                                "outcome"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş"
+                        },
                         "createdAt": {
                           "type": "string"
                         }
@@ -128836,6 +128946,7 @@
                         "receipt",
                         "scrappedAt",
                         "scrapReason",
+                        "lastCount",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -129254,6 +129365,42 @@
                             "null"
                           ]
                         },
+                        "lastCount": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "countId": {
+                                  "type": "string"
+                                },
+                                "completedAt": {
+                                  "type": "string",
+                                  "description": "Sayımın tamamlandığı zaman"
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "found",
+                                    "misplaced",
+                                    "missing",
+                                    "pending"
+                                  ],
+                                  "description": "`found` bulundu, `misplaced` yanlış konumda, `missing` bulunamadı"
+                                }
+                              },
+                              "required": [
+                                "countId",
+                                "completedAt",
+                                "outcome"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş"
+                        },
                         "createdAt": {
                           "type": "string"
                         }
@@ -129278,6 +129425,7 @@
                         "receipt",
                         "scrappedAt",
                         "scrapReason",
+                        "lastCount",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -133564,6 +133712,2576 @@
                           "role",
                           "active",
                           "openAssignmentCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts": {
+      "get": {
+        "operationId": "listFixedAssetCounts",
+        "summary": "Demirbaş sayımlarını listele",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Süren sayımlar önce, sonra yeni başlayan önce; her satırda beklenen, bulunan, yanlış konumda, okunmayan ve listede olmayan sayıları. `status` ile süzülür (DOM-FIN-087). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "completed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "scopeType": {
+                            "type": "string",
+                            "enum": [
+                              "institution",
+                              "campus",
+                              "location"
+                            ],
+                            "description": "`institution` bütün kurum, `campus` kampüs, `location` oda/konum"
+                          },
+                          "campusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "campusName": {
+                            "description": "Kapsam kampüsünün adı; arşivlendiyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "description": "Oda sayımında oda ya da yer",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "completed",
+                              "cancelled"
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string"
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için sürüm (tamamlama, iptal)"
+                          },
+                          "summary": {
+                            "type": "object",
+                            "properties": {
+                              "expected": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Beklenen listedeki demirbaş sayısı"
+                              },
+                              "found": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kayıtlı yerinde bulunan"
+                              },
+                              "misplaced": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Başka yerde bulunan"
+                              },
+                              "pending": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                              },
+                              "extra": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                              }
+                            },
+                            "required": [
+                              "expected",
+                              "found",
+                              "misplaced",
+                              "pending",
+                              "extra"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Satırlardan sayılan özet"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "scopeType",
+                          "campusId",
+                          "campusName",
+                          "location",
+                          "note",
+                          "status",
+                          "startedAt",
+                          "completedAt",
+                          "cancelledAt",
+                          "version",
+                          "summary"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "startFixedAssetCount",
+        "summary": "Demirbaş sayımı başlat",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Kapsam bütün kurum (`institution`), bir kampüs (`campus`, `campusId`) ya da bir oda (`location`, isteğe bağlı `campusId` ve `location`). Başlarken kapsamdaki hurdaya ayrılmamış demirbaşlar beklenen liste olarak dondurulur; oda konumla harf ve boşluk farkı gözetmeden eşleşir (K-232). Aynı kapsamda süren sayım 409 `fixed_asset_count_open_exists` (K-234); olmayan kampüs 422 `fixed_asset_campus_not_found`; kapsamda demirbaş yoksa 422 `fixed_asset_count_empty`, 5000'den fazlaysa 422 `fixed_asset_count_too_large`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "scopeType": {
+                        "type": "string",
+                        "enum": [
+                          "institution"
+                        ]
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı açıklama (ör. 2026 yıl sonu sayımı)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "scopeType"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "scopeType": {
+                        "type": "string",
+                        "enum": [
+                          "campus"
+                        ]
+                      },
+                      "campusId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Sayılan kampüs (branches kaydı)"
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı açıklama",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "scopeType",
+                      "campusId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "scopeType": {
+                        "type": "string",
+                        "enum": [
+                          "location"
+                        ]
+                      },
+                      "campusId": {
+                        "default": null,
+                        "description": "Odanın kampüsü; tek kampüslü kurumda boş",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120,
+                        "description": "Sayılan oda ya da yer"
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı açıklama",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "scopeType",
+                      "location"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "scopeType": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "campus",
+                            "location"
+                          ],
+                          "description": "`institution` bütün kurum, `campus` kampüs, `location` oda/konum"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kapsam kampüsünün adı; arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Oda sayımında oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm (tamamlama, iptal)"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "expected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listedeki demirbaş sayısı"
+                            },
+                            "found": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kayıtlı yerinde bulunan"
+                            },
+                            "misplaced": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Başka yerde bulunan"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                            },
+                            "extra": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                            }
+                          },
+                          "required": [
+                            "expected",
+                            "found",
+                            "misplaced",
+                            "pending",
+                            "extra"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Satırlardan sayılan özet"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "scopeType",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "note",
+                        "status",
+                        "startedAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "version",
+                        "summary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}": {
+      "get": {
+        "operationId": "getFixedAssetCount",
+        "summary": "Sayım ayrıntısı",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Kapsam, durum ve özet. Olmayan ya da başka kurumun sayımı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "scopeType": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "campus",
+                            "location"
+                          ],
+                          "description": "`institution` bütün kurum, `campus` kampüs, `location` oda/konum"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kapsam kampüsünün adı; arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Oda sayımında oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm (tamamlama, iptal)"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "expected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listedeki demirbaş sayısı"
+                            },
+                            "found": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kayıtlı yerinde bulunan"
+                            },
+                            "misplaced": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Başka yerde bulunan"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                            },
+                            "extra": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                            }
+                          },
+                          "required": [
+                            "expected",
+                            "found",
+                            "misplaced",
+                            "pending",
+                            "extra"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Satırlardan sayılan özet"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "scopeType",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "note",
+                        "status",
+                        "startedAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "version",
+                        "summary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}/items": {
+      "get": {
+        "operationId": "listFixedAssetCountItems",
+        "summary": "Sayım satırları (sonuç raporu)",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Etiket sırasıyla beklenen ve okutulan demirbaşlar: kayıtlı yer, sayılan yer, sonuç (`pending` tamamlanmış sayımda bulunamadı), okutma zamanı ve konum düzeltmesi. `result`, `inScope` ve `q` (etiket, ad) ile süzülür. Rapor CSV'si ve PDF'i istemcide bu satırlardan üretilir; kişi verisi yoktur. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "found",
+                "misplaced"
+              ]
+            },
+            "in": "query",
+            "name": "result",
+            "required": false,
+            "description": "Sonuç"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "inScope",
+            "required": false,
+            "description": "`false` yalnız beklenen listede olmayan okutmalar"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Etiket ve adda arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "assetId": {
+                            "type": "string"
+                          },
+                          "inScope": {
+                            "type": "boolean",
+                            "description": "Sayım başlarken beklenen listede miydi"
+                          },
+                          "tagNumber": {
+                            "type": "string",
+                            "description": "Etiketin sayım anındaki kopyası"
+                          },
+                          "assetName": {
+                            "type": "string"
+                          },
+                          "recordedCampusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recordedCampusName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recordedLocation": {
+                            "type": "string",
+                            "description": "Demirbaş kaydındaki konum (sayım anı)"
+                          },
+                          "result": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "found",
+                              "misplaced"
+                            ],
+                            "description": "`pending` okunmadı (tamamlanmışta bulunamadı), `found`, `misplaced`"
+                          },
+                          "observedCampusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "observedCampusName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "observedLocation": {
+                            "description": "Okutulduğu yer",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "scannedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "relocatedAt": {
+                            "description": "Konumu sayılan yere düzeltildiyse zamanı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için sürüm (konum düzeltmesi)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "assetId",
+                          "inScope",
+                          "tagNumber",
+                          "assetName",
+                          "recordedCampusId",
+                          "recordedCampusName",
+                          "recordedLocation",
+                          "result",
+                          "observedCampusId",
+                          "observedCampusName",
+                          "observedLocation",
+                          "scannedAt",
+                          "relocatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}/scans": {
+      "post": {
+        "operationId": "scanFixedAssetCount",
+        "summary": "Etiket okut",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Karekod okuyucunun ya da elle yazılan etiket kodu (büyük harfe çevrilir; Türkçe Q düzeninde gelen `*` ve `ç` geri çevrilir). Kurum ve kampüs sayımında sayılan oda (`location`, kurum sayımında isteğe bağlı `campusId`) zorunlu, eksikse 422 `fixed_asset_count_location_required`; oda sayımında yer sayımın odasıdır. Sayılan yer kayıtlı yerle aynıysa `found`, değilse `misplaced`; beklenen listede olmayan kurum demirbaşı `inScope: false` satırıyla eklenir. Daha önce okunan demirbaş `already_counted` döner, değişmez (K-233). Kurumda olmayan kod (başka kurumun etiketi dahil) 422 `fixed_asset_count_code_unknown`, hurdaya ayrılmış demirbaş 422 `fixed_asset_count_asset_scrapped`, kapanmış sayım 422 `fixed_asset_count_closed`, olmayan kampüs 422 `fixed_asset_campus_not_found`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "description": "Etiket numarası (karekod içeriği)",
+                    "type": "string"
+                  },
+                  "campusId": {
+                    "default": null,
+                    "description": "Kurum sayımında sayılan kampüs; kampüs ve oda sayımında yok sayılır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "default": null,
+                    "description": "Kurum ve kampüs sayımında sayılan oda ya da yer (zorunlu); oda sayımında yok sayılır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "found",
+                            "misplaced",
+                            "already_counted"
+                          ],
+                          "description": "`found`, `misplaced` ya da daha önce okunmuş `already_counted`"
+                        },
+                        "item": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "assetId": {
+                              "type": "string"
+                            },
+                            "inScope": {
+                              "type": "boolean",
+                              "description": "Sayım başlarken beklenen listede miydi"
+                            },
+                            "tagNumber": {
+                              "type": "string",
+                              "description": "Etiketin sayım anındaki kopyası"
+                            },
+                            "assetName": {
+                              "type": "string"
+                            },
+                            "recordedCampusId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "recordedCampusName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "recordedLocation": {
+                              "type": "string",
+                              "description": "Demirbaş kaydındaki konum (sayım anı)"
+                            },
+                            "result": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "found",
+                                "misplaced"
+                              ],
+                              "description": "`pending` okunmadı (tamamlanmışta bulunamadı), `found`, `misplaced`"
+                            },
+                            "observedCampusId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "observedCampusName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "observedLocation": {
+                              "description": "Okutulduğu yer",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "scannedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "relocatedAt": {
+                              "description": "Konumu sayılan yere düzeltildiyse zamanı",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için sürüm (konum düzeltmesi)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "assetId",
+                            "inScope",
+                            "tagNumber",
+                            "assetName",
+                            "recordedCampusId",
+                            "recordedCampusName",
+                            "recordedLocation",
+                            "result",
+                            "observedCampusId",
+                            "observedCampusName",
+                            "observedLocation",
+                            "scannedAt",
+                            "relocatedAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "expected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listedeki demirbaş sayısı"
+                            },
+                            "found": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kayıtlı yerinde bulunan"
+                            },
+                            "misplaced": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Başka yerde bulunan"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                            },
+                            "extra": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                            }
+                          },
+                          "required": [
+                            "expected",
+                            "found",
+                            "misplaced",
+                            "pending",
+                            "extra"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Satırlardan sayılan özet"
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "item",
+                        "summary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}/complete": {
+      "post": {
+        "operationId": "completeFixedAssetCount",
+        "summary": "Sayımı tamamla",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Okunmayan beklenen demirbaşlar bulunamadı raporlanır; demirbaş kayıtları değişmez, bulunamayan hurdaya ayrılmaz (K-235). Yalnız süren sayım kapanır, değilse 422 `fixed_asset_count_closed`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "scopeType": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "campus",
+                            "location"
+                          ],
+                          "description": "`institution` bütün kurum, `campus` kampüs, `location` oda/konum"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kapsam kampüsünün adı; arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Oda sayımında oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm (tamamlama, iptal)"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "expected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listedeki demirbaş sayısı"
+                            },
+                            "found": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kayıtlı yerinde bulunan"
+                            },
+                            "misplaced": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Başka yerde bulunan"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                            },
+                            "extra": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                            }
+                          },
+                          "required": [
+                            "expected",
+                            "found",
+                            "misplaced",
+                            "pending",
+                            "extra"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Satırlardan sayılan özet"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "scopeType",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "note",
+                        "status",
+                        "startedAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "version",
+                        "summary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}/cancel": {
+      "post": {
+        "operationId": "cancelFixedAssetCount",
+        "summary": "Sayımı iptal et",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Okutmalar saklanır, sayım raporda iptal görünür; aynı kapsamda yeni sayım açılabilir (K-234). Yalnız süren sayım kapanır, değilse 422 `fixed_asset_count_closed`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "scopeType": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "campus",
+                            "location"
+                          ],
+                          "description": "`institution` bütün kurum, `campus` kampüs, `location` oda/konum"
+                        },
+                        "campusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campusName": {
+                          "description": "Kapsam kampüsünün adı; arşivlendiyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "description": "Oda sayımında oda ya da yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm (tamamlama, iptal)"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "expected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listedeki demirbaş sayısı"
+                            },
+                            "found": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kayıtlı yerinde bulunan"
+                            },
+                            "misplaced": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Başka yerde bulunan"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                            },
+                            "extra": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                            }
+                          },
+                          "required": [
+                            "expected",
+                            "found",
+                            "misplaced",
+                            "pending",
+                            "extra"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Satırlardan sayılan özet"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "scopeType",
+                        "campusId",
+                        "campusName",
+                        "location",
+                        "note",
+                        "status",
+                        "startedAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "version",
+                        "summary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}/items/{itemId}/relocate": {
+      "post": {
+        "operationId": "relocateFixedAssetCountItem",
+        "summary": "Demirbaşın konumunu sayılan yere düzelt",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Tamamlanmış sayımda yanlış konumda bulunan demirbaşın kampüsü ve konumu okutulduğu yere yazılır; durum ve zimmet değişmez (K-235). Tamamlanmamış sayım 422 `fixed_asset_count_not_completed`, yanlış konumda olmayan satır 422 `fixed_asset_count_item_not_misplaced`, düzeltilmiş satır 422 `fixed_asset_count_item_relocated`, hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`, artık olmayan kampüs 422 `fixed_asset_campus_not_found`. `If-Match` satırın sürümüdür. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "itemId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "assetId": {
+                          "type": "string"
+                        },
+                        "inScope": {
+                          "type": "boolean",
+                          "description": "Sayım başlarken beklenen listede miydi"
+                        },
+                        "tagNumber": {
+                          "type": "string",
+                          "description": "Etiketin sayım anındaki kopyası"
+                        },
+                        "assetName": {
+                          "type": "string"
+                        },
+                        "recordedCampusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recordedCampusName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recordedLocation": {
+                          "type": "string",
+                          "description": "Demirbaş kaydındaki konum (sayım anı)"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "found",
+                            "misplaced"
+                          ],
+                          "description": "`pending` okunmadı (tamamlanmışta bulunamadı), `found`, `misplaced`"
+                        },
+                        "observedCampusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observedCampusName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observedLocation": {
+                          "description": "Okutulduğu yer",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scannedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relocatedAt": {
+                          "description": "Konumu sayılan yere düzeltildiyse zamanı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm (konum düzeltmesi)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "assetId",
+                        "inScope",
+                        "tagNumber",
+                        "assetName",
+                        "recordedCampusId",
+                        "recordedCampusName",
+                        "recordedLocation",
+                        "result",
+                        "observedCampusId",
+                        "observedCampusName",
+                        "observedLocation",
+                        "scannedAt",
+                        "relocatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-places": {
+      "get": {
+        "operationId": "listFixedAssetPlaces",
+        "summary": "Demirbaşların bulunduğu yerler",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Hurdaya ayrılmamış demirbaşların kampüs ve konumları, her yerde kayıtlı demirbaş sayısıyla; sayım kapsamı ve sayılan oda seçimi için öneri. `q` konumda arar, `campusId` süzer. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Konumda arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "campusId",
+            "required": false,
+            "description": "Kampüs"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "campusId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "campusName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "assetCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Bu yerde kayıtlı, hurdaya ayrılmamış demirbaş sayısı"
+                          }
+                        },
+                        "required": [
+                          "campusId",
+                          "campusName",
+                          "location",
+                          "assetCount"
                         ],
                         "additionalProperties": false
                       }

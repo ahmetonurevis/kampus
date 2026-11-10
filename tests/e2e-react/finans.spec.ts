@@ -2138,6 +2138,95 @@ test.describe('Finans: stok', () => {
     await expect(movements.getByRole('button', { name: /hareketini iptal et/ })).toHaveCount(0)
   })
 
+  test('DOM-FIN-090: kimyasal kartın girişi parti ister; son kullanma uyarısı ve kimyasal envanter CSV ile iner', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici'], students: [] })
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10)
+    // Depo, kimyasal kart ve iki parti API'den kurulur; yeni parti arayüzden girilir.
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const created = async (url: string, body: unknown, headers: Record<string, string> = {}) => {
+        const result = await client.post(url, body, headers)
+        expect(result.status, JSON.stringify(result.body)).toBe(201)
+        return (result.body as { data: { id: string } }).data
+      }
+      const warehouse = await created('/api/v1/finance/stock-warehouses', {
+        name: 'Laboratuvar',
+        campusId: 'b1',
+      })
+      const acid = await created('/api/v1/finance/stock-items', {
+        code: 'HCL',
+        name: 'Hidroklorik asit',
+        category: 'educational',
+        unit: 'liter',
+      })
+      await created(`/api/v1/finance/stock-items/${acid.id}/chemical-profile`, {
+        hazardPictograms: ['GHS05', 'GHS07'],
+        signalWord: 'danger',
+        casNumber: '7647-01-0',
+      })
+      for (const [lotNumber, expiryDate, quantity] of [
+        ['L-YAKIN', day(10), 2],
+        ['L-UZAK', day(400), 3],
+      ] as const)
+        await created(
+          '/api/v1/finance/stock-entries',
+          {
+            itemId: acid.id,
+            warehouseId: warehouse.id,
+            quantity,
+            movementDate: day(-1),
+            reason: 'opening',
+            lotNumber,
+            expiryDate,
+          },
+          { 'idempotency-key': randomUUID() },
+        )
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=stok`)
+    // K-243: kart listesi süresi yaklaşan partiyi duyurur; liste yalnız uyarıdaki partiyi gösterir.
+    await page.getByRole('button', { name: 'Son kullanma listesini göster' }).click()
+    const lots = page.getByRole('table', { name: 'Kimyasal partiler' })
+    await expect(lots.locator('tbody tr').filter({ hasText: 'L-YAKIN' })).toContainText(
+      'Süresi yaklaşıyor',
+    )
+    await expect(lots).not.toContainText('L-UZAK')
+
+    // K-241: kimyasal kartın girişinde parti alanları çıkar; boş parti alanda reddedilir.
+    await page.getByRole('button', { name: 'Stok girişi' }).click()
+    const entry = page.getByRole('dialog', { name: 'Stok girişi' })
+    await entry.getByLabel('Stok kartı').selectOption({ label: 'HCL · Hidroklorik asit (5 litre)' })
+    await entry
+      .getByLabel('Depo', { exact: true })
+      .selectOption({ label: 'Laboratuvar · Kadıköy Kampüsü' })
+    await entry.getByLabel('Miktar').fill('4')
+    await entry.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(entry.getByText('Kimyasal girişinde parti numarasını yazın.')).toBeVisible()
+    await entry.getByLabel('Parti numarası').fill('L-YENI')
+    await entry.getByLabel('Son kullanma tarihi').fill(day(200))
+    await entry.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Stok girişi kaydedildi.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Kimyasal envanter' }).click()
+    const report = page.getByRole('table', { name: 'Kimyasal envanter' })
+    const row = report.locator('tbody tr').filter({ hasText: 'HCL' })
+    await expect(row).toContainText('9 litre')
+    await expect(row).toContainText('GHS05, GHS07')
+    await expect(row).toContainText('7647-01-0')
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'CSV indir' }).click()
+    expect((await download).suggestedFilename()).toBe('kimyasal-envanter.csv')
+  })
+
   test('DOM-FIN-079: kritik stok görünümü ve panoda uyarı; seçilen ürünlerden talep önerisi taslak talep açar', async ({
     page,
     loginAs,
@@ -2386,5 +2475,132 @@ test.describe('Finans: materyal seti', () => {
     await second.getByRole('button', { name: 'Teslim et' }).click()
     // K-181: stok yetmezse ileti depo alanında görünür, pencere açık kalır.
     await expect(second.getByText(/çıkılabilecek en çok 0 adet/)).toBeVisible()
+  })
+})
+
+test.describe('Finans: stok sayımı', () => {
+  test('DOM-FIN-081: yönetici sayım başlatır, barkodla okutur, fark raporunu CSV ve PDF alır, tamamlar', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'onburo'], students: [] })
+    // Depo, iki kart (biri barkod koduyla) ve açılış stoku API'den kurulur; sayım arayüzden yapılır.
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const warehouse = await client.post('/api/v1/finance/stock-warehouses', {
+        name: 'Ana depo',
+        campusId: 'b1',
+      })
+      expect(warehouse.status, JSON.stringify(warehouse.body)).toBe(201)
+      const warehouseId = (warehouse.body as { data: { id: string } }).data.id
+      for (const [code, name, unit, quantity] of [
+        ['KAG-A4', 'A4 kâğıt', 'pack', 20],
+        ['8690000000017', 'Tükenmez kalem', 'piece', 6],
+      ] as const) {
+        const item = await client.post('/api/v1/finance/stock-items', {
+          code,
+          name,
+          category: 'stationery',
+          unit,
+        })
+        expect(item.status, JSON.stringify(item.body)).toBe(201)
+        const entry = await client.post(
+          '/api/v1/finance/stock-entries',
+          {
+            itemId: (item.body as { data: { id: string } }).data.id,
+            warehouseId,
+            quantity,
+            movementDate: '2026-01-02',
+            reason: 'opening',
+          },
+          { 'idempotency-key': randomUUID() },
+        )
+        expect(entry.status, JSON.stringify(entry.body)).toBe(201)
+      }
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=stok&stok=sayim`)
+    await page.getByRole('button', { name: 'Sayım başlat' }).click()
+    const start = page.getByRole('dialog', { name: 'Sayım başlat' })
+    await start.getByLabel('Depo').selectOption({ label: 'Ana depo · Kadıköy Kampüsü' })
+    await start.getByRole('button', { name: 'Sayımı başlat' }).click()
+    await expect(page.getByRole('heading', { name: 'Ana depo sayımı' })).toBeVisible()
+    const uncounted = page.getByRole('list', { name: 'Sayılmayan ürünler' })
+    await expect(uncounted).toContainText('sistemde 20 paket')
+
+    // Barkod okuyucu klavye gibi yazar ve Enter gönderir; kod alanı odakta kalır.
+    const code = page.getByLabel('Kart kodu ya da barkod')
+    await expect(code).toBeFocused()
+    const status = page.getByRole('status').filter({ hasText: 'sayıldı' })
+    await code.pressSequentially('kag-a4')
+    await code.press('Enter')
+    await expect(status).toHaveText('A4 kâğıt (KAG-A4): 1 paket sayıldı.')
+    await expect(code).toBeFocused()
+    await page.getByLabel('Eklenecek miktar').fill('16')
+    await code.fill('KAG-A4')
+    await code.press('Enter')
+    await expect(status).toHaveText('A4 kâğıt (KAG-A4): 17 paket sayıldı.')
+    await code.fill('8690000000017')
+    await code.press('Enter')
+    await expect(status).toHaveText('Tükenmez kalem (8690000000017): 1 adet sayıldı.')
+    // Elle düzeltme: kalem 8 bulundu.
+    const counted = page.getByRole('table', { name: 'Sayılan ürünler' })
+    await counted.getByRole('button', { name: 'Tükenmez kalem sayılan miktarını düzelt' }).click()
+    const quantity = page.getByRole('dialog', { name: 'Sayılan miktar' })
+    await quantity.getByRole('textbox', { name: 'Sayılan miktar (adet)' }).fill('8')
+    await quantity.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Tükenmez kalem: 8 adet yazıldı.')).toBeVisible()
+    await expect(counted.locator('tbody tr').filter({ hasText: 'KAG-A4' })).toContainText('−3')
+    await expect(counted.locator('tbody tr').filter({ hasText: 'Tükenmez kalem' })).toContainText(
+      '+2',
+    )
+    await expect(page.getByText('Sayılmayan ürün yok.')).toBeVisible()
+
+    const csvDownload = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Fark raporu CSV' }).click()
+    const csv = await readCsv(await csvDownload)
+    expect(csv[0]?.slice(0, 4)).toEqual(['Kod', 'Ürün', 'Birim', 'Sistem (anlık görüntü)'])
+    expect(csv.find((row) => row[0] === 'KAG-A4')?.slice(6, 8)).toEqual(['17', '-3'])
+
+    await page.getByRole('button', { name: 'Fark raporu PDF' }).click()
+    const preview = page.getByRole('dialog', { name: 'Stok sayımı fark raporu · Önizleme' })
+    const pdfDownload = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    const pdf = await pdfDownload
+    expect(pdf.suggestedFilename()).toMatch(/^stok-sayimi-SAY-\d{8}-[0-9A-F]{8}\.pdf$/)
+    const text = await pdfText(pdf)
+    for (const part of ['STOK SAYIMI', 'TASLAK', 'A4 kâğıt', 'Ana depo'])
+      expect(text).toContain(part)
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+
+    await page.getByRole('button', { name: 'Sayımı tamamla' }).click()
+    const complete = page.getByRole('dialog', { name: 'Sayımı tamamla' })
+    await expect(complete).toContainText(
+      '1 kalem için fazla, 1 kalem için eksik düzeltmesi yazılacak.',
+    )
+    await complete.getByRole('button', { name: 'Tamamla' }).click()
+    await expect(page.getByText('Sayım tamamlandı; farklar stoka yazıldı.')).toBeVisible()
+    await expect(page.getByLabel('Kart kodu ya da barkod')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Sayımı tamamla' })).toHaveCount(0)
+
+    // Düzeltme hareket listesinde sayıma bağlıdır, iptal düğmesi yoktur.
+    await page.getByRole('button', { name: 'Hareketler' }).click()
+    const movements = page.getByRole('table', { name: 'Stok hareketleri' })
+    await expect(movements).toContainText('Sayım eksiği düzeltmesi')
+    await expect(movements).toContainText('Sayım fazlası düzeltmesi')
+    await movements.getByRole('button', { name: /A4 kâğıt düzeltmesinin sayımını aç/ }).click()
+    await expect(page.getByRole('heading', { name: 'Ana depo sayımı' })).toBeVisible()
+
+    await page.context().clearCookies()
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=stok&stok=sayim`)
+    await expect(page.getByRole('table', { name: 'Stok sayımları' })).toContainText('Tamamlandı')
+    await expect(page.getByRole('button', { name: 'Sayım başlat' })).toHaveCount(0)
   })
 })

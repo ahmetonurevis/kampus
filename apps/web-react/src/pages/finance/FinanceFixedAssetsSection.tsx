@@ -47,6 +47,7 @@ import { PdfDialogButton } from './CorporateParts.tsx'
 import { FixedAssetAssignmentSection, holderText } from './FinanceFixedAssetAssignments.tsx'
 import { FinanceFixedAssetCountsSection } from './FinanceFixedAssetCountsSection.tsx'
 import { FixedAssetFormModal } from './FinanceFixedAssetForm.tsx'
+import { FixedAssetMaintenanceSection } from './FinanceMaintenanceSection.tsx'
 import { FinanceFixedAssetStaffSection } from './FinanceFixedAssetStaffSection.tsx'
 import {
   FIXED_ASSET_STATUS_VIEW,
@@ -84,6 +85,7 @@ type Row = {
   supplier: string
   holder: string
   status: FixedAssetStatus
+  openMaintenanceCount: number
 }
 
 /**
@@ -169,6 +171,7 @@ function FixedAssetsList() {
         supplier: item.supplierName ?? '—',
         holder: item.assignment ? holderText(item.assignment) : '—',
         status: item.status,
+        openMaintenanceCount: item.openMaintenanceCount,
       })),
     [assets.data],
   )
@@ -204,10 +207,23 @@ function FixedAssetsList() {
         key: 'status',
         label: 'Durum',
         cell: (row) => (
-          <StatusBadge
-            text={FIXED_ASSET_STATUS_VIEW[row.status].label}
-            tone={FIXED_ASSET_STATUS_VIEW[row.status].tone}
-          />
+          <span className="flex flex-wrap gap-1">
+            <StatusBadge
+              text={FIXED_ASSET_STATUS_VIEW[row.status].label}
+              tone={FIXED_ASSET_STATUS_VIEW[row.status].tone}
+            />
+            {/* Çözülmemiş arıza talebi (DOM-FIN-089, K-239). */}
+            {row.openMaintenanceCount > 0 ? (
+              <StatusBadge
+                text={
+                  row.openMaintenanceCount === 1
+                    ? 'Açık arıza'
+                    : `Açık arıza (${String(row.openMaintenanceCount)})`
+                }
+                tone="red"
+              />
+            ) : null}
+          </span>
         ),
       },
       {
@@ -357,6 +373,7 @@ function FixedAssetDetailView({ assetId }: { assetId: string }) {
         )}
       </section>
       <FixedAssetAssignmentSection asset={asset} />
+      <FixedAssetMaintenanceSection asset={asset} />
       {scrapped || asset.assignment ? null : <ScrapForm asset={asset} />}
       {editing ? <FixedAssetFormModal asset={asset} onClose={() => setEditing(false)} /> : null}
     </div>

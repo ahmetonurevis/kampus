@@ -125113,7 +125113,9 @@
                 "transfer_in",
                 "transfer_out",
                 "receipt",
-                "delivery"
+                "delivery",
+                "adjustment_in",
+                "adjustment_out"
               ]
             },
             "in": "query",
@@ -125166,7 +125168,9 @@
                               "transfer_in",
                               "transfer_out",
                               "receipt",
-                              "delivery"
+                              "delivery",
+                              "adjustment_in",
+                              "adjustment_out"
                             ]
                           },
                           "movementDate": {
@@ -125231,7 +125235,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş"
+                            "description": "Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş"
                           },
                           "note": {
                             "type": [
@@ -125260,6 +125264,13 @@
                             ]
                           },
                           "orderNumber": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "countId": {
+                            "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                             "type": [
                               "string",
                               "null"
@@ -125330,6 +125341,7 @@
                           "counterpartWarehouseName",
                           "orderId",
                           "orderNumber",
+                          "countId",
                           "createdAt",
                           "createdByName",
                           "cancelledAt",
@@ -125539,7 +125551,9 @@
                             "transfer_in",
                             "transfer_out",
                             "receipt",
-                            "delivery"
+                            "delivery",
+                            "adjustment_in",
+                            "adjustment_out"
                           ]
                         },
                         "movementDate": {
@@ -125604,7 +125618,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş"
+                          "description": "Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş"
                         },
                         "note": {
                           "type": [
@@ -125633,6 +125647,13 @@
                           ]
                         },
                         "orderNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "countId": {
+                          "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                           "type": [
                             "string",
                             "null"
@@ -125703,6 +125724,7 @@
                         "counterpartWarehouseName",
                         "orderId",
                         "orderNumber",
+                        "countId",
                         "createdAt",
                         "createdByName",
                         "cancelledAt",
@@ -125907,7 +125929,9 @@
                             "transfer_in",
                             "transfer_out",
                             "receipt",
-                            "delivery"
+                            "delivery",
+                            "adjustment_in",
+                            "adjustment_out"
                           ]
                         },
                         "movementDate": {
@@ -125972,7 +125996,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş"
+                          "description": "Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş"
                         },
                         "note": {
                           "type": [
@@ -126001,6 +126025,13 @@
                           ]
                         },
                         "orderNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "countId": {
+                          "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                           "type": [
                             "string",
                             "null"
@@ -126071,6 +126102,7 @@
                         "counterpartWarehouseName",
                         "orderId",
                         "orderNumber",
+                        "countId",
                         "createdAt",
                         "createdByName",
                         "cancelledAt",
@@ -126278,7 +126310,9 @@
                                   "transfer_in",
                                   "transfer_out",
                                   "receipt",
-                                  "delivery"
+                                  "delivery",
+                                  "adjustment_in",
+                                  "adjustment_out"
                                 ]
                               },
                               "movementDate": {
@@ -126343,7 +126377,7 @@
                                     "type": "null"
                                   }
                                 ],
-                                "description": "Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş"
+                                "description": "Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş"
                               },
                               "note": {
                                 "type": [
@@ -126372,6 +126406,13 @@
                                 ]
                               },
                               "orderNumber": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "countId": {
+                                "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                                 "type": [
                                   "string",
                                   "null"
@@ -126442,6 +126483,7 @@
                               "counterpartWarehouseName",
                               "orderId",
                               "orderNumber",
+                              "countId",
                               "createdAt",
                               "createdByName",
                               "cancelledAt",
@@ -126560,7 +126602,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle (422 `stock_movement_from_receipt`), materyal seti teslimi çıkışı yalnız teslim iptaliyle (422 `stock_movement_from_delivery`, DOM-FIN-080) geri alınır; zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.",
+        "description": "Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle (422 `stock_movement_from_receipt`), materyal seti teslimi çıkışı yalnız teslim iptaliyle (422 `stock_movement_from_delivery`, DOM-FIN-080) geri alınır; sayım düzeltmesi iptal edilmez (422 `stock_movement_from_count`, DOM-FIN-081); zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -126638,7 +126680,9 @@
                               "transfer_in",
                               "transfer_out",
                               "receipt",
-                              "delivery"
+                              "delivery",
+                              "adjustment_in",
+                              "adjustment_out"
                             ]
                           },
                           "movementDate": {
@@ -126703,7 +126747,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş"
+                            "description": "Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş"
                           },
                           "note": {
                             "type": [
@@ -126732,6 +126776,13 @@
                             ]
                           },
                           "orderNumber": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "countId": {
+                            "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                             "type": [
                               "string",
                               "null"
@@ -126802,6 +126853,7 @@
                           "counterpartWarehouseName",
                           "orderId",
                           "orderNumber",
+                          "countId",
                           "createdAt",
                           "createdByName",
                           "cancelledAt",
@@ -131976,6 +132028,2684 @@
                         "cancelledAt",
                         "cancelledByName",
                         "cancelReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts": {
+      "get": {
+        "operationId": "listStockCounts",
+        "summary": "Stok sayımlarını listele",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "En yeni başlangıç önce; durum ve depoyla süzülür. Satırda depo, kampüs, başlatan, sayılan satır ve düzeltme hareketi sayısı (DOM-FIN-081). Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "completed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "warehouseId",
+            "required": false,
+            "description": "Depo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "warehouseId": {
+                            "type": "string"
+                          },
+                          "warehouseName": {
+                            "type": "string"
+                          },
+                          "campusName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "completed",
+                              "cancelled"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string"
+                          },
+                          "startedByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lineCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Satır sayısı: anlık görüntüdeki ve sonradan sayılan kartlar"
+                          },
+                          "countedCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Sayılan satır sayısı"
+                          },
+                          "adjustmentCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Tamamlamada yazılan düzeltme hareketi sayısı"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "warehouseId",
+                          "warehouseName",
+                          "campusName",
+                          "status",
+                          "note",
+                          "startedAt",
+                          "startedByName",
+                          "completedAt",
+                          "cancelledAt",
+                          "lineCount",
+                          "countedCount",
+                          "adjustmentCount",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "startStockCount",
+        "summary": "Stok sayımı başlat",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Depo ve isteğe bağlı not. Depodaki miktarı sıfırdan farklı her kart, o anki sistem miktarıyla (anlık görüntü) sayım satırı olur. Depo etkin olmalı (422 `stock_warehouse_inactive`, `stock_warehouse_not_found`); aynı depoda süren sayım varsa 409 `stock_count_open_exists` (K-228). Rol: `yonetici` (K-228). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "warehouseId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "warehouseId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "warehouseId": {
+                          "type": "string"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "campusName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "startedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "adjustmentDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Düzeltme hareketlerinin günü (tamamlama günü)"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntü: sayım başladığında depodaki miktar"
+                              },
+                              "movementQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231)"
+                              },
+                              "expectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Beklenen: anlık görüntü + sayım sırasındaki hareket"
+                              },
+                              "countedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan miktar"
+                              },
+                              "difference": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan − beklenen; artı fazla, eksi eksik"
+                              },
+                              "unitCostCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş"
+                              },
+                              "differenceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Fark × birim maliyet, kuruş; birim maliyet yoksa boş"
+                              },
+                              "countedAt": {
+                                "type": "string",
+                                "description": "Satırın son sayıldığı an"
+                              },
+                              "movementId": {
+                                "description": "Tamamlamada farkı yazan düzeltme hareketi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity",
+                              "movementQuantity",
+                              "expectedQuantity",
+                              "countedQuantity",
+                              "difference",
+                              "unitCostCents",
+                              "differenceCents",
+                              "countedAt",
+                              "movementId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sayılan kalemler, koda göre"
+                        },
+                        "uncounted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntüdeki miktar"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230)"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "countedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılan kalem"
+                            },
+                            "uncountedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılmayan kalem"
+                            },
+                            "differenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olan kalem"
+                            },
+                            "surplusCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla tutarı (birim maliyeti bilinenler), kuruş"
+                            },
+                            "shortageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Eksik tutarı (birim maliyeti bilinenler), kuruş, artı"
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla − eksik tutarı, kuruş"
+                            },
+                            "unpricedDifferenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olup birim maliyeti bilinmeyen kalem"
+                            }
+                          },
+                          "required": [
+                            "countedItems",
+                            "uncountedItems",
+                            "differenceItems",
+                            "surplusCents",
+                            "shortageCents",
+                            "netCents",
+                            "unpricedDifferenceItems"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "complete",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "warehouseId",
+                        "warehouseName",
+                        "campusName",
+                        "status",
+                        "note",
+                        "startedAt",
+                        "startedByName",
+                        "completedAt",
+                        "completedByName",
+                        "adjustmentDate",
+                        "cancelledAt",
+                        "cancelledByName",
+                        "cancelReason",
+                        "counted",
+                        "uncounted",
+                        "totals",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}": {
+      "get": {
+        "operationId": "getStockCount",
+        "summary": "Stok sayımı ve fark raporu",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Sayım bilgileri ve fark raporu: sayılan kalemlerde sistem (anlık görüntü), sayım sırasındaki hareket, beklenen, sayılan, fark, birim maliyet (son alış fiyatı) ve fark tutarı; sayılmayan kalemler ayrı listede ve değişmez (K-230). Açık sayımda değerler o anki hareketlerden hesaplanır (K-231), tamamlanan sayımda saklanan değerlerdir. Olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "warehouseId": {
+                          "type": "string"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "campusName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "startedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "adjustmentDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Düzeltme hareketlerinin günü (tamamlama günü)"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntü: sayım başladığında depodaki miktar"
+                              },
+                              "movementQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231)"
+                              },
+                              "expectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Beklenen: anlık görüntü + sayım sırasındaki hareket"
+                              },
+                              "countedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan miktar"
+                              },
+                              "difference": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan − beklenen; artı fazla, eksi eksik"
+                              },
+                              "unitCostCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş"
+                              },
+                              "differenceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Fark × birim maliyet, kuruş; birim maliyet yoksa boş"
+                              },
+                              "countedAt": {
+                                "type": "string",
+                                "description": "Satırın son sayıldığı an"
+                              },
+                              "movementId": {
+                                "description": "Tamamlamada farkı yazan düzeltme hareketi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity",
+                              "movementQuantity",
+                              "expectedQuantity",
+                              "countedQuantity",
+                              "difference",
+                              "unitCostCents",
+                              "differenceCents",
+                              "countedAt",
+                              "movementId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sayılan kalemler, koda göre"
+                        },
+                        "uncounted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntüdeki miktar"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230)"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "countedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılan kalem"
+                            },
+                            "uncountedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılmayan kalem"
+                            },
+                            "differenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olan kalem"
+                            },
+                            "surplusCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla tutarı (birim maliyeti bilinenler), kuruş"
+                            },
+                            "shortageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Eksik tutarı (birim maliyeti bilinenler), kuruş, artı"
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla − eksik tutarı, kuruş"
+                            },
+                            "unpricedDifferenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olup birim maliyeti bilinmeyen kalem"
+                            }
+                          },
+                          "required": [
+                            "countedItems",
+                            "uncountedItems",
+                            "differenceItems",
+                            "surplusCents",
+                            "shortageCents",
+                            "netCents",
+                            "unpricedDifferenceItems"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "complete",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "warehouseId",
+                        "warehouseName",
+                        "campusName",
+                        "status",
+                        "note",
+                        "startedAt",
+                        "startedByName",
+                        "completedAt",
+                        "completedByName",
+                        "adjustmentDate",
+                        "cancelledAt",
+                        "cancelledByName",
+                        "cancelReason",
+                        "counted",
+                        "uncounted",
+                        "totals",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}/scans": {
+      "post": {
+        "operationId": "scanStockCount",
+        "summary": "Sayıma kart okut",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Kart kodu (barkod okuyucu kodu klavye gibi yazar; büyük harfe çevrilir) kartı bulur, sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "quantity": {
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "countId": {
+                          "type": "string"
+                        },
+                        "itemId": {
+                          "type": "string"
+                        },
+                        "itemCode": {
+                          "type": "string"
+                        },
+                        "itemName": {
+                          "type": "string"
+                        },
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "piece",
+                            "pack",
+                            "box",
+                            "kilogram",
+                            "liter",
+                            "meter"
+                          ]
+                        },
+                        "systemQuantity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Anlık görüntüdeki miktar (sonradan sayılan kartta 0)"
+                        },
+                        "countedQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sayılan miktar; boşsa sayılmadı"
+                        },
+                        "countedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "countId",
+                        "itemId",
+                        "itemCode",
+                        "itemName",
+                        "unit",
+                        "systemQuantity",
+                        "countedQuantity",
+                        "countedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}/quantities": {
+      "post": {
+        "operationId": "setStockCountQuantity",
+        "summary": "Sayılan miktarı yaz",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Kartın sayılan miktarını doğrudan yazar (0–1.000.000); `null` sayımı geri alır, kalem \"sayılmadı\" olur (K-229). Kart bu kurumda yoksa 422 `stock_item_not_found`; anlık görüntüde olmayan pasif kart sayılmaz. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "itemId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "countedQuantity": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "itemId",
+                  "countedQuantity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "countId": {
+                          "type": "string"
+                        },
+                        "itemId": {
+                          "type": "string"
+                        },
+                        "itemCode": {
+                          "type": "string"
+                        },
+                        "itemName": {
+                          "type": "string"
+                        },
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "piece",
+                            "pack",
+                            "box",
+                            "kilogram",
+                            "liter",
+                            "meter"
+                          ]
+                        },
+                        "systemQuantity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Anlık görüntüdeki miktar (sonradan sayılan kartta 0)"
+                        },
+                        "countedQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sayılan miktar; boşsa sayılmadı"
+                        },
+                        "countedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "countId",
+                        "itemId",
+                        "itemCode",
+                        "itemName",
+                        "unit",
+                        "systemQuantity",
+                        "countedQuantity",
+                        "countedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}/complete": {
+      "post": {
+        "operationId": "completeStockCount",
+        "summary": "Stok sayımını tamamla",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Fark raporu kurum kilidi altında yeniden hesaplanır; farkı olan her kart için tamamlama gününde tek işlemde düzeltme hareketi yazılır (fazla `adjustment_in`, eksik `adjustment_out`; iptal edilmez). Sayılmayan kalem değişmez (K-230). Hiç kalem sayılmadıysa 422 `stock_count_empty`; eksik düzeltmesi depodaki miktarı eksiye düşürecekse (kart sayıldıktan sonra çıkış yazılmış) 422 `stock_count_negative` (K-231); farkı olan kart pasifse 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `If-Match` sayımın sürümüdür. Rol: `yonetici` (K-228). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "warehouseId": {
+                          "type": "string"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "campusName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "startedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "adjustmentDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Düzeltme hareketlerinin günü (tamamlama günü)"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntü: sayım başladığında depodaki miktar"
+                              },
+                              "movementQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231)"
+                              },
+                              "expectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Beklenen: anlık görüntü + sayım sırasındaki hareket"
+                              },
+                              "countedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan miktar"
+                              },
+                              "difference": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan − beklenen; artı fazla, eksi eksik"
+                              },
+                              "unitCostCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş"
+                              },
+                              "differenceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Fark × birim maliyet, kuruş; birim maliyet yoksa boş"
+                              },
+                              "countedAt": {
+                                "type": "string",
+                                "description": "Satırın son sayıldığı an"
+                              },
+                              "movementId": {
+                                "description": "Tamamlamada farkı yazan düzeltme hareketi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity",
+                              "movementQuantity",
+                              "expectedQuantity",
+                              "countedQuantity",
+                              "difference",
+                              "unitCostCents",
+                              "differenceCents",
+                              "countedAt",
+                              "movementId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sayılan kalemler, koda göre"
+                        },
+                        "uncounted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntüdeki miktar"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230)"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "countedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılan kalem"
+                            },
+                            "uncountedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılmayan kalem"
+                            },
+                            "differenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olan kalem"
+                            },
+                            "surplusCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla tutarı (birim maliyeti bilinenler), kuruş"
+                            },
+                            "shortageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Eksik tutarı (birim maliyeti bilinenler), kuruş, artı"
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla − eksik tutarı, kuruş"
+                            },
+                            "unpricedDifferenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olup birim maliyeti bilinmeyen kalem"
+                            }
+                          },
+                          "required": [
+                            "countedItems",
+                            "uncountedItems",
+                            "differenceItems",
+                            "surplusCents",
+                            "shortageCents",
+                            "netCents",
+                            "unpricedDifferenceItems"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "complete",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "warehouseId",
+                        "warehouseName",
+                        "campusName",
+                        "status",
+                        "note",
+                        "startedAt",
+                        "startedByName",
+                        "completedAt",
+                        "completedByName",
+                        "adjustmentDate",
+                        "cancelledAt",
+                        "cancelledByName",
+                        "cancelReason",
+                        "counted",
+                        "uncounted",
+                        "totals",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}/cancel": {
+      "post": {
+        "operationId": "cancelStockCount",
+        "summary": "Stok sayımını iptal et",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Gerekçeyle (5–500 karakter) iptal; stok hareketi yazılmaz, depoda yeni sayım başlatılabilir (K-230). Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `If-Match` sayımın sürümüdür. Rol: `yonetici` (K-228). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "warehouseId": {
+                          "type": "string"
+                        },
+                        "warehouseName": {
+                          "type": "string"
+                        },
+                        "campusName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "startedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "adjustmentDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Düzeltme hareketlerinin günü (tamamlama günü)"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntü: sayım başladığında depodaki miktar"
+                              },
+                              "movementQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231)"
+                              },
+                              "expectedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Beklenen: anlık görüntü + sayım sırasındaki hareket"
+                              },
+                              "countedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan miktar"
+                              },
+                              "difference": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sayılan − beklenen; artı fazla, eksi eksik"
+                              },
+                              "unitCostCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş"
+                              },
+                              "differenceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Fark × birim maliyet, kuruş; birim maliyet yoksa boş"
+                              },
+                              "countedAt": {
+                                "type": "string",
+                                "description": "Satırın son sayıldığı an"
+                              },
+                              "movementId": {
+                                "description": "Tamamlamada farkı yazan düzeltme hareketi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity",
+                              "movementQuantity",
+                              "expectedQuantity",
+                              "countedQuantity",
+                              "difference",
+                              "unitCostCents",
+                              "differenceCents",
+                              "countedAt",
+                              "movementId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sayılan kalemler, koda göre"
+                        },
+                        "uncounted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string"
+                              },
+                              "itemCode": {
+                                "type": "string"
+                              },
+                              "itemName": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter"
+                                ]
+                              },
+                              "systemQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Anlık görüntüdeki miktar"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "itemCode",
+                              "itemName",
+                              "unit",
+                              "systemQuantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230)"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "countedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılan kalem"
+                            },
+                            "uncountedItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sayılmayan kalem"
+                            },
+                            "differenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olan kalem"
+                            },
+                            "surplusCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla tutarı (birim maliyeti bilinenler), kuruş"
+                            },
+                            "shortageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Eksik tutarı (birim maliyeti bilinenler), kuruş, artı"
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fazla − eksik tutarı, kuruş"
+                            },
+                            "unpricedDifferenceItems": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Farkı olup birim maliyeti bilinmeyen kalem"
+                            }
+                          },
+                          "required": [
+                            "countedItems",
+                            "uncountedItems",
+                            "differenceItems",
+                            "surplusCents",
+                            "shortageCents",
+                            "netCents",
+                            "unpricedDifferenceItems"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "complete",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "warehouseId",
+                        "warehouseName",
+                        "campusName",
+                        "status",
+                        "note",
+                        "startedAt",
+                        "startedByName",
+                        "completedAt",
+                        "completedByName",
+                        "adjustmentDate",
+                        "cancelledAt",
+                        "cancelledByName",
+                        "cancelReason",
+                        "counted",
+                        "uncounted",
+                        "totals",
                         "actions",
                         "version"
                       ],

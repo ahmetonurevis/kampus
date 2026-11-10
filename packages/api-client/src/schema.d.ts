@@ -5459,7 +5459,7 @@ export interface paths {
         put?: never;
         /**
          * Stok hareketini iptal et
-         * @description Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle (422 `stock_movement_from_receipt`), materyal seti teslimi çıkışı yalnız teslim iptaliyle (422 `stock_movement_from_delivery`, DOM-FIN-080) geri alınır; zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.
+         * @description Gerekçeyle iptal; hareket silinmez. Transferin iki hareketi birlikte iptal edilir. Giriş iptali stoku herhangi bir gün eksiye düşürecekse 422 `stock_cancel_negative`; mal kabul girişi yalnız kabul iptaliyle (422 `stock_movement_from_receipt`), materyal seti teslimi çıkışı yalnız teslim iptaliyle (422 `stock_movement_from_delivery`, DOM-FIN-080) geri alınır; sayım düzeltmesi iptal edilmez (422 `stock_movement_from_count`, DOM-FIN-081); zaten iptal edilmiş 422 `stock_movement_already_cancelled` (K-183). `If-Match` hareketin sürümüdür. İptal edilen hareketler döner. Rol: `yonetici` (K-180). Modül `finance`.
          */
         post: operations["cancelStockMovement"];
         delete?: never;
@@ -5698,6 +5698,130 @@ export interface paths {
          * @description Kâğıt imza sonradan getirildiğinde işaretlenir; geri alınmaz (K-206). İmzası alınmış teslim 422 `material_delivery_signature_exists`, iptal edilmiş teslim 422 `material_delivery_cancelled`. `If-Match` teslimin sürümüdür. Roller: `yonetici`, `onburo` (K-205). Modül `finance`.
          */
         post: operations["signMaterialDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok sayımlarını listele
+         * @description En yeni başlangıç önce; durum ve depoyla süzülür. Satırda depo, kampüs, başlatan, sayılan satır ve düzeltme hareketi sayısı (DOM-FIN-081). Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         */
+        get: operations["listStockCounts"];
+        put?: never;
+        /**
+         * Stok sayımı başlat
+         * @description Depo ve isteğe bağlı not. Depodaki miktarı sıfırdan farklı her kart, o anki sistem miktarıyla (anlık görüntü) sayım satırı olur. Depo etkin olmalı (422 `stock_warehouse_inactive`, `stock_warehouse_not_found`); aynı depoda süren sayım varsa 409 `stock_count_open_exists` (K-228). Rol: `yonetici` (K-228). Modül `finance`.
+         */
+        post: operations["startStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stok sayımı ve fark raporu
+         * @description Sayım bilgileri ve fark raporu: sayılan kalemlerde sistem (anlık görüntü), sayım sırasındaki hareket, beklenen, sayılan, fark, birim maliyet (son alış fiyatı) ve fark tutarı; sayılmayan kalemler ayrı listede ve değişmez (K-230). Açık sayımda değerler o anki hareketlerden hesaplanır (K-231), tamamlanan sayımda saklanan değerlerdir. Olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         */
+        get: operations["getStockCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sayıma kart okut
+         * @description Kart kodu (barkod okuyucu kodu klavye gibi yazar; büyük harfe çevrilir) kartı bulur, sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         */
+        post: operations["scanStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}/quantities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sayılan miktarı yaz
+         * @description Kartın sayılan miktarını doğrudan yazar (0–1.000.000); `null` sayımı geri alır, kalem "sayılmadı" olur (K-229). Kart bu kurumda yoksa 422 `stock_item_not_found`; anlık görüntüde olmayan pasif kart sayılmaz. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         */
+        post: operations["setStockCountQuantity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok sayımını tamamla
+         * @description Fark raporu kurum kilidi altında yeniden hesaplanır; farkı olan her kart için tamamlama gününde tek işlemde düzeltme hareketi yazılır (fazla `adjustment_in`, eksik `adjustment_out`; iptal edilmez). Sayılmayan kalem değişmez (K-230). Hiç kalem sayılmadıysa 422 `stock_count_empty`; eksik düzeltmesi depodaki miktarı eksiye düşürecekse (kart sayıldıktan sonra çıkış yazılmış) 422 `stock_count_negative` (K-231); farkı olan kart pasifse 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `If-Match` sayımın sürümüdür. Rol: `yonetici` (K-228). Modül `finance`.
+         */
+        post: operations["completeStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stok sayımını iptal et
+         * @description Gerekçeyle (5–500 karakter) iptal; stok hareketi yazılmaz, depoda yeni sayım başlatılabilir (K-230). Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `If-Match` sayımın sürümüdür. Rol: `yonetici` (K-228). Modül `finance`.
+         */
+        post: operations["cancelStockCount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -57700,7 +57824,7 @@ export interface operations {
                 /** @description Depo */
                 warehouseId?: string;
                 /** @description Hareket türü */
-                type?: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
+                type?: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery" | "adjustment_in" | "adjustment_out";
                 /** @description Bu günden (dahil) */
                 from?: string;
                 /** @description Bu güne kadar (dahil) */
@@ -57722,7 +57846,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery" | "adjustment_in" | "adjustment_out";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -57735,7 +57859,7 @@ export interface operations {
                             campusName: string | null;
                             /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
                             quantity: number;
-                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            /** @description Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş */
                             reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
                             note: string | null;
                             transferId: string | null;
@@ -57744,6 +57868,8 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı */
+                            countId: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -57870,7 +57996,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery" | "adjustment_in" | "adjustment_out";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -57883,7 +58009,7 @@ export interface operations {
                             campusName: string | null;
                             /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
                             quantity: number;
-                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            /** @description Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş */
                             reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
                             note: string | null;
                             transferId: string | null;
@@ -57892,6 +58018,8 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı */
+                            countId: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -58017,7 +58145,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery" | "adjustment_in" | "adjustment_out";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -58030,7 +58158,7 @@ export interface operations {
                             campusName: string | null;
                             /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
                             quantity: number;
-                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            /** @description Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş */
                             reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
                             note: string | null;
                             transferId: string | null;
@@ -58039,6 +58167,8 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı */
+                            countId: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -58167,7 +58297,7 @@ export interface operations {
                             movements: {
                                 id: string;
                                 /** @enum {string} */
-                                type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
+                                type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery" | "adjustment_in" | "adjustment_out";
                                 /** @description Hareket günü `YYYY-MM-DD` */
                                 movementDate: string;
                                 itemId: string;
@@ -58180,7 +58310,7 @@ export interface operations {
                                 campusName: string | null;
                                 /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
                                 quantity: number;
-                                /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                                /** @description Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş */
                                 reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
                                 note: string | null;
                                 transferId: string | null;
@@ -58189,6 +58319,8 @@ export interface operations {
                                 /** @description Mal kabul girişinde sipariş */
                                 orderId: string | null;
                                 orderNumber: string | null;
+                                /** @description Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı */
+                                countId: string | null;
                                 createdAt: string;
                                 createdByName: string | null;
                                 cancelledAt: string | null;
@@ -58311,7 +58443,7 @@ export interface operations {
                         data: {
                             id: string;
                             /** @enum {string} */
-                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery";
+                            type: "in" | "out" | "transfer_in" | "transfer_out" | "receipt" | "delivery" | "adjustment_in" | "adjustment_out";
                             /** @description Hareket günü `YYYY-MM-DD` */
                             movementDate: string;
                             itemId: string;
@@ -58324,7 +58456,7 @@ export interface operations {
                             campusName: string | null;
                             /** @description Miktar; işaret türden gelir (giriş artırır, çıkış azaltır) */
                             quantity: number;
-                            /** @description Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş */
+                            /** @description Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş */
                             reason: ("opening" | "donation" | "count_surplus" | "returned" | "other" | "usage" | "damage" | "loss" | "count_shortage") | null;
                             note: string | null;
                             transferId: string | null;
@@ -58333,6 +58465,8 @@ export interface operations {
                             /** @description Mal kabul girişinde sipariş */
                             orderId: string | null;
                             orderNumber: string | null;
+                            /** @description Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı */
+                            countId: string | null;
                             createdAt: string;
                             createdByName: string | null;
                             cancelledAt: string | null;
@@ -60538,6 +60672,1089 @@ export interface operations {
                             actions: {
                                 cancel: boolean;
                                 sign: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockCounts: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Durum */
+                status?: "open" | "completed" | "cancelled";
+                /** @description Depo */
+                warehouseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            note: string | null;
+                            startedAt: string;
+                            startedByName: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Satır sayısı: anlık görüntüdeki ve sonradan sayılan kartlar */
+                            lineCount: number;
+                            /** @description Sayılan satır sayısı */
+                            countedCount: number;
+                            /** @description Tamamlamada yazılan düzeltme hareketi sayısı */
+                            adjustmentCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startStockCount: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    warehouseId: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            note: string | null;
+                            startedAt: string;
+                            startedByName: string | null;
+                            completedAt: string | null;
+                            completedByName: string | null;
+                            /** @description Düzeltme hareketlerinin günü (tamamlama günü) */
+                            adjustmentDate: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Sayılan kalemler, koda göre */
+                            counted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntü: sayım başladığında depodaki miktar */
+                                systemQuantity: number;
+                                /** @description Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231) */
+                                movementQuantity: number;
+                                /** @description Beklenen: anlık görüntü + sayım sırasındaki hareket */
+                                expectedQuantity: number;
+                                /** @description Sayılan miktar */
+                                countedQuantity: number;
+                                /** @description Sayılan − beklenen; artı fazla, eksi eksik */
+                                difference: number;
+                                /** @description Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş */
+                                unitCostCents: number | null;
+                                /** @description Fark × birim maliyet, kuruş; birim maliyet yoksa boş */
+                                differenceCents: number | null;
+                                /** @description Satırın son sayıldığı an */
+                                countedAt: string;
+                                /** @description Tamamlamada farkı yazan düzeltme hareketi */
+                                movementId: string | null;
+                            }[];
+                            /** @description Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230) */
+                            uncounted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntüdeki miktar */
+                                systemQuantity: number;
+                            }[];
+                            totals: {
+                                /** @description Sayılan kalem */
+                                countedItems: number;
+                                /** @description Sayılmayan kalem */
+                                uncountedItems: number;
+                                /** @description Farkı olan kalem */
+                                differenceItems: number;
+                                /** @description Fazla tutarı (birim maliyeti bilinenler), kuruş */
+                                surplusCents: number;
+                                /** @description Eksik tutarı (birim maliyeti bilinenler), kuruş, artı */
+                                shortageCents: number;
+                                /** @description Fazla − eksik tutarı, kuruş */
+                                netCents: number;
+                                /** @description Farkı olup birim maliyeti bilinmeyen kalem */
+                                unpricedDifferenceItems: number;
+                            };
+                            /** @description Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228) */
+                            actions: {
+                                count: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStockCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            note: string | null;
+                            startedAt: string;
+                            startedByName: string | null;
+                            completedAt: string | null;
+                            completedByName: string | null;
+                            /** @description Düzeltme hareketlerinin günü (tamamlama günü) */
+                            adjustmentDate: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Sayılan kalemler, koda göre */
+                            counted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntü: sayım başladığında depodaki miktar */
+                                systemQuantity: number;
+                                /** @description Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231) */
+                                movementQuantity: number;
+                                /** @description Beklenen: anlık görüntü + sayım sırasındaki hareket */
+                                expectedQuantity: number;
+                                /** @description Sayılan miktar */
+                                countedQuantity: number;
+                                /** @description Sayılan − beklenen; artı fazla, eksi eksik */
+                                difference: number;
+                                /** @description Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş */
+                                unitCostCents: number | null;
+                                /** @description Fark × birim maliyet, kuruş; birim maliyet yoksa boş */
+                                differenceCents: number | null;
+                                /** @description Satırın son sayıldığı an */
+                                countedAt: string;
+                                /** @description Tamamlamada farkı yazan düzeltme hareketi */
+                                movementId: string | null;
+                            }[];
+                            /** @description Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230) */
+                            uncounted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntüdeki miktar */
+                                systemQuantity: number;
+                            }[];
+                            totals: {
+                                /** @description Sayılan kalem */
+                                countedItems: number;
+                                /** @description Sayılmayan kalem */
+                                uncountedItems: number;
+                                /** @description Farkı olan kalem */
+                                differenceItems: number;
+                                /** @description Fazla tutarı (birim maliyeti bilinenler), kuruş */
+                                surplusCents: number;
+                                /** @description Eksik tutarı (birim maliyeti bilinenler), kuruş, artı */
+                                shortageCents: number;
+                                /** @description Fazla − eksik tutarı, kuruş */
+                                netCents: number;
+                                /** @description Farkı olup birim maliyeti bilinmeyen kalem */
+                                unpricedDifferenceItems: number;
+                            };
+                            /** @description Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228) */
+                            actions: {
+                                count: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scanStockCount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    /** @default 1 */
+                    quantity?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            countId: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Anlık görüntüdeki miktar (sonradan sayılan kartta 0) */
+                            systemQuantity: number;
+                            /** @description Sayılan miktar; boşsa sayılmadı */
+                            countedQuantity: number | null;
+                            countedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setStockCountQuantity: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    countedQuantity: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            countId: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Anlık görüntüdeki miktar (sonradan sayılan kartta 0) */
+                            systemQuantity: number;
+                            /** @description Sayılan miktar; boşsa sayılmadı */
+                            countedQuantity: number | null;
+                            countedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeStockCount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            note: string | null;
+                            startedAt: string;
+                            startedByName: string | null;
+                            completedAt: string | null;
+                            completedByName: string | null;
+                            /** @description Düzeltme hareketlerinin günü (tamamlama günü) */
+                            adjustmentDate: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Sayılan kalemler, koda göre */
+                            counted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntü: sayım başladığında depodaki miktar */
+                                systemQuantity: number;
+                                /** @description Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231) */
+                                movementQuantity: number;
+                                /** @description Beklenen: anlık görüntü + sayım sırasındaki hareket */
+                                expectedQuantity: number;
+                                /** @description Sayılan miktar */
+                                countedQuantity: number;
+                                /** @description Sayılan − beklenen; artı fazla, eksi eksik */
+                                difference: number;
+                                /** @description Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş */
+                                unitCostCents: number | null;
+                                /** @description Fark × birim maliyet, kuruş; birim maliyet yoksa boş */
+                                differenceCents: number | null;
+                                /** @description Satırın son sayıldığı an */
+                                countedAt: string;
+                                /** @description Tamamlamada farkı yazan düzeltme hareketi */
+                                movementId: string | null;
+                            }[];
+                            /** @description Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230) */
+                            uncounted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntüdeki miktar */
+                                systemQuantity: number;
+                            }[];
+                            totals: {
+                                /** @description Sayılan kalem */
+                                countedItems: number;
+                                /** @description Sayılmayan kalem */
+                                uncountedItems: number;
+                                /** @description Farkı olan kalem */
+                                differenceItems: number;
+                                /** @description Fazla tutarı (birim maliyeti bilinenler), kuruş */
+                                surplusCents: number;
+                                /** @description Eksik tutarı (birim maliyeti bilinenler), kuruş, artı */
+                                shortageCents: number;
+                                /** @description Fazla − eksik tutarı, kuruş */
+                                netCents: number;
+                                /** @description Farkı olup birim maliyeti bilinmeyen kalem */
+                                unpricedDifferenceItems: number;
+                            };
+                            /** @description Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228) */
+                            actions: {
+                                count: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStockCount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            warehouseId: string;
+                            warehouseName: string;
+                            campusName: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            note: string | null;
+                            startedAt: string;
+                            startedByName: string | null;
+                            completedAt: string | null;
+                            completedByName: string | null;
+                            /** @description Düzeltme hareketlerinin günü (tamamlama günü) */
+                            adjustmentDate: string | null;
+                            cancelledAt: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Sayılan kalemler, koda göre */
+                            counted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntü: sayım başladığında depodaki miktar */
+                                systemQuantity: number;
+                                /** @description Sayım başladıktan sonra, kart sayılana kadar kaydedilen hareketlerin net etkisi (K-231) */
+                                movementQuantity: number;
+                                /** @description Beklenen: anlık görüntü + sayım sırasındaki hareket */
+                                expectedQuantity: number;
+                                /** @description Sayılan miktar */
+                                countedQuantity: number;
+                                /** @description Sayılan − beklenen; artı fazla, eksi eksik */
+                                difference: number;
+                                /** @description Birim maliyet: son alış fiyatı (K-202), KDV hariç, kuruş; tamamlanan sayımda saklanan değer. Yoksa boş */
+                                unitCostCents: number | null;
+                                /** @description Fark × birim maliyet, kuruş; birim maliyet yoksa boş */
+                                differenceCents: number | null;
+                                /** @description Satırın son sayıldığı an */
+                                countedAt: string;
+                                /** @description Tamamlamada farkı yazan düzeltme hareketi */
+                                movementId: string | null;
+                            }[];
+                            /** @description Anlık görüntüde miktarı olup sayılmayan kalemler; değişmez (K-230) */
+                            uncounted: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                                /** @description Anlık görüntüdeki miktar */
+                                systemQuantity: number;
+                            }[];
+                            totals: {
+                                /** @description Sayılan kalem */
+                                countedItems: number;
+                                /** @description Sayılmayan kalem */
+                                uncountedItems: number;
+                                /** @description Farkı olan kalem */
+                                differenceItems: number;
+                                /** @description Fazla tutarı (birim maliyeti bilinenler), kuruş */
+                                surplusCents: number;
+                                /** @description Eksik tutarı (birim maliyeti bilinenler), kuruş, artı */
+                                shortageCents: number;
+                                /** @description Fazla − eksik tutarı, kuruş */
+                                netCents: number;
+                                /** @description Farkı olup birim maliyeti bilinmeyen kalem */
+                                unpricedDifferenceItems: number;
+                            };
+                            /** @description Oturumdaki kullanıcının bu sayımda yapabilecekleri (K-228) */
+                            actions: {
+                                count: boolean;
+                                complete: boolean;
+                                cancel: boolean;
                             };
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;

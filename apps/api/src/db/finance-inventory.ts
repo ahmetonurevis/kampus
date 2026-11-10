@@ -13,15 +13,16 @@ import {
   type SQL,
 } from 'drizzle-orm'
 
-import type {
-  CancellableMovement,
-  StockCategory,
-  StockEntryReason,
-  StockIssueReason,
-  StockItemFields,
-  StockMovementType,
-  StockUnit,
-  StockWarehouseFields,
+import {
+  STOCK_INBOUND_TYPES,
+  type CancellableMovement,
+  type StockCategory,
+  type StockEntryReason,
+  type StockIssueReason,
+  type StockItemFields,
+  type StockMovementType,
+  type StockUnit,
+  type StockWarehouseFields,
 } from '@kampus/school-core/lib/finance-inventory.ts'
 
 import type { Database } from './client.ts'
@@ -251,7 +252,7 @@ export async function loadStockBalances(
     .select({
       itemId: stockMovements.itemId,
       warehouseId: stockMovements.warehouseId,
-      quantity: sql<string>`sum(case when ${stockMovements.type} in ('in', 'transfer_in', 'receipt') then ${stockMovements.quantity} else -${stockMovements.quantity} end)`,
+      quantity: sql<string>`sum(case when ${inArray(stockMovements.type, [...STOCK_INBOUND_TYPES])} then ${stockMovements.quantity} else -${stockMovements.quantity} end)`,
     })
     .from(stockMovements)
     .where(

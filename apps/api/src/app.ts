@@ -48,6 +48,7 @@ import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
+import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
@@ -500,6 +501,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceInventoryRoutes(app)
   registerFinanceFixedAssetRoutes(app)
   registerFinanceMaterialSetRoutes(app)
+  registerFinanceStockCountRoutes(app)
   registerFinanceFixedAssetAssignmentRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

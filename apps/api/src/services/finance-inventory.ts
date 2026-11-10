@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   isBelowMinimum,
+  isCountAdjustment,
   planReceiptStockCancel,
   planReceiptStockEntries,
   planStockEntry,
@@ -49,6 +50,7 @@ import {
   type StoredStockWarehouse,
 } from '../db/finance-inventory.ts'
 import { purchaseActorNames } from '../db/finance-purchase-requests.ts'
+import { loadMovementCounts } from '../db/finance-stock-counts.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { foldSearch } from '../db/text-search.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -79,7 +81,7 @@ const pageOf = <T>(items: readonly T[], query: Page) => ({
 const matches = (search: string | undefined, ...values: string[]) =>
   search === undefined || values.some((value) => foldSearch(value).includes(search))
 
-async function campusRecords(db: Database, institutionId: string, ids: readonly string[]) {
+export async function campusRecords(db: Database, institutionId: string, ids: readonly string[]) {
   const rows = await loadRecordsByIds(db, institutionId, 'branches', [...new Set(ids)])
   return new Map(
     rows.map((row) => [
@@ -499,7 +501,10 @@ async function movementViews(
   const receiptIds = movements.flatMap((movement) =>
     movement.receiptId === null ? [] : [movement.receiptId],
   )
-  const [items, warehouses, transfers, orders, names] = await Promise.all([
+  const adjustmentIds = movements.flatMap((movement) =>
+    isCountAdjustment(movement.type) ? [movement.id] : [],
+  )
+  const [items, warehouses, transfers, orders, names, counts] = await Promise.all([
     loadStockItemsByIds(
       db,
       ctx.institutionId,
@@ -517,6 +522,7 @@ async function movementViews(
           : [movement.createdByUserId, movement.cancelledByUserId],
       ),
     ),
+    loadMovementCounts(db, ctx.institutionId, adjustmentIds),
   ])
   const itemById = new Map(items.map((item) => [item.id, item]))
   const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]))
@@ -558,6 +564,7 @@ async function movementViews(
           : (warehouseById.get(counterpart.warehouseId)?.name ?? null),
       orderId: order?.orderId ?? null,
       orderNumber: order?.orderNumber ?? null,
+      countId: counts.get(movement.id) ?? null,
       createdAt: movement.createdAt,
       createdByName: nameOf(movement.createdByUserId),
       cancelledAt: movement.cancelledAt,
@@ -568,7 +575,8 @@ async function movementViews(
           canCancel &&
           movement.cancelledAt === null &&
           movement.receiptId === null &&
-          movement.type !== 'delivery',
+          movement.type !== 'delivery' &&
+          !isCountAdjustment(movement.type),
       },
       version: movement.version,
     }

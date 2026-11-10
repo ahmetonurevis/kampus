@@ -19,7 +19,8 @@ import { SUPPLIER_CATEGORIES } from './finance-suppliers.ts'
  * düşürmemelidir. Transfer tek işlemde iki harekettir. Hareket silinmez, yönetici gerekçeyle iptal
  * eder; mal kabulden gelen giriş yalnız kabul iptaliyle geri alınır (DOM-FIN-074). Materyal seti
  * teslimi (DOM-FIN-080) setin kalemleri kadar `delivery` çıkışı yazar; bu çıkışlar yalnız teslim
- * iptaliyle geri alınır.
+ * iptaliyle geri alınır. Tamamlanan stok sayımı (DOM-FIN-081) farkları `adjustment_in` ve
+ * `adjustment_out` düzeltmeleriyle yazar; bunlar iptal edilmez (tamamlanan sayım değişmez).
  *
  * Fonksiyonlar saftır; zaman `today` parametresiyle gelir.
  */
@@ -58,6 +59,8 @@ export const STOCK_MOVEMENT_TYPES = [
   'transfer_out',
   'receipt',
   'delivery',
+  'adjustment_in',
+  'adjustment_out',
 ] as const
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]
 export const STOCK_MOVEMENT_TYPE_LABELS = {
@@ -67,9 +70,21 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   transfer_out: 'Transfer çıkışı',
   receipt: 'Mal kabul girişi',
   delivery: 'Materyal seti teslimi',
+  adjustment_in: 'Sayım fazlası düzeltmesi',
+  adjustment_out: 'Sayım eksiği düzeltmesi',
 } as const satisfies Record<StockMovementType, string>
-const INBOUND: ReadonlySet<StockMovementType> = new Set(['in', 'transfer_in', 'receipt'])
+/** Miktarı artıran hareket türleri; veritabanı toplamı da bu kümeyi kullanır. */
+export const STOCK_INBOUND_TYPES = [
+  'in',
+  'transfer_in',
+  'receipt',
+  'adjustment_in',
+] as const satisfies readonly StockMovementType[]
+const INBOUND: ReadonlySet<StockMovementType> = new Set(STOCK_INBOUND_TYPES)
 export const isInbound = (type: StockMovementType) => INBOUND.has(type)
+/** Stok sayımının tamamlanınca yazdığı düzeltme hareketleri (DOM-FIN-081). */
+export const isCountAdjustment = (type: StockMovementType) =>
+  type === 'adjustment_in' || type === 'adjustment_out'
 
 export const STOCK_ENTRY_REASONS = [
   'opening',
@@ -452,14 +467,17 @@ export function planStockWarehouseUpdate(
   return changes
 }
 
-function assertItem(item: StockItemRef | undefined, path: (string | number)[]): StockItemRef {
+export function assertItem(
+  item: StockItemRef | undefined,
+  path: (string | number)[],
+): StockItemRef {
   if (item === undefined) throw ruleError('stock_item_not_found', 'Stok kartı bulunamadı.', path)
   if (!item.isActive)
     throw ruleError('stock_item_inactive', `${item.name} pasif; hareket yazılmaz.`, path)
   return item
 }
 
-function assertWarehouse(
+export function assertWarehouse(
   warehouse: StockWarehouseRef | undefined,
   path: (string | number)[],
 ): StockWarehouseRef {
@@ -655,6 +673,11 @@ export function planStockMovementCancel(
     throw ruleError(
       'stock_movement_from_delivery',
       'Materyal seti teslimindeki çıkış buradan iptal edilmez; teslimi iptal edin.',
+    )
+  if (isCountAdjustment(movement.type))
+    throw ruleError(
+      'stock_movement_from_count',
+      'Sayım düzeltmesi iptal edilmez; tamamlanan sayım değiştirilemez. Fark varsa yeni sayım yapın.',
     )
   const ids =
     movement.transferId === null

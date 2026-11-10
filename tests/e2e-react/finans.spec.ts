@@ -2232,6 +2232,7 @@ test.describe('Finans: stok', () => {
     await expect(paperRow).toContainText('Ana depo 3')
     await expect(paperRow).toContainText('17 paket')
     await expect(table).not.toContainText('KALEM')
+    const criticalUrl = page.url()
 
     await page.getByRole('checkbox', { name: 'TONER · Toner talebe ekle' }).check()
     await page.getByRole('checkbox', { name: 'KAG-A4 · A4 kâğıt talebe ekle' }).check()
@@ -2242,6 +2243,13 @@ test.describe('Finans: stok', () => {
     await expect(form.getByLabel('2. kalem adı')).toHaveValue('A4 kâğıt (KAG-A4)')
     await expect(form.getByLabel('Gerekçe')).toHaveValue(
       /^Kritik seviyedeki stok için talep önerisi/,
+    )
+    // ON-339, K-221: öneri kalemleri stok kartına bağlı gelir.
+    await expect(form.getByLabel('1. kalem stok kartı (isteğe bağlı)')).toHaveText(
+      /Toner \(TONER\)/,
+    )
+    await expect(form.getByLabel('2. kalem stok kartı (isteğe bağlı)')).toHaveText(
+      /A4 kâğıt \(KAG-A4\)/,
     )
     const quantities = form.getByLabel('Miktar')
     await expect(quantities.nth(0)).toHaveValue('4')
@@ -2260,6 +2268,16 @@ test.describe('Finans: stok', () => {
     await expect(panel.getByRole('heading', { name: 'ST-0001' })).toBeVisible()
     await expect(panel.getByText('Taslak', { exact: true })).toBeVisible()
     await expect(panel.getByText('Toner (TONER)')).toBeVisible()
+    await expect(panel.getByText('Stok kartı: TONER · Toner')).toBeVisible()
+
+    // ON-339, K-222: açık talepteki miktar listede; ikinci talep uyarılır, engellenmez.
+    await page.goto(criticalUrl)
+    await expect(toner).toContainText('4 adet · 1 talep')
+    await page.getByRole('checkbox', { name: 'TONER · Toner talebe ekle' }).check()
+    await expect(
+      page.getByText(/^Seçilen 1 ürünün siparişe dönmemiş açık talebi var/),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Talep öner (1)' })).toBeEnabled()
   })
 })
 

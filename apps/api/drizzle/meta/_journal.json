@@ -645,6 +645,13 @@
       "when": 1794311343976,
       "tag": "0091_fixed_asset_depreciation",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794312162792,
+      "tag": "0092_create_stock_counts",
+      "breakpoints": true
     }
   ]
 }

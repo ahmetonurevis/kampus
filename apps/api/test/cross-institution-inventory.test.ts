@@ -1623,6 +1623,31 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: stok sayımı (ON-231; DOM-FIN-081).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/stock-counts', 'listOf()'],
+        ['gövde', 'POST /api/v1/finance/stock-counts', '{ institutionId: b.id }'],
+        ['kayıt', 'GET /api/v1/finance/stock-counts/:countId', 'get(bCountUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/scans', 'scan(a.admin, bCount'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/quantities',
+          'setQuantity(a.admin, bCount',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/complete',
+          'complete(a.admin, bCount)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/cancel', 'cancel(a.admin, bCount)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-stock-counts.test.ts', 'başka kurumun sayımı 404 ve B değişmez', marker),
+    ]),
+  ),
 }
 
 /**

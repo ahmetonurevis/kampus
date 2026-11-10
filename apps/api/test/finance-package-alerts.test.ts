@@ -15,6 +15,7 @@ import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import { records } from '../src/db/schema/records.ts'
 import { packageAlertsJob } from '../src/jobs/finance-package-alerts.ts'
 import type { JobDeps } from '../src/jobs/types.ts'
+import { recordLessonPackageUsage } from '../src/services/finance-packages.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -55,7 +56,7 @@ const SAMPLE: Partial<Record<CollectionName, readonly Record<string, unknown>[]>
   parents: SEED.parents,
 }
 
-describe('K-248, K-249: paket saat uyarıları', () => {
+describe('K-248, K-249, K-250: paket saat uyarıları ve yoklama köprüsü', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
@@ -212,7 +213,14 @@ describe('K-248, K-249: paket saat uyarıları', () => {
     assert.ok(!(await notices(a.id)).some((item) => item.subjectId === quiet.id))
     // Kayıt yalnız satış kimliği taşır: saat, tutar, paket adı yoktur (DOM-ILT-023).
     for (const row of await loadRecords(db, a.id, ['notifications']))
-      assert.doesNotMatch(JSON.stringify(row.data), /saat|40|netCents|günlük/)
+      assert.deepEqual(Object.keys(row.data).sort(), [
+        'audience',
+        'createdAt',
+        'id',
+        'kind',
+        'studentId',
+        'subject',
+      ])
 
     // Aynı gün ikinci tarama yazmaz.
     const again = await run(a.id, at(5))
@@ -314,5 +322,78 @@ describe('K-248, K-249: paket saat uyarıları', () => {
     // Kapsam dışı öğrenci süzgeçle de görünmez.
     const other = await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }])
     assert.deepEqual(await byAlert(other, 'low_balance'), { ids: [], alerts: [], total: 0 })
+  })
+  const ctxOf = (institutionId: string) => ({
+    db,
+    institutionId,
+    actor: { userId: 'test-user', role: 'yonetici' as const, membershipId: 'test-membership' },
+    now: FIXED_NOW,
+    log: app.log,
+  })
+  const groupLesson = (lessonHourId: string, hours: number, studentId = 's3') => ({
+    studentId,
+    courseId: null,
+    lessonKind: 'group',
+    lessonHourId,
+    occurredDate: '2026-10-06',
+    hours,
+  })
+  const balanceOf = async (cookie: string) => {
+    const response = await get(balanceUrl('s3'), cookie)
+    assert.equal(response.statusCode, 200, response.body)
+    const data = response.json().data as Json
+    return { used: data.usedHours as number, remaining: data.remainingHours as number }
+  }
+
+  test('IST-078, K-250: yoklamadan gelen ders saati bakiyeyi düşürür, elle girilen farka eklenmez, ikinci kez yazılmaz', async () => {
+    const a = await ready([180])
+    const sale = await a.sell(0)
+    await a.setUsed(sale.id, 10, sale.version)
+
+    assert.deepEqual(await recordLessonPackageUsage(ctxOf(a.id), groupLesson('test-lh-1', 2)), {
+      saleId: sale.id,
+      recorded: true,
+    })
+    assert.deepEqual(await balanceOf(a.admin), { used: 10, remaining: 30 })
+    assert.deepEqual(await recordLessonPackageUsage(ctxOf(a.id), groupLesson('test-lh-1', 2)), {
+      saleId: sale.id,
+      recorded: false,
+    })
+    // Elle girilen fark (8) biter, sonraki ders toplamı artırır.
+    await recordLessonPackageUsage(ctxOf(a.id), groupLesson('test-lh-2', 9))
+    assert.deepEqual(await balanceOf(a.admin), { used: 11, remaining: 29 })
+    // Fark değiştiği için sürüm arttı: eski `If-Match` ile elle giriş 409.
+    const stale = await post(
+      `${SALES}/${sale.id}/set-used-hours`,
+      a.admin,
+      { usedHours: 20, reason: 'Devam çizelgesine göre' },
+      { 'if-match': `"${String(sale.version + 1)}"` },
+    )
+    assert.equal(stale.statusCode, 409, stale.body)
+    // Kullanılan saat derslerden yazılanın altına inemez (K-21).
+    const fresh = (await get(`${SALES}/${sale.id}`, a.admin)).json().data as Json
+    const below = await post(
+      `${SALES}/${sale.id}/set-used-hours`,
+      a.admin,
+      { usedHours: 10, reason: 'Devam çizelgesine göre' },
+      { 'if-match': `"${String(fresh.version)}"` },
+    )
+    assert.equal(below.statusCode, 422, below.body)
+    assert.equal(below.json().code, 'package_used_below_lessons')
+  })
+
+  test('K-250: uygun satış yoksa ders paketsiz sayılır, hiçbir hareket yazılmaz', async () => {
+    const a = await ready([180])
+    assert.deepEqual(await recordLessonPackageUsage(ctxOf(a.id), groupLesson('test-lh-1', 1)), {
+      saleId: null,
+      recorded: false,
+    })
+    await a.sell(0)
+    const privateLesson = { ...groupLesson('test-lh-2', 1), lessonKind: 'private' }
+    assert.deepEqual(await recordLessonPackageUsage(ctxOf(a.id), privateLesson), {
+      saleId: null,
+      recorded: false,
+    })
+    assert.deepEqual(await balanceOf(a.admin), { used: 0, remaining: 40 })
   })
 })

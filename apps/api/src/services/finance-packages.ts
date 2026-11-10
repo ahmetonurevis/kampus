@@ -7,6 +7,12 @@ import {
   packageSaleAlerts,
   type PackageAlert,
 } from '@kampus/school-core/lib/finance-package-alerts.ts'
+import {
+  lessonAlreadyRecorded,
+  lessonPackageUsageSchema,
+  pickLessonPackageSale,
+  planLessonPackageHours,
+} from '@kampus/school-core/lib/finance-package-lessons.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   createPackageSchema,
@@ -746,4 +752,102 @@ export async function recordPackageHours(
     null,
   )
   return { recorded }
+}
+
+/**
+ * Yoklama köprüsünün finans ucu (K-250; IST-078, DOM-DIL-051, DOM-DIL-054): ders saati yoklaması ya
+ * da özel ders yazan işlem (OG-116, OG-144, OG-269) aynı transaction'da değil, kendi işleminden sonra
+ * çağırır; kurum kilidi altında satış seçilir (`pickLessonPackageSale`), elle girilen fark ders
+ * saatinden düşülür ve hareket yazılır. Aynı ders ikinci kez gelirse yazmaz. Uygun satış yoksa
+ * `saleId: null` döner, hata değildir: ders sözleşme ücretiyle ya da paketsiz yapılmış olabilir.
+ * HTTP ucu yoktur.
+ */
+export async function recordLessonPackageUsage(
+  ctx: ServiceContext,
+  input: unknown,
+): Promise<{ saleId: string | null; recorded: boolean }> {
+  const lesson = lessonPackageUsageSchema.parse(input)
+  const id = randomUUID()
+  let outcome: { saleId: string | null; recorded: boolean } = { saleId: null, recorded: false }
+  await runCommand(
+    ctx,
+    {
+      action: 'package.hours',
+      collections: [],
+      entity: { type: HOUR_ENTITY, id },
+      load: async (tx) => {
+        const sales = await listAllPackageSales(tx, ctx.institutionId, {
+          studentIds: [lesson.studentId],
+          packageId: undefined,
+        })
+        const entries = await loadPackageHourEntries(
+          tx,
+          ctx.institutionId,
+          sales.map((sale) => sale.id),
+        )
+        const today = dayKey(ctx.now)
+        return {
+          run: () => {
+            const recordedIn = lessonAlreadyRecorded(entries, lesson.lessonHourId)
+            if (recordedIn !== null) return { saleId: recordedIn, plan: null }
+            const saleId = pickLessonPackageSale(
+              sales.map((sale) => ({
+                ...sale,
+                remainingHours: packageHourBalance(sale.purchasedHours, entries.get(sale.id) ?? [])
+                  .remainingHours,
+              })),
+              lesson,
+            )
+            const sale = sales.find((item) => item.id === saleId)
+            if (sale === undefined) return { saleId: null, plan: null }
+            return {
+              saleId: sale.id,
+              version: sale.version,
+              plan: planLessonPackageHours(sale, entries.get(sale.id) ?? [], lesson, today),
+            }
+          },
+        }
+      },
+      after: async (tx, result) => {
+        outcome = { saleId: result.saleId, recorded: false }
+        if (result.plan === null || result.saleId === null) return
+        const { entry, manualHours } = result.plan
+        if (manualHours !== null) {
+          const saved = await bumpPackageSaleVersion(tx, ctx.institutionId, {
+            id: result.saleId,
+            expectedVersion: result.version ?? 0,
+            now: ctx.now,
+          })
+          if (!saved) throw new ConflictError()
+          await archiveManualHourEntries(tx, ctx.institutionId, {
+            saleId: result.saleId,
+            now: ctx.now,
+          })
+          await insertPackageHourEntry(tx, ctx.institutionId, {
+            id: randomUUID(),
+            saleId: result.saleId,
+            kind: 'consumed',
+            hours: manualHours,
+            occurredDate: dayKey(ctx.now),
+            sourceType: 'manual',
+            sourceId: result.saleId,
+            recordedByUserId: ctx.actor.userId,
+            now: ctx.now,
+          })
+        }
+        await insertPackageHourEntry(tx, ctx.institutionId, {
+          ...entry,
+          id,
+          saleId: result.saleId,
+          recordedByUserId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        await auditWork(tx, ctx, 'package.hours', { type: HOUR_ENTITY, id }, Object.keys(entry))
+        outcome = { saleId: result.saleId, recorded: true }
+      },
+    },
+    () => ({ statusCode: 200, body: null }),
+    null,
+  )
+  return outcome
 }

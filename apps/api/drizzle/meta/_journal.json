@@ -638,6 +638,13 @@
       "when": 1794310716692,
       "tag": "0090_create_fixed_asset_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794311343976,
+      "tag": "0091_fixed_asset_depreciation",
+      "breakpoints": true
     }
   ]
 }

@@ -32,6 +32,7 @@ const draft = (overrides: Partial<FixedAssetDraft> = {}): FixedAssetDraft => ({
   ...fixedAssetSchema.parse(BASE),
   tagNumber: 'DB-2026-0001',
   status: 'in_use',
+  usefulLifeYears: 5,
   ...overrides,
 })
 const receipt = (overrides: Partial<FixedAssetReceiptRef> = {}): FixedAssetReceiptRef => ({

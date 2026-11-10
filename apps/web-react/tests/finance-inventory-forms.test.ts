@@ -60,6 +60,8 @@ test('DOM-FIN-078: giriş, çıkış ve transfer gövdeleri; transferde çıkı�
       movementDate: '2026-10-06',
       reason: 'opening',
       note: null,
+      lotNumber: null,
+      expiryDate: null,
     },
   })
   const issue = {

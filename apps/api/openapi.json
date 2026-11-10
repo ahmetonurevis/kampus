@@ -123305,7 +123305,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); `warehouseId` verilirse yalnız o depodaki miktar. `critical=true` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları verir. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
+        "description": "Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); `warehouseId` verilirse yalnız o depodaki miktar. `critical=true` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları, `chemical=true` kimyasal kartları verir (DOM-FIN-090). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -123398,6 +123398,18 @@
             "name": "warehouseId",
             "required": false,
             "description": "Miktar yalnız bu depodan"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "chemical",
+            "required": false,
+            "description": "`true`: yalnız kimyasal kartlar (DOM-FIN-090)"
           }
         ],
         "responses": {
@@ -123474,6 +123486,10 @@
                             "type": "boolean",
                             "description": "Miktar kritik seviyeye eşit ya da altında (K-182)"
                           },
+                          "isChemical": {
+                            "type": "boolean",
+                            "description": "Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -123491,6 +123507,7 @@
                           "isActive",
                           "quantity",
                           "isBelowMinimum",
+                          "isChemical",
                           "version"
                         ],
                         "additionalProperties": false
@@ -123751,6 +123768,10 @@
                           "type": "boolean",
                           "description": "Miktar kritik seviyeye eşit ya da altında (K-182)"
                         },
+                        "isChemical": {
+                          "type": "boolean",
+                          "description": "Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -123760,6 +123781,113 @@
                         "hasMovements": {
                           "type": "boolean",
                           "description": "Hareketi varsa birim değişmez (K-182)"
+                        },
+                        "chemical": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "hazardPictograms": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "GHS01",
+                                      "GHS02",
+                                      "GHS03",
+                                      "GHS04",
+                                      "GHS05",
+                                      "GHS06",
+                                      "GHS07",
+                                      "GHS08",
+                                      "GHS09"
+                                    ]
+                                  },
+                                  "description": "GHS piktogram kodları, kod sırasıyla"
+                                },
+                                "signalWord": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "danger",
+                                        "warning"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                                },
+                                "casNumber": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "storageClass": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "incompatibilityNote": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsUrl": {
+                                  "description": "GBF bağlantısı (https)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsDocumentNumber": {
+                                  "description": "GBF belge numarası",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsRevisionDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kimyasal bilgisinin sürümü"
+                                }
+                              },
+                              "required": [
+                                "hazardPictograms",
+                                "signalWord",
+                                "casNumber",
+                                "storageClass",
+                                "incompatibilityNote",
+                                "sdsUrl",
+                                "sdsDocumentNumber",
+                                "sdsRevisionDate",
+                                "version"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Kimyasal bilgisi (K-240); kimyasal olmayan kartta boş"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "balances": {
                           "type": "array",
@@ -123810,8 +123938,10 @@
                         "isActive",
                         "quantity",
                         "isBelowMinimum",
+                        "isChemical",
                         "version",
                         "hasMovements",
+                        "chemical",
                         "balances"
                       ],
                       "additionalProperties": false
@@ -124253,7 +124383,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Kart, toplam miktar ve depo başına miktar. Olmayan ya da başka kurumun kartı 404. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
+        "description": "Kart, toplam miktar, depo başına miktar ve kimyasal bilgisi (`chemical`, DOM-FIN-090). Olmayan ya da başka kurumun kartı 404. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -124338,6 +124468,10 @@
                           "type": "boolean",
                           "description": "Miktar kritik seviyeye eşit ya da altında (K-182)"
                         },
+                        "isChemical": {
+                          "type": "boolean",
+                          "description": "Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -124347,6 +124481,113 @@
                         "hasMovements": {
                           "type": "boolean",
                           "description": "Hareketi varsa birim değişmez (K-182)"
+                        },
+                        "chemical": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "hazardPictograms": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "GHS01",
+                                      "GHS02",
+                                      "GHS03",
+                                      "GHS04",
+                                      "GHS05",
+                                      "GHS06",
+                                      "GHS07",
+                                      "GHS08",
+                                      "GHS09"
+                                    ]
+                                  },
+                                  "description": "GHS piktogram kodları, kod sırasıyla"
+                                },
+                                "signalWord": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "danger",
+                                        "warning"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                                },
+                                "casNumber": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "storageClass": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "incompatibilityNote": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsUrl": {
+                                  "description": "GBF bağlantısı (https)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsDocumentNumber": {
+                                  "description": "GBF belge numarası",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsRevisionDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kimyasal bilgisinin sürümü"
+                                }
+                              },
+                              "required": [
+                                "hazardPictograms",
+                                "signalWord",
+                                "casNumber",
+                                "storageClass",
+                                "incompatibilityNote",
+                                "sdsUrl",
+                                "sdsDocumentNumber",
+                                "sdsRevisionDate",
+                                "version"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Kimyasal bilgisi (K-240); kimyasal olmayan kartta boş"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "balances": {
                           "type": "array",
@@ -124397,8 +124638,10 @@
                         "isActive",
                         "quantity",
                         "isBelowMinimum",
+                        "isChemical",
                         "version",
                         "hasMovements",
+                        "chemical",
                         "balances"
                       ],
                       "additionalProperties": false
@@ -124670,6 +124913,10 @@
                           "type": "boolean",
                           "description": "Miktar kritik seviyeye eşit ya da altında (K-182)"
                         },
+                        "isChemical": {
+                          "type": "boolean",
+                          "description": "Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -124679,6 +124926,113 @@
                         "hasMovements": {
                           "type": "boolean",
                           "description": "Hareketi varsa birim değişmez (K-182)"
+                        },
+                        "chemical": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "hazardPictograms": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "GHS01",
+                                      "GHS02",
+                                      "GHS03",
+                                      "GHS04",
+                                      "GHS05",
+                                      "GHS06",
+                                      "GHS07",
+                                      "GHS08",
+                                      "GHS09"
+                                    ]
+                                  },
+                                  "description": "GHS piktogram kodları, kod sırasıyla"
+                                },
+                                "signalWord": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "danger",
+                                        "warning"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                                },
+                                "casNumber": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "storageClass": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "incompatibilityNote": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsUrl": {
+                                  "description": "GBF bağlantısı (https)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsDocumentNumber": {
+                                  "description": "GBF belge numarası",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsRevisionDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kimyasal bilgisinin sürümü"
+                                }
+                              },
+                              "required": [
+                                "hazardPictograms",
+                                "signalWord",
+                                "casNumber",
+                                "storageClass",
+                                "incompatibilityNote",
+                                "sdsUrl",
+                                "sdsDocumentNumber",
+                                "sdsRevisionDate",
+                                "version"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Kimyasal bilgisi (K-240); kimyasal olmayan kartta boş"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "balances": {
                           "type": "array",
@@ -124729,8 +125083,10 @@
                         "isActive",
                         "quantity",
                         "isBelowMinimum",
+                        "isChemical",
                         "version",
                         "hasMovements",
+                        "chemical",
                         "balances"
                       ],
                       "additionalProperties": false
@@ -125715,6 +126071,25 @@
                               "null"
                             ]
                           },
+                          "lotNumber": {
+                            "description": "Kimyasal girişinin partisi (DOM-FIN-090)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "expiryDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Partinin son kullanma günü"
+                          },
                           "countId": {
                             "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                             "type": [
@@ -125787,6 +126162,8 @@
                           "counterpartWarehouseName",
                           "orderId",
                           "orderNumber",
+                          "lotNumber",
+                          "expiryDate",
                           "countId",
                           "createdAt",
                           "createdByName",
@@ -125902,7 +126279,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); \"Diğer\" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.",
+        "description": "Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kimyasal kartın girişi parti numarası (`lotNumber`) ve son kullanma günü (`expiryDate`) ister (422 `stock_lot_required`); kimyasal olmayan kartta parti 422 `stock_lot_not_allowed` (DOM-FIN-090, K-241). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); \"Diğer\" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Rol: `yonetici` (K-180). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -125948,6 +126325,30 @@
                       "count_surplus",
                       "returned",
                       "other"
+                    ]
+                  },
+                  "lotNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[^\\p{Cc}]*$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "expiryDate": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   }
                 },
@@ -126098,6 +126499,25 @@
                             "null"
                           ]
                         },
+                        "lotNumber": {
+                          "description": "Kimyasal girişinin partisi (DOM-FIN-090)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expiryDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Partinin son kullanma günü"
+                        },
                         "countId": {
                           "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                           "type": [
@@ -126170,6 +126590,8 @@
                         "counterpartWarehouseName",
                         "orderId",
                         "orderNumber",
+                        "lotNumber",
+                        "expiryDate",
                         "countId",
                         "createdAt",
                         "createdByName",
@@ -126280,7 +126702,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 `stock_insufficient`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); \"Diğer\" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
+        "description": "Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 `stock_insufficient`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kimyasal kartta çıkış en yakın son kullanma tarihli partiden düşer (FEFO, K-242). Kart ve depo etkin olmalı (422 `stock_item_inactive`, `stock_warehouse_inactive`); gün bugünden sonra olamaz (422 `stock_movement_date_future`); \"Diğer\" nedeni açıklama ister. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -126476,6 +126898,25 @@
                             "null"
                           ]
                         },
+                        "lotNumber": {
+                          "description": "Kimyasal girişinin partisi (DOM-FIN-090)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expiryDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Partinin son kullanma günü"
+                        },
                         "countId": {
                           "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                           "type": [
@@ -126548,6 +126989,8 @@
                         "counterpartWarehouseName",
                         "orderId",
                         "orderNumber",
+                        "lotNumber",
+                        "expiryDate",
                         "countId",
                         "createdAt",
                         "createdByName",
@@ -126857,6 +127300,25 @@
                                   "null"
                                 ]
                               },
+                              "lotNumber": {
+                                "description": "Kimyasal girişinin partisi (DOM-FIN-090)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Partinin son kullanma günü"
+                              },
                               "countId": {
                                 "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                                 "type": [
@@ -126929,6 +127391,8 @@
                               "counterpartWarehouseName",
                               "orderId",
                               "orderNumber",
+                              "lotNumber",
+                              "expiryDate",
                               "countId",
                               "createdAt",
                               "createdByName",
@@ -127227,6 +127691,25 @@
                               "null"
                             ]
                           },
+                          "lotNumber": {
+                            "description": "Kimyasal girişinin partisi (DOM-FIN-090)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "expiryDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Partinin son kullanma günü"
+                          },
                           "countId": {
                             "description": "Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı",
                             "type": [
@@ -127299,6 +127782,8 @@
                           "counterpartWarehouseName",
                           "orderId",
                           "orderNumber",
+                          "lotNumber",
+                          "expiryDate",
                           "countId",
                           "createdAt",
                           "createdByName",
@@ -140586,6 +141071,1672 @@
                           "campusName",
                           "location",
                           "assetCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-items/{itemId}/chemical-profile": {
+      "post": {
+        "operationId": "createStockChemicalProfile",
+        "summary": "Stok kartını kimyasal olarak işaretle",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Karta kimyasal bilgisi ekler (DOM-FIN-090): GHS piktogramları (`GHS01`…`GHS09`, çoklu), sinyal kelimesi (`danger` Tehlike, `warning` Dikkat), CAS numarası (biçim ve sağlama basamağı), depolama sınıfı (≤ 80), uyumsuzluk notu (≤ 500), GBF bağlantısı (yalnız https), GBF belge numarası ve revizyon günü (bugünden sonra olamaz, 422 `chemical_sds_date_future`); hepsi isteğe bağlı. GBF dosyası saklanmaz (K-240). Kartın kimyasal bilgisi zaten varsa 409 `stock_item_chemical_exists`; olmayan ya da başka kurumun kartı 404. Kimyasal kartın girişi bundan sonra parti ve son kullanma günü ister (K-241). Yanıt kart ayrıntısıdır. Rol: `yonetici` (K-180, K-240). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hazardPictograms": {
+                    "maxItems": 9,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "GHS01",
+                        "GHS02",
+                        "GHS03",
+                        "GHS04",
+                        "GHS05",
+                        "GHS06",
+                        "GHS07",
+                        "GHS08",
+                        "GHS09"
+                      ]
+                    }
+                  },
+                  "signalWord": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "danger",
+                          "warning"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "casNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "storageClass": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 80
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "incompatibilityNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sdsUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sdsDocumentNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 60
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sdsRevisionDate": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "itemId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "stationery",
+                            "cleaning",
+                            "food",
+                            "it",
+                            "maintenance",
+                            "furniture",
+                            "educational",
+                            "services",
+                            "transport",
+                            "other"
+                          ]
+                        },
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "piece",
+                            "pack",
+                            "box",
+                            "kilogram",
+                            "liter",
+                            "meter"
+                          ]
+                        },
+                        "minQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kritik seviye; boşsa yok"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo)"
+                        },
+                        "isBelowMinimum": {
+                          "type": "boolean",
+                          "description": "Miktar kritik seviyeye eşit ya da altında (K-182)"
+                        },
+                        "isChemical": {
+                          "type": "boolean",
+                          "description": "Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "hasMovements": {
+                          "type": "boolean",
+                          "description": "Hareketi varsa birim değişmez (K-182)"
+                        },
+                        "chemical": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "hazardPictograms": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "GHS01",
+                                      "GHS02",
+                                      "GHS03",
+                                      "GHS04",
+                                      "GHS05",
+                                      "GHS06",
+                                      "GHS07",
+                                      "GHS08",
+                                      "GHS09"
+                                    ]
+                                  },
+                                  "description": "GHS piktogram kodları, kod sırasıyla"
+                                },
+                                "signalWord": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "danger",
+                                        "warning"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                                },
+                                "casNumber": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "storageClass": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "incompatibilityNote": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsUrl": {
+                                  "description": "GBF bağlantısı (https)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsDocumentNumber": {
+                                  "description": "GBF belge numarası",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsRevisionDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kimyasal bilgisinin sürümü"
+                                }
+                              },
+                              "required": [
+                                "hazardPictograms",
+                                "signalWord",
+                                "casNumber",
+                                "storageClass",
+                                "incompatibilityNote",
+                                "sdsUrl",
+                                "sdsDocumentNumber",
+                                "sdsRevisionDate",
+                                "version"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Kimyasal bilgisi (K-240); kimyasal olmayan kartta boş"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "balances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "warehouseId": {
+                                "type": "string"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "campusName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu depodaki miktar"
+                              }
+                            },
+                            "required": [
+                              "warehouseId",
+                              "warehouseName",
+                              "campusName",
+                              "isActive",
+                              "quantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Depo başına miktar: etkin depolar ve miktarı olan pasif depolar"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "category",
+                        "unit",
+                        "minQuantity",
+                        "isActive",
+                        "quantity",
+                        "isBelowMinimum",
+                        "isChemical",
+                        "version",
+                        "hasMovements",
+                        "chemical",
+                        "balances"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStockChemicalProfile",
+        "summary": "Kimyasal bilgisini düzelt",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Kısmi düzeltme (DOM-FIN-090): GHS piktogramları (`GHS01`…`GHS09`, çoklu), sinyal kelimesi (`danger` Tehlike, `warning` Dikkat), CAS numarası (biçim ve sağlama basamağı), depolama sınıfı (≤ 80), uyumsuzluk notu (≤ 500), GBF bağlantısı (yalnız https), GBF belge numarası ve revizyon günü (bugünden sonra olamaz, 422 `chemical_sds_date_future`); hepsi isteğe bağlı. GBF dosyası saklanmaz (K-240). Kimyasal bilgisi yoksa ya da kart başka kurumunsa 404; sürüm tutmazsa 409 `version_conflict`. `If-Match` kimyasal bilgisinin sürümüdür (`chemical.version`). Kimyasal bilgisi kaldırılmaz. Rol: `yonetici` (K-180, K-240). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hazardPictograms": {
+                    "maxItems": 9,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "GHS01",
+                        "GHS02",
+                        "GHS03",
+                        "GHS04",
+                        "GHS05",
+                        "GHS06",
+                        "GHS07",
+                        "GHS08",
+                        "GHS09"
+                      ]
+                    }
+                  },
+                  "signalWord": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "danger",
+                          "warning"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "casNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "storageClass": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 80
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "incompatibilityNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sdsUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sdsDocumentNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 60
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sdsRevisionDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "itemId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "stationery",
+                            "cleaning",
+                            "food",
+                            "it",
+                            "maintenance",
+                            "furniture",
+                            "educational",
+                            "services",
+                            "transport",
+                            "other"
+                          ]
+                        },
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "piece",
+                            "pack",
+                            "box",
+                            "kilogram",
+                            "liter",
+                            "meter"
+                          ]
+                        },
+                        "minQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kritik seviye; boşsa yok"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo)"
+                        },
+                        "isBelowMinimum": {
+                          "type": "boolean",
+                          "description": "Miktar kritik seviyeye eşit ya da altında (K-182)"
+                        },
+                        "isChemical": {
+                          "type": "boolean",
+                          "description": "Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "hasMovements": {
+                          "type": "boolean",
+                          "description": "Hareketi varsa birim değişmez (K-182)"
+                        },
+                        "chemical": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "hazardPictograms": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "GHS01",
+                                      "GHS02",
+                                      "GHS03",
+                                      "GHS04",
+                                      "GHS05",
+                                      "GHS06",
+                                      "GHS07",
+                                      "GHS08",
+                                      "GHS09"
+                                    ]
+                                  },
+                                  "description": "GHS piktogram kodları, kod sırasıyla"
+                                },
+                                "signalWord": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "danger",
+                                        "warning"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                                },
+                                "casNumber": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "storageClass": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "incompatibilityNote": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsUrl": {
+                                  "description": "GBF bağlantısı (https)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsDocumentNumber": {
+                                  "description": "GBF belge numarası",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sdsRevisionDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kimyasal bilgisinin sürümü"
+                                }
+                              },
+                              "required": [
+                                "hazardPictograms",
+                                "signalWord",
+                                "casNumber",
+                                "storageClass",
+                                "incompatibilityNote",
+                                "sdsUrl",
+                                "sdsDocumentNumber",
+                                "sdsRevisionDate",
+                                "version"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Kimyasal bilgisi (K-240); kimyasal olmayan kartta boş"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "balances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "warehouseId": {
+                                "type": "string"
+                              },
+                              "warehouseName": {
+                                "type": "string"
+                              },
+                              "campusName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu depodaki miktar"
+                              }
+                            },
+                            "required": [
+                              "warehouseId",
+                              "warehouseName",
+                              "campusName",
+                              "isActive",
+                              "quantity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Depo başına miktar: etkin depolar ve miktarı olan pasif depolar"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "category",
+                        "unit",
+                        "minQuantity",
+                        "isActive",
+                        "quantity",
+                        "isBelowMinimum",
+                        "isChemical",
+                        "version",
+                        "hasMovements",
+                        "chemical",
+                        "balances"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/chemical-lots": {
+      "get": {
+        "operationId": "listChemicalLots",
+        "summary": "Kimyasal partileri ve son kullanma uyarısı",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Stoktaki (miktarı sıfırdan büyük) kimyasal partiler, depo başına (DOM-FIN-090). Miktar saklanmaz: çıkış en yakın son kullanma tarihli partiden düşer (FEFO), transfer partileri taşır, mal kabul girişi \"parti bilgisi yok\" satırındadır (K-241, K-242). Sıra en yakın son kullanma önce, partisiz sonda. `status=attention` süresi geçen (son kullanma günü bugünden önce) ve 30 gün içinde dolan partileri verir (uyarı listesi, K-243). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "attention",
+                "expired",
+                "expiring",
+                "ok",
+                "unknown"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`attention`: süresi geçen ve 30 gün içinde dolan partiler (uyarı listesi)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "itemId",
+            "required": false,
+            "description": "Stok kartı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "warehouseId",
+            "required": false,
+            "description": "Depo"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kod, ad, CAS ve parti numarasında arama, Türkçe harf duyarsız"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "description": "Satır anahtarı: kart, depo, parti ve son kullanma"
+                          },
+                          "itemId": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "piece",
+                              "pack",
+                              "box",
+                              "kilogram",
+                              "liter",
+                              "meter"
+                            ]
+                          },
+                          "hazardPictograms": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "GHS01",
+                                "GHS02",
+                                "GHS03",
+                                "GHS04",
+                                "GHS05",
+                                "GHS06",
+                                "GHS07",
+                                "GHS08",
+                                "GHS09"
+                              ]
+                            },
+                            "description": "GHS piktogram kodları, kod sırasıyla"
+                          },
+                          "signalWord": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "danger",
+                                  "warning"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                          },
+                          "warehouseId": {
+                            "type": "string"
+                          },
+                          "warehouseName": {
+                            "type": "string"
+                          },
+                          "campusName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "warehouseIsActive": {
+                            "type": "boolean"
+                          },
+                          "lotNumber": {
+                            "description": "Parti numarası; boşsa parti bilgisi olmayan miktar",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "expiryDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Son kullanma günü"
+                          },
+                          "quantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Partide kalan miktar (FEFO ile türetilir, K-242)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "expired",
+                              "expiring",
+                              "ok",
+                              "unknown"
+                            ],
+                            "description": "`expired` süresi geçti, `expiring` 30 gün içinde doluyor, `ok`, `unknown` parti bilgisi yok (K-243)"
+                          },
+                          "daysLeft": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Son kullanmaya kalan gün; geçtiyse eksi"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "itemId",
+                          "code",
+                          "name",
+                          "unit",
+                          "hazardPictograms",
+                          "signalWord",
+                          "warehouseId",
+                          "warehouseName",
+                          "campusName",
+                          "warehouseIsActive",
+                          "lotNumber",
+                          "expiryDate",
+                          "quantity",
+                          "status",
+                          "daysLeft"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/chemical-inventory": {
+      "get": {
+        "operationId": "getChemicalInventory",
+        "summary": "Kimyasal envanter raporu",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Depo × kimyasal, stokta olanlar (DOM-FIN-090): kod, ad, CAS, GHS piktogramları, sinyal kelimesi, depolama sınıfı, GBF durumu, miktar, en yakın son kullanma, süresi geçen ve yaklaşan miktar ve FEFO sırasıyla partiler. Depo adı ve kart koduna göre; depo ve metinle (kod, ad, CAS) süzülür. `Accept: text/csv` süzgeçle eşleşen bütün satırları parti başına bir satır olarak verir: `;` ayırıcı, UTF-8 BOM, formül kaçışı, piktogramlar kod olarak; kişi verisi yoktur, taze oturum ve denetim istemez, kullanıcı başına 10/dk (K-243). PDF web'de bu yanıttan üretilir. Roller: `yonetici`, `onburo` (K-180). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "warehouseId",
+            "required": false,
+            "description": "Depo"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kod, ad ve CAS numarasında arama, Türkçe harf duyarsız"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "description": "Satır anahtarı: depo ve kart"
+                          },
+                          "warehouseId": {
+                            "type": "string"
+                          },
+                          "warehouseName": {
+                            "type": "string"
+                          },
+                          "campusName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "itemId": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "piece",
+                              "pack",
+                              "box",
+                              "kilogram",
+                              "liter",
+                              "meter"
+                            ]
+                          },
+                          "casNumber": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "hazardPictograms": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "GHS01",
+                                "GHS02",
+                                "GHS03",
+                                "GHS04",
+                                "GHS05",
+                                "GHS06",
+                                "GHS07",
+                                "GHS08",
+                                "GHS09"
+                              ]
+                            },
+                            "description": "GHS piktogram kodları, kod sırasıyla"
+                          },
+                          "signalWord": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "danger",
+                                  "warning"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sinyal kelimesi: `danger` Tehlike, `warning` Dikkat"
+                          },
+                          "storageClass": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "hasSds": {
+                            "type": "boolean",
+                            "description": "GBF bağlantısı ya da belge numarası var"
+                          },
+                          "quantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Depodaki miktar"
+                          },
+                          "nearestExpiryDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "expiredQuantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "expiringQuantity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "lots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "lotNumber": {
+                                  "description": "Parti numarası; boşsa parti bilgisi olmayan miktar",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "expiryDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son kullanma günü"
+                                },
+                                "quantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Partide kalan miktar (FEFO ile türetilir, K-242)"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "expired",
+                                    "expiring",
+                                    "ok",
+                                    "unknown"
+                                  ],
+                                  "description": "`expired` süresi geçti, `expiring` 30 gün içinde doluyor, `ok`, `unknown` parti bilgisi yok (K-243)"
+                                },
+                                "daysLeft": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son kullanmaya kalan gün; geçtiyse eksi"
+                                }
+                              },
+                              "required": [
+                                "lotNumber",
+                                "expiryDate",
+                                "quantity",
+                                "status",
+                                "daysLeft"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Partiler, FEFO sırasıyla"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "warehouseId",
+                          "warehouseName",
+                          "campusName",
+                          "itemId",
+                          "code",
+                          "name",
+                          "unit",
+                          "casNumber",
+                          "hazardPictograms",
+                          "signalWord",
+                          "storageClass",
+                          "hasSds",
+                          "quantity",
+                          "nearestExpiryDate",
+                          "expiredQuantity",
+                          "expiringQuantity",
+                          "lots"
                         ],
                         "additionalProperties": false
                       }

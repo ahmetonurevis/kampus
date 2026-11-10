@@ -2138,6 +2138,95 @@ test.describe('Finans: stok', () => {
     await expect(movements.getByRole('button', { name: /hareketini iptal et/ })).toHaveCount(0)
   })
 
+  test('DOM-FIN-090: kimyasal kartın girişi parti ister; son kullanma uyarısı ve kimyasal envanter CSV ile iner', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici'], students: [] })
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10)
+    // Depo, kimyasal kart ve iki parti API'den kurulur; yeni parti arayüzden girilir.
+    const client = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(client, school.institutionId)).ok).toBe(true)
+      const created = async (url: string, body: unknown, headers: Record<string, string> = {}) => {
+        const result = await client.post(url, body, headers)
+        expect(result.status, JSON.stringify(result.body)).toBe(201)
+        return (result.body as { data: { id: string } }).data
+      }
+      const warehouse = await created('/api/v1/finance/stock-warehouses', {
+        name: 'Laboratuvar',
+        campusId: 'b1',
+      })
+      const acid = await created('/api/v1/finance/stock-items', {
+        code: 'HCL',
+        name: 'Hidroklorik asit',
+        category: 'educational',
+        unit: 'liter',
+      })
+      await created(`/api/v1/finance/stock-items/${acid.id}/chemical-profile`, {
+        hazardPictograms: ['GHS05', 'GHS07'],
+        signalWord: 'danger',
+        casNumber: '7647-01-0',
+      })
+      for (const [lotNumber, expiryDate, quantity] of [
+        ['L-YAKIN', day(10), 2],
+        ['L-UZAK', day(400), 3],
+      ] as const)
+        await created(
+          '/api/v1/finance/stock-entries',
+          {
+            itemId: acid.id,
+            warehouseId: warehouse.id,
+            quantity,
+            movementDate: day(-1),
+            reason: 'opening',
+            lotNumber,
+            expiryDate,
+          },
+          { 'idempotency-key': randomUUID() },
+        )
+    } finally {
+      await client.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=stok`)
+    // K-243: kart listesi süresi yaklaşan partiyi duyurur; liste yalnız uyarıdaki partiyi gösterir.
+    await page.getByRole('button', { name: 'Son kullanma listesini göster' }).click()
+    const lots = page.getByRole('table', { name: 'Kimyasal partiler' })
+    await expect(lots.locator('tbody tr').filter({ hasText: 'L-YAKIN' })).toContainText(
+      'Süresi yaklaşıyor',
+    )
+    await expect(lots).not.toContainText('L-UZAK')
+
+    // K-241: kimyasal kartın girişinde parti alanları çıkar; boş parti alanda reddedilir.
+    await page.getByRole('button', { name: 'Stok girişi' }).click()
+    const entry = page.getByRole('dialog', { name: 'Stok girişi' })
+    await entry.getByLabel('Stok kartı').selectOption({ label: 'HCL · Hidroklorik asit (5 litre)' })
+    await entry
+      .getByLabel('Depo', { exact: true })
+      .selectOption({ label: 'Laboratuvar · Kadıköy Kampüsü' })
+    await entry.getByLabel('Miktar').fill('4')
+    await entry.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(entry.getByText('Kimyasal girişinde parti numarasını yazın.')).toBeVisible()
+    await entry.getByLabel('Parti numarası').fill('L-YENI')
+    await entry.getByLabel('Son kullanma tarihi').fill(day(200))
+    await entry.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Stok girişi kaydedildi.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Kimyasal envanter' }).click()
+    const report = page.getByRole('table', { name: 'Kimyasal envanter' })
+    const row = report.locator('tbody tr').filter({ hasText: 'HCL' })
+    await expect(row).toContainText('9 litre')
+    await expect(row).toContainText('GHS05, GHS07')
+    await expect(row).toContainText('7647-01-0')
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'CSV indir' }).click()
+    expect((await download).suggestedFilename()).toBe('kimyasal-envanter.csv')
+  })
+
   test('DOM-FIN-079: kritik stok görünümü ve panoda uyarı; seçilen ürünlerden talep önerisi taslak talep açar', async ({
     page,
     loginAs,

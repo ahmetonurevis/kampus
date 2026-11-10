@@ -119,6 +119,8 @@ export const STOCK_NOTE_MAX = 500
 export const STOCK_OTHER_NOTE_MIN = 3
 export const STOCK_CANCEL_REASON_MIN = 5
 export const STOCK_CANCEL_REASON_MAX = 500
+/** Kimyasal partinin numarası (DOM-FIN-090, K-241). */
+export const STOCK_LOT_NUMBER_MAX = 40
 
 // --- Şemalar -------------------------------------------------------------------------------------
 
@@ -208,13 +210,40 @@ const movementBase = {
   note: optionalNote,
 }
 
+// Kimyasal kartın elle girişinde parti numarası ve son kullanma tarihi birlikte gelir (DOM-FIN-090,
+// K-241); kartın kimyasal olup olmadığı `planStockEntry`'de denetlenir.
+const lotNumberSchema = z
+  .string('Parti numarasını yazın.')
+  .trim()
+  .max(STOCK_LOT_NUMBER_MAX, `En fazla ${String(STOCK_LOT_NUMBER_MAX)} karakter girebilirsiniz.`)
+  .regex(/^[^\p{Cc}]*$/u, 'Parti numarasında kontrol karakteri olamaz.')
+  .nullable()
+  .transform((value) => (value === '' ? null : value))
+
+const lotPairNeedsBoth = (
+  value: { lotNumber: string | null; expiryDate: string | null },
+  ctx: z.RefinementCtx,
+): void => {
+  if (value.lotNumber !== null && value.expiryDate === null)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['expiryDate'],
+      message: 'Partinin son kullanma tarihini girin.',
+    })
+  if (value.lotNumber === null && value.expiryDate !== null)
+    ctx.addIssue({ code: 'custom', path: ['lotNumber'], message: 'Parti numarasını yazın.' })
+}
+
 export const stockEntrySchema = z
   .strictObject({
     ...movementBase,
     warehouseId: z.uuid('Depoyu seçin.'),
     reason: z.enum(STOCK_ENTRY_REASONS, 'Giriş nedenini seçin.'),
+    lotNumber: lotNumberSchema.default(null),
+    expiryDate: daySchema.nullable().default(null),
   })
   .superRefine(otherNeedsNote)
+  .superRefine(lotPairNeedsBoth)
 export type StockEntryInput = z.input<typeof stockEntrySchema>
 
 export const stockIssueSchema = z
@@ -519,17 +548,36 @@ export interface StockMovementContext {
   movements: readonly StockMovementLine[]
   /** Europe/Istanbul günü. */
   today: string
+  /** Kimyasal bilgisi olan kartlar (DOM-FIN-090); elle girişte parti ister. */
+  chemicalItemIds?: ReadonlySet<string>
 }
 
 const pairOf = (movements: readonly StockMovementLine[], itemId: string, warehouseId: string) =>
   movements.filter((movement) => movement.itemId === itemId && movement.warehouseId === warehouseId)
 
-/** Elle giriş (DOM-FIN-078): etkin kart ve depo, gün bugünden sonra olamaz. */
+/**
+ * Elle giriş (DOM-FIN-078): etkin kart ve depo, gün bugünden sonra olamaz. Kimyasal kartın girişi
+ * parti numarası ve son kullanma tarihi ister; kimyasal olmayan kartın girişinde parti yazılmaz
+ * (DOM-FIN-090, K-241).
+ */
 export function planStockEntry(input: unknown, context: StockMovementContext) {
   const data = stockEntrySchema.parse(input)
-  assertItem(context.items.get(data.itemId), ['itemId'])
+  const item = assertItem(context.items.get(data.itemId), ['itemId'])
   assertWarehouse(context.warehouses.get(data.warehouseId), ['warehouseId'])
   assertDate(data.movementDate, context.today)
+  const chemical = context.chemicalItemIds?.has(item.id) === true
+  if (chemical && data.lotNumber === null)
+    throw ruleError(
+      'stock_lot_required',
+      `${item.name} kimyasal; girişte parti numarası ve son kullanma tarihi zorunludur.`,
+      ['lotNumber'],
+    )
+  if (!chemical && data.lotNumber !== null)
+    throw ruleError(
+      'stock_lot_not_allowed',
+      'Parti ve son kullanma tarihi yalnız kimyasal kartların girişinde yazılır.',
+      ['lotNumber'],
+    )
   return data
 }
 

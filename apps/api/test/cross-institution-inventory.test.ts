@@ -1648,6 +1648,36 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)('finance-stock-counts.test.ts', 'başka kurumun sayımı 404 ve B değişmez', marker),
     ]),
   ),
+  // Onur: laboratuvar kimyasal envanteri (ON-234; DOM-FIN-090).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-items/:itemId/chemical-profile',
+          'mark(a.admin, b.paper)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stock-items/:itemId/chemical-profile',
+          "call('PATCH', profileUrl(b.acid), a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/chemical-lots', '`${LOTS}?itemId=${String(b.acid.id)}`'],
+        [
+          'liste',
+          'GET /api/v1/finance/chemical-inventory',
+          '`${REPORT}?warehouseId=${String(b.lab.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-chemicals.test.ts',
+        'başka kurumun kartı kimyasal işaretlenmez ve düzeltilmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

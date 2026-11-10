@@ -20,6 +20,7 @@ import {
   STOCK_ENTRY_REASONS,
   STOCK_ISSUE_REASONS,
   STOCK_ITEM_NAME_MAX,
+  STOCK_LOT_NUMBER_MAX,
   STOCK_MOVEMENT_TYPE_LABELS,
   STOCK_NOTE_MAX,
   STOCK_OTHER_NOTE_MIN,
@@ -139,8 +140,25 @@ export const stockMovementFormSchema = z
       .string()
       .trim()
       .max(STOCK_NOTE_MAX, `En fazla ${String(STOCK_NOTE_MAX)} karakter girebilirsiniz.`),
+    // Kimyasal kartın girişinde parti ve son kullanma (DOM-FIN-090, K-241); başka harekette boş.
+    lotNumber: z
+      .string()
+      .trim()
+      .max(
+        STOCK_LOT_NUMBER_MAX,
+        `En fazla ${String(STOCK_LOT_NUMBER_MAX)} karakter girebilirsiniz.`,
+      ),
+    expiryDate: z.union([z.literal(''), daySchema]),
   })
   .superRefine((values, ctx) => {
+    if (values.lotNumber.trim() !== '' && values.expiryDate === '')
+      ctx.addIssue({
+        code: 'custom',
+        path: ['expiryDate'],
+        message: 'Partinin son kullanma tarihini girin.',
+      })
+    if (values.lotNumber.trim() === '' && values.expiryDate !== '')
+      ctx.addIssue({ code: 'custom', path: ['lotNumber'], message: 'Parti numarasını yazın.' })
     if (COUNT.test(values.quantity) && Number(values.quantity) < 1)
       ctx.addIssue({ code: 'custom', path: ['quantity'], message: 'Miktar en az 1 olmalıdır.' })
     if (values.kind === 'transfer') {
@@ -178,6 +196,8 @@ export const stockMovementDefaults = (
   movementDate: today,
   reason: kind === 'entry' ? 'opening' : kind === 'issue' ? 'usage' : '',
   note: '',
+  lotNumber: '',
+  expiryDate: '',
 })
 
 export type StockMovementBody =
@@ -190,8 +210,14 @@ const isEntryReason = (value: string): value is StockEntryBody['reason'] =>
 const isIssueReason = (value: string): value is StockIssueBody['reason'] =>
   STOCK_ISSUE_REASONS.some((reason) => reason === value)
 
-/** Form değerinden ilgili ucun gövdesi; boş not `null`. */
-export function stockMovementBody(values: StockMovementFormValues): StockMovementBody {
+/**
+ * Form değerinden ilgili ucun gövdesi; boş not `null`. Parti yalnız kimyasal kartın girişinde
+ * gider (K-241): kart değiştirilince gizlenen alanda kalan değer gönderilmez.
+ */
+export function stockMovementBody(
+  values: StockMovementFormValues,
+  options: { chemical: boolean } = { chemical: false },
+): StockMovementBody {
   const note = values.note.trim()
   const base = {
     itemId: values.itemId,
@@ -211,6 +237,9 @@ export function stockMovementBody(values: StockMovementFormValues): StockMovemen
         ...base,
         warehouseId: values.warehouseId,
         reason: isEntryReason(values.reason) ? values.reason : 'other',
+        lotNumber:
+          options.chemical && values.lotNumber.trim() !== '' ? values.lotNumber.trim() : null,
+        expiryDate: options.chemical && values.expiryDate !== '' ? values.expiryDate : null,
       },
     }
   return {
@@ -224,7 +253,15 @@ export function stockMovementBody(values: StockMovementFormValues): StockMovemen
 }
 
 type MovementField =
-  'itemId' | 'warehouseId' | 'toWarehouseId' | 'quantity' | 'movementDate' | 'reason' | 'note'
+  | 'itemId'
+  | 'warehouseId'
+  | 'toWarehouseId'
+  | 'quantity'
+  | 'movementDate'
+  | 'reason'
+  | 'note'
+  | 'lotNumber'
+  | 'expiryDate'
 /** Sunucu alan yolu form alanına; transferde `fromWarehouseId` çıkış deposu alanıdır. */
 export function stockMovementFormField(name: string): MovementField | undefined {
   if (name === 'fromWarehouseId') return 'warehouseId'
@@ -236,6 +273,8 @@ export function stockMovementFormField(name: string): MovementField | undefined 
     'movementDate',
     'reason',
     'note',
+    'lotNumber',
+    'expiryDate',
   ]
   return fields.find((field) => field === name)
 }

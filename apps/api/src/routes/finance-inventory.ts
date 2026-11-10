@@ -97,18 +97,19 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         operationId: 'listStockItems',
         tags,
         summary: 'Stok kartlarını listele',
-        description: `Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); \`warehouseId\` verilirse yalnız o depodaki miktar. \`critical=true\` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları verir. ${READERS}`,
+        description: `Koda göre; pasifler dahil. Miktar iptal edilmemiş hareketlerden türetilir (DOM-FIN-077); \`warehouseId\` verilirse yalnız o depodaki miktar. \`critical=true\` kritik seviyedeki (miktar ≤ kritik seviye) etkin kartları, \`chemical=true\` kimyasal kartları verir (DOM-FIN-090). ${READERS}`,
         querystring: stockItemListQuery,
         response: { 200: stockItemListResponse, ...commandErrors },
       },
     },
     async (request) => {
-      const { page, pageSize, critical, ...filters } = request.query
+      const { page, pageSize, critical, chemical, ...filters } = request.query
       const { items, total } = await listStockItemsFor(contextOf(request), {
         page,
         pageSize,
         ...filters,
         critical: critical === 'true',
+        chemical: chemical === 'true',
       })
       return { data: items, meta: { page, pageSize, total } }
     },
@@ -172,7 +173,7 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         operationId: 'getStockItem',
         tags,
         summary: 'Stok kartı ayrıntısı',
-        description: `Kart, toplam miktar ve depo başına miktar. Olmayan ya da başka kurumun kartı 404. ${READERS}`,
+        description: `Kart, toplam miktar, depo başına miktar ve kimyasal bilgisi (\`chemical\`, DOM-FIN-090). Olmayan ya da başka kurumun kartı 404. ${READERS}`,
         params: stockItemParams,
         response: { 200: stockItemResponse, ...commandErrors },
       },
@@ -325,7 +326,7 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         operationId: 'createStockEntry',
         tags,
         summary: 'Stok girişi yaz',
-        description: `Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). ${common} ${MANAGER}`,
+        description: `Elle giriş (açılış stoku, bağış, sayım fazlası, kullanımdan iade, diğer). Satın alınan ürün mal kabulle girer (K-184). Kimyasal kartın girişi parti numarası (\`lotNumber\`) ve son kullanma günü (\`expiryDate\`) ister (422 \`stock_lot_required\`); kimyasal olmayan kartta parti 422 \`stock_lot_not_allowed\` (DOM-FIN-090, K-241). ${common} ${MANAGER}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: stockEntrySchema,
         response: { 201: stockMovementResponse, ...commandErrors },
@@ -350,7 +351,7 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         operationId: 'createStockIssue',
         tags,
         summary: 'Stok çıkışı yaz',
-        description: `Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 \`stock_insufficient\`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). ${common} Roller: \`yonetici\`, \`onburo\` (K-180). Modül \`finance\`.`,
+        description: `Çıkış (kullanım, hasar ve fire, kayıp, sayım eksiği, diğer). Miktar o gün ve sonraki her gün depodaki miktarı aşamaz (422 \`stock_insufficient\`, mesajda çıkılabilecek en çok miktar; kurum kilidi altında denetlenir, K-181). Kimyasal kartta çıkış en yakın son kullanma tarihli partiden düşer (FEFO, K-242). ${common} Roller: \`yonetici\`, \`onburo\` (K-180). Modül \`finance\`.`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: stockIssueSchema,
         response: { 201: stockMovementResponse, ...commandErrors },

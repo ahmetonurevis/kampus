@@ -1499,6 +1499,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: amortisman ön hesabı (ON-238; DOM-FIN-088).
+  'GET /api/v1/finance/fixed-assets/depreciation-report': liste(
+    'finance-fixed-asset-depreciation.test.ts',
+    'DOM-FIN-088: başka kurumun demirbaşı raporda ve CSV dosyasında yok',
+    'get(`${REPORT}?year=2026`, a.admin)',
+  ),
   // Onur: stok kartı, depo ve hareket (ON-228, ON-229; DOM-FIN-077, DOM-FIN-078).
   ...Object.fromEntries(
     (

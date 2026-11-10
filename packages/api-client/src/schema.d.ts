@@ -5483,9 +5483,29 @@ export interface paths {
         put?: never;
         /**
          * Demirbaş kaydet
-         * @description Etiket (boşsa kayıt yılının sıradaki `DB-<yıl>-<sıra>` etiketi; elle girilen büyük harfe çevrilir, K-185), ad, kategori (K-186), isteğe bağlı kampüs, konum, KDV hariç alım değeri (kuruş), alım günü, isteğe bağlı tedarikçi ve mal kabul kalemi, durum (`in_use`, `in_storage`, `broken`). Etiket kurumda tekil: 409 `fixed_asset_tag_exists`. Gelecek gün 422 `fixed_asset_date_in_future`; olmayan kampüs 422 `fixed_asset_campus_not_found`, tedarikçi 422 `fixed_asset_supplier_not_found`, kabul kalemi 422 `fixed_asset_receipt_item_not_found`; iptal edilmiş kabul 422 `fixed_asset_receipt_cancelled`; kalemin bütün adedine demirbaş bağlıysa 422 `fixed_asset_receipt_quantity_exceeded` (K-187); siparişten başka tedarikçi 422 `fixed_asset_supplier_mismatch`; kabul gününden önceki alım günü 422 `fixed_asset_date_before_receipt`. Kabule bağlı kayıtta tedarikçi boşsa siparişin tedarikçisi yazılır. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         * @description Etiket (boşsa kayıt yılının sıradaki `DB-<yıl>-<sıra>` etiketi; elle girilen büyük harfe çevrilir, K-185), ad, kategori (K-186), isteğe bağlı kampüs, konum, KDV hariç alım değeri (kuruş), alım günü, isteğe bağlı tedarikçi ve mal kabul kalemi, durum (`in_use`, `in_storage`, `broken`). Etiket kurumda tekil: 409 `fixed_asset_tag_exists`. Gelecek gün 422 `fixed_asset_date_in_future`; olmayan kampüs 422 `fixed_asset_campus_not_found`, tedarikçi 422 `fixed_asset_supplier_not_found`, kabul kalemi 422 `fixed_asset_receipt_item_not_found`; iptal edilmiş kabul 422 `fixed_asset_receipt_cancelled`; kalemin bütün adedine demirbaş bağlıysa 422 `fixed_asset_receipt_quantity_exceeded` (K-187); siparişten başka tedarikçi 422 `fixed_asset_supplier_mismatch`; kabul gününden önceki alım günü 422 `fixed_asset_date_before_receipt`. Kabule bağlı kayıtta tedarikçi boşsa siparişin tedarikçisi yazılır. Faydalı ömür (`usefulLifeYears`, 1–50 yıl) boşsa kategorinin önerisi yazılır (K-224); yöntem `normal` (varsayılan) ya da `declining` (DOM-FIN-088). Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         post: operations["createFixedAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-assets/depreciation-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Amortisman ön hesabı raporu
+         * @description Seçilen takvim yılı (`year`; boşsa bu yıl, Europe/Istanbul) için demirbaşların amortisman ön hesabı (DOM-FIN-088): kurum toplamı ve kategori kırılımında dönem başı net değer, yıl içi giriş, yılın amortismanı, hurdaya ayrılanların kayıttan düşen net değeri, birikmiş amortisman ve yıl sonu net değer. Alım yılı tam yıl sayılır, kıst yok (K-225); normal yöntemde yıllık pay kuruşa aşağı yuvarlanır, fark son yılda kapanır; azalan bakiyelerde oran normalin iki katı, en çok %50. Hurdaya ayrılan demirbaş ayrılma yılından sonra rapora girmez (K-226). **Yönetim raporudur; resmî defter yerine geçmez, yevmiye kaydı üretmez (IST-142).** `Accept: text/csv` ile not satırı, demirbaş satırları, kategori ve kurum toplamı CSV'si iner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; kullanıcı başına 10/dk, denetim `finance.fixed_asset_depreciation_export`; kişisel veri taşımadığı için taze oturum istemez (K-227). Geçersiz yıl 400. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`. Salt okurdur.
+         */
+        get: operations["getFixedAssetDepreciationReport"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5521,7 +5541,7 @@ export interface paths {
         };
         /**
          * Demirbaş ayrıntısı
-         * @description Kampüs adı, tedarikçi, mal kabul bağı (sipariş numarası, kalem, kabul günü, iptal edildi mi) ve hurdaya ayırma izi. Olmayan ya da başka kurumun demirbaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         * @description Kampüs adı, tedarikçi, mal kabul bağı (sipariş numarası, kalem, kabul günü, iptal edildi mi), hurdaya ayırma izi ve amortisman ön hesabı tablosu (`depreciation`; DOM-FIN-088: yıl, dönem başı değer, ayrılan, birikmiş, net değer; yönetim raporu, defter kaydı değildir). Olmayan ya da başka kurumun demirbaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         get: operations["getFixedAsset"];
         put?: never;
@@ -58478,6 +58498,13 @@ export interface operations {
                             receiptItemId: string | null;
                             /** @enum {string} */
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Faydalı ömür, yıl (DOM-FIN-088) */
+                            usefulLifeYears: number;
+                            /**
+                             * @description Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler
+                             * @enum {string}
+                             */
+                            depreciationMethod: "normal" | "declining";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
                             /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
@@ -58618,6 +58645,17 @@ export interface operations {
                      * @enum {string}
                      */
                     status?: "in_use" | "in_storage" | "broken";
+                    /**
+                     * @description Faydalı ömür, yıl (1–50); boşsa kategorinin önerisi yazılır (DOM-FIN-088)
+                     * @default null
+                     */
+                    usefulLifeYears?: number | null;
+                    /**
+                     * @description Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler
+                     * @default normal
+                     * @enum {string}
+                     */
+                    depreciationMethod?: "normal" | "declining";
                 };
             };
         };
@@ -58654,6 +58692,13 @@ export interface operations {
                             receiptItemId: string | null;
                             /** @enum {string} */
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Faydalı ömür, yıl (DOM-FIN-088) */
+                            usefulLifeYears: number;
+                            /**
+                             * @description Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler
+                             * @enum {string}
+                             */
+                            depreciationMethod: "normal" | "declining";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
                             /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
@@ -58692,6 +58737,25 @@ export interface operations {
                             scrappedAt: string | null;
                             scrapReason: string | null;
                             createdAt: string;
+                            /** @description Amortisman ön hesabı (DOM-FIN-088); yönetim raporu, defter kaydı değildir */
+                            depreciation: {
+                                /** @description Yıllık oran, baz puan (2000 = %20) */
+                                rateBasisPoints: number;
+                                rows: {
+                                    /** @description Takvim yılı; alım yılı tam yıl sayılır (K-225) */
+                                    year: number;
+                                    /** @description Dönem başı net değer, kuruş */
+                                    openingCents: number;
+                                    /** @description Yılın amortismanı, kuruş */
+                                    depreciationCents: number;
+                                    /** @description Yıl sonu birikmiş amortisman, kuruş */
+                                    accumulatedCents: number;
+                                    /** @description Yıl sonu net değer, kuruş */
+                                    netCents: number;
+                                    /** @description Hurdaya ayırma yılında kayıttan düşen net değer, kuruş (K-226) */
+                                    disposedCents: number;
+                                }[];
+                            };
                         };
                     };
                 };
@@ -58743,6 +58807,126 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFixedAssetDepreciationReport: {
+        parameters: {
+            query?: {
+                /** @description Hesap yılı (takvim yılı); boşsa bu yıl */
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            /** @description Kurumdaki en eski alım yılı; demirbaş yoksa boş */
+                            firstYear: number | null;
+                            totals: {
+                                /** @description Yıl içinde kayıtta olan demirbaş */
+                                assetCount: number;
+                                /** @description Yıl sonunda kayıtta kalan demirbaş */
+                                heldCount: number;
+                                /** @description Yıl içinde hurdaya ayrılan demirbaş */
+                                disposedCount: number;
+                                /** @description Yıl sonunda kayıtta kalanların alım değeri, KDV hariç */
+                                costCents: number;
+                                /** @description Dönem başı net değer */
+                                openingNetCents: number;
+                                /** @description Yıl içinde alınanların alım değeri */
+                                additionsCents: number;
+                                /** @description Yılın amortismanı */
+                                depreciationCents: number;
+                                /** @description Hurdaya ayrılanların kayıttan düşen net değeri */
+                                disposedCents: number;
+                                /** @description Yıl sonunda kayıtta kalanların birikmiş amortismanı */
+                                accumulatedCents: number;
+                                /** @description Yıl sonu net değer */
+                                closingNetCents: number;
+                            };
+                            categories: {
+                                /** @enum {string} */
+                                category: "furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other";
+                                /** @description Yıl içinde kayıtta olan demirbaş */
+                                assetCount: number;
+                                /** @description Yıl sonunda kayıtta kalan demirbaş */
+                                heldCount: number;
+                                /** @description Yıl içinde hurdaya ayrılan demirbaş */
+                                disposedCount: number;
+                                /** @description Yıl sonunda kayıtta kalanların alım değeri, KDV hariç */
+                                costCents: number;
+                                /** @description Dönem başı net değer */
+                                openingNetCents: number;
+                                /** @description Yıl içinde alınanların alım değeri */
+                                additionsCents: number;
+                                /** @description Yılın amortismanı */
+                                depreciationCents: number;
+                                /** @description Hurdaya ayrılanların kayıttan düşen net değeri */
+                                disposedCents: number;
+                                /** @description Yıl sonunda kayıtta kalanların birikmiş amortismanı */
+                                accumulatedCents: number;
+                                /** @description Yıl sonu net değer */
+                                closingNetCents: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -58930,6 +59114,13 @@ export interface operations {
                             receiptItemId: string | null;
                             /** @enum {string} */
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Faydalı ömür, yıl (DOM-FIN-088) */
+                            usefulLifeYears: number;
+                            /**
+                             * @description Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler
+                             * @enum {string}
+                             */
+                            depreciationMethod: "normal" | "declining";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
                             /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
@@ -58968,6 +59159,25 @@ export interface operations {
                             scrappedAt: string | null;
                             scrapReason: string | null;
                             createdAt: string;
+                            /** @description Amortisman ön hesabı (DOM-FIN-088); yönetim raporu, defter kaydı değildir */
+                            depreciation: {
+                                /** @description Yıllık oran, baz puan (2000 = %20) */
+                                rateBasisPoints: number;
+                                rows: {
+                                    /** @description Takvim yılı; alım yılı tam yıl sayılır (K-225) */
+                                    year: number;
+                                    /** @description Dönem başı net değer, kuruş */
+                                    openingCents: number;
+                                    /** @description Yılın amortismanı, kuruş */
+                                    depreciationCents: number;
+                                    /** @description Yıl sonu birikmiş amortisman, kuruş */
+                                    accumulatedCents: number;
+                                    /** @description Yıl sonu net değer, kuruş */
+                                    netCents: number;
+                                    /** @description Hurdaya ayırma yılında kayıttan düşen net değer, kuruş (K-226) */
+                                    disposedCents: number;
+                                }[];
+                            };
                         };
                     };
                 };
@@ -59075,6 +59285,9 @@ export interface operations {
                     receiptItemId?: string | null;
                     /** @enum {string} */
                     status?: "in_use" | "in_storage" | "broken";
+                    usefulLifeYears?: number;
+                    /** @enum {string} */
+                    depreciationMethod?: "normal" | "declining";
                 };
             };
         };
@@ -59111,6 +59324,13 @@ export interface operations {
                             receiptItemId: string | null;
                             /** @enum {string} */
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Faydalı ömür, yıl (DOM-FIN-088) */
+                            usefulLifeYears: number;
+                            /**
+                             * @description Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler
+                             * @enum {string}
+                             */
+                            depreciationMethod: "normal" | "declining";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
                             /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
@@ -59149,6 +59369,25 @@ export interface operations {
                             scrappedAt: string | null;
                             scrapReason: string | null;
                             createdAt: string;
+                            /** @description Amortisman ön hesabı (DOM-FIN-088); yönetim raporu, defter kaydı değildir */
+                            depreciation: {
+                                /** @description Yıllık oran, baz puan (2000 = %20) */
+                                rateBasisPoints: number;
+                                rows: {
+                                    /** @description Takvim yılı; alım yılı tam yıl sayılır (K-225) */
+                                    year: number;
+                                    /** @description Dönem başı net değer, kuruş */
+                                    openingCents: number;
+                                    /** @description Yılın amortismanı, kuruş */
+                                    depreciationCents: number;
+                                    /** @description Yıl sonu birikmiş amortisman, kuruş */
+                                    accumulatedCents: number;
+                                    /** @description Yıl sonu net değer, kuruş */
+                                    netCents: number;
+                                    /** @description Hurdaya ayırma yılında kayıttan düşen net değer, kuruş (K-226) */
+                                    disposedCents: number;
+                                }[];
+                            };
                         };
                     };
                 };
@@ -59283,6 +59522,13 @@ export interface operations {
                             receiptItemId: string | null;
                             /** @enum {string} */
                             status: "in_use" | "in_storage" | "broken" | "scrapped";
+                            /** @description Faydalı ömür, yıl (DOM-FIN-088) */
+                            usefulLifeYears: number;
+                            /**
+                             * @description Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler
+                             * @enum {string}
+                             */
+                            depreciationMethod: "normal" | "declining";
                             /** @description Hurdaya ayırma günü */
                             scrapDate: string | null;
                             /** @description Açık zimmet (DOM-FIN-086); zimmetsizse boş */
@@ -59321,6 +59567,25 @@ export interface operations {
                             scrappedAt: string | null;
                             scrapReason: string | null;
                             createdAt: string;
+                            /** @description Amortisman ön hesabı (DOM-FIN-088); yönetim raporu, defter kaydı değildir */
+                            depreciation: {
+                                /** @description Yıllık oran, baz puan (2000 = %20) */
+                                rateBasisPoints: number;
+                                rows: {
+                                    /** @description Takvim yılı; alım yılı tam yıl sayılır (K-225) */
+                                    year: number;
+                                    /** @description Dönem başı net değer, kuruş */
+                                    openingCents: number;
+                                    /** @description Yılın amortismanı, kuruş */
+                                    depreciationCents: number;
+                                    /** @description Yıl sonu birikmiş amortisman, kuruş */
+                                    accumulatedCents: number;
+                                    /** @description Yıl sonu net değer, kuruş */
+                                    netCents: number;
+                                    /** @description Hurdaya ayırma yılında kayıttan düşen net değer, kuruş (K-226) */
+                                    disposedCents: number;
+                                }[];
+                            };
                         };
                     };
                 };

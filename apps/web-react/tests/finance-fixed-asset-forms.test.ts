@@ -33,6 +33,8 @@ const ASSET: FixedAssetDetail = {
   supplierName: null,
   receiptItemId: null,
   status: 'in_use',
+  usefulLifeYears: 5,
+  depreciationMethod: 'normal',
   scrapDate: null,
   assignment: null,
   version: 1,
@@ -40,6 +42,7 @@ const ASSET: FixedAssetDetail = {
   scrappedAt: null,
   scrapReason: null,
   createdAt: '2026-10-06T09:00:00.000Z',
+  depreciation: { rateBasisPoints: 2_000, rows: [] },
 }
 
 test('DOM-FIN-085: boş etiket, kampüs ve bağlar null olur; değer kuruşa çevrilir (K-185)', () => {

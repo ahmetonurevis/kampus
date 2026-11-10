@@ -88,6 +88,10 @@ const criticalStockRowSchema = z.object({
     ),
   lastReceiptDate: daySchema.nullable().describe('Son alış fiyatının mal kabul günü'),
   lastOrderNumber: z.string().nullable().describe('Son alış fiyatının siparişi'),
+  openRequestQuantity: quantity(
+    'Açık talepte: karta bağlı kalemi olan taslak, gönderilmiş ya da siparişe dönmemiş onaylı taleplerdeki miktar (ON-339, K-222)',
+  ),
+  openRequestCount: quantity('Bu miktarın geçtiği açık talep sayısı'),
   warehouses: z
     .array(
       z.object({

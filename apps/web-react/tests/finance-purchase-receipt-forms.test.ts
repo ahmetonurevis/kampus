@@ -19,6 +19,7 @@ const item = (id: string, quantity: number, remaining: number) => ({
   acceptedQuantity: quantity - remaining,
   rejectedQuantity: 0,
   remainingQuantity: remaining,
+  stockItem: null as { id: string; code: string; name: string } | null,
 })
 const BOARD = { items: [item('k1', 10, 4), item('k2', 3, 0), item('k3', 5, 5)] }
 
@@ -110,4 +111,33 @@ test('DOM-FIN-074: sunucu alan yolu gövde sırasından form satırına çevrili
   assert.equal(receiptFormField('receivedBy', []), 'receivedBy')
   assert.equal(receiptFormField('lines.5.acceptedQuantity', [0]), undefined)
   assert.equal(receiptFormField('lines', [0]), undefined)
+})
+
+test('ON-339, K-221: talepten gelen stok kartı bağı kabul formunu doldurur; miktar girilmeyen kalem depo istemez', () => {
+  const linked = {
+    items: [
+      { ...item('k1', 10, 4), stockItem: { id: 'kart-1', code: 'KLV', name: 'Klavye' } },
+      item('k3', 5, 5),
+    ],
+  }
+  const defaults = receiptDefaults(linked, '2026-10-06')
+  assert.deepEqual(
+    defaults.lines.map((line) => line.stockItemId),
+    ['kart-1', ''],
+  )
+  const paths = (values: unknown) =>
+    receiptFormSchema.safeParse(values).error?.issues.map((issue) => issue.path.join('.'))
+  const only = (index: number, accepted: string) => ({
+    ...defaults,
+    receivedBy: 'Hasan Usta',
+    lines: defaults.lines.map((line, at) => (at === index ? { ...line, accepted } : line)),
+  })
+  // Bağlı kalem kabul edilmeden yalnız bağsız kalem kabul edilirse depo gerekmez.
+  assert.equal(paths(only(1, '2')), undefined)
+  assert.deepEqual(paths(only(0, '2')), ['warehouseId'])
+  const { body } = receiptBody({ ...only(0, '2'), warehouseId: 'd1' })
+  assert.deepEqual(
+    body.lines.map((line) => [line.orderItemId, line.stockItemId]),
+    [['k1', 'kart-1']],
+  )
 })

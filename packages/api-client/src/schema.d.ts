@@ -4699,7 +4699,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebi aç
-         * @description Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat, isteğe bağlı `stockItemId`). Bağlı kayıt yok ya da uygun değilse 422 (`purchase_request_period_closed`, `purchase_request_cost_center_inactive`, `purchase_request_budget_item_not_expense`, `purchase_request_supplier_inactive` …). Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["createPurchaseRequest"];
         delete?: never;
@@ -4767,7 +4767,7 @@ export interface paths {
         head?: never;
         /**
          * Taslak talebi düzelt
-         * @description Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 `purchase_request_not_draft`. Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         patch: operations["updatePurchaseRequest"];
         trace?: never;
@@ -50650,6 +50650,8 @@ export interface operations {
                         /** @enum {string} */
                         unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
                         estimatedUnitPriceCents: number;
+                        /** @default null */
+                        stockItemId?: string | null;
                     }[];
                 };
             };
@@ -50713,6 +50715,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51129,6 +51137,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51271,6 +51285,8 @@ export interface operations {
                         /** @enum {string} */
                         unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
                         estimatedUnitPriceCents: number;
+                        /** @default null */
+                        stockItemId?: string | null;
                     }[];
                 };
             };
@@ -51334,6 +51350,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51525,6 +51547,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51718,6 +51746,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -51909,6 +51943,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -52100,6 +52140,12 @@ export interface operations {
                                 estimatedUnitPriceCents: number;
                                 /** @description Miktar × birim fiyat, kuruş */
                                 totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
                             budget: {
@@ -53414,6 +53460,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -53577,6 +53629,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -53745,6 +53803,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -53919,6 +53983,12 @@ export interface operations {
                                 vatCents: number;
                                 /** @description KDV dahil tutar, kuruş */
                                 grossCents: number;
+                                /** @description Talep kaleminden kopyalanan stok kartı bağı (ON-339, K-221); yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             createdByName: string | null;
                             sentByName: string | null;
@@ -54057,6 +54127,12 @@ export interface operations {
                                 rejectedQuantity: number;
                                 /** @description Sipariş miktarı eksi kabul edilen */
                                 remainingQuantity: number;
+                                /** @description Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
                             receivedNetCents: number;
@@ -54269,6 +54345,12 @@ export interface operations {
                                 rejectedQuantity: number;
                                 /** @description Sipariş miktarı eksi kabul edilen */
                                 remainingQuantity: number;
+                                /** @description Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
                             receivedNetCents: number;
@@ -54468,6 +54550,12 @@ export interface operations {
                                 rejectedQuantity: number;
                                 /** @description Sipariş miktarı eksi kabul edilen */
                                 remainingQuantity: number;
+                                /** @description Sipariş kaleminin stok kartı bağı (talepten, ON-339); kabul formunda kalemin kartını önceden doldurur */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
                             }[];
                             /** @description Gerçekleşen: iptal edilmemiş kabullerde kabul edilen miktar × birim fiyat, KDV hariç (K-151) */
                             receivedNetCents: number;
@@ -56997,6 +57085,10 @@ export interface operations {
                             lastReceiptDate: string | null;
                             /** @description Son alış fiyatının siparişi */
                             lastOrderNumber: string | null;
+                            /** @description Açık talepte: karta bağlı kalemi olan taslak, gönderilmiş ya da siparişe dönmemiş onaylı taleplerdeki miktar (ON-339, K-222) */
+                            openRequestQuantity: number;
+                            /** @description Bu miktarın geçtiği açık talep sayısı */
+                            openRequestCount: number;
                             /** @description Depo kırılımı: etkin depolar ve miktarı olan pasif depolar, ada göre */
                             warehouses: {
                                 warehouseId: string;

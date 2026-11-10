@@ -94,6 +94,11 @@ export const purchaseRequestItemSchema = z.strictObject({
     .int('Tutar kuruş cinsinden tam sayı olmalıdır.')
     .min(1, 'Tahmini birim fiyat sıfırdan büyük olmalıdır.')
     .max(PURCHASE_UNIT_PRICE_MAX_CENTS, 'Tahmini birim fiyat çok büyük.'),
+  /**
+   * İsteğe bağlı stok kartı bağı (ON-339): kurumun etkin, kalemle aynı birimdeki kartı. Bağ
+   * siparişe ve oradan mal kabul formuna taşınır; kabul edilen miktar o karta girer (DOM-FIN-078).
+   */
+  stockItemId: z.uuid('Stok kartı geçersiz.').nullable().default(null),
 })
 export type PurchaseRequestItem = z.output<typeof purchaseRequestItemSchema>
 
@@ -307,6 +312,18 @@ export interface PurchaseRequestRefs {
   budgetItem: { kind: BudgetItemKind; isActive: boolean } | null
   /** Önerilen tedarikçi; talep tedarikçisizse `undefined`. */
   supplier?: { isActive: boolean } | null
+  /**
+   * Kalemlerin bağlandığı stok kartları (ON-339): kurumun arşivlenmemiş kartları, kimliğe göre.
+   * Bağsız talepte verilmeyebilir; bağlı kalemin kartı burada yoksa kart bulunamamıştır.
+   */
+  stockItems?: ReadonlyMap<string, PurchaseStockItemRef>
+}
+
+/** Talep kalemine bağlanan stok kartının denetlenen alanları (DOM-FIN-077). */
+export interface PurchaseStockItemRef {
+  name: string
+  unit: PurchaseUnit
+  isActive: boolean
 }
 
 export interface PurchaseRequestState {
@@ -319,8 +336,11 @@ export interface PurchaseActor {
   role: string
 }
 
-const ruleError = (code: string, message: string, path?: string) =>
-  new DomainError(code, message, { kind: 'rule', ...(path ? { path: [path] } : {}) })
+const ruleError = (code: string, message: string, path?: string | (string | number)[]) =>
+  new DomainError(code, message, {
+    kind: 'rule',
+    ...(path === undefined ? {} : { path: (Array.isArray(path) ? path : [path]).map(String) }),
+  })
 
 /** Bağlı kayıtlar: dönem kapalı değil, merkez etkin, kalem etkin gider kalemi, tedarikçi etkin. */
 function assertRefs(refs: PurchaseRequestRefs): void {
@@ -372,6 +392,50 @@ function assertRefs(refs: PurchaseRequestRefs): void {
     )
 }
 
+/**
+ * Kalemlerin stok kartı bağı (ON-339, K-221): kart kurumun arşivlenmemiş kartı olmalıdır; başka
+ * kurumun ya da bilinmeyen kart kimliği var olmayan kartla aynı yanıtı alır (400, alan
+ * `items.<n>.stockItemId`; sızıntı yok). Pasif kart bağlanmaz; kalemin birimi kartın birimiyle aynı
+ * olmalıdır, yoksa mal kabulde stok girişi yazılamazdı (DOM-FIN-078). Bağ isteğe bağlıdır.
+ */
+export function assertPurchaseStockLinks(
+  items: readonly Pick<PurchaseRequestItem, 'stockItemId' | 'unit'>[],
+  stockItems: ReadonlyMap<string, PurchaseStockItemRef>,
+): void {
+  const missing = items.flatMap((item, index) =>
+    item.stockItemId !== null && !stockItems.has(item.stockItemId) ? [index] : [],
+  )
+  // Şema hatası olarak döner (Zod 400): istemci alanı `items.<n>.stockItemId` yolundan bulur.
+  if (missing.length > 0)
+    z.object({ items: z.unknown() })
+      .superRefine((_value, context) => {
+        for (const index of missing)
+          context.addIssue({
+            code: 'custom',
+            path: ['items', index, 'stockItemId'],
+            message: 'Stok kartı bulunamadı.',
+          })
+      })
+      .parse({ items })
+  for (const [index, item] of items.entries()) {
+    const card = item.stockItemId === null ? undefined : stockItems.get(item.stockItemId)
+    if (card === undefined) continue
+    const path = ['items', index, 'stockItemId']
+    if (!card.isActive)
+      throw ruleError(
+        'purchase_request_stock_item_inactive',
+        `${card.name} stok kartı pasif; talep kalemine bağlanamaz.`,
+        path,
+      )
+    if (card.unit !== item.unit)
+      throw ruleError(
+        'purchase_request_stock_unit_mismatch',
+        `${card.name} kartının birimi (${PURCHASE_UNIT_LABELS[card.unit]}) kalemin birimiyle aynı olmalıdır.`,
+        path,
+      )
+  }
+}
+
 /** Ön büro yalnız kendi açtığı talebi düzeltir, gönderir ve iptal eder; yönetici her talebi (K-128). */
 function assertOwner(request: PurchaseRequestState, actor: PurchaseActor): void {
   if (actor.role === 'yonetici') return
@@ -399,6 +463,7 @@ export function planPurchaseRequest(
 ): PurchaseRequestFields {
   const data = purchaseRequestSchema.parse(input)
   assertRefs(refs)
+  assertPurchaseStockLinks(data.items, refs.stockItems ?? new Map())
   return data
 }
 
@@ -418,6 +483,8 @@ export function planPurchaseRequestUpdate(
     'Yalnız taslak talep düzeltilebilir.',
   )
   assertRefs(refs)
+  if (changes.items !== undefined)
+    assertPurchaseStockLinks(changes.items, refs.stockItems ?? new Map())
   return changes
 }
 

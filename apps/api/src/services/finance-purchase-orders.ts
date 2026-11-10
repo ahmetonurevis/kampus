@@ -15,6 +15,7 @@ import { purchaseRequestNumber } from '@kampus/school-core/lib/finance-purchase-
 import { maskSupplierTaxNumber } from '@kampus/school-core/lib/finance-suppliers.ts'
 
 import type { Database } from '../db/client.ts'
+import { loadStockItemLabels } from '../db/finance-inventory.ts'
 import {
   findPurchaseOrder,
   findQuoteRequestId,
@@ -109,6 +110,11 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
   ])
   const items = itemsByOrder.get(id) ?? []
   const { lines } = amountsOf(items)
+  const cards = await loadStockItemLabels(
+    db,
+    ctx.institutionId,
+    items.map((item) => item.stockItemId),
+  )
   const nameOf = (userId: string | null) => (userId === null ? null : (names.get(userId) ?? null))
   return {
     ...summaryView(ctx, order, items),
@@ -134,6 +140,7 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
         netCents: line?.netCents ?? 0,
         vatCents: line?.vatCents ?? 0,
         grossCents: line?.grossCents ?? 0,
+        stockItem: item.stockItemId === null ? null : (cards.get(item.stockItemId) ?? null),
       }
     }),
     createdByName: nameOf(order.createdByUserId),
@@ -216,6 +223,8 @@ export function createPurchaseOrderCommand(
                 unit: item.unit,
                 unitPriceCents: price.unitPriceCents,
                 vatRate: price.vatRate,
+                // Talep kaleminin stok kartı bağı siparişe kopyalanır (ON-339, K-221).
+                stockItemId: item.stockItemId,
               }
             })
             return { plan, quote, supplier, lines, sequence }

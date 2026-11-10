@@ -149,6 +149,23 @@ export async function loadStockItemsByIds(
     .where(and(itemsOf(institutionId), inArray(stockItems.id, [...new Set(ids)])))
 }
 
+/**
+ * Bağlı stok kartlarının kod ve adı (talep, sipariş ve mal kabul kalemleri; ON-339); pasif kart da
+ * döner. Boş kimlik atlanır.
+ */
+export async function loadStockItemLabels(
+  db: Database,
+  institutionId: string,
+  ids: readonly (string | null)[],
+): Promise<Map<string, { id: string; code: string; name: string }>> {
+  const cards = await loadStockItemsByIds(
+    db,
+    institutionId,
+    ids.filter((id): id is string => id !== null),
+  )
+  return new Map(cards.map(({ id, code, name }) => [id, { id, code, name }]))
+}
+
 export async function insertStockItem(
   tx: Database,
   institutionId: string,

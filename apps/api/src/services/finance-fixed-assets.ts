@@ -1,8 +1,16 @@
 import { randomUUID } from 'node:crypto'
 
 import { fixedAssetCountOutcome } from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
+import {
+  depreciationRateBasisPoints,
+  depreciationReport,
+  depreciationReportCsv,
+  depreciationSchedule,
+  type DepreciationReportQuery,
+} from '@kampus/school-core/lib/finance-fixed-asset-depreciation.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
+  fixedAssetDraft,
   fixedAssetSchema,
   nextFixedAssetTag,
   planFixedAsset,
@@ -27,6 +35,8 @@ import {
   isFixedAssetTagTaken,
   listFixedAssets,
   listLinkableReceiptItems,
+  loadDepreciationAssets,
+  loadFirstAcquisitionYear,
   loadReceiptItemViews,
   loadReceiptRef,
   loadYearTags,
@@ -36,6 +46,7 @@ import {
 } from '../db/finance-fixed-assets.ts'
 import { findSupplier } from '../db/finance-suppliers.ts'
 import { loadRecordsByIds } from '../db/records.ts'
+import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -60,6 +71,8 @@ const DRAFT_KEYS = [
   'supplierId',
   'receiptItemId',
   'status',
+  'usefulLifeYears',
+  'depreciationMethod',
 ] as const satisfies readonly (keyof FixedAssetDraft)[]
 
 const draftOf = (asset: StoredFixedAsset): FixedAssetDraft =>
@@ -138,6 +151,8 @@ function listView(
     supplierName: asset.supplierName,
     receiptItemId: asset.receiptItemId,
     status: asset.status,
+    usefulLifeYears: asset.usefulLifeYears,
+    depreciationMethod: asset.depreciationMethod,
     scrapDate: asset.scrapDate,
     assignment: holderView(holders.get(asset.id), campuses),
     openMaintenanceCount: faults.get(asset.id) ?? 0,
@@ -185,6 +200,11 @@ async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedA
             outcome: fixedAssetCountOutcome(lastCount.result, 'completed'),
           },
     createdAt: asset.createdAt,
+    // Amortisman ön hesabı (DOM-FIN-088): saklanmaz, her okumada hesaplanır; defter kaydı değildir.
+    depreciation: {
+      rateBasisPoints: depreciationRateBasisPoints(asset.depreciationMethod, asset.usefulLifeYears),
+      rows: depreciationSchedule(asset),
+    },
   }
 }
 
@@ -280,13 +300,14 @@ export function createFixedAssetCommand(
       collections: [],
       entity,
       load: async (tx) => {
-        const { tagNumber, ...fields } = fixedAssetSchema.parse(input)
+        const fields = fixedAssetSchema.parse(input)
         const year = Number(dayKey(ctx.now).slice(0, 4))
-        const draft: FixedAssetDraft = {
-          ...fields,
-          tagNumber:
-            tagNumber ?? nextFixedAssetTag(year, await loadYearTags(tx, ctx.institutionId, year)),
-        }
+        // Etiket boşsa yılın sıradaki etiketi (K-185), ömür boşsa kategorinin önerisi (K-224).
+        const draft = fixedAssetDraft(
+          fields,
+          fields.tagNumber ??
+            nextFixedAssetTag(year, await loadYearTags(tx, ctx.institutionId, year)),
+        )
         const checks = await checksFor(tx, ctx, draft, null)
         return { run: () => planFixedAsset(draft, checks) }
       },
@@ -406,4 +427,38 @@ export function scrapFixedAssetCommand(
     () => ({ statusCode: 200, body }),
     idempotency,
   )
+}
+
+/**
+ * Amortisman ön hesabı raporu (DOM-FIN-088; ON-238): seçilen takvim yılı (boşsa bugünün yılı,
+ * Europe/Istanbul) için kurum toplamı, kategori kırılımı ve demirbaş satırları. Yönetim raporudur;
+ * hiçbir kayıt yazmaz, defter kaydı üretmez (IST-142).
+ */
+export async function depreciationReportFor(ctx: ServiceContext, query: DepreciationReportQuery) {
+  const year = query.year ?? Number(dayKey(ctx.now).slice(0, 4))
+  const [assets, firstYear] = await Promise.all([
+    loadDepreciationAssets(ctx.db, ctx.institutionId, year),
+    loadFirstAcquisitionYear(ctx.db, ctx.institutionId),
+  ])
+  return { ...depreciationReport(assets, year), firstYear }
+}
+
+/** Raporun CSV'si; finansal dışa aktarım olduğu için denetime yazılır (K-227). */
+export async function depreciationReportCsvFor(
+  ctx: ServiceContext,
+  query: DepreciationReportQuery,
+): Promise<{ csv: string; filename: string }> {
+  const report = await depreciationReportFor(ctx, query)
+  const csv = depreciationReportCsv(report)
+  await ctx.db.insert(auditLog).values({
+    institutionId: ctx.institutionId,
+    actorUserId: ctx.actor.userId,
+    actorRole: ctx.actor.role,
+    action: 'finance.fixed_asset_depreciation_export',
+    entityType: 'finance_export',
+    entityId: `fixed-asset-depreciation:${String(report.year)}`,
+    changes: { fields: [] },
+    createdAt: ctx.now,
+  })
+  return { csv, filename: `amortisman-on-hesabi-${String(report.year)}.csv` }
 }

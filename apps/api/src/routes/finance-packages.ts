@@ -287,18 +287,19 @@ export function registerFinancePackageRoutes(app: FastifyInstance) {
         operationId: 'listPackageSales',
         tags: ['finance-packages'],
         summary: 'Paket satışlarını listele',
-        description: `Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (\`hourlyCents\`, \`grossCents\`, \`netCents\`) yalnız \`yonetici\` ve \`onburo\` yanıtındadır (K-40). İç kimlikler (\`version\`, \`packageId\`, \`courseId\`, \`studentId\`, \`contractId\`, \`tariffId\`, \`tariffVersion\`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Sorgudaki \`studentId\` ve \`packageId\` süzer; kapsam dışı öğrenci boş liste verir. ${LANGUAGE_ONLY} Roller: \`yonetici\`, \`onburo\`, \`veli\`, \`ogrenci\`.`,
+        description: `Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (\`hourlyCents\`, \`grossCents\`, \`netCents\`) yalnız \`yonetici\` ve \`onburo\` yanıtındadır (K-40). İç kimlikler (\`version\`, \`packageId\`, \`courseId\`, \`studentId\`, \`contractId\`, \`tariffId\`, \`tariffVersion\`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Sorgudaki \`studentId\` ve \`packageId\` süzer; kapsam dışı öğrenci boş liste verir. \`alerts\` türetilen uyarılardır; \`alert\` yalnız o uyarıyı taşıyan satışları verir (K-248, K-249: \`low_balance\` kalan saat satın alınanın %20'si ya da altı, \`expiring\` son kullanma 14 gün içinde). ${LANGUAGE_ONLY} Roller: \`yonetici\`, \`onburo\`, \`veli\`, \`ogrenci\`.`,
         querystring: saleListQuery,
         response: { 200: saleListResponse, ...commandErrors },
       },
     },
     async (request) => {
-      const { page, pageSize, studentId, packageId } = request.query
+      const { page, pageSize, studentId, packageId, alert } = request.query
       const { items, total } = await listPackageSalesFor(contextOf(request), {
         page,
         pageSize,
         studentId,
         packageId,
+        alert,
       })
       return { data: items, meta: { page, pageSize, total } }
     },

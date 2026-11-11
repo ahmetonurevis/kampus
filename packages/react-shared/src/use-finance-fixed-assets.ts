@@ -32,6 +32,9 @@ export type FixedAssetQuery = Query<'listFixedAssets'>
 export type FixedAssetReceiptItem =
   operations['listFixedAssetReceiptItems']['responses'][200]['content']['application/json']['data'][number]
 export type FixedAssetReceiptItemQuery = Query<'listFixedAssetReceiptItems'>
+export type FixedAssetDepreciationRow = FixedAssetDetail['depreciation']['rows'][number]
+export type DepreciationReport =
+  operations['getFixedAssetDepreciationReport']['responses'][200]['content']['application/json']['data']
 
 export const FIXED_ASSETS_KEY = ['finance-fixed-assets'] as const
 const MESSAGES = {
@@ -115,5 +118,33 @@ export function useScrapFixedAsset() {
     version: (input) => input.version,
     messages: MESSAGES,
     exclusive: true,
+  })
+}
+
+/**
+ * Amortisman ön hesabı raporu (DOM-FIN-088); salt okur. Anahtar demirbaş anahtarıyla başlar:
+ * kayıt, düzeltme ve hurdaya ayırma raporu da tazeler.
+ */
+export function useFixedAssetDepreciationReport(year: number) {
+  return useApiQuery({
+    key: [...FIXED_ASSETS_KEY, 'depreciation-report', year],
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/fixed-assets/depreciation-report', {
+        params: { query: { year } },
+        signal,
+      }),
+  })
+}
+
+/** Raporun CSV dosyası (`Accept: text/csv`); denetime düşer (K-227). */
+export function useFixedAssetDepreciationExport() {
+  return useApiCommand({
+    request: (client, year: number) =>
+      client.GET('/api/v1/finance/fixed-assets/depreciation-report', {
+        params: { query: { year } },
+        headers: { accept: 'text/csv' },
+        parseAs: 'text',
+      }),
+    invalidates: [],
   })
 }

@@ -236,25 +236,28 @@ export async function findPackageSale(
   return row ? toSale(row) : null
 }
 
-/** `studentIds` verilirse yalnız o öğrencilerin satışları; boş küme boş sonuç verir. */
-export async function listPackageSales(
-  db: Database,
-  institutionId: string,
-  query: {
-    page: number
-    pageSize: number
-    studentIds?: readonly string[] | undefined
-    packageId?: string | undefined
-  },
-): Promise<{ items: StoredPackageSale[]; total: number }> {
-  if (query.studentIds?.length === 0) return { items: [], total: 0 }
-  const where = and(
+type SaleFilter = {
+  studentIds?: readonly string[] | undefined
+  packageId?: string | undefined
+}
+
+const saleWhere = (institutionId: string, query: SaleFilter) =>
+  and(
     activeSale(institutionId),
     query.studentIds === undefined
       ? undefined
       : inArray(lessonPackageSales.studentId, [...query.studentIds]),
     query.packageId === undefined ? undefined : eq(lessonPackageSales.packageId, query.packageId),
   )
+
+/** `studentIds` verilirse yalnız o öğrencilerin satışları; boş küme boş sonuç verir. */
+export async function listPackageSales(
+  db: Database,
+  institutionId: string,
+  query: SaleFilter & { page: number; pageSize: number },
+): Promise<{ items: StoredPackageSale[]; total: number }> {
+  if (query.studentIds?.length === 0) return { items: [], total: 0 }
+  const where = saleWhere(institutionId, query)
   const [totalRow] = await db.select({ total: count() }).from(lessonPackageSales).where(where)
   const rows = await db
     .select(SALE_COLUMNS)
@@ -264,6 +267,24 @@ export async function listPackageSales(
     .limit(query.pageSize)
     .offset((query.page - 1) * query.pageSize)
   return { items: rows.map(toSale), total: totalRow?.total ?? 0 }
+}
+
+/**
+ * Süzgeçle eşleşen bütün satışlar, listeyle aynı sırada. Uyarı süzgeci (K-248, K-249) bakiyeden
+ * türer, SQL'de yazılamaz: servis hesaplar, sonra sayfayı keser.
+ */
+export async function listAllPackageSales(
+  db: Database,
+  institutionId: string,
+  query: SaleFilter,
+): Promise<StoredPackageSale[]> {
+  if (query.studentIds?.length === 0) return []
+  const rows = await db
+    .select(SALE_COLUMNS)
+    .from(lessonPackageSales)
+    .where(saleWhere(institutionId, query))
+    .orderBy(desc(lessonPackageSales.soldAt), asc(lessonPackageSales.id))
+  return rows.map(toSale)
 }
 
 /** Yalnız son kullanma günü değişir (DOM-DIL-051). Sürüm tutmazsa `false` (409). */

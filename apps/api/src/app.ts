@@ -47,9 +47,11 @@ import { registerFinanceFixedAssetCountRoutes } from './routes/finance-fixed-ass
 import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.ts'
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
+import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
+import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
@@ -65,6 +67,7 @@ import { registerFinancePurchaseReportRoutes } from './routes/finance-purchase-r
 import { registerFinancePurchaseRequestRoutes } from './routes/finance-purchase-requests.ts'
 import { registerFinanceSupplierLedgerRoutes } from './routes/finance-supplier-ledger.ts'
 import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
+import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requests.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -502,8 +505,11 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceInventoryRoutes(app)
   registerFinanceFixedAssetRoutes(app)
   registerFinanceMaterialSetRoutes(app)
+  registerFinanceStockCountRoutes(app)
   registerFinanceFixedAssetAssignmentRoutes(app)
   registerFinanceFixedAssetCountRoutes(app)
+  registerFinanceChemicalRoutes(app)
+  registerFinanceSupplyRequestRoutes(app)
   registerFinanceMaintenanceRequestRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

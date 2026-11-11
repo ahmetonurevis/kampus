@@ -106,8 +106,11 @@ export const stockWarehouses = pgTable(
 /**
  * Stok hareketi (DOM-FIN-078; ON-229): bir ürünün bir depoya girişi ya da çıkışı. Transferin iki
  * hareketi aynı `transfer_id`'yi taşır; mal kabul girişi kabul kalemine bağlıdır (kalem başına bir
- * hareket); materyal seti teslimi çıkışı teslim kalemine bağlıdır (`material_delivery_items`). Miktar ürün × depo için hareketlerden türetilir ve hiçbir gün eksiye düşemez (kurum kilidi
- * altında core kuralı, K-181). Silinmez; yönetici gerekçeyle iptal eder (K-183).
+ * hareket); materyal seti teslimi çıkışı teslim kalemine (`material_delivery_items`), sayım
+ * düzeltmesi sayım satırına (`stock_count_lines`), sarf talebi karşılama çıkışı talep kalemine
+ * (`supply_request_issues`) bağlıdır. Miktar ürün × depo için hareketlerden türetilir ve hiçbir
+ * gün eksiye düşemez (kurum kilidi altında core kuralı, K-181). Silinmez; yönetici gerekçeyle
+ * iptal eder (K-183).
  */
 export const stockMovements = pgTable(
   'stock_movements',
@@ -163,14 +166,17 @@ export const stockMovements = pgTable(
     ),
     // Neden yalnız elle giriş ve çıkışta, kendi kümesinden; transfer kimliği yalnız transferde,
     // kabul ve kabul kalemi yalnız mal kabul girişinde. Materyal seti teslimi (`delivery`,
-    // DOM-FIN-080) kaynağını `material_delivery_items.stock_movement_id` ile taşır.
+    // DOM-FIN-080) kaynağını `material_delivery_items.stock_movement_id`, sayım düzeltmesi
+    // (`adjustment_in`, `adjustment_out`; DOM-FIN-081) `stock_count_lines.stock_movement_id`, sarf
+    // talebi karşılaması (`supply`, DOM-FIN-091) `supply_request_issues.stock_movement_id` ile taşır.
     check(
       'stock_movements_source_check',
       sql`(${table.type} = 'in' and ${table.reason} is not null and ${oneOf(table.reason, STOCK_ENTRY_REASONS)} and ${table.transferId} is null and ${table.receiptId} is null and ${table.receiptItemId} is null)
         or (${table.type} = 'out' and ${table.reason} is not null and ${oneOf(table.reason, STOCK_ISSUE_REASONS)} and ${table.transferId} is null and ${table.receiptId} is null and ${table.receiptItemId} is null)
         or (${table.type} in ('transfer_in', 'transfer_out') and ${table.reason} is null and ${table.transferId} is not null and ${table.receiptId} is null and ${table.receiptItemId} is null)
         or (${table.type} = 'receipt' and ${table.reason} is null and ${table.transferId} is null and ${table.receiptId} is not null and ${table.receiptItemId} is not null)
-        or (${table.type} = 'delivery' and ${table.reason} is null and ${table.transferId} is null and ${table.receiptId} is null and ${table.receiptItemId} is null)`,
+        or (${table.type} in ('delivery', 'supply') and ${table.reason} is null and ${table.transferId} is null and ${table.receiptId} is null and ${table.receiptItemId} is null)
+        or (${table.type} in ('adjustment_in', 'adjustment_out') and ${table.reason} is null and ${table.transferId} is null and ${table.receiptId} is null and ${table.receiptItemId} is null)`,
     ),
     check(
       'stock_movements_text_check',

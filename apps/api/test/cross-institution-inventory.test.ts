@@ -1534,6 +1534,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: amortisman ön hesabı (ON-238; DOM-FIN-088).
+  'GET /api/v1/finance/fixed-assets/depreciation-report': liste(
+    'finance-fixed-asset-depreciation.test.ts',
+    'DOM-FIN-088: başka kurumun demirbaşı raporda ve CSV dosyasında yok',
+    'get(`${REPORT}?year=2026`, a.admin)',
+  ),
   // Onur: stok kartı, depo ve hareket (ON-228, ON-229; DOM-FIN-077, DOM-FIN-078).
   ...Object.fromEntries(
     (
@@ -1613,6 +1619,92 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)(
         'finance-material-sets.test.ts',
         'başka kurumun seti ve teslimi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: stok sayımı (ON-231; DOM-FIN-081).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/stock-counts', 'listOf()'],
+        ['gövde', 'POST /api/v1/finance/stock-counts', '{ institutionId: b.id }'],
+        ['kayıt', 'GET /api/v1/finance/stock-counts/:countId', 'get(bCountUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/scans', 'scan(a.admin, bCount'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/quantities',
+          'setQuantity(a.admin, bCount',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/complete',
+          'complete(a.admin, bCount)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/cancel', 'cancel(a.admin, bCount)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-stock-counts.test.ts', 'başka kurumun sayımı 404 ve B değişmez', marker),
+    ]),
+  ),
+  // Onur: laboratuvar kimyasal envanteri (ON-234; DOM-FIN-090).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-items/:itemId/chemical-profile',
+          'mark(a.admin, b.paper)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stock-items/:itemId/chemical-profile',
+          "call('PATCH', profileUrl(b.acid), a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/chemical-lots', '`${LOTS}?itemId=${String(b.acid.id)}`'],
+        [
+          'liste',
+          'GET /api/v1/finance/chemical-inventory',
+          '`${REPORT}?warehouseId=${String(b.lab.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-chemicals.test.ts',
+        'başka kurumun kartı kimyasal işaretlenmez ve düzeltilmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: sarf malzeme talebi (ON-233; DOM-FIN-091).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/supply-requests', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/supply-requests/stock-items', 'get(CARDS, a.teacher)'],
+        ['gövde', 'POST /api/v1/finance/supply-requests', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/supply-requests/:requestId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/supply-requests/:requestId/approve', "'approve'"],
+        ['kayıt', 'POST /api/v1/finance/supply-requests/:requestId/reject', "'reject'"],
+        ['kayıt', 'POST /api/v1/finance/supply-requests/:requestId/cancel', "'cancel'"],
+        [
+          'kayıt',
+          'POST /api/v1/finance/supply-requests/:requestId/fulfill',
+          'fulfill(a.admin, a, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/supply-requests/:requestId/convert',
+          'convert(a.admin, a, bRequest)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-supply-requests.test.ts',
+        'başka kurumun talebi 404 ve B değişmez',
         marker,
       ),
     ]),

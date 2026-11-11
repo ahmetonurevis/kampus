@@ -12,7 +12,9 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // tutanak PDF'ini indirir ve hasarlı iade alır (K-210…K-214). Sayım (ON-237; DOM-FIN-087): yönetici
 // karekodlu etiket PDF'ini alır, oda sayımı başlatır, kodları klavyeyle okutur (bulundu, yanlış
 // konumda, bilinmeyen kod reddi), tamamlar, konumu tek tıkla düzeltir ve sonucu CSV indirir
-// (K-232…K-235).
+// (K-232…K-235). Amortisman ön hesabı (ON-238; DOM-FIN-088): yönetici ömrü ve yöntemi seçer,
+// ayrıntıda yıllık tabloyu, sekmede yıl raporunu görür ve CSV indirir; ekran ve dosya "resmî
+// defter yerine geçmez" notunu taşır (K-224…K-227).
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
@@ -47,7 +49,7 @@ test.describe('DOM-FIN-085: demirbaş ekranı', () => {
     await expect(
       panel.getByRole('heading', { name: /^DB-\d{4}-0001 · Akıllı tahta$/ }),
     ).toBeVisible()
-    await expect(panel.getByText('45.000,00 ₺')).toBeVisible()
+    await expect(panel.getByRole('definition').filter({ hasText: /^45\.000,00 ₺$/ })).toBeVisible()
     await expect(panel.getByText('Kadıköy Kampüsü')).toBeVisible()
     await panel.getByRole('button', { name: 'Düzenle' }).click()
     const edit = page.getByRole('dialog', { name: 'Demirbaşı düzenle' })
@@ -265,5 +267,57 @@ test.describe('DOM-FIN-085: demirbaş ekranı', () => {
         lastCount: expect.objectContaining({ outcome: 'missing' }),
       }),
     )
+  })
+
+  test('DOM-FIN-088: yönetici ömür ve yöntemi seçer, amortisman tablosunu ve yıl raporunu görür, CSV indirir', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [] })
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN}?gorunum=demirbas`)
+    const assets = page.getByRole('region', { name: 'Demirbaşlar' })
+    await assets.getByRole('button', { name: 'Yeni demirbaş' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni demirbaş' })
+    await form.getByLabel('Ad', { exact: true }).fill('Dizüstü bilgisayar')
+    await form.getByLabel('Kategori').selectOption({ label: 'Bilgisayar ve bilişim' })
+    await expect(form.getByLabel('Faydalı ömür (yıl)')).toHaveValue('4')
+    await form.getByLabel('Konum').fill('Öğretmenler odası')
+    await form.getByLabel('Alım değeri (₺, KDV hariç)').fill('40.000,00')
+    await form.getByLabel('Alım günü').fill('2025-01-15')
+    await form.getByLabel('Faydalı ömür (yıl)').fill('0')
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(form.getByText('Faydalı ömrü 1–50 arasında tam yıl girin.')).toBeVisible()
+    await form.getByLabel('Faydalı ömür (yıl)').fill('5')
+    await form.getByLabel('Amortisman yöntemi').selectOption({ label: 'Azalan bakiyeler' })
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(form).toBeHidden()
+
+    const panel = page.getByRole('dialog', { name: 'Demirbaş' })
+    const schedule = panel.getByRole('region', { name: 'Amortisman ön hesabı' })
+    await expect(schedule.getByText('Azalan bakiyeler · 5 yıl · yıllık oran %40')).toBeVisible()
+    await expect(schedule.getByText(/resmî defter yerine geçmez/)).toBeVisible()
+    const first = schedule.getByRole('row', { name: /^2025/ })
+    // Dönem başı 40.000, ayrılan ve birikmiş 16.000 (%40), net 24.000.
+    await expect(first).toContainText('40.000,00 ₺')
+    await expect(first).toContainText('16.000,00 ₺')
+    await expect(first).toContainText('24.000,00 ₺')
+    await page.keyboard.press('Escape')
+
+    const report = page.getByRole('region', { name: 'Amortisman ön hesabı' })
+    await expect(report.getByText(/resmî defter yerine geçmez/)).toBeVisible()
+    await report.getByLabel('Hesap yılı').selectOption('2025')
+    const summary = report.getByRole('definition').filter({ hasText: '16.000,00 ₺' })
+    await expect(summary.first()).toBeVisible()
+    await expect(
+      report.getByRole('row', { name: /Bilgisayar ve bilişim/ }).getByText('24.000,00 ₺'),
+    ).toBeVisible()
+    const downloading = page.waitForEvent('download')
+    await report.getByRole('button', { name: 'CSV indir' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toBe('amortisman-on-hesabi-2025.csv')
+    const csv = await readFile(await file.path(), 'utf8')
+    expect(csv).toContain('resmî defter yerine geçmez')
+    expect(csv).toContain('"Dizüstü bilgisayar";"Bilgisayar ve bilişim"')
   })
 })

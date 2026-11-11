@@ -244,7 +244,12 @@ test('DOM-FIN-078: elle giriş etkin kart ve depo ister; gün bugünden sonra ol
     movementDate: '2026-10-06',
     reason: 'opening',
   }
-  assert.deepEqual(planStockEntry(entry, context()), { ...entry, note: null })
+  assert.deepEqual(planStockEntry(entry, context()), {
+    ...entry,
+    note: null,
+    lotNumber: null,
+    expiryDate: null,
+  })
   assert.throws(
     () => planStockEntry({ ...entry, itemId: TONER }, context()),
     isDomainError('stock_item_inactive'),

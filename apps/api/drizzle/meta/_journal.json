@@ -642,8 +642,36 @@
     {
       "idx": 91,
       "version": "7",
-      "when": 1794312426851,
-      "tag": "0091_create_maintenance_requests",
+      "when": 1794311343976,
+      "tag": "0091_fixed_asset_depreciation",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794312162792,
+      "tag": "0092_create_stock_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1794320289790,
+      "tag": "0093_create_chemical_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794378872703,
+      "tag": "0094_create_supply_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1794380188619,
+      "tag": "0095_create_maintenance_requests",
       "breakpoints": true
     }
   ]

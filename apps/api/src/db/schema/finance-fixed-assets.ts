@@ -5,6 +5,7 @@ import {
   date,
   foreignKey,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -14,12 +15,16 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import {
+  DEPRECIATION_METHODS,
   FIXED_ASSET_CATEGORIES,
   FIXED_ASSET_LOCATION_MAX,
   FIXED_ASSET_NAME_MAX,
   FIXED_ASSET_SCRAP_REASON_MAX,
   FIXED_ASSET_STATUSES,
   FIXED_ASSET_VALUE_MAX_CENTS,
+  USEFUL_LIFE_MAX,
+  USEFUL_LIFE_MIN,
+  type DepreciationMethod,
   type FixedAssetCategory,
   type FixedAssetStatus,
 } from '@kampus/school-core/lib/finance-fixed-assets.ts'
@@ -34,7 +39,8 @@ const n = (value: number) => sql.raw(String(value))
 /**
  * Demirbaş (DOM-FIN-085; ON-235). Kurumda tekil etiketli tek varlık: kategori, kampüs (branches
  * kaydı) ve konum, KDV hariç alım değeri (kuruş), alım günü, isteğe bağlı tedarikçi ve mal kabul
- * kalemi. Silinmez; hurdaya ayırma gerekçe, gün ve kişi taşır, geri alınmaz (K-188).
+ * kalemi. Silinmez; hurdaya ayırma gerekçe, gün ve kişi taşır, geri alınmaz (K-188). Amortisman
+ * ön hesabının girdileri faydalı ömür ve yöntemdir (DOM-FIN-088); hesap saklanmaz.
  */
 export const fixedAssets = pgTable(
   'fixed_assets',
@@ -61,6 +67,11 @@ export const fixedAssets = pgTable(
     // kvkk: K
     scrappedByUserId: text('scrapped_by_user_id'),
     scrapReason: text('scrap_reason'),
+    usefulLifeYears: integer('useful_life_years').notNull(),
+    depreciationMethod: text('depreciation_method')
+      .$type<DepreciationMethod>()
+      .notNull()
+      .default('normal'),
     ...requiredColumns(),
   },
   (table) => [
@@ -87,6 +98,14 @@ export const fixedAssets = pgTable(
     check(
       'fixed_assets_value_check',
       sql`${table.acquisitionValueCents} between 1 and ${n(FIXED_ASSET_VALUE_MAX_CENTS)}`,
+    ),
+    check(
+      'fixed_assets_useful_life_check',
+      sql`${table.usefulLifeYears} between ${n(USEFUL_LIFE_MIN)} and ${n(USEFUL_LIFE_MAX)}`,
+    ),
+    check(
+      'fixed_assets_depreciation_method_check',
+      oneOf(table.depreciationMethod, DEPRECIATION_METHODS),
     ),
     check('fixed_assets_currency_check', sql`${table.currency} = 'TRY'`),
     // Hurdaya ayrılan kayıt zamanı, günü, kişiyi ve gerekçeyi birlikte taşır; öteki durumlar hiçbirini.

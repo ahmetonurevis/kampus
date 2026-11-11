@@ -2689,7 +2689,7 @@ export interface paths {
         };
         /**
          * Paket satışlarını listele
-         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır (K-40). İç kimlikler (`version`, `packageId`, `courseId`, `studentId`, `contractId`, `tariffId`, `tariffVersion`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Sorgudaki `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         * @description Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). Tutar alanları (`hourlyCents`, `grossCents`, `netCents`) yalnız `yonetici` ve `onburo` yanıtındadır (K-40). İç kimlikler (`version`, `packageId`, `courseId`, `studentId`, `contractId`, `tariffId`, `tariffVersion`) de yalnız onlarındır (K-41). Veli ve öğrenci yalnız satış kimliği, paket adı ve türü, saatler, son kullanma ve durumu alır; bu anahtarlar yanıtta yoktur. Sorgudaki `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. `alerts` türetilen uyarılardır; `alert` yalnız o uyarıyı taşıyan satışları verir (K-248, K-249: `low_balance` kalan saat satın alınanın %20'si ya da altı, `expiring` son kullanma 14 gün içinde). Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
          */
         get: operations["listPackageSales"];
         put?: never;
@@ -10398,7 +10398,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -15017,7 +15017,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -34853,6 +34853,8 @@ export interface operations {
                 /** @description Öğrenci; kapsamı daraltır */
                 studentId?: string;
                 packageId?: string;
+                /** @description Yalnız bu uyarıyı taşıyan satışlar (K-248, K-249) */
+                alert?: "low_balance" | "expiring";
             };
             header?: never;
             path?: never;
@@ -34915,6 +34917,11 @@ export interface operations {
                              * @enum {string}
                              */
                             status: "active" | "expired" | "depleted";
+                            /**
+                             * @description Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur.
+                             * @default []
+                             */
+                            alerts: ("low_balance" | "expiring")[];
                             soldAt: string;
                             studentName: string | null;
                         }[];
@@ -35071,6 +35078,11 @@ export interface operations {
                              * @enum {string}
                              */
                             status: "active" | "expired" | "depleted";
+                            /**
+                             * @description Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur.
+                             * @default []
+                             */
+                            alerts: ("low_balance" | "expiring")[];
                             soldAt: string;
                         };
                     };
@@ -35216,6 +35228,11 @@ export interface operations {
                              * @enum {string}
                              */
                             status: "active" | "expired" | "depleted";
+                            /**
+                             * @description Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur.
+                             * @default []
+                             */
+                            alerts: ("low_balance" | "expiring")[];
                             soldAt: string;
                             studentName: string | null;
                             /** @description Sözleşmenin yalnız bu satışa ait taksitleri. Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur (K-40). */
@@ -35376,6 +35393,11 @@ export interface operations {
                              * @enum {string}
                              */
                             status: "active" | "expired" | "depleted";
+                            /**
+                             * @description Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur.
+                             * @default []
+                             */
+                            alerts: ("low_balance" | "expiring")[];
                             soldAt: string;
                         };
                     };
@@ -35526,6 +35548,11 @@ export interface operations {
                              * @enum {string}
                              */
                             status: "active" | "expired" | "depleted";
+                            /**
+                             * @description Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur.
+                             * @default []
+                             */
+                            alerts: ("low_balance" | "expiring")[];
                             soldAt: string;
                         };
                     };
@@ -35812,6 +35839,8 @@ export interface operations {
                                 remainingHours: number;
                                 expiredHours: number;
                                 usedHoursRecorded: boolean;
+                                /** @description Türetilen uyarılar (K-248, K-249): `low_balance` kullanımı başlamış satışta kalan saat satın alınanın %20sine (en az 1 saat) indi; `expiring` son kullanma 14 gün içinde. Süresi dolmuş ve kalan saati olmayan satışta boştur. */
+                                alerts: ("low_balance" | "expiring")[];
                                 /** @description Yalnız `yonetici` ve `onburo` yanıtında; veli ve öğrencide alan yoktur */
                                 amounts?: {
                                     /** @description Satışların net ücreti, kuruş */

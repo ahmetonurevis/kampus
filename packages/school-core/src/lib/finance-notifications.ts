@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import type { PackageNoticeType } from './finance-package-alerts.ts'
 import { defineNotificationType, notificationId } from './notification-type.ts'
 
 /**
@@ -21,6 +22,7 @@ const PAYMENT_NOTICE = {
 
 const invoiceData = z.strictObject({ invoiceId: notificationId })
 const contractData = z.strictObject({ contractId: notificationId })
+const packageSaleData = z.strictObject({ saleId: notificationId })
 
 export const FINANCE_NOTIFICATION_TYPES = {
   /** Taksitin vadesi yaklaşıyor (IST-109, DOM-FIN-035). */
@@ -123,6 +125,48 @@ export const REFERRAL_NOTIFICATION_TYPES = {
     },
   }),
 } as const
+
+/**
+ * Paket saat bildirimleri (IST-078; DOM-DIL-051, DOM-FIN-058; K-248, K-249). Ödeme değil kullanım
+ * bildirimidir: finans türlerinden ayrı nesnedir, ödeyici bağının açtığı listeye girmez. 18 yaş
+ * altında veliye, yetişkin kursiyerde kendisine gider. Veri yalnız satış kimliğidir; başlıkta saat,
+ * tarih, paket adı ve tutar yoktur (DOM-ILT-023). Tarama `services/finance-package-alerts.ts`.
+ */
+export const PACKAGE_NOTIFICATION_TYPES = {
+  /** Kalan saat satın alınanın %20'sine indi (K-248). */
+  package_hours_low: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'lesson_package_sales',
+    data: packageSaleData,
+    subjectId: (data) => data.saleId,
+    titles: {
+      student: 'Paket saatin azaldı.',
+      parent: '{öğrenci} için paket saati azaldı.',
+    },
+  }),
+  /** Paketin kullanım süresi 14 gün içinde doluyor (K-249). */
+  package_expiring: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'lesson_package_sales',
+    data: packageSaleData,
+    subjectId: (data) => data.saleId,
+    titles: {
+      student: 'Paketinin kullanım süresi yakında doluyor.',
+      parent: '{öğrenci} için paketin kullanım süresi yakında doluyor.',
+    },
+  }),
+  /** Kullanım süresi doldu; kalan saat silinmez, uzatma ya da iade kursiyerin seçimidir (K-249). */
+  package_expired: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'lesson_package_sales',
+    data: packageSaleData,
+    subjectId: (data) => data.saleId,
+    titles: {
+      student: 'Paketinin kullanım süresi doldu; kalan saatin silinmedi.',
+      parent: '{öğrenci} için paketin kullanım süresi doldu; kalan saat silinmedi.',
+    },
+  }),
+} as const satisfies Record<PackageNoticeType, unknown>
 
 /**
  * Sözleşme bildiriminin kitlesi ödeyicidir, yaş değil (DOM-FIN-052, DOM-KAY-012): ödeyici veli

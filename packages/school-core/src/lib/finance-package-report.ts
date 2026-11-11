@@ -1,6 +1,7 @@
 import { addDays } from './academic-years.ts'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { assertFinancePeriod, type FinancePeriod } from './finance-export.ts'
+import { packageSaleAlerts, type PackageAlert } from './finance-package-alerts.ts'
 import {
   packageHourBalance,
   packageUsedHoursRecorded,
@@ -405,6 +406,8 @@ export interface PackageBalanceSale {
   /** Süresi dolmuş satışın kalan saati; kalan saatin içindedir, silinmez (DOM-DIL-051). */
   expiredHours: number
   usedHoursRecorded: boolean
+  /** Saat azaldı ve süre doluyor uyarıları (K-248, K-249); türetilir. */
+  alerts: PackageAlert[]
   amounts: PackageBalanceAmounts
 }
 
@@ -460,6 +463,14 @@ export function studentPackageBalance(
         remainingHours: balance.remainingHours,
         expiredHours: status === 'expired' ? balance.remainingHours : 0,
         usedHoursRecorded: packageUsedHoursRecorded(active),
+        alerts: packageSaleAlerts(
+          {
+            purchasedHours: balance.purchasedHours,
+            remainingHours: balance.remainingHours,
+            expiresDate: sale.expiresDate,
+          },
+          today,
+        ),
         amounts: {
           netCents: sale.netCents,
           recognizedCents: recognized,

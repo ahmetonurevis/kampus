@@ -385,6 +385,43 @@ test.describe('IST-078: paket satışı ekranı', () => {
     }
   })
 
+  test('K-248, DOM-FIN-058: azalan saat listede işaretlenir, süzülür; veli uyarıyı görür', async ({
+    api,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await languageSchool(tenant, ['veli'])
+    const admin = await api(school.user('yonetici'))
+    await sellThroughApi(admin, await createPackage(admin))
+    const listed = (await admin.get('/api/v1/finance/package-sales')).body as {
+      data: { id: string; version: number }[]
+    }
+    const sale = listed.data[0]
+    if (!sale) throw new Error('satış bulunamadı')
+    const used = await admin.post(
+      `/api/v1/finance/package-sales/${sale.id}/set-used-hours`,
+      { usedHours: 34, reason: 'Devam çizelgesine göre' },
+      { 'if-match': `"${String(sale.version)}"` },
+    )
+    expect(used.status, 'kullanılan saat').toBe(200)
+    await admin.dispose()
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    const row = salesList(page).getByRole('row', { name: new RegExp(PACKAGE) })
+    await expect(row.getByText('Saat azaldı')).toBeVisible()
+    await salesList(page).getByRole('button', { name: 'Filtreler', exact: true }).click()
+    await salesList(page).getByLabel('Uyarı', { exact: true }).selectOption('expiring')
+    await expect(salesList(page).getByText('Bu seçimle eşleşen satış yok.')).toBeVisible()
+    await salesList(page).getByLabel('Uyarı', { exact: true }).selectOption('low_balance')
+    await expect(row).toBeVisible()
+
+    await loginAs(school.user('veli'))
+    await page.goto('/veli/finans?cocuk=s1')
+    const section = page.getByRole('region', { name: 'Satın alınan paketler' })
+    await expect(section.getByText('Paket saati azaldı.', { exact: false })).toBeVisible()
+  })
+
   test('IST-078: öğrenci kendi paketini görür', async ({ api, loginAs, tenant }) => {
     const school = await languageSchool(tenant, ['ogrenci'])
     const admin = await api(school.user('yonetici'))

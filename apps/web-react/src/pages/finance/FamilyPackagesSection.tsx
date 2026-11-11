@@ -77,6 +77,17 @@ export function FamilyPackagesSection({ studentId }: { studentId: string }) {
                     İade edilen: {sale.refundedHours} saat
                   </p>
                 ) : null}
+                {sale.alerts.includes('low_balance') ? (
+                  <p className="text-sm">
+                    Paket saati azaldı. Yeni paket için kurumla görüşebilirsiniz.
+                  </p>
+                ) : null}
+                {sale.alerts.includes('expiring') && sale.expiresDate ? (
+                  <p className="text-sm">
+                    Kullanım süresi {dateLabel(sale.expiresDate, { year: 'numeric' })} günü doluyor;
+                    kalan saatler silinmez. Süre uzatma için kurumla görüşün.
+                  </p>
+                ) : null}
                 {sale.status === 'expired' ? (
                   <p className="text-sm">
                     Kullanım süresi doldu; kalan saatler silinmez. Süre uzatma ya da iade için

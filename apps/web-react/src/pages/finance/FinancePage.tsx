@@ -59,6 +59,9 @@ const FinanceSupplierLedgerSection = lazy(async () => ({
 const FinanceInventorySection = lazy(async () => ({
   default: (await import('./FinanceInventorySection.tsx')).FinanceInventorySection,
 }))
+const FinanceSupplyRequestsSection = lazy(async () => ({
+  default: (await import('./FinanceSupplyRequestsSection.tsx')).FinanceSupplyRequestsSection,
+}))
 const FinanceFixedAssetsSection = lazy(async () => ({
   default: (await import('./FinanceFixedAssetsSection.tsx')).FinanceFixedAssetsSection,
 }))
@@ -92,6 +95,7 @@ const VIEWS = {
   supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
   inventory: { label: 'Stok', param: 'stok' },
   materialSets: { label: 'Materyal setleri', param: 'materyal-seti' },
+  supplyRequests: { label: 'Sarf talepleri', param: 'sarf' },
   fixedAssets: { label: 'Demirbaşlar', param: 'demirbas' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
@@ -114,6 +118,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Tedarikçi carisi (DOM-FIN-076) yalnız yöneticidedir; ön büro görmez (K-160).
  * Stok (DOM-FIN-077, DOM-FIN-078) ikisine açıktır; ön büro okur ve çıkış yazar (K-180).
  * Materyal setleri (DOM-FIN-080) ikisine açıktır; ön büro teslim eder ve imzayı işler (K-205).
+ * Sarf talepleri (DOM-FIN-091) ikisine açıktır; ön büro karşılar ve dönüştürür, onay yöneticide (K-244).
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
@@ -260,6 +265,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'supplierLedger' ||
       tab === 'inventory' ||
       tab === 'materialSets' ||
+      tab === 'supplyRequests' ||
       tab === 'fixedAssets' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
@@ -274,6 +280,9 @@ export function FinancePage({ page }: { page: NavPage }) {
               institutionType={session?.institution?.type ?? 'school'}
               academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
             />
+          ) : null}
+          {tab === 'supplyRequests' ? (
+            <FinanceSupplyRequestsSection role={session?.role ?? ''} />
           ) : null}
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
         </Suspense>

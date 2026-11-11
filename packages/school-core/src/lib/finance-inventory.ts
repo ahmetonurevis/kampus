@@ -21,6 +21,8 @@ import { SUPPLIER_CATEGORIES } from './finance-suppliers.ts'
  * teslimi (DOM-FIN-080) setin kalemleri kadar `delivery` çıkışı yazar; bu çıkışlar yalnız teslim
  * iptaliyle geri alınır. Tamamlanan stok sayımı (DOM-FIN-081) farkları `adjustment_in` ve
  * `adjustment_out` düzeltmeleriyle yazar; bunlar iptal edilmez (tamamlanan sayım değişmez).
+ * Sarf talebinin karşılanması (DOM-FIN-091) `supply` çıkışı yazar; bu çıkış
+ * hareket listesinden iptal edilmez, iade elle giriştir (`returned`, K-245).
  *
  * Fonksiyonlar saftır; zaman `today` parametresiyle gelir.
  */
@@ -61,6 +63,7 @@ export const STOCK_MOVEMENT_TYPES = [
   'delivery',
   'adjustment_in',
   'adjustment_out',
+  'supply',
 ] as const
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]
 export const STOCK_MOVEMENT_TYPE_LABELS = {
@@ -72,6 +75,7 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   delivery: 'Materyal seti teslimi',
   adjustment_in: 'Sayım fazlası düzeltmesi',
   adjustment_out: 'Sayım eksiği düzeltmesi',
+  supply: 'Sarf talebi karşılama',
 } as const satisfies Record<StockMovementType, string>
 /** Miktarı artıran hareket türleri; veritabanı toplamı da bu kümeyi kullanır. */
 export const STOCK_INBOUND_TYPES = [
@@ -721,6 +725,11 @@ export function planStockMovementCancel(
     throw ruleError(
       'stock_movement_from_delivery',
       'Materyal seti teslimindeki çıkış buradan iptal edilmez; teslimi iptal edin.',
+    )
+  if (movement.type === 'supply')
+    throw ruleError(
+      'stock_movement_from_supply',
+      'Sarf talebi karşılamasındaki çıkış iptal edilmez; geri gelen malzemeyi "Kullanımdan iade" girişiyle yazın.',
     )
   if (isCountAdjustment(movement.type))
     throw ruleError(

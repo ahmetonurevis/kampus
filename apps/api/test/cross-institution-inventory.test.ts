@@ -1678,6 +1678,37 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: sarf malzeme talebi (ON-233; DOM-FIN-091).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/supply-requests', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/supply-requests/stock-items', 'get(CARDS, a.teacher)'],
+        ['gövde', 'POST /api/v1/finance/supply-requests', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/supply-requests/:requestId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/supply-requests/:requestId/approve', "'approve'"],
+        ['kayıt', 'POST /api/v1/finance/supply-requests/:requestId/reject', "'reject'"],
+        ['kayıt', 'POST /api/v1/finance/supply-requests/:requestId/cancel', "'cancel'"],
+        [
+          'kayıt',
+          'POST /api/v1/finance/supply-requests/:requestId/fulfill',
+          'fulfill(a.admin, a, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/supply-requests/:requestId/convert',
+          'convert(a.admin, a, bRequest)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-supply-requests.test.ts',
+        'başka kurumun talebi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

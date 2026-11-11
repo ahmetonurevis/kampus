@@ -615,7 +615,8 @@ async function movementViews(
           movement.cancelledAt === null &&
           movement.receiptId === null &&
           movement.type !== 'delivery' &&
-          !isCountAdjustment(movement.type),
+          !isCountAdjustment(movement.type) &&
+          movement.type !== 'supply',
       },
       version: movement.version,
     }

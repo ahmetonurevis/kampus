@@ -2604,3 +2604,119 @@ test.describe('Finans: stok sayımı', () => {
     await expect(page.getByRole('button', { name: 'Sayım başlat' })).toHaveCount(0)
   })
 })
+
+test.describe('Finans: sarf talebi', () => {
+  test('DOM-FIN-091: yönetici öğretmenin talebini onaylar, stoktan kısmen karşılar, kalanı satın almaya dönüştürür', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'ogretmen'], students: [] })
+    const admin = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    const teacher = await createApiClient({ email: school.user('ogretmen').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(admin, school.institutionId)).ok).toBe(true)
+      expect((await switchInstitutionApi(teacher, school.institutionId)).ok).toBe(true)
+      const created = async (url: string, body: unknown, headers: Record<string, string> = {}) => {
+        const result = await admin.post(url, body, headers)
+        expect(result.status, JSON.stringify(result.body)).toBe(201)
+        return (result.body as { data: { id: string; version: number } }).data
+      }
+      await created('/api/v1/finance/cost-centers', {
+        code: 'FEN',
+        name: 'Fen Zümresi',
+        type: 'unit',
+      })
+      await created('/api/v1/finance/budget-items', {
+        code: 'G-310',
+        name: 'Laboratuvar sarfı',
+        kind: 'expense',
+      })
+      const period = await created('/api/v1/finance/budget-periods', {
+        name: 'Sarf bütçesi',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+      })
+      const opened = await admin.post(
+        `/api/v1/finance/budget-periods/${period.id}/open`,
+        undefined,
+        {
+          'if-match': `"${String(period.version)}"`,
+        },
+      )
+      expect(opened.status, JSON.stringify(opened.body)).toBe(200)
+      const warehouse = await created('/api/v1/finance/stock-warehouses', {
+        name: 'Ana depo',
+        campusId: 'b1',
+      })
+      const glove = await created('/api/v1/finance/stock-items', {
+        code: 'ELD-M',
+        name: 'Lateks eldiven',
+        category: 'other',
+        unit: 'box',
+      })
+      await created(
+        '/api/v1/finance/stock-entries',
+        {
+          itemId: glove.id,
+          warehouseId: warehouse.id,
+          quantity: 3,
+          movementDate: '2026-01-02',
+          reason: 'opening',
+        },
+        { 'idempotency-key': randomUUID() },
+      )
+      // Öğretmen ekranı Oğuzhan'ın alanında; talep öğretmenin oturumuyla API'den açılır.
+      const request = await teacher.post(
+        '/api/v1/finance/supply-requests',
+        {
+          neededDate: '2027-01-15',
+          justification: '9-A kimya deneyi',
+          items: [{ stockItemId: glove.id, quantity: 5 }],
+        },
+        { 'idempotency-key': randomUUID() },
+      )
+      expect(request.status, JSON.stringify(request.body)).toBe(201)
+    } finally {
+      await admin.dispose()
+      await teacher.dispose()
+    }
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=sarf`)
+    const table = page.getByRole('table', { name: 'Sarf talepleri' })
+    await expect(table.locator('tbody tr').filter({ hasText: 'SM-0001' })).toContainText(
+      'Onay bekliyor',
+    )
+    await page.getByRole('button', { name: 'SM-0001 sarf talebini aç' }).click()
+
+    await page.getByRole('button', { name: 'Onayla', exact: true }).click()
+    const approve = page.getByRole('dialog', { name: 'Talebi onayla' })
+    await approve.getByRole('button', { name: 'Onayla', exact: true }).click()
+    await expect(page.getByText('SM-0001 onaylandı.')).toBeVisible()
+
+    // K-245: depoda 3 koli var; 5 istenen kalemin 3'ü karşılanır, talep onaylı kalır.
+    await page.getByRole('button', { name: 'Depodan karşıla' }).click()
+    const fulfill = page.getByRole('dialog', { name: 'Depodan karşıla' })
+    await expect(fulfill.getByLabel('Depo', { exact: true })).toHaveValue(/.+/)
+    await expect(fulfill.getByLabel('Lateks eldiven miktarı')).toHaveValue('3')
+    await fulfill.getByRole('button', { name: 'Karşıla' }).click()
+    await expect(page.getByText('SM-0001 kısmen karşılandı; kalan bekliyor.')).toBeVisible()
+    const items = page.getByRole('list', { name: 'Sarf talebi kalemleri' })
+    await expect(items).toContainText('karşılanan 3 · kalan 2')
+
+    // K-246: kalan kart bağıyla taslak satın alma talebine dönüşür.
+    await page.getByRole('button', { name: 'Satın alma talebine dönüştür' }).click()
+    const convert = page.getByRole('dialog', { name: 'Satın alma talebine dönüştür' })
+    await convert.getByLabel('Talep eden birim').selectOption({ label: 'FEN · Fen Zümresi' })
+    await convert.getByLabel('Bütçe dönemi').selectOption({ label: 'Sarf bütçesi' })
+    await convert.getByLabel('Gider kalemi').selectOption({ label: 'G-310 · Laboratuvar sarfı' })
+    await convert.getByLabel('Lateks eldiven birim fiyatı').fill('250,00')
+    await convert.getByRole('button', { name: 'Dönüştür' }).click()
+    await expect(
+      page.getByText('Kalan ST-0001 numaralı taslak satın alma talebine dönüştürüldü.'),
+    ).toBeVisible()
+    await expect(page.getByText('ST-0001 · Taslak')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Satın alma talebine dönüştür' })).toHaveCount(0)
+  })
+})

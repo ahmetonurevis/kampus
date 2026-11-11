@@ -659,6 +659,13 @@
       "when": 1794320289790,
       "tag": "0093_create_chemical_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794378872703,
+      "tag": "0094_create_supply_requests",
+      "breakpoints": true
     }
   ]
 }

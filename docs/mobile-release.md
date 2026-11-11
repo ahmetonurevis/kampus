@@ -65,6 +65,25 @@ Node.js 24, pnpm 11, JDK 21 ve Android SDK 36 kullanılır. `ANDROID_HOME` ve `J
 
 İmzalama anahtarı ve parolası kaynak deposunun dışında `~/.config/kampus/android-release/` içinde, yalnızca kullanıcıya açık izinlerle tutulur. Bu dizini güvenli biçimde yedekleyin; parolayı veya anahtarı repoya eklemeyin. Gelecek güncellemelerde aynı anahtar ve uygulama kimliği kullanılmalı, `app.json` içindeki sürüm/sürüm kodu artırılmalıdır. APK'yı mevcut uygulamanın üzerine kurmak verileri korur.
 
+## API modu (geliştirme)
+
+Geliştirmede varsayılan çevrimdışı demodur; `pnpm build:apk` ise adressiz derlemeyi reddeder (yayın APK'sı demoyla açılmaz): `EXPO_PUBLIC_API_URL` `https` adresi olarak `.env.android` ya da shell'de verilir, bilerek demo APK isteniyorsa `KAMPUS_DEMO_APK=1`. `EXPO_PUBLIC_API_URL` verilince uygulama gerçek API'ye bağlanır; değer derlemede pakete gömülür ve yalnız API kök adresidir (sır yazılmaz). Örnek: `apps/mobile/.env.example`; yerel değer `apps/mobile/.env.local` dosyasına yazılır (git dışı).
+
+```bash
+docker compose up -d && pnpm --filter @kampus/api db:migrate && pnpm --filter @kampus/api db:seed
+pnpm dev:api                                         # apps/api/.env: PORT, CORS_ORIGINS
+EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 pnpm mobile --clear
+EXPO_PUBLIC_API_URL=https://api.ornek.test pnpm --filter @kampus/mobile export:web --clear   # export üretim derlemesidir: yalnız https
+```
+
+- Mod değiştirirken Metro önbelleği `--clear` ile temizlenir; yoksa önceki moddaki değer pakette kalabilir.
+- Adres yoksa demo, geçerli köküyse API modu açılır; üretim derlemesinde (`__DEV__` kapalı, `export:web`, APK) yalnız `https` kabul edilir, `http` (127.0.0.1, 10.0.2.2, LAN) yalnız geliştirmede geçerlidir. Kullanıcı bilgisi, sorgu veya parça içeren ya da geçersiz portlu adreste demo sessizce açılmaz; "Uygulama yapılandırması geçersiz" ekranı gösterilir.
+- Telefonda giriş Better Auth Expo istemcisiyle yapılır: oturum çerezi yalnız `expo-secure-store`'da (Android Keystore) tutulur, istekler `Cookie` başlığıyla gider. AsyncStorage'a yalnız tema tercihi yazılır; seçili çocuk ve liste durumu bellekte kalır, oturum veya kurum değişince silinir. Web derlemesinde oturum tarayıcının HttpOnly çerezindedir; web kökeni API `CORS_ORIGINS` listesinde olmalıdır.
+- API güvenilir kökenleri: uygulama şeması `kampus://` her ortamda (`TRUSTED_ORIGINS`), Expo Go `exp://` yalnız geliştirme/testte. Üretim API'si `exp://` kökenli girişi 403 ile reddeder; Expo Go ile yalnız geliştirme API'sine bağlanılır. Fiziksel cihazda `127.0.0.1` yerine bilgisayarın ağ adresi kullanılır.
+- API modunda açık ekranlar: öğretmen Sınıflarım, veli Akademik Takip (çocuk seçici + notlar); Duyurular (beş rol, okuma ve okundu işareti) ve Mesajlar (öğretmen, öğrenci, veli: yazışma listesi, imleçli akış, yeni yazışma, gönderme). Kapalı modüllerin kartları gizlenir. Duyuru yayını ve yönetici gerekçeli mesaj erişimi yalnız web'dedir. Avatar menüsünde kurum değiştirme, tema ve çıkış bulunur. Diğer rollerin ana ekranı "hazırlanıyor" bilgisini gösterir; o ekranlar şimdilik demo modundadır.
+- Hatalar Türkçedir: yanlış parola "E-posta veya parola hatalı.", hız sınırında bekleme süresi, bağlantı yokken "Sunucuya ulaşılamadı…", kullanıcı çıkmadan kapanan oturumda "Oturumunuzun süresi doldu. Yeniden giriş yapın.". Teknik ayrıntı yalnız yerel loga yazılır.
+- APK'da API modu henüz doğrulanmadı (Android araç zinciri olmadan yalnız `export:web` ve birim testleri).
+
 ## Güncel teslim ve kaynak haritası
 
 Güncel APK: `apklar/kampus-1.4.0.apk` (65.689.445 bayt). SHA-256:
@@ -79,10 +98,10 @@ a5c4d8eab035581112111ac13b8b6d8c46daa3f4b8950f1e4dd9d3cbd2c8cf14
 1b4f914f33f85bafe45f48296c966c07c356625dae287a2b0e3980b635b89e40
 ```
 
-- `src/AppRoot.jsx`: üst bar, kategori menüsü ve gezinme.
-- `src/screens/RoleHome.jsx`, `SchoolLists.jsx`, `SchoolDetails.jsx`, `Attendance.jsx`: öğrenci/veli/öğretmen ana ekranları, listeler, teslim/yanıt ve yoklama.
-- `src/screens/Timetable.jsx`, `VideoLibrary.jsx`, `Conversations.jsx`: ders programı, video kütüphanesi ve mesajlar.
-- `src/ui/SchoolLayout.jsx`, `components.jsx`, `KeyboardLayout.jsx`: ortak bölüm/liste, alanlar, seçim pencereleri ve klavye düzeni.
+- `src/AppRoot.tsx`: üst bar, kategori menüsü ve gezinme.
+- `src/screens/RoleHome.tsx`, `SchoolLists.tsx`, `SchoolDetails.tsx`, `Attendance.tsx`: öğrenci/veli/öğretmen ana ekranları, listeler, teslim/yanıt ve yoklama.
+- `src/screens/Timetable.tsx`, `VideoLibrary.tsx`, `Conversations.tsx`: ders programı, video kütüphanesi ve mesajlar.
+- `src/ui/SchoolLayout.tsx`, `components.tsx`, `KeyboardLayout.tsx`: ortak bölüm/liste, alanlar, seçim pencereleri ve klavye düzeni.
 - `src/store/`: cihaz kalıcılığı, rol/tema ve taslaklar.
 
-Yollar `apps/mobile/` dizinine göredir. Proje JavaScript/JSX kullanır; ayrı TypeScript/typecheck komutu yoktur. Eski APK'lar, kaynak yedeği kopyaları ve geçici test raporları temizlik kapsamında kaldırılmıştır. Güncel teslim, uygulama kaynakları ve yeniden derleme araçları korunur.
+Yollar `apps/mobile/` dizinine göredir. Proje TypeScript kullanır; tip denetimi `pnpm --filter @kampus/mobile typecheck` ile yapılır. Eski APK'lar, kaynak yedeği kopyaları ve geçici test raporları temizlik kapsamında kaldırılmıştır. Güncel teslim, uygulama kaynakları ve yeniden derleme araçları korunur.

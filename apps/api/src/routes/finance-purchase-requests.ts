@@ -1,0 +1,277 @@
+import type { FastifyInstance, FastifyReply, preValidationAsyncHookHandler } from 'fastify'
+import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+
+import {
+  approvePurchaseRequestSchema,
+  cancelPurchaseRequestSchema,
+  PURCHASE_REQUEST_DECISION_ROLES,
+  PURCHASE_REQUEST_ROLES,
+  purchaseRequestSchema,
+  rejectPurchaseRequestSchema,
+  submitPurchaseRequestSchema,
+  updatePurchaseRequestSchema,
+} from '@kampus/school-core/lib/finance-purchase-requests.ts'
+
+import type { Role } from '../auth.ts'
+import { contextOf } from '../plugins/authenticate.ts'
+import {
+  createPurchaseRequestCommand,
+  getPurchaseRequestFor,
+  listPurchaseRequestsFor,
+  purchaseBudgetStatusFor,
+  purchaseRequestOptionsFor,
+  transitionPurchaseRequestCommand,
+  updatePurchaseRequestCommand,
+} from '../services/finance-purchase-requests.ts'
+import type { CommandResponse } from '../services/operation-runner.ts'
+import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
+import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import {
+  purchaseBudgetStatusQuery,
+  purchaseBudgetStatusResponse,
+  purchaseRequestListQuery,
+  purchaseRequestListResponse,
+  purchaseRequestOptionsResponse,
+  purchaseRequestParams,
+  purchaseRequestResponse,
+} from './finance-purchase-requests.schemas.ts'
+
+/**
+ * Satın alma talebi uçları (docs/domain/finans.md DOM-FIN-071; ON-222). Modül `finance`. Açma,
+ * düzeltme, gönderme ve iptal yönetici ile ön büro (ön büro yalnız kendi talebi, 403
+ * `purchase_request_not_owner`; K-128); onay ve ret yalnız yönetici (K-129). Kademeli onay
+ * ON-223'tedir. Gönderim ve onayda kalanı aşan ya da bütçe satırı olmayan talep 409 uyarı alır,
+ * `confirmOverBudget: true` ile geçer (ON-245, K-146). Sıra: 401 → 403 modül → 403 rol →
+ * `If-Match` → 400 → işlem.
+ */
+
+const STAFF =
+  'Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.'
+const MANAGER = 'Rol: `yonetici` (K-129). Modül `finance`.'
+const IF_MATCH = '`If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`.'
+const STOCK_LINK =
+  'Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır.'
+const BUDGET_WARNING =
+  'Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir.'
+
+function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
+  if (result.replayed) reply.header('idempotent-replayed', 'true')
+  reply.status(result.statusCode)
+  return result.body
+}
+
+function expected(version: number | null): number {
+  if (version === null) throw new Error('If-Match guard did not run')
+  return version
+}
+
+const TRANSITIONS = {
+  submit: {
+    operationId: 'submitPurchaseRequest',
+    summary: 'Satın alma talebini gönder',
+    description: `Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 \`purchase_request_period_closed\`, taslak dönem 422 \`purchase_request_period_not_open\`; merkez, kalem ya da tedarikçi pasifleşmişse 422. ${BUDGET_WARNING}`,
+    roles: PURCHASE_REQUEST_ROLES,
+    body: submitPurchaseRequestSchema.nullish(),
+    who: STAFF,
+  },
+  approve: {
+    operationId: 'approvePurchaseRequest',
+    summary: 'Satın alma talebini onayla',
+    description: `Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 \`purchase_request_not_submitted\`, dönem açık değilse 422 \`purchase_request_period_not_open\`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. ${BUDGET_WARNING}`,
+    roles: PURCHASE_REQUEST_DECISION_ROLES,
+    body: approvePurchaseRequestSchema,
+    who: MANAGER,
+  },
+  reject: {
+    operationId: 'rejectPurchaseRequest',
+    summary: 'Satın alma talebini reddet',
+    description:
+      'Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`.',
+    roles: PURCHASE_REQUEST_DECISION_ROLES,
+    body: rejectPurchaseRequestSchema,
+    who: MANAGER,
+  },
+  cancel: {
+    operationId: 'cancelPurchaseRequest',
+    summary: 'Satın alma talebini iptal et',
+    description:
+      'Taslak ya da gönderilmiş talebi gerekçeyle iptal eder; onaylanmış ya da reddedilmiş talep 422 `purchase_request_not_cancellable` (K-132).',
+    roles: PURCHASE_REQUEST_ROLES,
+    body: cancelPurchaseRequestSchema,
+    who: STAFF,
+  },
+} as const
+
+export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
+  const typed = app.withTypeProvider<ZodTypeProvider>()
+  const finance = app.requireModule('finance')
+  const guarded = (roles: readonly Role[]): preValidationAsyncHookHandler[] => [
+    app.authenticate,
+    finance,
+    app.requireRole(roles),
+  ]
+  const tags = ['finance-procurement']
+
+  typed.get(
+    '/api/v1/finance/purchase-requests',
+    {
+      preValidation: guarded(PURCHASE_REQUEST_ROLES),
+      schema: {
+        operationId: 'listPurchaseRequests',
+        tags,
+        summary: 'Satın alma taleplerini listele',
+        description: `Yeni açılan önce; durum, birim ve dönemle süzülür, \`q\` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. ${STAFF}`,
+        querystring: purchaseRequestListQuery,
+        response: { 200: purchaseRequestListResponse, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize, ...filters } = request.query
+      const { items, total } = await listPurchaseRequestsFor(contextOf(request), {
+        page,
+        pageSize,
+        ...filters,
+      })
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/purchase-requests/options',
+    {
+      preValidation: guarded(PURCHASE_REQUEST_ROLES),
+      schema: {
+        operationId: 'getPurchaseRequestOptions',
+        tags,
+        summary: 'Satın alma talebi formu seçenekleri',
+        description: `Etkin maliyet merkezleri, etkin gider kalemleri, kapalı olmayan bütçe dönemleri ve etkin tedarikçiler; yalnız kimlik, kod ve ad (bütçe planı yöneticidedir, K-60). ${STAFF}`,
+        response: { 200: purchaseRequestOptionsResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({ data: await purchaseRequestOptionsFor(contextOf(request)) }),
+  )
+
+  typed.get(
+    '/api/v1/finance/purchase-requests/budget-status',
+    {
+      preValidation: guarded(PURCHASE_REQUEST_ROLES),
+      schema: {
+        operationId: 'getPurchaseBudgetStatus',
+        tags,
+        summary: 'Satın alma talebi formunun bütçe durumu',
+        description: `Seçilen bütçe dönemi × talep eden birim × gider kalemi satırının planı, onaylanmış ve kararı bekleyen taleplerin toplamı (taahhüt) ve kalan (plan eksi taahhüt; K-145). Talep formunda tahmini toplamın kalanı aşıp aşmadığını göstermek içindir; ön büro yalnız bu satırı görür, bütçenin geri kalanını görmez (K-148, K-60). Satır yoksa plan ve kalan boş; bilinmeyen ya da başka kurumun kimliği de böyle döner. ${STAFF}`,
+        querystring: purchaseBudgetStatusQuery,
+        response: { 200: purchaseBudgetStatusResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await purchaseBudgetStatusFor(contextOf(request), request.query),
+    }),
+  )
+
+  typed.post(
+    '/api/v1/finance/purchase-requests',
+    {
+      preValidation: [...guarded(PURCHASE_REQUEST_ROLES), rejectIfMatch(), captureInput()],
+      schema: {
+        operationId: 'createPurchaseRequest',
+        tags,
+        summary: 'Satın alma talebi aç',
+        description: `Taslak açar: etkin maliyet merkezi, kapalı olmayan bütçe dönemi, etkin gider kalemi, gerekçe, isteğe bağlı etkin tedarikçi ve 1–50 kalem (ad, tam sayı miktar, birim, kuruş tahmini birim fiyat, isteğe bağlı \`stockItemId\`). Bağlı kayıt yok ya da uygun değilse 422 (\`purchase_request_period_closed\`, \`purchase_request_cost_center_inactive\`, \`purchase_request_budget_item_not_expense\`, \`purchase_request_supplier_inactive\` …). ${STOCK_LINK} ${STAFF}`,
+        headers: commandHeadersSchema('optional', { ifMatch: false }),
+        body: purchaseRequestSchema,
+        response: { 201: purchaseRequestResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await createPurchaseRequestCommand(
+        contextOf(request),
+        request.commandInput,
+        options(request, 'optional').idempotency,
+      )
+      const body = purchaseRequestResponse.parse(sendBody(reply, result))
+      reply.header('location', `/api/v1/finance/purchase-requests/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/purchase-requests/:requestId',
+    {
+      preValidation: guarded(PURCHASE_REQUEST_ROLES),
+      schema: {
+        operationId: 'getPurchaseRequest',
+        tags,
+        summary: 'Satın alma talebi ayrıntısı',
+        description: `Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. ${STAFF}`,
+        params: purchaseRequestParams,
+        response: { 200: purchaseRequestResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await getPurchaseRequestFor(contextOf(request), request.params.requestId),
+    }),
+  )
+
+  typed.patch(
+    '/api/v1/finance/purchase-requests/:requestId',
+    {
+      preValidation: [...guarded(PURCHASE_REQUEST_ROLES), requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'updatePurchaseRequest',
+        tags,
+        summary: 'Taslak talebi düzelt',
+        description: `Kısmi düzeltme; kalemler bütün olarak yazılır. Taslak olmayan talep 422 \`purchase_request_not_draft\`. ${STOCK_LINK} ${IF_MATCH} ${STAFF}`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: purchaseRequestParams,
+        body: updatePurchaseRequestSchema,
+        response: { 200: purchaseRequestResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await updatePurchaseRequestCommand(
+        contextOf(request),
+        request.params.requestId,
+        request.commandInput,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return purchaseRequestResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  for (const [verb, spec] of Object.entries(TRANSITIONS) as [
+    keyof typeof TRANSITIONS,
+    (typeof TRANSITIONS)[keyof typeof TRANSITIONS],
+  ][]) {
+    typed.post(
+      `/api/v1/finance/purchase-requests/:requestId/${verb}`,
+      {
+        preValidation: [...guarded(spec.roles), requireIfMatch(), captureInput()],
+        schema: {
+          operationId: spec.operationId,
+          tags,
+          summary: spec.summary,
+          description: `${spec.description} ${IF_MATCH} ${spec.who}`,
+          headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+          params: purchaseRequestParams,
+          body: spec.body,
+          response: { 200: purchaseRequestResponse, ...commandErrors },
+        },
+      },
+      async (request, reply) => {
+        const opts = options(request, 'optional')
+        const result = await transitionPurchaseRequestCommand(
+          contextOf(request),
+          request.params.requestId,
+          verb,
+          request.commandInput,
+          expected(opts.expectedVersion),
+          opts.idempotency,
+        )
+        return purchaseRequestResponse.parse(sendBody(reply, result))
+      },
+    )
+  }
+}

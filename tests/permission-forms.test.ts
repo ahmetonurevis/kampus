@@ -1,0 +1,1080 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import type { Participant } from '../packages/school-core/src/lib/communication.ts'
+import {
+  archivePermissionForm,
+  cancelPermissionForm,
+  closePermissionForm,
+  currentDecisions,
+  isCurrentDecision,
+  permissionCancelStudents,
+  permissionDroppingChanges,
+  permissionReaskStudents,
+  createPermissionForm,
+  decidePermission,
+  isPermissionFormOpen,
+  permissionCounts,
+  permissionDeadlineEndsAt,
+  permissionDecider,
+  permissionReminders,
+  permissionStatus,
+  updatePermissionForm,
+  type PermissionDecisionRecord,
+  type PermissionDeciders,
+} from '../packages/school-core/src/lib/permission-forms.ts'
+import { scopeFor, type ScopeSource } from '../packages/school-core/src/lib/scope.ts'
+import { NOTIFICATION_TYPES } from '../packages/school-core/src/modules/notification-types.ts'
+import { isDomainError } from './support/domain-error.ts'
+
+// 2026-10-06 salıdır. Deniz (s1) ve Nehir (s25) 7-A (c1); Ece (s2) 5-A (c2); Ayşe Yılmaz (p1)
+// Deniz ile Ece'nin velisidir. Selin Kaya (t1) c1–c4'ün rehber öğretmeni; Ahmet Yıldırım (t2) c1'e
+// Türkçe dersine girer ama rehberi değildir; t5 c5–c8'in rehberidir.
+const now = '2026-10-06T10:00:00.000Z'
+const seed = () => createSeed(new Date(now))
+let sequence = 0
+const id = (prefix: string) => `${prefix}-permission-test-${++sequence}`
+
+const person = (
+  role: Participant['role'],
+  kind: 'student' | 'teacher' | 'child',
+  recordIds: string[],
+  userId: string,
+) =>
+  ({ role, links: recordIds.map((recordId) => ({ kind, recordId })), userId }) satisfies Participant
+const teacher = (recordId: string) => person('ogretmen', 'teacher', [recordId], `u-${recordId}`)
+const mother = person('veli', 'child', ['s1', 's2'], 'u-p1')
+const father = person('veli', 'child', ['s1'], 'u-p1b')
+const studentOf = (recordId: string) => person('ogrenci', 'student', [recordId], `u-${recordId}`)
+const admin: Participant = { role: 'yonetici', links: [], userId: 'u-admin' }
+const front: Participant = { role: 'onburo', links: [], userId: 'u-front' }
+
+const FORM = {
+  topic: 'trip',
+  title: 'Müze gezisi',
+  description: 'Cuma günü İstanbul Arkeoloji Müzesi gezisi.',
+  deadline: '2026-10-09',
+  classIds: ['c1'],
+}
+const zodError = (error: unknown) => error instanceof Error && error.name === 'ZodError'
+const snapshot = (state: State) =>
+  JSON.stringify([state.permissionForms, state.permissionDecisions])
+
+function unchanged(state: State, action: () => unknown, check: (e: unknown) => boolean) {
+  const before = snapshot(state)
+  assert.throws(action, check)
+  assert.equal(snapshot(state), before)
+}
+
+/** Bugün kararı sayılanlar: varsayılan anne ve baba velayetli (`student_guardians`). */
+const guardians = (...userIds: string[]): PermissionDeciders => ({
+  decider: 'guardians',
+  guardianUserIds: new Set(userIds.length > 0 ? userIds : ['u-p1', 'u-p1b']),
+})
+const SELF: PermissionDeciders = { decider: 'self', guardianUserIds: new Set(['u-p1', 'u-p1b']) }
+
+const open = (state: State, by: Participant = teacher('t1'), input: object = FORM) =>
+  createPermissionForm(state, by, input, id, now)
+
+// --- Form açma ---------------------------------------------------------------------------------
+
+test('DOM-ILT-036: rehber öğretmen sınıfına form açar; hedef öğrenciler açılışta çözülür', () => {
+  const state = seed()
+  const form = open(state)
+  assert.equal(state.permissionForms.at(-1), form)
+  assert.equal(form.teacherId, 't1')
+  assert.equal(form.status, 'open')
+  assert.deepEqual(form.classIds, ['c1'])
+  const classOne = state.students.filter((s) => s.classId === 'c1').map((s) => s.id)
+  assert.deepEqual(form.studentIds, classOne)
+  assert.deepEqual(form.createdBy, { role: 'ogretmen', userId: 'u-t1' })
+})
+
+test('DOM-ILT-036: tek tek seçilen öğrenci sınıfınkiyle birleşir, yönetici formu öğretmensiz', () => {
+  const state = seed()
+  const form = open(state, admin, { ...FORM, classIds: ['c1'], studentIds: ['s1', 's2'] })
+  assert.equal(form.teacherId, null)
+  assert.equal(form.studentIds.filter((s) => s === 's1').length, 1)
+  assert.ok(form.studentIds.includes('s2'))
+  assert.deepEqual(form.targetStudentIds, ['s1', 's2'])
+})
+
+test('DOM-ILT-036: rehberi olmadığı sınıfa öğretmen form açamaz; ön büro, veli ve öğrenci açamaz', () => {
+  const state = seed()
+  unchanged(
+    state,
+    () => open(state, teacher('t2')),
+    isDomainError('permission_form_scope_denied', 'forbidden'),
+  )
+  unchanged(
+    state,
+    () => open(state, teacher('t1'), { ...FORM, classIds: [], studentIds: ['s1', 'missing'] }),
+    isDomainError('permission_form_scope_denied', 'forbidden'),
+  )
+  for (const by of [front, mother, studentOf('s1')])
+    unchanged(state, () => open(state, by), isDomainError('permission_denied', 'forbidden'))
+})
+
+test('DOM-ILT-036: geçmiş son gün, hedefsiz form, olmayan sınıf ve pasif öğrenci reddedilir', () => {
+  const state = seed()
+  unchanged(
+    state,
+    () => open(state, admin, { ...FORM, deadline: '2026-10-05' }),
+    isDomainError('permission_form_deadline_in_past'),
+  )
+  unchanged(state, () => open(state, admin, { ...FORM, classIds: [] }), zodError)
+  unchanged(state, () => open(state, admin, { ...FORM, topic: 'party' }), zodError)
+  unchanged(
+    state,
+    () => open(state, admin, { ...FORM, classIds: ['missing'] }),
+    isDomainError('class_not_found', 'not_found'),
+  )
+  const s1 = state.students.find((s) => s.id === 's1')
+  assert.ok(s1)
+  s1.isActive = false
+  unchanged(
+    state,
+    () => open(state, admin, { ...FORM, classIds: [], studentIds: ['s1'] }),
+    isDomainError('student_inactive'),
+  )
+  // Bugün son gün olabilir: o günün sonuna kadar karar alınır.
+  assert.equal(open(state, admin, { ...FORM, deadline: '2026-10-06' }).deadline, '2026-10-06')
+})
+
+test('DOM-YTK-040: iletişim modülü kapalıyken form açılmaz', () => {
+  const state = seed()
+  state.modules.communication = false
+  unchanged(state, () => open(state, admin), isDomainError('module_disabled', 'forbidden'))
+})
+
+// --- Düzenleme, kapatma, arşiv -----------------------------------------------------------------
+
+test('DOM-ILT-038: formun öğretmeni düzenler; başka öğretmen 403, görmeyen öğretmen 404', () => {
+  const state = seed()
+  const form = open(state)
+  const result = updatePermissionForm(
+    state,
+    teacher('t1'),
+    form.id,
+    { title: 'Müze gezisi (güncel)', deadline: '2026-10-10' },
+    now,
+  )
+  assert.equal(result.form.title, 'Müze gezisi (güncel)')
+  assert.equal(result.form.deadline, '2026-10-10')
+  assert.deepEqual(result.addedStudentIds, [])
+  unchanged(
+    state,
+    () => updatePermissionForm(state, teacher('t2'), form.id, { title: 'Başka' }, now),
+    isDomainError('permission_form_not_owner', 'forbidden'),
+  )
+  unchanged(
+    state,
+    () => updatePermissionForm(state, teacher('t5'), form.id, { title: 'Başka' }, now),
+    isDomainError('permission_form_not_found', 'not_found'),
+  )
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, 'missing', { title: 'Başka' }, now),
+    isDomainError('permission_form_not_found', 'not_found'),
+  )
+  unchanged(state, () => updatePermissionForm(state, admin, form.id, {}, now), zodError)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { topic: 'club' }, now),
+    zodError,
+  )
+})
+
+test('DOM-ILT-038: kararı olmayan formun hedefi daraltılır; kararlı form daraltılamaz, genişler', () => {
+  const state = seed()
+  const form = open(state, admin, { ...FORM, classIds: ['c1', 'c2'] })
+  const narrowed = updatePermissionForm(state, admin, form.id, { classIds: ['c1'] }, now)
+  assert.ok(!narrowed.form.studentIds.includes('s2'))
+  decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { classIds: ['c5'] }, now),
+    isDomainError('permission_form_scope_locked'),
+  )
+  const widened = updatePermissionForm(state, admin, form.id, { classIds: ['c1', 'c2'] }, now)
+  assert.ok(widened.form.studentIds.includes('s2'))
+  assert.ok(widened.addedStudentIds.includes('s2'))
+  assert.ok(!widened.addedStudentIds.includes('s1'))
+})
+
+test('DOM-ILT-036, DOM-ILT-038: tek tek hedef ayrı saklanır; alanı olmayan eski kayıt boş hedef sayılır', () => {
+  const state = seed()
+  // Ece (s2) hem tek tek seçili hem 5-A'da: sınıf çıkarılınca hedefte kalır.
+  const form = open(state, admin, { ...FORM, classIds: ['c1', 'c2'], studentIds: ['s2'] })
+  assert.deepEqual(form.targetStudentIds, ['s2'])
+  const narrowed = updatePermissionForm(
+    state,
+    admin,
+    form.id,
+    { classIds: ['c1'], studentIds: ['s2'] },
+    now,
+  )
+  assert.ok(narrowed.form.studentIds.includes('s2'))
+  // Alanı olmayan kayıt: kararlıyken genişletme daraltma sayılmaz.
+  const legacy = open(state, admin)
+  Reflect.deleteProperty(legacy, 'targetStudentIds')
+  decidePermission(state, mother, legacy.id, { studentId: 's1', decision: 'approved' }, id, now)
+  const widened = updatePermissionForm(
+    state,
+    admin,
+    legacy.id,
+    { classIds: ['c1'], studentIds: ['s2'] },
+    now,
+  )
+  assert.deepEqual(widened.form.targetStudentIds, ['s2'])
+  assert.deepEqual(widened.addedStudentIds, ['s2'])
+})
+
+test('DOM-ILT-038: öğretmen hedefi rehberi olmadığı sınıfa genişletemez', () => {
+  const state = seed()
+  const form = open(state)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, teacher('t1'), form.id, { classIds: ['c1', 'c5'] }, now),
+    isDomainError('permission_form_scope_denied', 'forbidden'),
+  )
+})
+
+test('DOM-ILT-038: son günü geçmiş formun son günü değişmez; kapalı form düzenlenmez', () => {
+  const state = seed()
+  const form = open(state, admin, { ...FORM, deadline: '2026-10-06' })
+  const tomorrow = '2026-10-07T10:00:00.000Z'
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { deadline: '2026-10-20' }, tomorrow),
+    isDomainError('permission_form_deadline_passed'),
+  )
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { deadline: '2026-10-05' }, now),
+    isDomainError('permission_form_deadline_in_past'),
+  )
+  closePermissionForm(state, admin, form.id, now)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { title: 'Yeni ad' }, now),
+    isDomainError('permission_form_closed'),
+  )
+})
+
+test('DOM-ILT-038: form kapatılır, ikinci kapatma 409; kararlı form arşivlenmez', () => {
+  const state = seed()
+  const form = open(state)
+  const empty = open(state)
+  decidePermission(state, mother, form.id, { studentId: 's1', decision: 'rejected' }, id, now)
+  unchanged(
+    state,
+    () => archivePermissionForm(state, teacher('t1'), form.id),
+    isDomainError('permission_form_has_decisions', 'conflict'),
+  )
+  unchanged(
+    state,
+    () => closePermissionForm(state, teacher('t2'), form.id, now),
+    isDomainError('permission_form_not_owner', 'forbidden'),
+  )
+  const closed = closePermissionForm(state, teacher('t1'), form.id, now)
+  assert.equal(closed.status, 'closed')
+  assert.equal(closed.closedAt, now)
+  assert.equal(isPermissionFormOpen(closed, now), false)
+  unchanged(
+    state,
+    () => closePermissionForm(state, teacher('t1'), form.id, now),
+    isDomainError('permission_form_closed', 'conflict'),
+  )
+  archivePermissionForm(state, teacher('t1'), empty.id)
+  assert.ok(!state.permissionForms.some((f) => f.id === empty.id))
+})
+
+// --- Karar -------------------------------------------------------------------------------------
+
+test('DOM-ILT-037: veli kendi çocuğu için karar verir; değişiklik yeni satırdır, aynı karar yinelenmez', () => {
+  const state = seed()
+  const form = open(state)
+  const first = decidePermission(
+    state,
+    mother,
+    form.id,
+    { studentId: 's1', decision: 'approved', note: 'Öğle yemeğini evden getirecek.' },
+    id,
+    now,
+  )
+  assert.equal(first.created, true)
+  assert.equal(first.decision.relation, 'guardian')
+  assert.equal(first.decision.decidedByUserId, 'u-p1')
+  assert.equal(first.decision.teacherId, 't1')
+  const again = decidePermission(
+    state,
+    mother,
+    form.id,
+    { studentId: 's1', decision: 'approved', note: 'Öğle yemeğini evden getirecek.' },
+    id,
+    now,
+  )
+  assert.equal(again.created, false)
+  assert.equal(again.decision, first.decision)
+  const changed = decidePermission(
+    state,
+    mother,
+    form.id,
+    { studentId: 's1', decision: 'rejected' },
+    id,
+    '2026-10-07T08:00:00.000Z',
+  )
+  assert.equal(changed.created, true)
+  assert.equal(state.permissionDecisions.length, 2)
+  assert.equal(permissionStatus(state.permissionDecisions, guardians()), 'rejected')
+})
+
+test('DOM-ILT-037: veli başka çocuk ve hedefte olmayan çocuk için karar veremez (404)', () => {
+  const state = seed()
+  const form = open(state)
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's25', decision: 'approved' }, id, now),
+    isDomainError('student_not_found', 'not_found'),
+  )
+  // Ece (s2) annenin çocuğudur ama formun hedefi 7-A'dır.
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's2', decision: 'approved' }, id, now),
+    isDomainError('permission_form_not_found', 'not_found'),
+  )
+  unchanged(
+    state,
+    () =>
+      decidePermission(
+        state,
+        mother,
+        'missing',
+        { studentId: 's1', decision: 'approved' },
+        id,
+        now,
+      ),
+    isDomainError('permission_form_not_found', 'not_found'),
+  )
+  unchanged(
+    state,
+    () => decidePermission(state, mother, form.id, { studentId: 's1', decision: 'maybe' }, id, now),
+    zodError,
+  )
+  for (const by of [admin, front, teacher('t1')])
+    unchanged(
+      state,
+      () =>
+        decidePermission(state, by, form.id, { studentId: 's1', decision: 'approved' }, id, now),
+      isDomainError('permission_denied', 'forbidden'),
+    )
+})
+
+test('DOM-ILT-030, DOM-ILT-038: son günden sonra ve kapalı formda karar verilmez, değişmez', () => {
+  const state = seed()
+  const form = open(state)
+  decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now)
+  // Son gün İstanbul'da 23:59:59'a kadardır: 9 Ekim 20:59:59Z açık, 21:00Z kapalı.
+  const lastMoment = '2026-10-09T20:59:59.000Z'
+  assert.equal(permissionDeadlineEndsAt('2026-10-09'), '2026-10-09T21:00:00.000Z')
+  decidePermission(
+    state,
+    father,
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    lastMoment,
+  )
+  unchanged(
+    state,
+    () =>
+      decidePermission(
+        state,
+        mother,
+        form.id,
+        { studentId: 's1', decision: 'rejected' },
+        id,
+        '2026-10-09T21:00:00.000Z',
+      ),
+    isDomainError('permission_form_deadline_passed'),
+  )
+  closePermissionForm(state, admin, form.id, now)
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's1', decision: 'rejected' }, id, now),
+    isDomainError('permission_form_closed'),
+  )
+})
+
+test('DOM-ILT-030: 18 yaşını doldurmuş öğrenci kendisi karar verir; 18 altında veli', () => {
+  const state = seed()
+  const form = open(state)
+  unchanged(
+    state,
+    () =>
+      decidePermission(
+        state,
+        studentOf('s1'),
+        form.id,
+        { studentId: 's1', decision: 'approved' },
+        id,
+        now,
+      ),
+    isDomainError('permission_guardian_required', 'forbidden'),
+  )
+  const s1 = state.students.find((s) => s.id === 's1')
+  assert.ok(s1)
+  Object.assign(s1, { birthDate: '2008-10-06' })
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now),
+    isDomainError('permission_adult_self', 'forbidden'),
+  )
+  unchanged(
+    state,
+    () =>
+      decidePermission(
+        state,
+        studentOf('s1'),
+        form.id,
+        { studentId: 's25', decision: 'approved' },
+        id,
+        now,
+      ),
+    isDomainError('student_not_found', 'not_found'),
+  )
+  const own = decidePermission(
+    state,
+    studentOf('s1'),
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+  )
+  assert.equal(own.decision.relation, 'self')
+  assert.equal(permissionStatus(state.permissionDecisions, SELF), 'approved')
+  // Veli kararı yetişkin öğrencide sayılmaz.
+  assert.equal(permissionStatus(state.permissionDecisions, guardians()), 'pending')
+})
+
+test('DOM-ILT-030: kimlik satırındaki doğum tarihi öğrenci kaydının yerine geçer', () => {
+  const state = seed()
+  const form = open(state)
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now, {
+        learner: { birthDate: '2008-10-06' },
+      }),
+    isDomainError('permission_adult_self', 'forbidden'),
+  )
+  const own = decidePermission(
+    state,
+    studentOf('s1'),
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+    { learner: { birthDate: '2008-10-06' } },
+  )
+  assert.equal(own.decision.relation, 'self')
+})
+
+test('DOM-ILT-030, DOM-ILT-037: permissionDecider karar vereni tek kaynaktan seçer', () => {
+  const at = (institutionType: 'school' | 'language_school') => ({ institutionType, now })
+  // Doğum tarihi biliniyorsa kurum türü fark etmez: 18 yaşındaki lise öğrencisi kendisi verir.
+  assert.equal(permissionDecider({ birthDate: '2008-10-06' }, at('school')), 'self')
+  assert.equal(permissionDecider({ birthDate: '2008-10-07' }, at('school')), 'guardians')
+  assert.equal(permissionDecider({ birthDate: '2008-10-06' }, at('language_school')), 'self')
+  // Doğum günü Europe/Istanbul gününe göredir: 5 Ekim 21:00Z İstanbul'da 6 Ekim'dir.
+  assert.equal(
+    permissionDecider(
+      { birthDate: '2008-10-06' },
+      { institutionType: 'school', now: '2026-10-05T21:00:00.000Z' },
+    ),
+    'self',
+  )
+  assert.equal(
+    permissionDecider(
+      { birthDate: '2008-10-06' },
+      { institutionType: 'school', now: '2026-10-05T20:59:59.000Z' },
+    ),
+    'guardians',
+  )
+  // Doğum tarihi yoksa 18 altı; yalnız dil okulunda adayın açık `minor: false` seçimi yetişkindir.
+  assert.equal(permissionDecider({}, at('school')), 'guardians')
+  assert.equal(permissionDecider({}, at('language_school')), 'guardians')
+  assert.equal(permissionDecider({ prospectMinor: false }, at('language_school')), 'self')
+  assert.equal(permissionDecider({ prospectMinor: true }, at('language_school')), 'guardians')
+  assert.equal(permissionDecider({ prospectMinor: false }, at('school')), 'guardians')
+  // Doğum tarihi aday seçiminin önüne geçer; geçersiz tarih bilinmiyor sayılır.
+  assert.equal(
+    permissionDecider({ birthDate: '2015-01-01', prospectMinor: false }, at('language_school')),
+    'guardians',
+  )
+  assert.equal(permissionDecider({ birthDate: '2008-02-30' }, at('school')), 'guardians')
+})
+
+test('DOM-ILT-030: dil okulunda adayı minor:false kursiyer kendi kararını verir, veli 403', () => {
+  const state = seed()
+  const form = open(state, admin, { ...FORM, classIds: [], studentIds: ['s1'] })
+  // Kimlik satırı yok; kesin kayda alınan adayın 18 yaş seçimini servis verir.
+  const options = { institutionType: 'language_school' as const, learner: { prospectMinor: false } }
+  unchanged(
+    state,
+    () =>
+      decidePermission(
+        state,
+        mother,
+        form.id,
+        { studentId: 's1', decision: 'approved' },
+        id,
+        now,
+        options,
+      ),
+    isDomainError('permission_adult_self', 'forbidden'),
+  )
+  const own = decidePermission(
+    state,
+    studentOf('s1'),
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+    options,
+  )
+  assert.equal(own.decision.relation, 'self')
+})
+
+test('DOM-ILT-037: pasif öğrenci için karar verilmez', () => {
+  const state = seed()
+  const form = open(state)
+  const s1 = state.students.find((s) => s.id === 's1')
+  assert.ok(s1)
+  s1.isActive = false
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now),
+    isDomainError('student_inactive'),
+  )
+})
+
+test('DOM-ILT-031: iki velinin çelişen kararında ret geçerlidir; durum son karardan hesaplanır', () => {
+  const decision = (
+    by: string,
+    value: 'approved' | 'rejected',
+    at: string,
+  ): Pick<PermissionDecisionRecord, 'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'> => ({
+    decidedByUserId: by,
+    decidedAt: at,
+    decision: value,
+    relation: 'guardian',
+  })
+  const both = guardians('a', 'b')
+  assert.equal(permissionStatus([], both), 'pending')
+  assert.equal(
+    permissionStatus([decision('a', 'approved', '1'), decision('b', 'rejected', '1')], both),
+    'rejected',
+  )
+  assert.equal(
+    permissionStatus([decision('a', 'rejected', '1'), decision('a', 'approved', '2')], both),
+    'approved',
+  )
+  assert.deepEqual(permissionCounts(['pending', 'approved', 'approved', 'rejected']), {
+    pending: 1,
+    approved: 2,
+    rejected: 1,
+    total: 4,
+  })
+})
+
+test('DOM-ILT-071: velayeti kalkan ya da kısıtlanan velinin kararı satır olarak kalır, sayılmaz', () => {
+  const decision = (
+    by: string,
+    value: 'approved' | 'rejected',
+  ): Pick<PermissionDecisionRecord, 'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'> => ({
+    decidedByUserId: by,
+    decidedAt: now,
+    decision: value,
+    relation: 'guardian',
+  })
+  const decisions = [decision('u-p1', 'approved'), decision('u-p1b', 'rejected')]
+  assert.equal(permissionStatus(decisions, guardians('u-p1', 'u-p1b')), 'rejected')
+  // Babanın velayeti kalktı: reddi sayılmaz, annenin onayı geçerli.
+  assert.equal(permissionStatus(decisions, guardians('u-p1')), 'approved')
+  // Anne onayladı, sonra velayeti kalktı; baba karar vermedi: bekliyor.
+  assert.equal(permissionStatus([decisions[0]!], guardians('u-p1b')), 'pending')
+  // Yetişkin öğrencide velayetli velinin kararı da sayılmaz.
+  assert.equal(permissionStatus(decisions, SELF), 'pending')
+  assert.equal(
+    permissionStatus(
+      [{ decidedByUserId: 'u-s1', decidedAt: now, decision: 'approved', relation: 'self' }],
+      guardians('u-s1'),
+    ),
+    'pending',
+  )
+})
+
+// --- Hatırlatma ve bildirim --------------------------------------------------------------------
+
+test('DOM-ILT-039: hatırlatma son güne 2 gün kala ve son gün yalnız bekleyen öğrencilere', () => {
+  const state = seed()
+  const form = open(state, admin, { ...FORM, classIds: [], studentIds: ['s1', 's25', 's2'] })
+  decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now)
+  decidePermission(state, mother, form.id, { studentId: 's2', decision: 'rejected' }, id, now)
+  const remind = (at: string) =>
+    permissionReminders({
+      forms: state.permissionForms,
+      decisions: state.permissionDecisions,
+      deciders: () => guardians(),
+      now: at,
+    })
+  // 6 Ekim: son güne 3 gün var, hatırlatma yok.
+  assert.deepEqual(remind(now), [])
+  const twoDays = remind('2026-10-07T05:00:00.000Z')
+  assert.deepEqual(twoDays, [
+    {
+      formId: form.id,
+      studentIds: ['s25'],
+      daysLeft: 2,
+      dedupeKey: `${form.id}:2026-10-09:2`,
+    },
+  ])
+  assert.equal(remind('2026-10-08T05:00:00.000Z').length, 0)
+  assert.equal(remind('2026-10-09T05:00:00.000Z')[0]?.daysLeft, 0)
+  // Son gün geçti ya da form kapandı: hatırlatma yok.
+  assert.deepEqual(remind('2026-10-10T05:00:00.000Z'), [])
+  closePermissionForm(state, admin, form.id, now)
+  assert.deepEqual(remind('2026-10-09T05:00:00.000Z'), [])
+})
+
+test('IST-067: izin formu bildirimleri zorunludur, veliye gider, yalnız form kimliği taşır', () => {
+  for (const type of [
+    'permission_form_opened',
+    'permission_form_reminder',
+    'permission_form_reconsent',
+    'permission_form_cancelled',
+  ] as const) {
+    const spec = NOTIFICATION_TYPES[type]
+    assert.equal(spec.mandatory, true)
+    assert.equal(spec.topic, 'consent')
+    assert.equal(spec.module, 'communication')
+    assert.deepEqual(spec.audiences, { minor: ['parent'], adult: ['student'] })
+    assert.equal(spec.subjectId(spec.data.parse({ formId: 'pf-1' })), 'pf-1')
+    assert.throws(() => spec.data.parse({ formId: 'pf-1', title: 'Gezi' }))
+  }
+})
+
+// --- Okuma kapsamı -----------------------------------------------------------------------------
+
+test('DOM-ILT-037, DOM-ILT-073: form ve karar okuma kapsamı; veli yalnız kendi kararını görür', () => {
+  const state = seed()
+  const form = open(state)
+  const mine = decidePermission(
+    state,
+    mother,
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+  )
+  const theirs = decidePermission(
+    state,
+    father,
+    form.id,
+    { studentId: 's1', decision: 'rejected' },
+    id,
+    now,
+  )
+  const source: ScopeSource = state
+  const scope = (actor: Participant) => scopeFor(source, actor)
+  assert.equal(scope(admin).canRead('permissionForms', form), true)
+  assert.equal(scope(front).access('permissionForms').allowed, false)
+  assert.equal(scope(teacher('t1')).canRead('permissionForms', form), true)
+  assert.equal(scope(teacher('t2')).canRead('permissionForms', form), true)
+  assert.equal(scope(teacher('t5')).canRead('permissionForms', form), false)
+  assert.equal(scope(mother).canRead('permissionForms', form), true)
+  assert.equal(scope(studentOf('s1')).canRead('permissionForms', form), true)
+  assert.equal(
+    scope(person('veli', 'child', ['s3'], 'u-p3')).canRead('permissionForms', form),
+    false,
+  )
+  assert.equal(scope(mother).canRead('permissionDecisions', mine.decision), true)
+  assert.equal(scope(mother).canRead('permissionDecisions', theirs.decision), false)
+  // Velinin notunu rehber öğretmen görür; derse giren öğretmen karar satırını görmez.
+  assert.equal(scope(teacher('t1')).canRead('permissionDecisions', theirs.decision), true)
+  assert.equal(scope(teacher('t2')).canRead('permissionDecisions', theirs.decision), false)
+  assert.equal(scope(teacher('t5')).canRead('permissionDecisions', theirs.decision), false)
+  assert.equal(scope(studentOf('s1')).canRead('permissionDecisions', theirs.decision), true)
+  assert.equal(scope(studentOf('s25')).canRead('permissionDecisions', theirs.decision), false)
+  assert.ok(scope(teacher('t1')).hiddenFields('permissionDecisions').includes('decidedByUserId'))
+  assert.deepEqual(scope(admin).hiddenFields('permissionDecisions'), [])
+})
+
+// --- Etkinlik değişikliği izni düşürür (DOM-ILT-032) ---------------------------------------------
+
+const EVENT = {
+  ...FORM,
+  topic: 'event',
+  eventDate: '2026-10-16',
+  eventTime: '09:30',
+  location: 'Arkeoloji Müzesi',
+  transport: 'Okul servisi',
+  fee: 25000,
+}
+const approve = (state: State, formId: string, by: Participant = mother, studentId = 's1') =>
+  decidePermission(state, by, formId, { studentId, decision: 'approved' }, id, now)
+const statusOf = (
+  state: State,
+  form: { id: string; detailsRevision?: number },
+  deciders: PermissionDeciders = guardians(),
+  studentId = 's1',
+) =>
+  permissionStatus(
+    currentDecisions(
+      form,
+      state.permissionDecisions.filter((d) => d.formId === form.id && d.studentId === studentId),
+    ),
+    deciders,
+  )
+
+test('DOM-ILT-032: gün, saat, yer, ulaşım ve ücret değişikliği her biri izni düşürür', () => {
+  const current = {
+    eventDate: '2026-10-16',
+    eventTime: '09:30',
+    location: 'Müze',
+    transport: 'Servis',
+    fee: 100,
+  }
+  const patches = {
+    eventDate: '2026-10-17',
+    eventTime: '10:00',
+    location: 'Park',
+    transport: 'Veli getirir',
+    fee: 200,
+  } as const
+  for (const [field, value] of Object.entries(patches))
+    assert.deepEqual(permissionDroppingChanges(current, { [field]: value }), [field])
+  assert.deepEqual(permissionDroppingChanges(current, patches), [
+    'eventDate',
+    'eventTime',
+    'location',
+    'transport',
+    'fee',
+  ])
+})
+
+test('DOM-ILT-032: ayrıntının eklenmesi ve kaldırılması da değişikliktir', () => {
+  assert.deepEqual(permissionDroppingChanges({}, { location: 'Müze' }), ['location'])
+  assert.deepEqual(permissionDroppingChanges({ fee: 0 }, { fee: null }), ['fee'])
+  assert.deepEqual(permissionDroppingChanges({ location: 'Müze' }, { location: null }), [
+    'location',
+  ])
+})
+
+test('DOM-ILT-032: aynı değer, boş değer ve verilmeyen alan izni düşürmez (mükerrer güncelleme)', () => {
+  const current = { eventDate: '2026-10-16', location: 'Müze', fee: 0 }
+  assert.deepEqual(permissionDroppingChanges(current, {}), [])
+  assert.deepEqual(permissionDroppingChanges(current, { ...current }), [])
+  assert.deepEqual(permissionDroppingChanges(current, { location: ' Müze ' }), [])
+  assert.deepEqual(permissionDroppingChanges({}, { location: null, transport: '' }), [])
+})
+
+test('DOM-ILT-032: başlık, açıklama ve son gün düzeltmesi izni düşürmez', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  approve(state, form.id)
+  const update = updatePermissionForm(
+    state,
+    teacher('t1'),
+    form.id,
+    {
+      title: 'Müze gezisi (düzeltme)',
+      description: 'Yeni açıklama metni.',
+      deadline: '2026-10-10',
+    },
+    now,
+  )
+  assert.deepEqual(update.droppedFields, [])
+  assert.equal(form.detailsRevision, undefined)
+  assert.equal(statusOf(state, form), 'approved')
+})
+
+test('DOM-ILT-032: ayrıntı değişince alınmış karar düşer, satır silinmez, form sürümü artar', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  const given = approve(state, form.id).decision
+  assert.equal(statusOf(state, form), 'approved')
+  const update = updatePermissionForm(state, teacher('t1'), form.id, { eventTime: '11:00' }, now)
+  assert.deepEqual(update.droppedFields, ['eventTime'])
+  assert.equal(update.previousRevision, 0)
+  assert.equal(form.detailsRevision, 1)
+  assert.equal(form.eventTime, '11:00')
+  assert.equal(form.location, 'Arkeoloji Müzesi')
+  // Geçmiş korunur: karar satırı yerinde ve değişmemiş; yalnız artık geçerli sayılmaz.
+  assert.deepEqual(state.permissionDecisions, [given])
+  assert.equal(isCurrentDecision(form, given), false)
+  assert.equal(statusOf(state, form), 'pending')
+})
+
+test('DOM-ILT-032: son günü geçmiş formda izni düşüren değişiklik 422, kayıt değişmez; açıklama serbest', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), { ...EVENT, deadline: '2026-10-08' })
+  approve(state, form.id)
+  const late = '2026-10-09T10:00:00.000Z'
+  for (const patch of [{ eventTime: '11:00' }, { fee: 0 }, { location: null }])
+    unchanged(
+      state,
+      () => updatePermissionForm(state, teacher('t1'), form.id, patch, late),
+      isDomainError('permission_form_deadline_passed', 'rule'),
+    )
+  assert.equal(form.detailsRevision, undefined)
+  assert.equal(statusOf(state, form), 'approved')
+  const update = updatePermissionForm(
+    state,
+    teacher('t1'),
+    form.id,
+    { description: 'Yeni açıklama metni.' },
+    late,
+  )
+  assert.deepEqual(update.droppedFields, [])
+  assert.equal(form.description, 'Yeni açıklama metni.')
+  assert.equal(statusOf(state, form), 'approved')
+})
+
+test('DOM-ILT-044: son gün etkinlik gününden sonra olamaz; aynı gün olabilir', () => {
+  const state = seed()
+  unchanged(
+    state,
+    () => open(state, admin, { ...EVENT, deadline: '2026-10-17' }),
+    isDomainError('permission_form_deadline_after_event'),
+  )
+  assert.equal(open(state, admin, { ...EVENT, deadline: '2026-10-16' }).deadline, '2026-10-16')
+  // Etkinlik günü olmayan formda sınır yoktur.
+  assert.equal(open(state, admin, { ...FORM, deadline: '2027-01-01' }).deadline, '2027-01-01')
+})
+
+test('DOM-ILT-044: güncellemede son gün ya da etkinlik günü kuralı bozamaz; eski kayıt okunur', () => {
+  const state = seed()
+  const form = open(state, admin, EVENT)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { deadline: '2026-10-17' }, now),
+    isDomainError('permission_form_deadline_after_event'),
+  )
+  // Etkinlik günü öne çekilip mevcut son günün (9 Ekim) altına inemez.
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { eventDate: '2026-10-08' }, now),
+    isDomainError('permission_form_deadline_after_event'),
+  )
+  const both = updatePermissionForm(
+    state,
+    admin,
+    form.id,
+    { eventDate: '2026-10-08', deadline: '2026-10-07' },
+    now,
+  )
+  assert.equal(both.form.deadline, '2026-10-07')
+  // Kuralı ihlal eden eski kayıt: ilgisiz alan değişikliği engellenmez.
+  const legacy = open(state, admin, EVENT)
+  legacy.deadline = '2026-10-20'
+  updatePermissionForm(state, admin, legacy.id, { title: 'Eski kayıt' }, now)
+  assert.equal(legacy.title, 'Eski kayıt')
+})
+
+test('DOM-ILT-032: düşen izin yeniden verilir; yeni satır yeni sürümü taşır, eskisi kalır', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  const first = approve(state, form.id).decision
+  updatePermissionForm(state, teacher('t1'), form.id, { fee: 0 }, now)
+  // Aynı karar bile yeni satırdır: eski karar düştü, "aynı karar" sayılmaz.
+  const again = approve(state, form.id)
+  assert.equal(again.created, true)
+  assert.equal(again.decision.formRevision, 1)
+  assert.equal(state.permissionDecisions.length, 2)
+  assert.equal(statusOf(state, form), 'approved')
+  assert.equal(isCurrentDecision(form, first), false)
+  // Sürüm değişmeden aynı karar yine yinelenmez.
+  assert.equal(approve(state, form.id).created, false)
+})
+
+test('DOM-ILT-032: mükerrer güncelleme ikinci sürüm açmaz ve kararı düşürmez', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  approve(state, form.id)
+  updatePermissionForm(state, teacher('t1'), form.id, { location: 'Resim Müzesi' }, now)
+  approve(state, form.id)
+  const repeat = updatePermissionForm(
+    state,
+    teacher('t1'),
+    form.id,
+    { location: 'Resim Müzesi', eventDate: '2026-10-16' },
+    now,
+  )
+  assert.deepEqual(repeat.droppedFields, [])
+  assert.equal(form.detailsRevision, 1)
+  assert.equal(statusOf(state, form), 'approved')
+})
+
+test('DOM-ILT-032: ret de düşer; ikinci değişiklik yeni sürüm açar, hiçbir satır silinmez', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  decidePermission(state, father, form.id, { studentId: 's1', decision: 'rejected' }, id, now)
+  assert.equal(statusOf(state, form), 'rejected')
+  updatePermissionForm(state, teacher('t1'), form.id, { eventDate: '2026-10-20' }, now)
+  assert.equal(statusOf(state, form), 'pending')
+  approve(state, form.id)
+  updatePermissionForm(state, teacher('t1'), form.id, { transport: 'Veli getirir' }, now)
+  assert.equal(form.detailsRevision, 2)
+  assert.equal(statusOf(state, form), 'pending')
+  assert.equal(state.permissionDecisions.length, 2)
+})
+
+test('DOM-ILT-032: geçersiz ayrıntı ve geçmiş etkinlik günü reddedilir, kayıt değişmez', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  approve(state, form.id)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, teacher('t1'), form.id, { eventDate: '2026-10-05' }, now),
+    isDomainError('permission_form_event_in_past'),
+  )
+  for (const bad of [{ eventTime: '25:00' }, { fee: -1 }, { fee: 10.5 }, { location: 'x' }])
+    unchanged(state, () => updatePermissionForm(state, teacher('t1'), form.id, bad, now), zodError)
+  unchanged(
+    state,
+    () => open(state, teacher('t1'), { ...EVENT, eventDate: '2026-10-05' }),
+    isDomainError('permission_form_event_in_past'),
+  )
+  unchanged(
+    state,
+    () => updatePermissionForm(state, teacher('t2'), form.id, { eventTime: '11:00' }, now),
+    isDomainError('permission_form_not_owner', 'forbidden'),
+  )
+  assert.equal(form.detailsRevision, undefined)
+  assert.equal(form.eventTime, '09:30')
+})
+
+test('DOM-ILT-032: kapalı formun ayrıntısı değişmez', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  closePermissionForm(state, teacher('t1'), form.id, now)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, teacher('t1'), form.id, { fee: 0 }, now),
+    isDomainError('permission_form_closed'),
+  )
+})
+
+test('DOM-ILT-032, DOM-ILT-037: yeniden izin yalnız bugün velayetli velinin kararı olan öğrenciye istenir', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), { ...EVENT, studentIds: ['s2'] })
+  approve(state, form.id, mother, 's1')
+  approve(state, form.id, mother, 's2')
+  const statuses = new Map(
+    ['s1', 's2', 's25'].map((studentId) => [
+      studentId,
+      statusOf(state, form, guardians('u-p1'), studentId),
+    ]),
+  )
+  assert.deepEqual(permissionReaskStudents(statuses), ['s1', 's2'])
+  // Velayeti kalkan velinin kararı sayılmaz: durum bekliyor, yeniden istenmez.
+  const none = new Map([['s1', statusOf(state, form, guardians('u-baska'))]])
+  assert.deepEqual(permissionReaskStudents(none), [])
+})
+
+test('DOM-ILT-032: iptal formu kapatır ve işaretler; kararlar korunur, ikinci iptal 409', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  const given = approve(state, form.id).decision
+  const later = '2026-10-07T08:00:00.000Z'
+  const cancelled = cancelPermissionForm(state, teacher('t1'), form.id, later)
+  assert.equal(cancelled.status, 'closed')
+  assert.equal(cancelled.cancelledAt, later)
+  assert.equal(cancelled.closedAt, later)
+  assert.deepEqual(state.permissionDecisions, [given])
+  unchanged(
+    state,
+    () => cancelPermissionForm(state, admin, form.id, later),
+    isDomainError('permission_form_cancelled', 'conflict'),
+  )
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's1', decision: 'rejected' }, id, now),
+    isDomainError('permission_form_closed'),
+  )
+})
+
+test('DOM-ILT-032: kapatılmış form da iptal edilir, kapanış zamanı korunur', () => {
+  const state = seed()
+  const form = open(state, admin, EVENT)
+  closePermissionForm(state, admin, form.id, now)
+  const cancelled = cancelPermissionForm(state, admin, form.id, '2026-10-12T08:00:00.000Z')
+  assert.equal(cancelled.closedAt, now)
+  assert.equal(cancelled.cancelledAt, '2026-10-12T08:00:00.000Z')
+})
+
+test('DOM-ILT-032, DOM-ILT-038: iptal yetkisi formun öğretmeni ve yöneticidedir', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), EVENT)
+  unchanged(
+    state,
+    () => cancelPermissionForm(state, teacher('t2'), form.id, now),
+    isDomainError('permission_form_not_owner', 'forbidden'),
+  )
+  unchanged(
+    state,
+    () => cancelPermissionForm(state, teacher('t5'), form.id, now),
+    isDomainError('permission_form_not_found', 'not_found'),
+  )
+  unchanged(
+    state,
+    () => cancelPermissionForm(state, teacher('t1'), 'missing', now),
+    isDomainError('permission_form_not_found', 'not_found'),
+  )
+  for (const by of [front, mother, studentOf('s1')])
+    unchanged(
+      state,
+      () => cancelPermissionForm(state, by, form.id, now),
+      isDomainError('permission_denied', 'forbidden'),
+    )
+  assert.equal(cancelPermissionForm(state, admin, form.id, now).status, 'closed')
+})
+
+test('DOM-ILT-032: iptal bildirimi izin vermiş ve bekleyen öğrenciye gider, reddedene gitmez', () => {
+  const statuses = new Map<string, 'pending' | 'approved' | 'rejected'>([
+    ['s1', 'approved'],
+    ['s2', 'pending'],
+    ['s3', 'rejected'],
+  ])
+  assert.deepEqual(permissionCancelStudents(statuses), ['s1', 's2'])
+  assert.deepEqual(permissionReaskStudents(statuses), ['s1', 's3'])
+})
+
+test('DOM-ILT-032, DOM-ILT-039: düşen izin yeniden bekleyen sayılır ve hatırlatılır', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), { ...EVENT, classIds: [], studentIds: ['s1'] })
+  approve(state, form.id)
+  const day = '2026-10-07T08:00:00.000Z'
+  const remind = () =>
+    permissionReminders({
+      forms: state.permissionForms,
+      decisions: state.permissionDecisions,
+      deciders: () => guardians(),
+      now: day,
+    })
+  assert.deepEqual(remind(), [])
+  updatePermissionForm(state, teacher('t1'), form.id, { location: 'Resim Müzesi' }, now)
+  assert.deepEqual(
+    remind().map((item) => item.studentIds),
+    [['s1']],
+  )
+})

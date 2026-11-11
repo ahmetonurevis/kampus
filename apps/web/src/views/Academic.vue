@@ -1,6 +1,6 @@
 <script setup>
 import { useViewMemory } from '../lib/view-memory.js'
-import { tutoringCalendarEntries } from '@kampus/school-core/lib/assessment-automation.js'
+import { tutoringCalendarEntries } from '@kampus/school-core/lib/assessment-automation.ts'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

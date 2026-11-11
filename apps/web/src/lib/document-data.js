@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/lib/document-data.js'
+export * from '@kampus/school-core/lib/document-data.ts'

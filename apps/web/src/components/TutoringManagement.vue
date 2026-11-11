@@ -8,7 +8,7 @@ import {
   planTutoring,
   tutoringSessions,
   runAssessment,
-} from '@kampus/school-core/lib/assessment-automation.js'
+} from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel, dayKey, timeLabel } from '../lib/format.js'
 import { exportCsv } from '../lib/download.js'
 import { useDetailPanel } from '../lib/use-detail-panel.js'
@@ -147,7 +147,9 @@ function showError(exception) {
   logError(exception, 'tutoring', 'warn')
   error.value =
     exception.issues?.[0]?.message ||
-    (exception.name === 'Error' ? exception.message : 'Etüt işlemi tamamlanamadı. Tekrar deneyin.')
+    (exception.name === 'Error' || exception.name === 'DomainError'
+      ? exception.message
+      : 'Etüt işlemi tamamlanamadı. Tekrar deneyin.')
   notify(error.value, 'error')
 }
 function previewPlan() {

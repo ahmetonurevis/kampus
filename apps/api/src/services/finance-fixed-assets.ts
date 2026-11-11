@@ -1,0 +1,464 @@
+import { randomUUID } from 'node:crypto'
+
+import { fixedAssetCountOutcome } from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
+import {
+  depreciationRateBasisPoints,
+  depreciationReport,
+  depreciationReportCsv,
+  depreciationSchedule,
+  type DepreciationReportQuery,
+} from '@kampus/school-core/lib/finance-fixed-asset-depreciation.ts'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  fixedAssetDraft,
+  fixedAssetSchema,
+  nextFixedAssetTag,
+  planFixedAsset,
+  planFixedAssetScrap,
+  scrapFixedAssetSchema,
+  updateFixedAssetSchema,
+  type FixedAssetChecks,
+  type FixedAssetDraft,
+} from '@kampus/school-core/lib/finance-fixed-assets.ts'
+
+import type { Database } from '../db/client.ts'
+import { loadLastCounts } from '../db/finance-fixed-asset-counts.ts'
+import { loadUnresolvedCounts } from '../db/finance-maintenance-requests.ts'
+import {
+  loadAssignmentState,
+  loadOpenAssignments,
+  type StoredAssignment,
+} from '../db/finance-fixed-asset-assignments.ts'
+import {
+  findFixedAsset,
+  insertFixedAsset,
+  isFixedAssetTagTaken,
+  listFixedAssets,
+  listLinkableReceiptItems,
+  loadDepreciationAssets,
+  loadFirstAcquisitionYear,
+  loadReceiptItemViews,
+  loadReceiptRef,
+  loadYearTags,
+  updateFixedAsset,
+  type FixedAssetQuery,
+  type StoredFixedAsset,
+} from '../db/finance-fixed-assets.ts'
+import { findSupplier } from '../db/finance-suppliers.ts'
+import { loadRecordsByIds } from '../db/records.ts'
+import { auditLog } from '../db/schema/audit-log.ts'
+import { ConflictError, NotFoundError } from '../errors.ts'
+import type { ServiceContext } from '../plugins/authenticate.ts'
+import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import { auditWork } from './task-work.ts'
+
+/**
+ * Demirbaş kaydı (DOM-FIN-085; ON-235). Kural core `lib/finance-fixed-assets.ts`'tedir; servis
+ * kurum kilidi altında etiket tekilliğini, sıradaki `DB-<yıl>-<sıra>` önerisini, kampüs ve
+ * tedarikçinin varlığını ve mal kabul kaleminin kalan adedini yükler, aynı transaction'da yazar.
+ * Denetim kaydına alan adları yazılır, değerler yazılmaz. Rol ve modül denetimi rotadadır.
+ */
+
+const ENTITY = 'fixed_assets'
+const DRAFT_KEYS = [
+  'tagNumber',
+  'name',
+  'category',
+  'campusId',
+  'location',
+  'acquisitionValueCents',
+  'acquisitionDate',
+  'supplierId',
+  'receiptItemId',
+  'status',
+  'usefulLifeYears',
+  'depreciationMethod',
+] as const satisfies readonly (keyof FixedAssetDraft)[]
+
+const draftOf = (asset: StoredFixedAsset): FixedAssetDraft =>
+  Object.fromEntries(DRAFT_KEYS.map((key) => [key, asset[key]])) as FixedAssetDraft
+
+/** Kampüs adları (`branches` kaydı); arşivlenen kampüs adsız (`null`) döner. */
+export async function campusNames(
+  db: Database,
+  institutionId: string,
+  ids: readonly (string | null)[],
+) {
+  const wanted = [...new Set(ids.filter((id): id is string => id !== null))]
+  const rows = await loadRecordsByIds(db, institutionId, 'branches', wanted)
+  return new Map(
+    rows.map((row) => [row.id, typeof row.data.name === 'string' ? row.data.name : row.id]),
+  )
+}
+
+/** Açık zimmetin özeti (DOM-FIN-086): teslim alan personel ya da konum; zimmetsizse `null`. */
+function holderView(
+  assignment: StoredAssignment | undefined,
+  campuses: ReadonlyMap<string, string>,
+) {
+  if (assignment === undefined) return null
+  return {
+    id: assignment.id,
+    assigneeType: assignment.assigneeType,
+    membershipId: assignment.membershipId,
+    staffName: assignment.staffName,
+    staffActive: assignment.staffActive,
+    campusId: assignment.campusId,
+    campusName: assignment.campusId === null ? null : (campuses.get(assignment.campusId) ?? null),
+    location: assignment.location,
+    assignedDate: assignment.assignedDate,
+  }
+}
+
+/**
+ * Demirbaşların açık zimmetleri, çözülmemiş arıza sayıları (DOM-FIN-089, K-239) ve listede geçen
+ * bütün kampüslerin adları.
+ */
+async function holdersAndCampuses(
+  db: Database,
+  institutionId: string,
+  assets: readonly StoredFixedAsset[],
+) {
+  const ids = assets.map((asset) => asset.id)
+  const [holders, faults] = await Promise.all([
+    loadOpenAssignments(db, institutionId, ids),
+    loadUnresolvedCounts(db, institutionId, ids),
+  ])
+  const campuses = await campusNames(db, institutionId, [
+    ...assets.map((asset) => asset.campusId),
+    ...[...holders.values()].map((holder) => holder.campusId),
+  ])
+  return { holders, faults, campuses }
+}
+
+function listView(
+  asset: StoredFixedAsset,
+  campuses: ReadonlyMap<string, string>,
+  holders: ReadonlyMap<string, StoredAssignment>,
+  faults: ReadonlyMap<string, number>,
+) {
+  return {
+    id: asset.id,
+    tagNumber: asset.tagNumber,
+    name: asset.name,
+    category: asset.category,
+    campusId: asset.campusId,
+    campusName: asset.campusId === null ? null : (campuses.get(asset.campusId) ?? null),
+    location: asset.location,
+    acquisitionValueCents: asset.acquisitionValueCents,
+    acquisitionDate: asset.acquisitionDate,
+    supplierId: asset.supplierId,
+    supplierName: asset.supplierName,
+    receiptItemId: asset.receiptItemId,
+    status: asset.status,
+    usefulLifeYears: asset.usefulLifeYears,
+    depreciationMethod: asset.depreciationMethod,
+    scrapDate: asset.scrapDate,
+    assignment: holderView(holders.get(asset.id), campuses),
+    openMaintenanceCount: faults.get(asset.id) ?? 0,
+    version: asset.version,
+  }
+}
+
+async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedAsset) {
+  const [{ campuses, holders, faults }, receipts, lastCounts] = await Promise.all([
+    holdersAndCampuses(db, ctx.institutionId, [asset]),
+    loadReceiptItemViews(
+      db,
+      ctx.institutionId,
+      asset.receiptItemId === null ? [] : [asset.receiptItemId],
+    ),
+    loadLastCounts(db, ctx.institutionId, [asset.id]),
+  ])
+  const receipt = asset.receiptItemId === null ? null : receipts.get(asset.receiptItemId)
+  const lastCount = lastCounts.get(asset.id)
+  return {
+    ...listView(asset, campuses, holders, faults),
+    receipt:
+      receipt === undefined || receipt === null
+        ? null
+        : {
+            receiptId: receipt.receiptId,
+            receiptDate: receipt.receiptDate,
+            receiptCancelled: receipt.receiptCancelled,
+            orderId: receipt.orderId,
+            orderNumber: receipt.orderNumber,
+            itemName: receipt.itemName,
+            unitPriceCents: receipt.unitPriceCents,
+            acceptedQuantity: receipt.acceptedQuantity,
+            linkedAssetCount: receipt.linkedAssetCount,
+          },
+    scrappedAt: asset.scrappedAt,
+    scrapReason: asset.scrapReason,
+    // Son tamamlanmış sayım (DOM-FIN-087, K-235): demirbaş kaydında saklanmaz, sayım satırından okunur.
+    lastCount:
+      lastCount === undefined
+        ? null
+        : {
+            countId: lastCount.countId,
+            completedAt: lastCount.completedAt,
+            outcome: fixedAssetCountOutcome(lastCount.result, 'completed'),
+          },
+    createdAt: asset.createdAt,
+    // Amortisman ön hesabı (DOM-FIN-088): saklanmaz, her okumada hesaplanır; defter kaydı değildir.
+    depreciation: {
+      rateBasisPoints: depreciationRateBasisPoints(asset.depreciationMethod, asset.usefulLifeYears),
+      rows: depreciationSchedule(asset),
+    },
+  }
+}
+
+async function assetOf(db: Database, ctx: ServiceContext, id: string) {
+  const found = await findFixedAsset(db, ctx.institutionId, id)
+  if (found === null) throw new NotFoundError()
+  return found
+}
+
+const assetBody = async (tx: Database, ctx: ServiceContext, id: string) => ({
+  data: await detailView(tx, ctx, await assetOf(tx, ctx, id)),
+})
+
+export async function listFixedAssetsFor(ctx: ServiceContext, query: FixedAssetQuery) {
+  const { items, total } = await listFixedAssets(ctx.db, ctx.institutionId, query)
+  const { campuses, holders, faults } = await holdersAndCampuses(ctx.db, ctx.institutionId, items)
+  return { items: items.map((item) => listView(item, campuses, holders, faults)), total }
+}
+
+export async function getFixedAssetFor(ctx: ServiceContext, id: string) {
+  return detailView(ctx.db, ctx, await assetOf(ctx.db, ctx, id))
+}
+
+/** Bağlanabilir mal kabul kalemleri (form seçimi): kalan adedi olan, iptal edilmemiş kabuller. */
+export async function listFixedAssetReceiptItemsFor(
+  ctx: ServiceContext,
+  query: { page: number; pageSize: number; q?: string | undefined },
+) {
+  const { items, total } = await listLinkableReceiptItems(ctx.db, ctx.institutionId, query)
+  return {
+    items: items.map((item) => ({
+      receiptItemId: item.receiptItemId,
+      receiptId: item.receiptId,
+      receiptDate: item.receiptDate,
+      orderId: item.orderId,
+      orderNumber: item.orderNumber,
+      supplierId: item.supplierId,
+      supplierName: item.supplierName,
+      itemName: item.itemName,
+      unitPriceCents: item.unitPriceCents,
+      acceptedQuantity: item.acceptedQuantity,
+      linkedAssetCount: item.linkedAssetCount,
+    })),
+    total,
+  }
+}
+
+/** Değişen bağların denetim girdileri; değişmeyen bağ yeniden sınanmaz (core `FixedAssetChecks`). */
+async function checksFor(
+  tx: Database,
+  ctx: ServiceContext,
+  draft: FixedAssetDraft,
+  previous: { asset: StoredFixedAsset } | null,
+): Promise<FixedAssetChecks> {
+  const changed = (key: keyof FixedAssetDraft) =>
+    previous === null || previous.asset[key] !== draft[key]
+  const exceptId = previous?.asset.id
+  const checks: FixedAssetChecks = {
+    today: dayKey(ctx.now),
+    tagTaken:
+      changed('tagNumber') &&
+      (await isFixedAssetTagTaken(tx, ctx.institutionId, draft.tagNumber, exceptId)),
+    ...(previous === null ? {} : { currentStatus: previous.asset.status }),
+  }
+  if (draft.campusId !== null && changed('campusId'))
+    checks.campusFound = (await campusNames(tx, ctx.institutionId, [draft.campusId])).size === 1
+  if (draft.supplierId !== null && changed('supplierId'))
+    checks.supplierFound = (await findSupplier(tx, ctx.institutionId, draft.supplierId)) !== null
+  if (
+    draft.receiptItemId !== null &&
+    (changed('receiptItemId') || changed('supplierId') || changed('acquisitionDate'))
+  )
+    checks.receipt = {
+      ref: await loadReceiptRef(tx, ctx.institutionId, draft.receiptItemId, exceptId),
+      link: changed('receiptItemId'),
+    }
+  return checks
+}
+
+/** Yeni demirbaş (DOM-FIN-085); etiket boşsa yılın sıradaki `DB-<yıl>-<sıra>` etiketi. 201. */
+export function createFixedAssetCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const id = randomUUID()
+  const entity = { type: ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'fixed_asset.create',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const fields = fixedAssetSchema.parse(input)
+        const year = Number(dayKey(ctx.now).slice(0, 4))
+        // Etiket boşsa yılın sıradaki etiketi (K-185), ömür boşsa kategorinin önerisi (K-224).
+        const draft = fixedAssetDraft(
+          fields,
+          fields.tagNumber ??
+            nextFixedAssetTag(year, await loadYearTags(tx, ctx.institutionId, year)),
+        )
+        const checks = await checksFor(tx, ctx, draft, null)
+        return { run: () => planFixedAsset(draft, checks) }
+      },
+      after: async (tx, planned) => {
+        await insertFixedAsset(tx, ctx.institutionId, {
+          ...planned,
+          id,
+          createdByUserId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        await auditWork(tx, ctx, 'fixed_asset.create', entity, Object.keys(planned))
+        body = await assetBody(tx, ctx, id)
+      },
+    },
+    () => ({ statusCode: 201, body }),
+    idempotency,
+  )
+}
+
+/** Kısmi düzeltme ve durum değişikliği (kullanımda, depoda, arızalı); hurdaya ayrılmış kayıt 422. */
+export function updateFixedAssetCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'fixed_asset.update',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const changes = updateFixedAssetSchema.parse(input)
+        const current = await assetOf(tx, ctx, id)
+        if (current.version !== expectedVersion) throw new ConflictError()
+        const draft: FixedAssetDraft = { ...draftOf(current), ...changes }
+        const checks = await checksFor(tx, ctx, draft, { asset: current })
+        return {
+          run: () => {
+            const planned = planFixedAsset(draft, checks)
+            // Gövdedeki alanlar ve core'un doldurduğu tedarikçi yazılır.
+            const keys = DRAFT_KEYS.filter((key) => key in changes || planned[key] !== current[key])
+            return Object.fromEntries(
+              keys.map((key) => [key, planned[key]]),
+            ) as Partial<FixedAssetDraft>
+          },
+        }
+      },
+      after: async (tx, written) => {
+        const saved = await updateFixedAsset(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          changes: written,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'fixed_asset.update', entity, Object.keys(written))
+        body = await assetBody(tx, ctx, id)
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/** Hurdaya ayırma (K-188): gerekçe ve gün; kayıt silinmez, geri alınmaz. */
+export function scrapFixedAssetCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: ENTITY, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'fixed_asset.scrap',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const parsed = scrapFixedAssetSchema.parse(input)
+        const current = await assetOf(tx, ctx, id)
+        if (current.version !== expectedVersion) throw new ConflictError()
+        // Açık zimmetli demirbaş hurdaya ayrılmaz (DOM-FIN-086, K-213).
+        const assignments = await loadAssignmentState(tx, ctx.institutionId, id)
+        return {
+          run: () => {
+            planFixedAssetScrap(current, parsed, dayKey(ctx.now), assignments)
+            return parsed
+          },
+        }
+      },
+      after: async (tx, parsed) => {
+        const saved = await updateFixedAsset(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          changes: {
+            status: 'scrapped',
+            scrappedAt: ctx.now,
+            scrapDate: parsed.scrapDate,
+            scrappedByUserId: ctx.actor.userId,
+            scrapReason: parsed.reason,
+          },
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'fixed_asset.scrap', entity, ['status', 'scrapDate', 'reason'])
+        body = await assetBody(tx, ctx, id)
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/**
+ * Amortisman ön hesabı raporu (DOM-FIN-088; ON-238): seçilen takvim yılı (boşsa bugünün yılı,
+ * Europe/Istanbul) için kurum toplamı, kategori kırılımı ve demirbaş satırları. Yönetim raporudur;
+ * hiçbir kayıt yazmaz, defter kaydı üretmez (IST-142).
+ */
+export async function depreciationReportFor(ctx: ServiceContext, query: DepreciationReportQuery) {
+  const year = query.year ?? Number(dayKey(ctx.now).slice(0, 4))
+  const [assets, firstYear] = await Promise.all([
+    loadDepreciationAssets(ctx.db, ctx.institutionId, year),
+    loadFirstAcquisitionYear(ctx.db, ctx.institutionId),
+  ])
+  return { ...depreciationReport(assets, year), firstYear }
+}
+
+/** Raporun CSV'si; finansal dışa aktarım olduğu için denetime yazılır (K-227). */
+export async function depreciationReportCsvFor(
+  ctx: ServiceContext,
+  query: DepreciationReportQuery,
+): Promise<{ csv: string; filename: string }> {
+  const report = await depreciationReportFor(ctx, query)
+  const csv = depreciationReportCsv(report)
+  await ctx.db.insert(auditLog).values({
+    institutionId: ctx.institutionId,
+    actorUserId: ctx.actor.userId,
+    actorRole: ctx.actor.role,
+    action: 'finance.fixed_asset_depreciation_export',
+    entityType: 'finance_export',
+    entityId: `fixed-asset-depreciation:${String(report.year)}`,
+    changes: { fields: [] },
+    createdAt: ctx.now,
+  })
+  return { csv, filename: `amortisman-on-hesabi-${String(report.year)}.csv` }
+}

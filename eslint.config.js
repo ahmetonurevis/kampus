@@ -3,7 +3,8 @@ import vue from 'eslint-plugin-vue'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 import react from 'eslint-plugin-react-x'
-import tsParser from '@typescript-eslint/parser'
+import reactHooks from 'eslint-plugin-react-hooks'
+import tseslint from 'typescript-eslint'
 
 export default [
   {
@@ -16,6 +17,8 @@ export default [
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
       'apps/mobile/.expo/**',
+      '.claude/worktrees/**',
+      'packages/api-client/src/schema.d.ts',
     ],
   },
   js.configs.recommended,
@@ -24,11 +27,62 @@ export default [
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     rules: { 'vue/multi-word-component-names': 'off' },
   },
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ['**/*.ts', '**/*.tsx'],
+  })),
   prettier,
   {
-    files: ['apps/mobile/**/*.{js,jsx}'],
+    files: ['apps/mobile/**/*.{js,jsx,ts,tsx}'],
     plugins: { react },
-    languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+    languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
     rules: { 'react/no-missing-key': 'error', 'react/rules-of-hooks': 'error' },
+  },
+  {
+    // Mobil ekran kaydı bileşeni React Navigation `getComponent` içinde `require` ile ilk açılışta
+    // yükler; kayıt böylece Node birim testlerinde React Native'e bağlanmadan okunur.
+    files: ['apps/mobile/src/api/screen-registry.ts'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    files: ['apps/web-react/**/*.{ts,tsx}'],
+    ...react.configs['recommended-typescript'],
+  },
+  {
+    files: ['apps/web-react/**/*.{ts,tsx}'],
+    ...reactHooks.configs.flat.recommended,
+  },
+  {
+    // shadcn CLI çıktısı yalnız token ve erişilebilirlik için düzenlenir; üretim kalıbındaki
+    // biçim uyarıları CLI güncellemesinde yeniden çıkmasın diye bu klasörde kapalıdır.
+    files: ['apps/web-react/src/components/ui/**/*.tsx'],
+    rules: {
+      'react-x/no-array-index-key': 'off',
+      'react-x/no-context-provider': 'off',
+      'react-x/no-use-context': 'off',
+    },
+  },
+  {
+    // Çevrimdışı demo ödeme yolu yalnız demo tüketicilerinde (Vue, mobil, testler) kalır; API ve
+    // React tarafı gerçek ödeme planı (`planPayment`) üzerinden gider.
+    files: [
+      'apps/api/src/**/*.ts',
+      'apps/web-react/src/**/*.{ts,tsx}',
+      'packages/react-shared/src/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/payments-demo', '**/payments-demo.ts', '**/payments-demo.js'],
+              message:
+                'Çevrimdışı demo ödeme yolu API ve React kodunda kullanılmaz; planPayment ve recordPaymentSchema kullan.',
+            },
+          ],
+        },
+      ],
+    },
   },
 ]

@@ -6360,6 +6360,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/maintenance-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Arıza ve bakım taleplerini listele
+         * @description Kapatılmamış ve iptal edilmemiş talepler önce; içlerinde acil önce, yeni bildirim önce. `status`, `state` (`active`/`done`), `priority` ve `assetId` (demirbaşın arıza geçmişi) süzer; `q` başlık, yer, demirbaş etiketi ve adında ya da talep numarasında arar (DOM-FIN-089). Öğretmen yalnız kendi bildirimlerini görür; maliyet yalnız yönetici yanıtındadır. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`.
+         */
+        get: operations["listMaintenanceRequests"];
+        put?: never;
+        /**
+         * Arıza bildir
+         * @description Başlık, açıklama, isteğe bağlı kampüs, yer, isteğe bağlı demirbaş etiketi ve öncelik (K-236); talep `open` durumunda ve `AT-<sıra>` numarasıyla açılır. Kurumda olmayan etiket (başka kurumun etiketi dahil) 422 `maintenance_asset_not_found`, hurdaya ayrılmış demirbaş 422 `maintenance_asset_scrapped`, olmayan kampüs 422 `maintenance_campus_not_found`. Gövdedeki `institutionId` 400. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`.
+         */
+        post: operations["reportMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Arıza talebi ayrıntısı ve iş emri geçmişi
+         * @description Talep, sorumlu, çözüm ve iş emri geçmişi (kim, ne zaman, not; K-237); iş emri PDF'inin verisi. Olmayan, başka kurumun ya da öğretmen için başkasının talebi 404. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`.
+         */
+        get: operations["getMaintenanceRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-requests/{requestId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İş emrini ata
+         * @description Personele (`assigneeType: staff`, kurumun etkin yönetici, öğretmen ya da ön büro üyeliği) ya da tedarikçiye (`assigneeType: supplier`, etkin tedarikçi) atar; açık talep `assigned` olur, atanmış ya da üzerinde çalışılan talepte yalnız sorumlu değişir (K-237). Olmayan üyelik 422 `maintenance_assignee_not_found`, öğrenci ya da veli 422 `maintenance_assignee_not_staff`, pasif personel 422 `maintenance_assignee_inactive`, olmayan tedarikçi 422 `maintenance_supplier_not_found`, pasif tedarikçi 422 `maintenance_supplier_inactive`, aynı sorumlu 422 `maintenance_same_assignee`. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["assignMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-requests/{requestId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İşe başla
+         * @description Atanmış talep `in_progress` olur; isteğe bağlı not. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["startMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-requests/{requestId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İş emrini çöz
+         * @description Atanmış ya da üzerinde çalışılan talep `resolved` olur: çözüm günü, yapılan iş, isteğe bağlı maliyet (kuruş) ve tedarikçi (K-237). Gelecek gün 422 `maintenance_date_in_future`, bildirim gününden önce 422 `maintenance_resolved_before_report`, olmayan tedarikçi 422 `maintenance_supplier_not_found`. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["resolveMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-requests/{requestId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İş emrini kapat
+         * @description Çözülmüş talep `closed` olur; kapatılan talep yeniden açılmaz. Rol: `yonetici` (K-237). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["closeMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-requests/{requestId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Arıza talebini iptal et
+         * @description Gerekçeyle iptal (K-237). Yönetici açık, atanmış ya da üzerinde çalışılan talebi iptal eder; ön büro ve öğretmen yalnız kendi bildirimini ve atanmamışken (başkasının bildirimi 403 `maintenance_not_owner`, atanmış talep 422 `maintenance_not_cancellable`). Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["cancelMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -59313,6 +59457,8 @@ export interface operations {
                                 /** @description Zimmet günü (YYYY-MM-DD) */
                                 assignedDate: string;
                             } | null;
+                            /** @description Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239) */
+                            openMaintenanceCount: number;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         }[];
@@ -59507,6 +59653,8 @@ export interface operations {
                                 /** @description Zimmet günü (YYYY-MM-DD) */
                                 assignedDate: string;
                             } | null;
+                            /** @description Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239) */
+                            openMaintenanceCount: number;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -59940,6 +60088,8 @@ export interface operations {
                                 /** @description Zimmet günü (YYYY-MM-DD) */
                                 assignedDate: string;
                             } | null;
+                            /** @description Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239) */
+                            openMaintenanceCount: number;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -60161,6 +60311,8 @@ export interface operations {
                                 /** @description Zimmet günü (YYYY-MM-DD) */
                                 assignedDate: string;
                             } | null;
+                            /** @description Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239) */
+                            openMaintenanceCount: number;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -60370,6 +60522,8 @@ export interface operations {
                                 /** @description Zimmet günü (YYYY-MM-DD) */
                                 assignedDate: string;
                             } | null;
+                            /** @description Çözülmemiş (açık, atanmış, çalışılan) arıza talebi sayısı (DOM-FIN-089, K-239) */
+                            openMaintenanceCount: number;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             /** @description Mal kabul bağı (DOM-FIN-074) */
@@ -67037,6 +67191,1605 @@ export interface operations {
                                 fulfill: boolean;
                                 convert: boolean;
                             };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMaintenanceRequests: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Başlık, yer, demirbaş etiketi ve adında ya da talep numarasında arama */
+                q?: string;
+                /** @description Durum */
+                status?: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                /** @description `active` kapatılmamış ve iptal edilmemiş, `done` kapatılmış ya da iptal edilmiş */
+                state?: "active" | "done";
+                /** @description Öncelik */
+                priority?: "low" | "normal" | "urgent";
+                /** @description Demirbaşın arıza geçmişi */
+                assetId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reportMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    description: string;
+                    /**
+                     * @description Kampüs (branches kaydı); tek kampüslü kurumda boş
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /** @description Oda ya da yer, serbest metin */
+                    location: string;
+                    /** @description İsteğe bağlı demirbaş etiketi; kurumun hurdaya ayrılmamış demirbaşı olmalıdır */
+                    assetTagNumber?: string | null;
+                    /**
+                     * @description `low` düşük, `normal`, `urgent` acil
+                     * @default normal
+                     * @enum {string}
+                     */
+                    priority?: "low" | "normal" | "urgent";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assignMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    assigneeType: "staff";
+                    /** @description Sorumlu personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                } | {
+                    /** @enum {string} */
+                    assigneeType: "supplier";
+                    /**
+                     * Format: uuid
+                     * @description İşi yapacak dış tedarikçi (DOM-FIN-070)
+                     */
+                    supplierId: string;
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resolveMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Çözüm günü; bildirim gününden önce, bugünden sonra olamaz */
+                    resolvedDate: string;
+                    resolution: string;
+                    /**
+                     * @description İsteğe bağlı onarım maliyeti, KDV dahil, kuruş; yalnız yönetici görür
+                     * @default null
+                     */
+                    costCents?: number | null;
+                    /**
+                     * @description İşi yapan tedarikçi (pasif tedarikçi dahil)
+                     * @default null
+                     */
+                    supplierId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelMaintenanceRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Talep numarası (`AT-0007`) */
+                            number: string;
+                            title: string;
+                            description: string;
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Oda ya da yer */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                                category: ("furniture" | "it" | "audiovisual" | "office" | "laboratory" | "sports" | "kitchen" | "appliance" | "vehicle" | "other") | null;
+                            } | null;
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "urgent";
+                            /** @enum {string} */
+                            status: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                            /** @description Bildiren kişinin adı */
+                            reportedByName: string | null;
+                            /** @description Oturumdaki kullanıcı bildirdiyse `true` */
+                            reportedByMe: boolean;
+                            reportedAt: string;
+                            /** @description Şimdiki sorumlu; atanmamışsa boş */
+                            assignee: {
+                                /**
+                                 * @description `staff` personel, `supplier` tedarikçi
+                                 * @enum {string}
+                                 */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                /** @description Personel adı ya da tedarikçi unvanı */
+                                name: string | null;
+                            } | null;
+                            assignedAt: string | null;
+                            startedAt: string | null;
+                            resolvedAt: string | null;
+                            /** @description Çözüm günü (YYYY-MM-DD) */
+                            resolvedDate: string | null;
+                            /** @description Yapılan iş */
+                            resolution: string | null;
+                            /** @description Onarım maliyeti, kuruş; yalnız yönetici yanıtında bulunur (K-238) */
+                            resolutionCostCents?: number | null;
+                            /** @description İşi yapan tedarikçi */
+                            resolutionSupplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            closedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki rolün bu talepte yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                assign: boolean;
+                                start: boolean;
+                                resolve: boolean;
+                                close: boolean;
+                                cancel: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description İş emri geçmişi, eskiden yeniye (K-237) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "reported" | "assigned" | "started" | "resolved" | "closed" | "cancelled";
+                                fromStatus: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled";
+                                /** @description Adımın notu; çözümde yapılan iş, iptalde gerekçe */
+                                note: string | null;
+                                /** @description Adımı yapan kişi */
+                                actorName: string | null;
+                                /** @description Atama adımında sorumlu */
+                                assignee: {
+                                    /**
+                                     * @description `staff` personel, `supplier` tedarikçi
+                                     * @enum {string}
+                                     */
+                                    type: "staff" | "supplier";
+                                    /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                    id: string;
+                                    /** @description Personel adı ya da tedarikçi unvanı */
+                                    name: string | null;
+                                } | null;
+                                occurredAt: string;
+                            }[];
                         };
                     };
                 };

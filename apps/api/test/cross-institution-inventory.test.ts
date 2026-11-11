@@ -1709,6 +1709,40 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: arıza ve bakım talebi (ON-239; DOM-FIN-089).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/maintenance-requests', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/maintenance-requests', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/maintenance-requests/:requestId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/maintenance-requests/:requestId/assign',
+          "['assign', toStaff(bStaff)]",
+        ],
+        ['kayıt', 'POST /api/v1/finance/maintenance-requests/:requestId/start', "['start', {}]"],
+        [
+          'kayıt',
+          'POST /api/v1/finance/maintenance-requests/:requestId/resolve',
+          "['resolve', RESOLVE]",
+        ],
+        ['kayıt', 'POST /api/v1/finance/maintenance-requests/:requestId/close', "['close', {}]"],
+        [
+          'kayıt',
+          'POST /api/v1/finance/maintenance-requests/:requestId/cancel',
+          "['cancel', { reason: 'Başka kurum' }]",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-maintenance-requests.test.ts',
+        'başka kurumun talebi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

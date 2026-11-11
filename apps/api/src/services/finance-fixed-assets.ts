@@ -23,6 +23,7 @@ import {
 
 import type { Database } from '../db/client.ts'
 import { loadLastCounts } from '../db/finance-fixed-asset-counts.ts'
+import { loadUnresolvedCounts } from '../db/finance-maintenance-requests.ts'
 import {
   loadAssignmentState,
   loadOpenAssignments,
@@ -109,28 +110,32 @@ function holderView(
   }
 }
 
-/** Demirbaşların açık zimmetleri ve listede geçen bütün kampüslerin adları. */
+/**
+ * Demirbaşların açık zimmetleri, çözülmemiş arıza sayıları (DOM-FIN-089, K-239) ve listede geçen
+ * bütün kampüslerin adları.
+ */
 async function holdersAndCampuses(
   db: Database,
   institutionId: string,
   assets: readonly StoredFixedAsset[],
 ) {
-  const holders = await loadOpenAssignments(
-    db,
-    institutionId,
-    assets.map((asset) => asset.id),
-  )
+  const ids = assets.map((asset) => asset.id)
+  const [holders, faults] = await Promise.all([
+    loadOpenAssignments(db, institutionId, ids),
+    loadUnresolvedCounts(db, institutionId, ids),
+  ])
   const campuses = await campusNames(db, institutionId, [
     ...assets.map((asset) => asset.campusId),
     ...[...holders.values()].map((holder) => holder.campusId),
   ])
-  return { holders, campuses }
+  return { holders, faults, campuses }
 }
 
 function listView(
   asset: StoredFixedAsset,
   campuses: ReadonlyMap<string, string>,
   holders: ReadonlyMap<string, StoredAssignment>,
+  faults: ReadonlyMap<string, number>,
 ) {
   return {
     id: asset.id,
@@ -150,12 +155,13 @@ function listView(
     depreciationMethod: asset.depreciationMethod,
     scrapDate: asset.scrapDate,
     assignment: holderView(holders.get(asset.id), campuses),
+    openMaintenanceCount: faults.get(asset.id) ?? 0,
     version: asset.version,
   }
 }
 
 async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedAsset) {
-  const [{ campuses, holders }, receipts, lastCounts] = await Promise.all([
+  const [{ campuses, holders, faults }, receipts, lastCounts] = await Promise.all([
     holdersAndCampuses(db, ctx.institutionId, [asset]),
     loadReceiptItemViews(
       db,
@@ -167,7 +173,7 @@ async function detailView(db: Database, ctx: ServiceContext, asset: StoredFixedA
   const receipt = asset.receiptItemId === null ? null : receipts.get(asset.receiptItemId)
   const lastCount = lastCounts.get(asset.id)
   return {
-    ...listView(asset, campuses, holders),
+    ...listView(asset, campuses, holders, faults),
     receipt:
       receipt === undefined || receipt === null
         ? null
@@ -214,8 +220,8 @@ const assetBody = async (tx: Database, ctx: ServiceContext, id: string) => ({
 
 export async function listFixedAssetsFor(ctx: ServiceContext, query: FixedAssetQuery) {
   const { items, total } = await listFixedAssets(ctx.db, ctx.institutionId, query)
-  const { campuses, holders } = await holdersAndCampuses(ctx.db, ctx.institutionId, items)
-  return { items: items.map((item) => listView(item, campuses, holders)), total }
+  const { campuses, holders, faults } = await holdersAndCampuses(ctx.db, ctx.institutionId, items)
+  return { items: items.map((item) => listView(item, campuses, holders, faults)), total }
 }
 
 export async function getFixedAssetFor(ctx: ServiceContext, id: string) {

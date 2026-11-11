@@ -336,6 +336,10 @@ export function StockMovementFormModal({
   })
   const selectedItem = useWatch({ control: form.control, name: 'itemId' })
   const reason = useWatch({ control: form.control, name: 'reason' })
+  // Kimyasal kartın girişi parti ve son kullanma ister (DOM-FIN-090, K-241).
+  const chemical =
+    kind === 'entry' &&
+    items.data?.data.find((item) => item.id === selectedItem)?.isChemical === true
   const busy =
     entry.isPending || issue.isPending || transfer.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -348,7 +352,15 @@ export function StockMovementFormModal({
     },
   }
   const onSubmit = form.handleSubmit(async (values) => {
-    const planned = stockMovementBody(values)
+    if (chemical && values.lotNumber.trim() === '') {
+      form.setError(
+        'lotNumber',
+        { type: 'required', message: 'Kimyasal girişinde parti numarasını yazın.' },
+        { shouldFocus: true },
+      )
+      return
+    }
+    const planned = stockMovementBody(values, { chemical })
     const outcome =
       planned.kind === 'entry'
         ? await entry.submit(planned.body, fields)
@@ -466,6 +478,27 @@ export function StockMovementFormModal({
             <Input {...control} type="date" {...form.register('movementDate')} disabled={busy} />
           )}
         </FormField>
+        {chemical ? (
+          <>
+            <FormField id="hareket-parti" label="Parti numarası" error={errors.lotNumber}>
+              {(control) => <Input {...control} {...form.register('lotNumber')} disabled={busy} />}
+            </FormField>
+            <FormField
+              id="hareket-son-kullanma"
+              label="Son kullanma tarihi"
+              error={errors.expiryDate}
+            >
+              {(control) => (
+                <Input {...control} type="date" {...form.register('expiryDate')} disabled={busy} />
+              )}
+            </FormField>
+          </>
+        ) : null}
+        {kind === 'issue' ? (
+          <p className="col-span-full text-sm text-muted-foreground">
+            Kimyasal kartta çıkış en yakın son kullanma tarihli partiden düşer.
+          </p>
+        ) : null}
         <div className="col-span-full">
           <FormField
             id="hareket-not"

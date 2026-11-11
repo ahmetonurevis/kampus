@@ -7,6 +7,7 @@ import { Link, useSearchParams } from 'react-router'
 import { dateLabel, dayKey, money, number } from '@kampus/school-core/lib/format.ts'
 import type { DashboardOf } from '@kampus/react-shared/dashboard.ts'
 import { useFinanceOverview } from '@kampus/react-shared/use-finance-exports.ts'
+import { useChemicalLots } from '@kampus/react-shared/use-finance-chemicals.ts'
 import { useCriticalStockItems } from '@kampus/react-shared/use-finance-inventory.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
@@ -35,6 +36,7 @@ import {
   overdueTrendPoints,
   priorityInvoicesQuery,
 } from './finance-dashboard-model.ts'
+import { EXPIRY_TONE, expiryText, lotText } from './finance-chemical-forms.ts'
 import { criticalQuantityText } from './finance-inventory-forms.ts'
 import { invoiceClassScope, invoiceRow } from './finance-rows.ts'
 
@@ -115,6 +117,58 @@ function CriticalStockCard({ ctx }: { ctx: DashboardCardContext }) {
             <span className="flex items-center gap-2 text-sm tabular-nums">
               {criticalQuantityText(row)}
               {row.quantity <= 0 ? <StatusBadge text="Tükendi" tone="red" /> : null}
+            </span>
+          </li>
+        ))}
+      </CardList>
+    </ListCard>
+  )
+}
+
+const CHEMICAL_EXPIRY_QUERY = { page: 1, pageSize: 5, status: 'attention' } as const
+
+/**
+ * Kimyasal son kullanma (DOM-FIN-090, K-243): süresi geçen ya da 30 gün içinde dolan en yakın beş
+ * parti. Parti yoksa (ya da liste gelmeden) kart çizilmez; kampüs seçiliyken kurum listesi seçili
+ * kampüsünkü sanılmasın diye kart gizlenir ve istek atılmaz.
+ */
+function ChemicalExpiryCard({ ctx }: { ctx: DashboardCardContext }) {
+  const [params] = useSearchParams()
+  const branchSelected = params.has(BRANCH_PARAM)
+  const query = useChemicalLots(CHEMICAL_EXPIRY_QUERY, !branchSelected)
+  const total = query.data?.meta.total ?? 0
+  if (branchSelected || (!query.error && total === 0)) return null
+  const path = ctx.role === 'onburo' ? FRONT_DESK_PATH : 'finans'
+  return (
+    <ListCard
+      title="Kimyasal son kullanma"
+      description={`${number(total)} partinin süresi geçti ya da 30 gün içinde doluyor`}
+      action={{
+        label: 'Tümünü gör',
+        href: dashboardHref(ctx.role, path, { gorunum: 'stok', stok: 'son-kullanma' }),
+      }}
+      state={combineStates(query)}
+      isEmpty={false}
+      emptyText="Süresi yaklaşan parti yok."
+    >
+      <CardList label="Kimyasal son kullanma">
+        {query.data?.data.map((row) => (
+          <li
+            key={row.key}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
+          >
+            <span className="min-w-0">
+              <span className="block font-medium">{`${row.code} · ${row.name}`}</span>
+              <span className="block text-sm text-muted-foreground">
+                {`${lotText(row)} · ${row.warehouseName}`}
+              </span>
+            </span>
+            <span className="flex items-center gap-2 text-sm tabular-nums">
+              {expiryText(row)}
+              <StatusBadge
+                text={row.status === 'expired' ? 'Geçti' : 'Yaklaşıyor'}
+                tone={EXPIRY_TONE[row.status]}
+              />
             </span>
           </li>
         ))}
@@ -489,6 +543,16 @@ export const FINANCE_CARDS = [
     area: 'side',
     order: 405,
     component: CriticalStockCard,
+  }),
+  // --- Yönetici ve ön büro: kimyasal son kullanma (DOM-FIN-090; ON-234). Kritik stoğun altında. ---
+  defineCard({
+    id: 'finans.kimyasal-son-kullanma',
+    roles: ['yonetici', 'onburo'],
+    module: 'finance',
+    section: (data) => ('finance' in data ? data.finance : null),
+    area: 'side',
+    order: 406,
+    component: ChemicalExpiryCard,
   }),
 
   // --- Veli: çocuğun bakiyesi (DOM-FIN-052). Öğrencinin özetinde alan yoktur, kart çizilmez. ---

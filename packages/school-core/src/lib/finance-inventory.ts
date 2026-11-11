@@ -19,7 +19,9 @@ import { SUPPLIER_CATEGORIES } from './finance-suppliers.ts'
  * düşürmemelidir. Transfer tek işlemde iki harekettir. Hareket silinmez, yönetici gerekçeyle iptal
  * eder; mal kabulden gelen giriş yalnız kabul iptaliyle geri alınır (DOM-FIN-074). Materyal seti
  * teslimi (DOM-FIN-080) setin kalemleri kadar `delivery` çıkışı yazar; bu çıkışlar yalnız teslim
- * iptaliyle geri alınır. Sarf talebinin karşılanması (DOM-FIN-091) `supply` çıkışı yazar; bu çıkış
+ * iptaliyle geri alınır. Tamamlanan stok sayımı (DOM-FIN-081) farkları `adjustment_in` ve
+ * `adjustment_out` düzeltmeleriyle yazar; bunlar iptal edilmez (tamamlanan sayım değişmez).
+ * Sarf talebinin karşılanması (DOM-FIN-091) `supply` çıkışı yazar; bu çıkış
  * hareket listesinden iptal edilmez, iade elle giriştir (`returned`, K-245).
  *
  * Fonksiyonlar saftır; zaman `today` parametresiyle gelir.
@@ -59,6 +61,8 @@ export const STOCK_MOVEMENT_TYPES = [
   'transfer_out',
   'receipt',
   'delivery',
+  'adjustment_in',
+  'adjustment_out',
   'supply',
 ] as const
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]
@@ -69,10 +73,22 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   transfer_out: 'Transfer çıkışı',
   receipt: 'Mal kabul girişi',
   delivery: 'Materyal seti teslimi',
+  adjustment_in: 'Sayım fazlası düzeltmesi',
+  adjustment_out: 'Sayım eksiği düzeltmesi',
   supply: 'Sarf talebi karşılama',
 } as const satisfies Record<StockMovementType, string>
-const INBOUND: ReadonlySet<StockMovementType> = new Set(['in', 'transfer_in', 'receipt'])
+/** Miktarı artıran hareket türleri; veritabanı toplamı da bu kümeyi kullanır. */
+export const STOCK_INBOUND_TYPES = [
+  'in',
+  'transfer_in',
+  'receipt',
+  'adjustment_in',
+] as const satisfies readonly StockMovementType[]
+const INBOUND: ReadonlySet<StockMovementType> = new Set(STOCK_INBOUND_TYPES)
 export const isInbound = (type: StockMovementType) => INBOUND.has(type)
+/** Stok sayımının tamamlanınca yazdığı düzeltme hareketleri (DOM-FIN-081). */
+export const isCountAdjustment = (type: StockMovementType) =>
+  type === 'adjustment_in' || type === 'adjustment_out'
 
 export const STOCK_ENTRY_REASONS = [
   'opening',
@@ -107,6 +123,8 @@ export const STOCK_NOTE_MAX = 500
 export const STOCK_OTHER_NOTE_MIN = 3
 export const STOCK_CANCEL_REASON_MIN = 5
 export const STOCK_CANCEL_REASON_MAX = 500
+/** Kimyasal partinin numarası (DOM-FIN-090, K-241). */
+export const STOCK_LOT_NUMBER_MAX = 40
 
 // --- Şemalar -------------------------------------------------------------------------------------
 
@@ -196,13 +214,40 @@ const movementBase = {
   note: optionalNote,
 }
 
+// Kimyasal kartın elle girişinde parti numarası ve son kullanma tarihi birlikte gelir (DOM-FIN-090,
+// K-241); kartın kimyasal olup olmadığı `planStockEntry`'de denetlenir.
+const lotNumberSchema = z
+  .string('Parti numarasını yazın.')
+  .trim()
+  .max(STOCK_LOT_NUMBER_MAX, `En fazla ${String(STOCK_LOT_NUMBER_MAX)} karakter girebilirsiniz.`)
+  .regex(/^[^\p{Cc}]*$/u, 'Parti numarasında kontrol karakteri olamaz.')
+  .nullable()
+  .transform((value) => (value === '' ? null : value))
+
+const lotPairNeedsBoth = (
+  value: { lotNumber: string | null; expiryDate: string | null },
+  ctx: z.RefinementCtx,
+): void => {
+  if (value.lotNumber !== null && value.expiryDate === null)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['expiryDate'],
+      message: 'Partinin son kullanma tarihini girin.',
+    })
+  if (value.lotNumber === null && value.expiryDate !== null)
+    ctx.addIssue({ code: 'custom', path: ['lotNumber'], message: 'Parti numarasını yazın.' })
+}
+
 export const stockEntrySchema = z
   .strictObject({
     ...movementBase,
     warehouseId: z.uuid('Depoyu seçin.'),
     reason: z.enum(STOCK_ENTRY_REASONS, 'Giriş nedenini seçin.'),
+    lotNumber: lotNumberSchema.default(null),
+    expiryDate: daySchema.nullable().default(null),
   })
   .superRefine(otherNeedsNote)
+  .superRefine(lotPairNeedsBoth)
 export type StockEntryInput = z.input<typeof stockEntrySchema>
 
 export const stockIssueSchema = z
@@ -455,14 +500,17 @@ export function planStockWarehouseUpdate(
   return changes
 }
 
-function assertItem(item: StockItemRef | undefined, path: (string | number)[]): StockItemRef {
+export function assertItem(
+  item: StockItemRef | undefined,
+  path: (string | number)[],
+): StockItemRef {
   if (item === undefined) throw ruleError('stock_item_not_found', 'Stok kartı bulunamadı.', path)
   if (!item.isActive)
     throw ruleError('stock_item_inactive', `${item.name} pasif; hareket yazılmaz.`, path)
   return item
 }
 
-function assertWarehouse(
+export function assertWarehouse(
   warehouse: StockWarehouseRef | undefined,
   path: (string | number)[],
 ): StockWarehouseRef {
@@ -504,17 +552,36 @@ export interface StockMovementContext {
   movements: readonly StockMovementLine[]
   /** Europe/Istanbul günü. */
   today: string
+  /** Kimyasal bilgisi olan kartlar (DOM-FIN-090); elle girişte parti ister. */
+  chemicalItemIds?: ReadonlySet<string>
 }
 
 const pairOf = (movements: readonly StockMovementLine[], itemId: string, warehouseId: string) =>
   movements.filter((movement) => movement.itemId === itemId && movement.warehouseId === warehouseId)
 
-/** Elle giriş (DOM-FIN-078): etkin kart ve depo, gün bugünden sonra olamaz. */
+/**
+ * Elle giriş (DOM-FIN-078): etkin kart ve depo, gün bugünden sonra olamaz. Kimyasal kartın girişi
+ * parti numarası ve son kullanma tarihi ister; kimyasal olmayan kartın girişinde parti yazılmaz
+ * (DOM-FIN-090, K-241).
+ */
 export function planStockEntry(input: unknown, context: StockMovementContext) {
   const data = stockEntrySchema.parse(input)
-  assertItem(context.items.get(data.itemId), ['itemId'])
+  const item = assertItem(context.items.get(data.itemId), ['itemId'])
   assertWarehouse(context.warehouses.get(data.warehouseId), ['warehouseId'])
   assertDate(data.movementDate, context.today)
+  const chemical = context.chemicalItemIds?.has(item.id) === true
+  if (chemical && data.lotNumber === null)
+    throw ruleError(
+      'stock_lot_required',
+      `${item.name} kimyasal; girişte parti numarası ve son kullanma tarihi zorunludur.`,
+      ['lotNumber'],
+    )
+  if (!chemical && data.lotNumber !== null)
+    throw ruleError(
+      'stock_lot_not_allowed',
+      'Parti ve son kullanma tarihi yalnız kimyasal kartların girişinde yazılır.',
+      ['lotNumber'],
+    )
   return data
 }
 
@@ -663,6 +730,11 @@ export function planStockMovementCancel(
     throw ruleError(
       'stock_movement_from_supply',
       'Sarf talebi karşılamasındaki çıkış iptal edilmez; geri gelen malzemeyi "Kullanımdan iade" girişiyle yazın.',
+    )
+  if (isCountAdjustment(movement.type))
+    throw ruleError(
+      'stock_movement_from_count',
+      'Sayım düzeltmesi iptal edilmez; tamamlanan sayım değiştirilemez. Fark varsa yeni sayım yapın.',
     )
   const ids =
     movement.transferId === null

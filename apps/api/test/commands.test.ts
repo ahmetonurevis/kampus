@@ -87,6 +87,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Materyal seti teslimi stok çıkışı yazar; çift tıklama ikinci teslim ve çıkış açmaz
   // (routes/finance-material-sets.ts; DOM-FIN-080).
   'POST /api/v1/finance/material-sets/{setId}/deliveries',
+  // Sayıma kart okutma sayılan miktara ekler; çift gönderim iki kez saymaz
+  // (routes/finance-stock-counts.ts; DOM-FIN-081).
+  'POST /api/v1/finance/stock-counts/{countId}/scans',
   // Sarf talebi açma, depodan karşılama (stok çıkışı) ve satın almaya dönüştürme (numaralı talep
   // açar); çift tıklama ikinci kaydı açmaz (routes/finance-supply-requests.ts; DOM-FIN-091).
   'POST /api/v1/finance/supply-requests',

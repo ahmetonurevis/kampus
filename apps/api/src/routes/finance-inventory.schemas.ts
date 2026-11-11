@@ -10,6 +10,7 @@ import {
 } from '@kampus/school-core/lib/finance-inventory.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+import { chemicalProfileViewSchema } from './finance-chemicals.schemas.ts'
 
 /** Stok kartı, depo ve hareket şemaları (DOM-FIN-077, DOM-FIN-078; ON-228, ON-229). */
 
@@ -37,6 +38,7 @@ const stockItemRowSchema = z.object({
   isActive: z.boolean(),
   quantity: quantity('Hareketlerden türetilen miktar (süzgeçte depo varsa yalnız o depo)'),
   isBelowMinimum: z.boolean().describe('Miktar kritik seviyeye eşit ya da altında (K-182)'),
+  isChemical: z.boolean().describe('Kimyasal bilgisi var; girişte parti ister (DOM-FIN-090)'),
   version,
 })
 export const stockItemListResponse = z.object({
@@ -45,6 +47,7 @@ export const stockItemListResponse = z.object({
 })
 const stockItemDetailSchema = stockItemRowSchema.extend({
   hasMovements: z.boolean().describe('Hareketi varsa birim değişmez (K-182)'),
+  chemical: chemicalProfileViewSchema.nullable(),
   balances: z
     .array(
       z.object({
@@ -66,6 +69,7 @@ export const stockItemListQuery = z.strictObject({
   status,
   critical: z.enum(['true']).optional().describe('`true`: yalnız kritik seviyedeki etkin kartlar'),
   warehouseId: z.uuid('Depo geçersiz.').optional().describe('Miktar yalnız bu depodan'),
+  chemical: z.enum(['true']).optional().describe('`true`: yalnız kimyasal kartlar (DOM-FIN-090)'),
 })
 
 /** Kritik stok satırı (DOM-FIN-079; ON-230). `id` stok kartının kimliğidir. */
@@ -152,12 +156,22 @@ const stockMovementSchema = z.object({
   reason: z
     .enum([...STOCK_ENTRY_REASONS, ...STOCK_ISSUE_REASONS])
     .nullable()
-    .describe('Elle giriş ve çıkışın nedeni; transfer ve mal kabulde boş'),
+    .describe(
+      'Elle giriş ve çıkışın nedeni; transfer, mal kabul, teslim ve sayım düzeltmesinde boş',
+    ),
   note: z.string().nullable(),
   transferId: z.string().nullable(),
   counterpartWarehouseName: z.string().nullable().describe('Transferde karşı depo'),
   orderId: z.string().nullable().describe('Mal kabul girişinde sipariş'),
   orderNumber: z.string().nullable(),
+  lotNumber: z.string().nullable().describe('Kimyasal girişinin partisi (DOM-FIN-090)'),
+  expiryDate: daySchema.nullable().describe('Partinin son kullanma günü'),
+  countId: z
+    .string()
+    .nullable()
+    .describe(
+      'Sayım düzeltmesinde (`adjustment_in`, `adjustment_out`) düzeltmeyi yazan stok sayımı',
+    ),
   createdAt: z.string(),
   createdByName: z.string().nullable(),
   cancelledAt: z.string().nullable(),

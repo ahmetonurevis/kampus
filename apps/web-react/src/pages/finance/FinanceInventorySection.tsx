@@ -38,6 +38,12 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import {
+  ChemicalExpiryNotice,
+  ChemicalExpiryPanel,
+  ChemicalInventoryPanel,
+  ChemicalItemSection,
+} from './FinanceChemicalPanels.tsx'
 import { FinanceCriticalStockPanel } from './FinanceCriticalStockPanel.tsx'
 import {
   CancelStockMovementModal,
@@ -45,6 +51,7 @@ import {
   StockMovementFormModal,
   StockWarehouseFormModal,
 } from './FinanceInventoryForms.tsx'
+import { FinanceStockCountsPanel } from './FinanceStockCountsPanel.tsx'
 import { MOVEMENT_TYPE_VIEW, signedQuantity, type MovementKind } from './finance-inventory-forms.ts'
 
 const NO_SORT: readonly string[] = []
@@ -52,8 +59,11 @@ const SUB_PARAM = 'stok'
 const SUBVIEWS = [
   { value: 'items', label: 'Stok kartları', param: '' },
   { value: 'critical', label: 'Kritik stok', param: 'kritik' },
+  { value: 'expiry', label: 'Son kullanma', param: 'son-kullanma' },
+  { value: 'chemicals', label: 'Kimyasal envanter', param: 'kimyasal' },
   { value: 'movements', label: 'Hareketler', param: 'hareket' },
   { value: 'warehouses', label: 'Depolar', param: 'depo' },
+  { value: 'counts', label: 'Sayımlar', param: 'sayim' },
 ] as const
 type SubView = (typeof SUBVIEWS)[number]['value']
 const STATUS_OPTIONS = [
@@ -73,6 +83,10 @@ const isType = (value: string | null): value is StockMovementType =>
   STOCK_MOVEMENT_TYPES.some((type) => type === value)
 const dayText = (day: string) => dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' })
 const reasonText = (row: StockMovementRow) => {
+  const lot =
+    row.lotNumber === null || row.expiryDate === null
+      ? null
+      : `Parti ${row.lotNumber}, son kullanma ${dayText(row.expiryDate)}`
   const reason =
     row.reason === null
       ? null
@@ -80,12 +94,14 @@ const reasonText = (row: StockMovementRow) => {
         ? STOCK_ENTRY_REASON_LABELS[row.reason as keyof typeof STOCK_ENTRY_REASON_LABELS]
         : STOCK_ISSUE_REASON_LABELS[row.reason as keyof typeof STOCK_ISSUE_REASON_LABELS]
   const source =
-    row.orderNumber !== null
-      ? `Sipariş ${row.orderNumber}`
-      : row.counterpartWarehouseName !== null
-        ? `${row.type === 'transfer_out' ? 'Giriş' : 'Çıkış'} deposu ${row.counterpartWarehouseName}`
-        : null
-  return [reason, source, row.note].filter(Boolean).join(' · ') || '—'
+    row.countId !== null
+      ? 'Stok sayımı'
+      : row.orderNumber !== null
+        ? `Sipariş ${row.orderNumber}`
+        : row.counterpartWarehouseName !== null
+          ? `${row.type === 'transfer_out' ? 'Giriş' : 'Çıkış'} deposu ${row.counterpartWarehouseName}`
+          : null
+  return [reason, source, lot, row.note].filter(Boolean).join(' · ') || '—'
 }
 
 type Dialog =
@@ -100,7 +116,10 @@ type Dialog =
  * miktar, hareketler, depolar. Yönetici kart ve depo açar, giriş ve transfer yazar, hareketi iptal
  * eder; ön büro okur ve çıkış yazar (K-180). Miktar hareketlerden türetilir; satın alınan ürün mal
  * kabulle girer (K-184). "Kritik stok" görünümü kritik seviyedeki ürünleri ve talep önerisini
- * gösterir (DOM-FIN-079); stok kartları listesi kritik ürün sayısını duyurur (K-204).
+ * gösterir (DOM-FIN-079); stok kartları listesi kritik ürün sayısını duyurur (K-204). "Sayımlar"
+ * görünümü depo sayımını, okutmayı ve fark raporunu taşır (DOM-FIN-081); sayım düzeltmesi hareket
+ * listesinde sayıma bağlantı verir. Kimyasal kartların partileri "Son kullanma", depo bazında
+ * dökümü "Kimyasal envanter" görünümündedir (DOM-FIN-090, K-243).
  */
 export function FinanceInventorySection({ role }: { role: string }) {
   const actions = stockActions(role)
@@ -118,6 +137,8 @@ export function FinanceInventorySection({ role }: { role: string }) {
     const param = SUBVIEWS.find((view) => view.value === next)?.param ?? ''
     if (param === '') nextParams.delete(SUB_PARAM)
     else nextParams.set(SUB_PARAM, param)
+    // Açık sayım ekranı yalnız "Sayımlar" görünümünde anlamlıdır.
+    nextParams.delete('sayim_id')
     setParams(nextParams)
   }
   return (
@@ -166,8 +187,11 @@ export function FinanceInventorySection({ role }: { role: string }) {
           onCreate={() => setDialog({ kind: 'item' })}
           onIssue={(itemId) => openMovement('issue', itemId)}
           onShowCritical={() => showSub('critical')}
+          onShowExpiry={() => showSub('expiry')}
         />
       ) : null}
+      {sub === 'expiry' ? <ChemicalExpiryPanel /> : null}
+      {sub === 'chemicals' ? <ChemicalInventoryPanel /> : null}
       {sub === 'critical' ? (
         <FinanceCriticalStockPanel
           canRequest={canRequest}
@@ -177,7 +201,15 @@ export function FinanceInventorySection({ role }: { role: string }) {
         />
       ) : null}
       {sub === 'movements' ? (
-        <MovementsPanel onCancel={(movement) => setDialog({ kind: 'cancel', movement })} />
+        <MovementsPanel
+          onCancel={(movement) => setDialog({ kind: 'cancel', movement })}
+          onOpenCount={(countId) => {
+            const nextParams = new URLSearchParams(params)
+            nextParams.set(SUB_PARAM, 'sayim')
+            nextParams.set('sayim_id', countId)
+            setParams(nextParams)
+          }}
+        />
       ) : null}
       {sub === 'warehouses' ? (
         <WarehousesPanel
@@ -187,6 +219,7 @@ export function FinanceInventorySection({ role }: { role: string }) {
           }
         />
       ) : null}
+      {sub === 'counts' ? <FinanceStockCountsPanel role={role} /> : null}
       {dialog?.kind === 'item' ? <StockItemFormModal onClose={close} /> : null}
       {dialog?.kind === 'warehouse' ? (
         <StockWarehouseFormModal
@@ -217,7 +250,7 @@ type ItemRow = {
   category: string
   quantity: string
   minQuantity: string
-  status: { active: boolean; low: boolean }
+  status: { active: boolean; low: boolean; chemical: boolean }
 }
 const ITEM_FILTERS = [
   { key: 'status', label: 'Durum', type: 'select' as const, options: STATUS_OPTIONS },
@@ -228,6 +261,12 @@ const ITEM_FILTERS = [
     type: 'select' as const,
     options: [{ value: 'true', label: 'Yalnız kritik' }],
   },
+  {
+    key: 'chemical',
+    label: 'Kimyasal',
+    type: 'select' as const,
+    options: [{ value: 'true', label: 'Yalnız kimyasallar' }],
+  },
 ]
 
 function ItemsPanel({
@@ -236,12 +275,14 @@ function ItemsPanel({
   onCreate,
   onIssue,
   onShowCritical,
+  onShowExpiry,
 }: {
   canManage: boolean
   canIssue: boolean
   onCreate: () => void
   onIssue: (itemId: string) => void
   onShowCritical: () => void
+  onShowExpiry: () => void
 }) {
   // Kritik ürün duyurusu (K-204): yalnız sayı okunur.
   const critical = useCriticalStockItems({ page: 1, pageSize: 1 })
@@ -257,6 +298,7 @@ function ItemsPanel({
     ...(isStatus(status) ? { status } : {}),
     ...(isCategory(category) ? { category } : {}),
     ...(text(list.state.filters.critical) === 'true' ? { critical: 'true' as const } : {}),
+    ...(text(list.state.filters.chemical) === 'true' ? { chemical: 'true' as const } : {}),
   })
   const panel = useDetailPanel('stok_karti')
   const openItem = panel.open
@@ -269,7 +311,7 @@ function ItemsPanel({
         category: SUPPLIER_CATEGORY_LABELS[item.category],
         quantity: `${String(item.quantity)} ${STOCK_UNIT_LABELS[item.unit]}`,
         minQuantity: item.minQuantity === null ? '—' : String(item.minQuantity),
-        status: { active: item.isActive, low: item.isBelowMinimum },
+        status: { active: item.isActive, low: item.isBelowMinimum, chemical: item.isChemical },
       })),
     [items.data],
   )
@@ -283,14 +325,18 @@ function ItemsPanel({
       {
         key: 'status',
         label: 'Durum',
-        cell: (row) =>
-          !row.status.active ? (
-            <StatusBadge text="Pasif" tone="gray" />
-          ) : row.status.low ? (
-            <StatusBadge text="Kritik" tone="amber" />
-          ) : (
-            <StatusBadge text="Etkin" tone="green" />
-          ),
+        cell: (row) => (
+          <span className="flex flex-wrap gap-1">
+            {!row.status.active ? (
+              <StatusBadge text="Pasif" tone="gray" />
+            ) : row.status.low ? (
+              <StatusBadge text="Kritik" tone="amber" />
+            ) : (
+              <StatusBadge text="Etkin" tone="green" />
+            )}
+            {row.status.chemical ? <StatusBadge text="Kimyasal" tone="purple" /> : null}
+          </span>
+        ),
       },
       {
         key: ACTIONS_KEY,
@@ -322,6 +368,7 @@ function ItemsPanel({
           </Button>
         </div>
       ) : null}
+      <ChemicalExpiryNotice onShow={onShowExpiry} />
       {canManage ? (
         <div className="flex justify-end px-6">
           <Button onClick={onCreate}>
@@ -465,6 +512,7 @@ function ItemDetail({
           </ul>
         )}
       </section>
+      <ChemicalItemSection item={item} canManage={canManage} />
       {editing ? <StockItemFormModal item={item} onClose={() => setEditing(false)} /> : null}
     </div>
   )
@@ -488,7 +536,13 @@ const TYPE_OPTIONS = STOCK_MOVEMENT_TYPES.map((value) => ({
   label: STOCK_MOVEMENT_TYPE_LABELS[value],
 }))
 
-function MovementsPanel({ onCancel }: { onCancel: (movement: StockMovementRow) => void }) {
+function MovementsPanel({
+  onCancel,
+  onOpenCount,
+}: {
+  onCancel: (movement: StockMovementRow) => void
+  onOpenCount: (countId: string) => void
+}) {
   const list = useListState('stok-hareketleri', { urlPrefix: 'hareket_' })
   const warehouses = useStockWarehouses({ page: 1, pageSize: 100 })
   const type = text(list.state.filters.type)
@@ -566,8 +620,20 @@ function MovementsPanel({ onCancel }: { onCancel: (movement: StockMovementRow) =
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
-        cell: (row) =>
-          row.movement.actions.cancel ? (
+        cell: (row) => {
+          const { countId } = row.movement
+          if (countId !== null)
+            return (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`${row.date} ${row.item} düzeltmesinin sayımını aç`}
+                onClick={() => onOpenCount(countId)}
+              >
+                Sayımı aç
+              </Button>
+            )
+          return row.movement.actions.cancel ? (
             <Button
               size="sm"
               variant="ghost"
@@ -576,10 +642,11 @@ function MovementsPanel({ onCancel }: { onCancel: (movement: StockMovementRow) =
             >
               İptal et
             </Button>
-          ) : null,
+          ) : null
+        },
       },
     ],
-    [onCancel],
+    [onCancel, onOpenCount],
   )
   return (
     <div className="pt-3">

@@ -12,6 +12,7 @@ import {
   type FixedAssetCountOutcome,
 } from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
 import {
+  DEPRECIATION_METHOD_LABELS,
   FIXED_ASSET_CATEGORIES,
   FIXED_ASSET_CATEGORY_LABELS,
   FIXED_ASSET_STATUSES,
@@ -45,6 +46,10 @@ import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
 import { FixedAssetAssignmentSection, holderText } from './FinanceFixedAssetAssignments.tsx'
+import {
+  FinanceFixedAssetDepreciationSection,
+  FixedAssetDepreciationSchedule,
+} from './FinanceFixedAssetDepreciation.tsx'
 import { FinanceFixedAssetCountsSection } from './FinanceFixedAssetCountsSection.tsx'
 import { FixedAssetFormModal } from './FinanceFixedAssetForm.tsx'
 import { FinanceFixedAssetStaffSection } from './FinanceFixedAssetStaffSection.tsx'
@@ -91,13 +96,15 @@ type Row = {
  * düzeltme ve ayrıntı panelinde (`?demirbas=`) zimmet ve iade (DOM-FIN-086) ile gerekçeli hurdaya
  * ayırma (K-188). Liste etiket, ad ve konumda aranır; durum, kategori ve kampüs süzgeçlidir, sunucu
  * sayfalıdır. Seçilen demirbaşların karekodlu etiket sayfası alınır (DOM-FIN-087). Altında personel
- * zimmetleri (K-214) ve demirbaş sayımları (K-232…K-235).
+ * zimmetleri (K-214), demirbaş sayımları (K-232…K-235) ve amortisman ön hesabı raporu
+ * (DOM-FIN-088; yönetim raporu, defter kaydı yok).
  */
 export function FinanceFixedAssetsSection() {
   return (
     <div className="grid gap-6">
       <FixedAssetsList />
       <FinanceFixedAssetStaffSection />
+      <FinanceFixedAssetDepreciationSection />
       <FinanceFixedAssetCountsSection />
     </div>
   )
@@ -357,6 +364,7 @@ function FixedAssetDetailView({ assetId }: { assetId: string }) {
         )}
       </section>
       <FixedAssetAssignmentSection asset={asset} />
+      <FixedAssetDepreciationSchedule asset={asset} />
       {scrapped || asset.assignment ? null : <ScrapForm asset={asset} />}
       {editing ? <FixedAssetFormModal asset={asset} onClose={() => setEditing(false)} /> : null}
     </div>
@@ -371,6 +379,10 @@ function FixedAssetFacts({ asset }: { asset: FixedAssetDetail }) {
     ['Konum', asset.location],
     ['Alım değeri (KDV hariç)', money(asset.acquisitionValueCents)],
     ['Alım günü', dayText(asset.acquisitionDate)],
+    [
+      'Amortisman',
+      `${DEPRECIATION_METHOD_LABELS[asset.depreciationMethod]} · ${String(asset.usefulLifeYears)} yıl`,
+    ],
     ['Tedarikçi', asset.supplierName ?? '—'],
     [
       'Mal kabul',

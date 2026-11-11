@@ -4,15 +4,19 @@ import {
   count,
   desc,
   eq,
+  gte,
   inArray,
   isNull,
   like,
+  lte,
+  min,
   ne,
   or,
   sql,
   type SQL,
 } from 'drizzle-orm'
 
+import type { DepreciationReportAsset } from '@kampus/school-core/lib/finance-fixed-asset-depreciation.ts'
 import type {
   FixedAssetCategory,
   FixedAssetDraft,
@@ -55,6 +59,8 @@ const COLUMNS = {
   supplierName: suppliers.name,
   receiptItemId: fixedAssets.receiptItemId,
   status: fixedAssets.status,
+  usefulLifeYears: fixedAssets.usefulLifeYears,
+  depreciationMethod: fixedAssets.depreciationMethod,
   scrappedAt: fixedAssets.scrappedAt,
   scrapDate: fixedAssets.scrapDate,
   scrapReason: fixedAssets.scrapReason,
@@ -376,4 +382,49 @@ export async function updateFixedAsset(
     )
     .returning({ id: fixedAssets.id })
   return rows.length === 1
+}
+
+/**
+ * Amortisman raporunun demirbaşları (DOM-FIN-088): yıl sonuna kadar alınmış, yıl başından önce
+ * hurdaya ayrılmamış kayıtlar. Hesap core'dadır (`depreciationReport`).
+ */
+export async function loadDepreciationAssets(
+  db: Database,
+  institutionId: string,
+  year: number,
+): Promise<DepreciationReportAsset[]> {
+  return db
+    .select({
+      id: fixedAssets.id,
+      tagNumber: fixedAssets.tagNumber,
+      name: fixedAssets.name,
+      category: fixedAssets.category,
+      status: fixedAssets.status,
+      acquisitionValueCents: fixedAssets.acquisitionValueCents,
+      acquisitionDate: fixedAssets.acquisitionDate,
+      usefulLifeYears: fixedAssets.usefulLifeYears,
+      depreciationMethod: fixedAssets.depreciationMethod,
+      scrapDate: fixedAssets.scrapDate,
+    })
+    .from(fixedAssets)
+    .where(
+      and(
+        ofInstitution(institutionId),
+        lte(fixedAssets.acquisitionDate, `${String(year)}-12-31`),
+        or(isNull(fixedAssets.scrapDate), gte(fixedAssets.scrapDate, `${String(year)}-01-01`)),
+      ),
+    )
+    .orderBy(asc(fixedAssets.tagNumber), asc(fixedAssets.id))
+}
+
+/** Kurumdaki en eski alım yılı (rapor yıl seçimi); demirbaş yoksa `null`. */
+export async function loadFirstAcquisitionYear(
+  db: Database,
+  institutionId: string,
+): Promise<number | null> {
+  const [row] = await db
+    .select({ first: min(fixedAssets.acquisitionDate) })
+    .from(fixedAssets)
+    .where(ofInstitution(institutionId))
+  return row?.first == null ? null : Number(row.first.slice(0, 4))
 }

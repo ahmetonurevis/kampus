@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { FIXED_ASSET_ASSIGNEE_TYPES } from '@kampus/school-core/lib/finance-fixed-asset-assignments.ts'
 import { FIXED_ASSET_COUNT_OUTCOMES } from '@kampus/school-core/lib/finance-fixed-asset-counts.ts'
 import {
+  DEPRECIATION_METHODS,
   FIXED_ASSET_CATEGORIES,
   FIXED_ASSET_STATUSES,
 } from '@kampus/school-core/lib/finance-fixed-assets.ts'
@@ -27,6 +28,10 @@ const fixedAssetListItemSchema = z.object({
   supplierName: z.string().nullable(),
   receiptItemId: z.string().nullable().describe('Bağlı mal kabul kalemi'),
   status: z.enum(FIXED_ASSET_STATUSES),
+  usefulLifeYears: z.number().int().describe('Faydalı ömür, yıl (DOM-FIN-088)'),
+  depreciationMethod: z
+    .enum(DEPRECIATION_METHODS)
+    .describe('Amortisman yöntemi: `normal` doğrusal, `declining` azalan bakiyeler'),
   scrapDate: z.string().nullable().describe('Hurdaya ayırma günü'),
   assignment: z
     .object({
@@ -77,6 +82,24 @@ const fixedAssetDetailSchema = fixedAssetListItemSchema.extend({
     .nullable()
     .describe('Demirbaşın son tamamlanmış sayımı (DOM-FIN-087); hiç sayılmadıysa boş'),
   createdAt: z.string(),
+  depreciation: z
+    .object({
+      rateBasisPoints: z.number().int().describe('Yıllık oran, baz puan (2000 = %20)'),
+      rows: z.array(
+        z.object({
+          year: z.number().int().describe('Takvim yılı; alım yılı tam yıl sayılır (K-225)'),
+          openingCents: z.number().int().describe('Dönem başı net değer, kuruş'),
+          depreciationCents: z.number().int().describe('Yılın amortismanı, kuruş'),
+          accumulatedCents: z.number().int().describe('Yıl sonu birikmiş amortisman, kuruş'),
+          netCents: z.number().int().describe('Yıl sonu net değer, kuruş'),
+          disposedCents: z
+            .number()
+            .int()
+            .describe('Hurdaya ayırma yılında kayıttan düşen net değer, kuruş (K-226)'),
+        }),
+      ),
+    })
+    .describe('Amortisman ön hesabı (DOM-FIN-088); yönetim raporu, defter kaydı değildir'),
 })
 export const fixedAssetResponse = dataResponse(fixedAssetDetailSchema)
 
@@ -114,3 +137,35 @@ export const fixedAssetReceiptItemsQuery = z.strictObject({
   ...pageQuerySchema.shape,
   q: search.describe('Kalem adı, sipariş numarası ve tedarikçi unvanında arama'),
 })
+
+const depreciationTotalsShape = {
+  assetCount: z.number().int().describe('Yıl içinde kayıtta olan demirbaş'),
+  heldCount: z.number().int().describe('Yıl sonunda kayıtta kalan demirbaş'),
+  disposedCount: z.number().int().describe('Yıl içinde hurdaya ayrılan demirbaş'),
+  costCents: z.number().int().describe('Yıl sonunda kayıtta kalanların alım değeri, KDV hariç'),
+  openingNetCents: z.number().int().describe('Dönem başı net değer'),
+  additionsCents: z.number().int().describe('Yıl içinde alınanların alım değeri'),
+  depreciationCents: z.number().int().describe('Yılın amortismanı'),
+  disposedCents: z.number().int().describe('Hurdaya ayrılanların kayıttan düşen net değeri'),
+  accumulatedCents: z
+    .number()
+    .int()
+    .describe('Yıl sonunda kayıtta kalanların birikmiş amortismanı'),
+  closingNetCents: z.number().int().describe('Yıl sonu net değer'),
+}
+
+/** Amortisman ön hesabı raporu (DOM-FIN-088); tutarlar kuruş. */
+export const depreciationReportResponse = dataResponse(
+  z.object({
+    year: z.number().int(),
+    firstYear: z
+      .number()
+      .int()
+      .nullable()
+      .describe('Kurumdaki en eski alım yılı; demirbaş yoksa boş'),
+    totals: z.object(depreciationTotalsShape),
+    categories: z.array(
+      z.object({ category: z.enum(FIXED_ASSET_CATEGORIES), ...depreciationTotalsShape }),
+    ),
+  }),
+)

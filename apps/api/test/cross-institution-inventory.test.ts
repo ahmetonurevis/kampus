@@ -1743,6 +1743,48 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: bütçe hazırlama ve onay (ON-243; DOM-FIN-093).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/budget-draft-options', 'get(OPTIONS, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/cost-centers/:costCenterId/budget-owner',
+          'assign(a, b.unit.id',
+        ],
+        ['liste', 'GET /api/v1/finance/budget-drafts', 'get(DRAFTS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/budget-drafts', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/budget-drafts/:draftId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/budget-drafts/:draftId', 'write(a.admin, bSubmitted'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/budget-drafts/:draftId/comparison',
+          'get(`${bUrl}/comparison`, a.admin)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/budget-drafts/:draftId/submit', "['submit', {}]"],
+        ['kayıt', 'POST /api/v1/finance/budget-drafts/:draftId/approve', "['approve', {}]"],
+        [
+          'kayıt',
+          'POST /api/v1/finance/budget-drafts/:draftId/request-revision',
+          "['request-revision', { reason: 'Sızma denemesi' }]",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/budget-drafts/:draftId/reject',
+          "['reject', { reason: 'Sızma denemesi' }]",
+        ],
+        ['kayıt', 'POST /api/v1/finance/budget-drafts/:draftId/reopen', "['reopen', {}]"],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-budget-drafts.test.ts',
+        'başka kurumun taslağı, merkezi ve dönemi 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

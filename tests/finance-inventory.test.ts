@@ -6,6 +6,7 @@ import {
   firstNegativeDay,
   foldName,
   isBelowMinimum,
+  isValidEanCheckDigit,
   planReceiptStockCancel,
   planReceiptStockEntries,
   planStockEntry,
@@ -113,6 +114,7 @@ test('DOM-FIN-077: stok kartı kodu büyük harfe çevrilir, kurumda tekildir', 
   )
   assert.deepEqual(data, {
     code: 'KAG-A3',
+    barcode: null,
     name: 'A3 kâğıt',
     category: 'stationery',
     unit: 'pack',
@@ -142,6 +144,71 @@ test('DOM-FIN-077: stok kartı kodu büyük harfe çevrilir, kurumda tekildir', 
         { items: [] },
       ),
     ZodError,
+  )
+})
+
+test('DOM-FIN-077, K-284: EAN-8 ve EAN-13 sağlama basamağı denetlenir', () => {
+  assert.equal(isValidEanCheckDigit('4006381333931'), true)
+  assert.equal(isValidEanCheckDigit('8691234567890'), true)
+  assert.equal(isValidEanCheckDigit('96385074'), true)
+  assert.equal(isValidEanCheckDigit('4006381333932'), false)
+  assert.equal(isValidEanCheckDigit('96385075'), false)
+  // 12 haneli (UPC-A) ve harfli kod EAN değildir.
+  assert.equal(isValidEanCheckDigit('036000291452'), false)
+})
+
+test('DOM-FIN-077, K-284: barkod isteğe bağlı; boşluksuz büyük harf, EAN sağlaması, serbest kod', () => {
+  const base = { code: 'KLM', name: 'Kalem', category: 'stationery', unit: 'piece' }
+  const barcodeOf = (barcode: unknown) => planStockItem({ ...base, barcode }, { items: [] }).barcode
+  assert.equal(planStockItem(base, { items: [] }).barcode, null)
+  assert.equal(barcodeOf(''), null)
+  assert.equal(barcodeOf('   '), null)
+  assert.equal(barcodeOf(null), null)
+  assert.equal(barcodeOf(' 4006 3813 33931 '), '4006381333931')
+  assert.equal(barcodeOf('96385074'), '96385074')
+  // Sağlaması yalnız 8 ve 13 haneli sayısal kodda denetlenir; öteki kodlar serbesttir.
+  assert.equal(barcodeOf('036000291452'), '036000291452')
+  assert.equal(barcodeOf('kurum-kalem/01'), 'KURUM-KALEM/01')
+  for (const invalid of ['4006381333932', '96385075', '-KALEM', 'A'.repeat(41), 'KAL EM?', 7])
+    assert.throws(() => barcodeOf(invalid), ZodError, String(invalid))
+})
+
+test('DOM-FIN-077, K-284: barkod kurumda tekildir ve başka kartın koduyla çakışmaz', () => {
+  const items = [
+    { id: PAPER, code: 'KAG-A4', barcode: '8691234567890' },
+    { id: TONER, code: '4006381333931', barcode: null },
+  ]
+  const base = { code: 'KLM', name: 'Kalem', category: 'stationery', unit: 'piece' }
+  assert.throws(
+    () => planStockItem({ ...base, barcode: '8691234567890' }, { items }),
+    isDomainError('stock_item_barcode_exists', 'conflict'),
+  )
+  assert.throws(
+    () => planStockItem({ ...base, barcode: '4006381333931' }, { items }),
+    isDomainError('stock_item_barcode_exists', 'conflict'),
+  )
+  // Kod başka kartın barkodu olamaz; kartın kendi kodu ve barkodu aynı olabilir.
+  assert.throws(
+    () => planStockItem({ ...base, code: '8691234567890' }, { items }),
+    isDomainError('stock_item_code_exists', 'conflict'),
+  )
+  const update = { items, hasMovements: true, quantity: 5 }
+  const paper = { id: PAPER, unit: 'pack' as const }
+  assert.deepEqual(planStockItemUpdate(paper, { barcode: '8691234567890' }, update), {
+    barcode: '8691234567890',
+  })
+  assert.deepEqual(planStockItemUpdate(paper, { barcode: null }, update), { barcode: null })
+  assert.throws(
+    () => planStockItemUpdate(paper, { barcode: '4006381333931' }, update),
+    isDomainError('stock_item_barcode_exists', 'conflict'),
+  )
+  const toner = { id: TONER, unit: 'piece' as const }
+  assert.deepEqual(planStockItemUpdate(toner, { barcode: '4006381333931' }, update), {
+    barcode: '4006381333931',
+  })
+  assert.throws(
+    () => planStockItemUpdate(toner, { code: '8691234567890' }, update),
+    isDomainError('stock_item_code_exists', 'conflict'),
   )
 })
 

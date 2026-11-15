@@ -673,6 +673,13 @@
       "when": 1794380188619,
       "tag": "0095_create_maintenance_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794769861139,
+      "tag": "0096_stock_followups",
+      "breakpoints": true
     }
   ]
 }

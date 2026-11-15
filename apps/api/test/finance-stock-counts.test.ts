@@ -64,7 +64,7 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
   })
 
   function call(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PATCH',
     url: string,
     cookie: string | null,
     payload?: unknown,
@@ -275,6 +275,29 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
       'stock_movement.adjustment',
     ])
       assert.ok(actions.includes(action), action)
+  })
+
+  test('DOM-FIN-081, K-229, K-284: okutma önce kartın barkodunu, sonra kodunu arar', async () => {
+    const t = await institution()
+    ok(
+      await call(
+        'PATCH',
+        `${ITEMS}/${String(t.paper.id)}`,
+        t.admin,
+        { barcode: '8691234567890' },
+        ifMatch(t.paper.version),
+      ),
+    )
+    const count = ok(await start(t.admin, t), 201)
+    const byBarcode = ok(await scan(t.admin, count, { code: ' 8691234567890 ' }))
+    assert.equal(byBarcode.itemCode, 'KAG-A4')
+    assert.equal(byBarcode.countedQuantity, 1)
+    // Barkodu olan kart koduyla da okunur; barkodu olmayan kart koduyla.
+    assert.equal(ok(await scan(t.admin, count, { code: 'kag-a4' })).countedQuantity, 2)
+    assert.equal(
+      ok(await scan(t.admin, count, { code: '8690000000017' })).itemName,
+      'Tükenmez kalem',
+    )
   })
 
   test('DOM-FIN-081, K-230: sayılmayan kalem değişmez; anlık görüntüde olmayan kart sayılınca fazla olarak girer', async () => {

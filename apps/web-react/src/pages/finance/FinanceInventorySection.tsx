@@ -461,7 +461,10 @@ function ItemDetail({
           <span className="font-semibold tabular-nums">{`${String(item.quantity)} ${unit}`}</span>
           {item.minQuantity === null ? '' : ` · kritik seviye ${String(item.minQuantity)}`}
         </p>
-        <p className="text-sm text-muted-foreground">{SUPPLIER_CATEGORY_LABELS[item.category]}</p>
+        <p className="text-sm text-muted-foreground">
+          {SUPPLIER_CATEGORY_LABELS[item.category]}
+          {item.barcode === null ? '' : ` · barkod ${item.barcode}`}
+        </p>
         <div className="flex flex-wrap gap-2">
           {canIssue && item.isActive ? (
             <Button type="button" variant="secondary" onClick={() => onIssue(item.id)}>

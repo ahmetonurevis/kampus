@@ -15,6 +15,7 @@ import {
   planStockCountCancel,
   planStockCountComplete,
   planStockCountLineSet,
+  findStockItemByScan,
   planStockCountScan,
   planStockCountStart,
   stockCountActions,
@@ -451,6 +452,28 @@ test('K-228: yönetici başlatır, tamamlar, iptal eder; ön büro okutur; diğe
   })
   for (const role of ['ogretmen', 'veli', 'ogrenci'])
     assert.deepEqual(Object.values(stockCountActions(role)), [false, false, false, false])
+})
+
+test('DOM-FIN-081, K-229, K-284: okutma önce barkodu, sonra kart kodunu arar', () => {
+  const items = [
+    { ...ITEMS.get(PAPER)!, barcode: '4006381333931' },
+    { ...ITEMS.get(PEN)!, barcode: null },
+    // Eski veride çakışma: kartın barkodu başka kartın koduyla aynı; barkod önce gelir.
+    { ...ITEMS.get(TONER)!, isActive: true, barcode: 'KAG-A4' },
+  ]
+  const lines = new Map<string, { countedQuantity: number | null }>()
+  assert.equal(findStockItemByScan(items, '4006381333931')?.id, PAPER)
+  assert.equal(findStockItemByScan(items, '8690000000017')?.id, PEN)
+  assert.equal(findStockItemByScan(items, 'KAG-A4')?.id, TONER)
+  assert.equal(findStockItemByScan(items, 'YOK'), undefined)
+  const scanned = planStockCountScan(OPEN, { code: ' 4006381333931 ' }, { items, lines })
+  assert.equal(scanned.itemId, PAPER)
+  assert.equal(scanned.countedQuantity, 1)
+  // Barkodu olmayan kart kodla okunur.
+  assert.equal(
+    planStockCountScan(OPEN, { code: 'kag-a4' }, { items: [items[0]!], lines }).itemId,
+    PAPER,
+  )
 })
 
 test('DOM-FIN-081: fark raporu CSV sayılan ve sayılmayan kalemleri kaçışlı yazar', () => {

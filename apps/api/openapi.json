@@ -123618,7 +123618,7 @@
             "in": "query",
             "name": "q",
             "required": false,
-            "description": "Kodda ve adda arama, Türkçe harf duyarsız"
+            "description": "Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız"
           },
           {
             "schema": {
@@ -123709,6 +123709,13 @@
                           "code": {
                             "type": "string"
                           },
+                          "barcode": {
+                            "description": "Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "name": {
                             "type": "string"
                           },
@@ -123778,6 +123785,7 @@
                         "required": [
                           "id",
                           "code",
+                          "barcode",
                           "name",
                           "category",
                           "unit",
@@ -123892,7 +123900,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Kod (büyük harfe çevrilir), ad, kategori (tedarikçi kategorileri), birim (`piece`, `pack`, `box`, `kilogram`, `liter`, `meter`; K-182) ve isteğe bağlı kritik seviye. Kod kurumda tekil: 409 `stock_item_code_exists` (DOM-FIN-077). Rol: `yonetici` (K-180). Modül `finance`.",
+        "description": "Kod (büyük harfe çevrilir), ad, kategori (tedarikçi kategorileri), birim (`piece`, `pack`, `box`, `kilogram`, `liter`, `meter`; K-182) isteğe bağlı kritik seviye ve barkod. Kod kurumda tekil: 409 `stock_item_code_exists` (DOM-FIN-077). Barkod boşlukları atılıp büyük harfe çevrilir; 8 ya da 13 haneli sayısal kodda EAN sağlama basamağı denetlenir (400), kurumda tekildir ve başka kartın koduyla aynı olamaz: 409 `stock_item_barcode_exists` (K-284). Rol: `yonetici` (K-180). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -123905,6 +123913,12 @@
                     "minLength": 1,
                     "maxLength": 20,
                     "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                  },
+                  "barcode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "name": {
                     "type": "string",
@@ -123990,6 +124004,13 @@
                         },
                         "code": {
                           "type": "string"
+                        },
+                        "barcode": {
+                          "description": "Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "name": {
                           "type": "string"
@@ -124209,6 +124230,7 @@
                       "required": [
                         "id",
                         "code",
+                        "barcode",
                         "name",
                         "category",
                         "unit",
@@ -124358,7 +124380,7 @@
             "in": "query",
             "name": "q",
             "required": false,
-            "description": "Kodda ve adda arama, Türkçe harf duyarsız"
+            "description": "Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız"
           },
           {
             "schema": {
@@ -124691,6 +124713,13 @@
                         "code": {
                           "type": "string"
                         },
+                        "barcode": {
+                          "description": "Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "name": {
                           "type": "string"
                         },
@@ -124909,6 +124938,7 @@
                       "required": [
                         "id",
                         "code",
+                        "barcode",
                         "name",
                         "category",
                         "unit",
@@ -125021,7 +125051,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Kısmi düzeltme. Hareketi olan kartın birimi değişmez (422 `stock_item_unit_locked`); miktarı olan kart pasifleşmez (422 `stock_item_has_stock`); başka kartın kodu 409 `stock_item_code_exists`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.",
+        "description": "Kısmi düzeltme. Hareketi olan kartın birimi değişmez (422 `stock_item_unit_locked`); miktarı olan kart pasifleşmez (422 `stock_item_has_stock`); başka kartın kodu ya da barkodu 409 `stock_item_code_exists`; başka kartın barkodu ya da kodu olan barkod 409 `stock_item_barcode_exists` (K-284); sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -125034,6 +125064,12 @@
                     "minLength": 1,
                     "maxLength": 20,
                     "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                  },
+                  "barcode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "name": {
                     "type": "string",
@@ -125135,6 +125171,13 @@
                         },
                         "code": {
                           "type": "string"
+                        },
+                        "barcode": {
+                          "description": "Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "name": {
                           "type": "string"
@@ -125354,6 +125397,7 @@
                       "required": [
                         "id",
                         "code",
+                        "barcode",
                         "name",
                         "category",
                         "unit",
@@ -125503,7 +125547,7 @@
             "in": "query",
             "name": "q",
             "required": false,
-            "description": "Kodda ve adda arama, Türkçe harf duyarsız"
+            "description": "Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız"
           },
           {
             "schema": {
@@ -135882,7 +135926,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Kart kodu (barkod okuyucu kodu klavye gibi yazar; büyük harfe çevrilir) kartı bulur, sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "description": "Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -141645,6 +141689,13 @@
                         "code": {
                           "type": "string"
                         },
+                        "barcode": {
+                          "description": "Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "name": {
                           "type": "string"
                         },
@@ -141863,6 +141914,7 @@
                       "required": [
                         "id",
                         "code",
+                        "barcode",
                         "name",
                         "category",
                         "unit",
@@ -142131,6 +142183,13 @@
                         "code": {
                           "type": "string"
                         },
+                        "barcode": {
+                          "description": "Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "name": {
                           "type": "string"
                         },
@@ -142349,6 +142408,7 @@
                       "required": [
                         "id",
                         "code",
+                        "barcode",
                         "name",
                         "category",
                         "unit",

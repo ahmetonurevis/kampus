@@ -20,7 +20,9 @@ import {
   STOCK_QUANTITY_MAX,
 } from '@kampus/school-core/lib/finance-inventory.ts'
 import {
+  STOCK_COUNT_ENTRY_KINDS,
   STOCK_COUNT_STATUSES,
+  type StockCountEntryKind,
   type StockCountStatus,
 } from '@kampus/school-core/lib/finance-stock-counts.ts'
 
@@ -149,5 +151,69 @@ export const stockCountLines = pgTable(
     uniqueIndex('stock_count_lines_movement_key')
       .on(table.institutionId, table.stockMovementId)
       .where(sql`${table.stockMovementId} is not null`),
+  ],
+)
+
+/**
+ * Sayım girişi (DOM-FIN-081; ON-340, K-285): açık sayımdaki her okutma (`scan`, eklenen miktar) ve
+ * elle yazılan miktar (`set`, satırın yeni miktarı; boşsa "sayılmadı") sırayla yazılır. Okutma
+ * geri alınabilir (`undone_at`); satırın sayılan miktarı ve son sayım anı geri alınmamış girişlerin
+ * sırayla uygulanmasından yeniden hesaplanır. Giriş silinmez; elle yazılan miktar geri alınmaz.
+ */
+export const stockCountEntries = pgTable(
+  'stock_count_entries',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    countId: uuid('count_id').notNull(),
+    itemId: uuid('item_id').notNull(),
+    sequence: integer('sequence').notNull(),
+    kind: text('kind').$type<StockCountEntryKind>().notNull(),
+    quantity: integer('quantity'),
+    enteredAt: timestamp('entered_at', { withTimezone: true }).notNull(),
+    // kvkk: K
+    enteredByUserId: text('entered_by_user_id').notNull(),
+    undoneAt: timestamp('undone_at', { withTimezone: true }),
+    // kvkk: K
+    undoneByUserId: text('undone_by_user_id'),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({ name: 'stock_count_entries_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'stock_count_entries_count_fkey',
+      columns: [table.institutionId, table.countId],
+      foreignColumns: [stockCounts.institutionId, stockCounts.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'stock_count_entries_item_fkey',
+      columns: [table.institutionId, table.itemId],
+      foreignColumns: [stockItems.institutionId, stockItems.id],
+    }).onDelete('restrict'),
+    check('stock_count_entries_kind_check', oneOf(table.kind, STOCK_COUNT_ENTRY_KINDS)),
+    // Okutma eklenen miktarı (en az 1), elle giriş yeni miktarı (boşsa "sayılmadı") taşır; yalnız
+    // okutma geri alınır, geri alma zamanı ve kişisi birlikte.
+    check(
+      'stock_count_entries_quantity_check',
+      sql`(${table.kind} = 'scan' and ${table.quantity} between 1 and ${n(STOCK_QUANTITY_MAX)})
+        or (${table.kind} = 'set' and (${table.quantity} is null or ${table.quantity} between 0 and ${n(STOCK_QUANTITY_MAX)}) and ${table.undoneAt} is null)`,
+    ),
+    check(
+      'stock_count_entries_undo_check',
+      sql`(${table.undoneAt} is null) = (${table.undoneByUserId} is null)`,
+    ),
+    uniqueIndex('stock_count_entries_sequence_key').on(
+      table.institutionId,
+      table.countId,
+      table.sequence,
+    ),
+    index('stock_count_entries_count_item_idx').on(
+      table.institutionId,
+      table.countId,
+      table.itemId,
+    ),
+    index('stock_count_entries_item_idx').on(table.institutionId, table.itemId),
   ],
 )

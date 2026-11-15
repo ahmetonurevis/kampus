@@ -165,7 +165,7 @@ export async function listStockItemsFor(ctx: ServiceContext, query: StockItemLis
     .map((item) => itemRow(item, totals.get(item.id) ?? 0, chemicals.has(item.id)))
     .filter(
       (row) =>
-        matches(search, row.code, row.name) &&
+        matches(search, row.code, row.name, row.barcode ?? '') &&
         (query.category === undefined || row.category === query.category) &&
         (query.status === undefined || row.isActive === (query.status === 'active')) &&
         (query.critical !== true || (row.isActive && row.isBelowMinimum)) &&

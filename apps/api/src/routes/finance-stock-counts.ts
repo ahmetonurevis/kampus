@@ -144,7 +144,7 @@ export function registerFinanceStockCountRoutes(app: FastifyInstance) {
         operationId: 'scanStockCount',
         tags,
         summary: 'Sayıma kart okut',
-        description: `Kart kodu (barkod okuyucu kodu klavye gibi yazar; büyük harfe çevrilir) kartı bulur, sayılan miktara \`quantity\` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 \`stock_count_item_not_found\`; pasif kart 422 \`stock_item_inactive\`. ${CLOSED} \`Idempotency-Key\` zorunlu: aynı okutma iki kez sayılmaz. ${READERS}`,
+        description: `Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara \`quantity\` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 \`stock_count_item_not_found\`; pasif kart 422 \`stock_item_inactive\`. ${CLOSED} \`Idempotency-Key\` zorunlu: aynı okutma iki kez sayılmaz. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: stockCountParams,
         body: stockCountScanSchema,

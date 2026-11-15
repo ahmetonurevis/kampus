@@ -5271,7 +5271,7 @@ export interface paths {
         put?: never;
         /**
          * Stok kartı ekle
-         * @description Kod (büyük harfe çevrilir), ad, kategori (tedarikçi kategorileri), birim (`piece`, `pack`, `box`, `kilogram`, `liter`, `meter`; K-182) ve isteğe bağlı kritik seviye. Kod kurumda tekil: 409 `stock_item_code_exists` (DOM-FIN-077). Rol: `yonetici` (K-180). Modül `finance`.
+         * @description Kod (büyük harfe çevrilir), ad, kategori (tedarikçi kategorileri), birim (`piece`, `pack`, `box`, `kilogram`, `liter`, `meter`; K-182) isteğe bağlı kritik seviye ve barkod. Kod kurumda tekil: 409 `stock_item_code_exists` (DOM-FIN-077). Barkod boşlukları atılıp büyük harfe çevrilir; 8 ya da 13 haneli sayısal kodda EAN sağlama basamağı denetlenir (400), kurumda tekildir ve başka kartın koduyla aynı olamaz: 409 `stock_item_barcode_exists` (K-284). Rol: `yonetici` (K-180). Modül `finance`.
          */
         post: operations["createStockItem"];
         delete?: never;
@@ -5319,7 +5319,7 @@ export interface paths {
         head?: never;
         /**
          * Stok kartını düzelt ya da pasifleştir
-         * @description Kısmi düzeltme. Hareketi olan kartın birimi değişmez (422 `stock_item_unit_locked`); miktarı olan kart pasifleşmez (422 `stock_item_has_stock`); başka kartın kodu 409 `stock_item_code_exists`; sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.
+         * @description Kısmi düzeltme. Hareketi olan kartın birimi değişmez (422 `stock_item_unit_locked`); miktarı olan kart pasifleşmez (422 `stock_item_has_stock`); başka kartın kodu ya da barkodu 409 `stock_item_code_exists`; başka kartın barkodu ya da kodu olan barkod 409 `stock_item_barcode_exists` (K-284); sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (K-180). Modül `finance`.
          */
         patch: operations["updateStockItem"];
         trace?: never;
@@ -5799,7 +5799,7 @@ export interface paths {
         put?: never;
         /**
          * Sayıma kart okut
-         * @description Kart kodu (barkod okuyucu kodu klavye gibi yazar; büyük harfe çevrilir) kartı bulur, sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         * @description Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
          */
         post: operations["scanStockCount"];
         delete?: never;
@@ -57530,7 +57530,7 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                /** @description Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız */
                 q?: string;
                 /** @description Kategori */
                 category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -57559,6 +57559,8 @@ export interface operations {
                         data: {
                             id: string;
                             code: string;
+                            /** @description Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284) */
+                            barcode: string | null;
                             name: string;
                             /** @enum {string} */
                             category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -57668,6 +57670,7 @@ export interface operations {
             content: {
                 "application/json": {
                     code: string;
+                    barcode?: string | null;
                     name: string;
                     /** @enum {string} */
                     category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -57689,6 +57692,8 @@ export interface operations {
                         data: {
                             id: string;
                             code: string;
+                            /** @description Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284) */
+                            barcode: string | null;
                             name: string;
                             /** @enum {string} */
                             category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -57817,7 +57822,7 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                /** @description Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız */
                 q?: string;
                 /** @description Kategori */
                 category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -57971,6 +57976,8 @@ export interface operations {
                         data: {
                             id: string;
                             code: string;
+                            /** @description Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284) */
+                            barcode: string | null;
                             name: string;
                             /** @enum {string} */
                             category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -58110,6 +58117,7 @@ export interface operations {
             content: {
                 "application/json": {
                     code?: string;
+                    barcode?: string | null;
                     name?: string;
                     /** @enum {string} */
                     category?: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -58131,6 +58139,8 @@ export interface operations {
                         data: {
                             id: string;
                             code: string;
+                            /** @description Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284) */
+                            barcode: string | null;
                             name: string;
                             /** @enum {string} */
                             category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -58259,7 +58269,7 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description Kodda ve adda arama, Türkçe harf duyarsız */
+                /** @description Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız */
                 q?: string;
                 /** @description `active` etkin, `inactive` pasif kayıtlar */
                 status?: "active" | "inactive";
@@ -65102,6 +65112,8 @@ export interface operations {
                         data: {
                             id: string;
                             code: string;
+                            /** @description Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284) */
+                            barcode: string | null;
                             name: string;
                             /** @enum {string} */
                             category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";
@@ -65262,6 +65274,8 @@ export interface operations {
                         data: {
                             id: string;
                             code: string;
+                            /** @description Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284) */
+                            barcode: string | null;
                             name: string;
                             /** @enum {string} */
                             category: "stationery" | "cleaning" | "food" | "it" | "maintenance" | "furniture" | "educational" | "services" | "transport" | "other";

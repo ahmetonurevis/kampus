@@ -96,7 +96,8 @@ export const fixedAssetCounts = pgTable(
  * Sayım satırı (DOM-FIN-087). Beklenen liste başlangıçta `in_scope = true` ve `pending` olarak
  * yazılır (K-232); listede olmayan kurum demirbaşı okutulunca `in_scope = false` satırı eklenir
  * (K-233). Etiket, ad ve kayıtlı yer o anın kopyasıdır: demirbaş sonradan düzeltilse de rapor
- * değişmez. Okutma bir kez yazılır; konum düzeltmesi yalnız yanlış konumdaki satırda (K-235).
+ * değişmez. Okutma bir kez yazılır; açık sayımda geri alınır: beklenen satır `pending`'e döner,
+ * listede olmayan satır arşivlenir (K-286). Konum düzeltmesi yalnız yanlış konumdaki satırda (K-235).
  */
 export const fixedAssetCountItems = pgTable(
   'fixed_asset_count_items',
@@ -157,11 +158,10 @@ export const fixedAssetCountItems = pgTable(
         and (${table.observedLocation} is null
           or char_length(${table.observedLocation}) between 2 and ${n(FIXED_ASSET_LOCATION_MAX)})`,
     ),
-    uniqueIndex('fixed_asset_count_items_asset_key').on(
-      table.institutionId,
-      table.countId,
-      table.assetId,
-    ),
+    // Geri alınan "listede yoktu" okutması arşivlenir; aynı demirbaş yeniden okutulabilir (K-286).
+    uniqueIndex('fixed_asset_count_items_asset_key')
+      .on(table.institutionId, table.countId, table.assetId)
+      .where(sql`${table.archivedAt} is null`),
     index('fixed_asset_count_items_count_idx').on(
       table.institutionId,
       table.countId,

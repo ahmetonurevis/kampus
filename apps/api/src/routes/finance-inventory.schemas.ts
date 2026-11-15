@@ -26,11 +26,15 @@ const search = z
   .min(2)
   .max(100)
   .optional()
-  .describe('Kodda ve adda arama, Türkçe harf duyarsız')
+  .describe('Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız')
 
 const stockItemRowSchema = z.object({
   id: z.string(),
   code: z.string(),
+  barcode: z
+    .string()
+    .nullable()
+    .describe('Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)'),
   name: z.string(),
   category: z.enum(STOCK_CATEGORIES),
   unit: z.enum(STOCK_UNITS),

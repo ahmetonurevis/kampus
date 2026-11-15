@@ -21,8 +21,8 @@ import {
 /**
  * Stok sayımı ve fark raporu (docs/domain/finans.md DOM-FIN-081; ON-231). Yönetici bir depoda sayım
  * başlatır; o anki sistem miktarları (iptal edilmemiş hareketlerin toplamı, `DOM-FIN-078`) sayımın
- * satırlarına **anlık görüntü** olarak yazılır. Sayım sürerken kart kodu (barkod okuyucu klavye gibi
- * yazar, K-229) okutulur ya da miktar elle girilir. Fark raporu kart başına sistem, sayım sırasındaki
+ * satırlarına **anlık görüntü** olarak yazılır. Sayım sürerken kartın barkodu ya da kodu (barkod
+ * okuyucu klavye gibi yazar, K-229, K-284) okutulur ya da miktar elle girilir. Fark raporu kart başına sistem, sayım sırasındaki
  * hareket, beklenen, sayılan ve fark miktarını, son alış fiyatı varsa fark tutarını verir; sayılmayan
  * kalemler ayrı listelenir ve değişmez (K-230). Tamamlama farkları tek işlemde `adjustment_in` /
  * `adjustment_out` düzeltme hareketleriyle yazar; iptal edilen sayım hareket yazmaz. Tamamlanan ya da
@@ -53,6 +53,17 @@ export const STOCK_COUNT_STATUS_LABELS = {
 
 export const STOCK_COUNT_CODE_MAX = 64
 
+/**
+ * Sayım girişi türü (K-285): `scan` okutmayla eklenen miktar, `set` elle yazılan satır miktarı
+ * (boşsa "sayılmadı"). Yalnız okutma geri alınır.
+ */
+export const STOCK_COUNT_ENTRY_KINDS = ['scan', 'set'] as const
+export type StockCountEntryKind = (typeof STOCK_COUNT_ENTRY_KINDS)[number]
+export const STOCK_COUNT_ENTRY_KIND_LABELS = {
+  scan: 'Okutma',
+  set: 'Elle miktar',
+} as const satisfies Record<StockCountEntryKind, string>
+
 // --- Şemalar -------------------------------------------------------------------------------------
 
 export const startStockCountSchema = z.strictObject({
@@ -72,12 +83,12 @@ const countQuantity = z
   .int('Miktar tam sayı olmalıdır.')
   .max(STOCK_QUANTITY_MAX, 'Miktar çok büyük.')
 
-/** Okutma: kart kodu (büyük harfe çevrilir) ve eklenecek miktar (varsayılan 1). */
+/** Okutma: kartın barkodu ya da kodu (büyük harfe çevrilir) ve eklenecek miktar (varsayılan 1). */
 export const stockCountScanSchema = z.strictObject({
   code: z
-    .string('Kart kodunu okutun ya da yazın.')
+    .string('Barkodu okutun ya da kart kodunu yazın.')
     .trim()
-    .min(1, 'Kart kodunu okutun ya da yazın.')
+    .min(1, 'Barkodu okutun ya da kart kodunu yazın.')
     .max(STOCK_COUNT_CODE_MAX, `Kod en fazla ${String(STOCK_COUNT_CODE_MAX)} karakter olabilir.`)
     .toUpperCase(),
   quantity: countQuantity.min(1, 'Eklenecek miktar en az 1 olmalıdır.').default(1),
@@ -307,31 +318,43 @@ export interface CountedLine {
   isNew: boolean
 }
 
-const itemByCode = (items: Iterable<StockItemRef>, code: string) => {
-  for (const item of items) if (item.code === code) return item
-  return undefined
+/** Okutmada aranan kart: barkodu (K-284) varsa onunla da bulunur. */
+export type ScannableStockItem = StockItemRef & { barcode?: string | null }
+
+/**
+ * Okunan kodun kartı (K-229, K-284): önce barkod, sonra kart kodu. Barkod ve kod kurumda
+ * çakışamadığı için (`planStockItem`) sıra yalnız eski verideki çakışmada belirleyicidir.
+ */
+export function findStockItemByScan<T extends ScannableStockItem>(
+  items: Iterable<T>,
+  code: string,
+): T | undefined {
+  const list = [...items]
+  return list.find((item) => item.barcode === code) ?? list.find((item) => item.code === code)
 }
 
 /**
- * Okutma (K-229): kart kodu (barkod okuyucu kodu klavye gibi yazar; ayrı barkod alanı yok) kartı
- * bulur ve satırın sayılan miktarına `quantity` (varsayılan 1) eklenir. Kod bulunmazsa 422
+ * Okutma (K-229, K-284): okunan kod önce kartın barkoduyla, sonra kart koduyla eşleşir; satırın
+ * sayılan miktarına `quantity` (varsayılan 1) eklenir. Kod bulunmazsa 422
  * `stock_count_item_not_found`; pasif kart sayılmaz. Toplam 1.000.000'u aşamaz.
  */
 export function planStockCountScan(
   count: Pick<StockCountRef, 'status'>,
   input: unknown,
   context: {
-    items: Iterable<StockItemRef>
+    items: Iterable<ScannableStockItem>
     lines: ReadonlyMap<string, Pick<StockCountLine, 'countedQuantity'>>
   },
 ): CountedLine & { countedQuantity: number; item: StockItemRef } {
   const data = stockCountScanSchema.parse(input)
   assertOpen(count)
-  const found = itemByCode(context.items, data.code)
+  const found = findStockItemByScan(context.items, data.code)
   if (found === undefined)
-    throw ruleError('stock_count_item_not_found', `${data.code} koduyla stok kartı bulunamadı.`, [
-      'code',
-    ])
+    throw ruleError(
+      'stock_count_item_not_found',
+      `${data.code} barkodu ya da koduyla stok kartı bulunamadı.`,
+      ['code'],
+    )
   const item = assertItem(found, ['code'])
   const line = context.lines.get(item.id)
   const countedQuantity = (line?.countedQuantity ?? 0) + data.quantity

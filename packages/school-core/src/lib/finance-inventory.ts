@@ -125,6 +125,29 @@ export const STOCK_CANCEL_REASON_MIN = 5
 export const STOCK_CANCEL_REASON_MAX = 500
 /** Kimyasal partinin numarası (DOM-FIN-090, K-241). */
 export const STOCK_LOT_NUMBER_MAX = 40
+/** Kartın barkodu (DOM-FIN-077, K-284): EAN-8, EAN-13 ya da serbest kod. */
+export const STOCK_BARCODE_MAX = 40
+/** Veritabanı denetimiyle aynı biçim: harf ya da rakamla başlar; nokta, alt çizgi, `/`, `+`, tire. */
+export const STOCK_BARCODE_PATTERN = /^[A-Z0-9][A-Z0-9._/+-]{0,39}$/
+
+/** EAN denetimine giren kod: 8 ya da 13 haneli, yalnız rakam. */
+export const isEanShaped = (code: string) => /^(\d{8}|\d{13})$/.test(code)
+
+/**
+ * EAN-8 ve EAN-13 sağlama basamağı (GS1): sağdan başlayarak veri basamakları sırayla 3 ve 1 ile
+ * çarpılır, toplamı 10'a tamamlayan basamak son basamaktır. Yalnız 8 ya da 13 haneli sayısal kodda
+ * anlamlıdır; öteki kodlar serbest koddur (K-284).
+ */
+export function isValidEanCheckDigit(code: string): boolean {
+  if (!isEanShaped(code)) return false
+  const digits = [...code].map(Number)
+  const check = digits.pop()
+  let sum = 0
+  digits.reverse().forEach((digit, index) => {
+    sum += digit * (index % 2 === 0 ? 3 : 1)
+  })
+  return (10 - (sum % 10)) % 10 === check
+}
 
 // --- Şemalar -------------------------------------------------------------------------------------
 
@@ -143,8 +166,33 @@ const minQuantitySchema = z
   .max(STOCK_QUANTITY_MAX, 'Kritik seviye çok büyük.')
   .nullable()
 
+/**
+ * Barkod (K-284): isteğe bağlı; boşluklar atılır, büyük harfe çevrilir. 8 ya da 13 haneli sayısal
+ * kod EAN sayılır ve sağlama basamağı denetlenir; öteki kodlar (UPC, Code 128, kurumun kendi kodu)
+ * serbesttir.
+ */
+const barcodeSchema = z
+  .string('Barkodu yazın.')
+  .transform((value) => value.replace(/\s/g, '').toUpperCase())
+  .pipe(
+    z
+      .string()
+      .max(STOCK_BARCODE_MAX, `Barkod en fazla ${String(STOCK_BARCODE_MAX)} karakter olabilir.`)
+      .refine(
+        (value) => value === '' || STOCK_BARCODE_PATTERN.test(value),
+        'Barkod harf ya da rakamla başlar; yalnız harf, rakam, nokta, alt çizgi, eğik çizgi, artı ve tire içerir.',
+      )
+      .refine(
+        (value) => !isEanShaped(value) || isValidEanCheckDigit(value),
+        'EAN barkodunun son (sağlama) basamağı tutmuyor; barkodu yeniden okutun ya da kontrol edin.',
+      ),
+  )
+  .nullable()
+  .transform((value) => (value === '' ? null : value))
+
 export const stockItemSchema = z.strictObject({
   code: financeCodeSchema,
+  barcode: barcodeSchema.default(null),
   name: financeNameSchema.max(
     STOCK_ITEM_NAME_MAX,
     `En fazla ${String(STOCK_ITEM_NAME_MAX)} karakter girebilirsiniz.`,
@@ -159,6 +207,7 @@ export type StockItemFields = z.output<typeof stockItemSchema>
 export const updateStockItemSchema = z
   .strictObject({
     ...stockItemSchema.shape,
+    barcode: barcodeSchema,
     minQuantity: minQuantitySchema,
     isActive: z.boolean('Durumu seçin.'),
   })
@@ -401,36 +450,79 @@ export interface StockWarehouseRef {
   isActive: boolean
 }
 
-/** Yeni stok kartı: kod kurumda tekil (pasif kartlar dahil; 409 `stock_item_code_exists`). */
+/** Tekillik denetimine giren kart alanları; `barcode` verilmezse kartın barkodu yok sayılır. */
+export interface StockItemKey {
+  id: string
+  code: string
+  barcode?: string | null
+}
+
+/**
+ * Kod ve barkod kurumda tekildir (pasif kartlar dahil) ve okutmada karışmasın diye bir kartın
+ * barkodu başka kartın koduyla, kodu başka kartın barkoduyla aynı olamaz (K-284). Kartın kendi kodu
+ * ve barkodu aynı olabilir.
+ */
+function assertItemKeys(
+  id: string | null,
+  keys: { code?: string | undefined; barcode?: string | null | undefined },
+  items: readonly StockItemKey[],
+) {
+  const others = items.filter((item) => item.id !== id)
+  const { code, barcode } = keys
+  if (code !== undefined) {
+    if (others.some((item) => item.code === code))
+      throw conflictError('stock_item_code_exists', 'Bu kodla kayıtlı bir stok kartı var.', 'code')
+    if (others.some((item) => item.barcode === code))
+      throw conflictError(
+        'stock_item_code_exists',
+        'Bu kod başka bir stok kartının barkodu; okutmada karışmaması için başka kod seçin.',
+        'code',
+      )
+  }
+  if (barcode !== undefined && barcode !== null) {
+    if (others.some((item) => item.barcode === barcode))
+      throw conflictError(
+        'stock_item_barcode_exists',
+        'Bu barkodla kayıtlı bir stok kartı var.',
+        'barcode',
+      )
+    if (others.some((item) => item.code === barcode))
+      throw conflictError(
+        'stock_item_barcode_exists',
+        'Bu barkod başka bir stok kartının kodu; okutmada karışmaması için kontrol edin.',
+        'barcode',
+      )
+  }
+}
+
+/**
+ * Yeni stok kartı: kod kurumda tekil (pasif kartlar dahil; 409 `stock_item_code_exists`); barkod
+ * isteğe bağlı ve tekil (409 `stock_item_barcode_exists`, K-284).
+ */
 export function planStockItem(
   input: unknown,
-  context: { items: readonly Pick<StockItemRef, 'id' | 'code'>[] },
+  context: { items: readonly StockItemKey[] },
 ): StockItemFields {
   const data = stockItemSchema.parse(input)
-  if (context.items.some((item) => item.code === data.code))
-    throw conflictError('stock_item_code_exists', 'Bu kodla kayıtlı bir stok kartı var.', 'code')
+  assertItemKeys(null, data, context.items)
   return data
 }
 
 /**
- * Stok kartı düzeltmesi (K-182): kod tekil; hareketi olan kartın birimi değişmez; miktarı olan
- * kart pasifleşmez (önce çıkış ya da transferle sıfırlanır).
+ * Stok kartı düzeltmesi (K-182, K-284): kod ve barkod tekil; hareketi olan kartın birimi
+ * değişmez; miktarı olan kart pasifleşmez (önce çıkış ya da transferle sıfırlanır).
  */
 export function planStockItemUpdate(
   current: Pick<StockItemRef, 'id' | 'unit'>,
   input: unknown,
   context: {
-    items: readonly Pick<StockItemRef, 'id' | 'code'>[]
+    items: readonly StockItemKey[]
     hasMovements: boolean
     quantity: number
   },
 ): z.output<typeof updateStockItemSchema> {
   const changes = updateStockItemSchema.parse(input)
-  if (
-    changes.code !== undefined &&
-    context.items.some((item) => item.id !== current.id && item.code === changes.code)
-  )
-    throw conflictError('stock_item_code_exists', 'Bu kodla kayıtlı bir stok kartı var.', 'code')
+  assertItemKeys(current.id, changes, context.items)
   if (changes.unit !== undefined && changes.unit !== current.unit && context.hasMovements)
     throw ruleError(
       'stock_item_unit_locked',

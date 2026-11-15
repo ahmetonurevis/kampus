@@ -39,6 +39,7 @@ import { purchaseReceiptItems, purchaseReceipts } from './schema/finance-purchas
 export interface StoredStockItem {
   id: string
   code: string
+  barcode: string | null
   name: string
   category: StockCategory
   unit: StockUnit
@@ -70,6 +71,7 @@ export interface StoredStockMovement extends CancellableMovement {
 const ITEM_COLUMNS = {
   id: stockItems.id,
   code: stockItems.code,
+  barcode: stockItems.barcode,
   name: stockItems.name,
   category: stockItems.category,
   unit: stockItems.unit,

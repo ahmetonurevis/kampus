@@ -2,7 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch, type Control, type UseFormReturn } from 'react-hook-form'
 import { useSuppliers } from '@kampus/react-shared/use-finance-procurement.ts'
-import { usePurchaseOrders } from '@kampus/react-shared/use-finance-purchase-orders.ts'
+import {
+  usePurchaseOrder,
+  usePurchaseOrders,
+} from '@kampus/react-shared/use-finance-purchase-orders.ts'
 import {
   SUPPLIER_LEDGER_WARNING_CODES,
   useCreateSupplierInvoice,
@@ -45,12 +48,14 @@ import {
   invoiceFormField,
   invoiceFormSchema,
   invoiceGrossCents,
+  invoiceNetCents,
   planBody,
   planDefaults,
   planFormSchema,
   type InvoiceFormValues,
   type PlanFormValues,
 } from './finance-supplier-ledger-forms.ts'
+import { InvoiceLineFields, InvoiceMatchingSection } from './SupplierInvoiceMatchParts.tsx'
 import { SupplierPaymentModal, SupplierPaymentsList } from './SupplierPaymentParts.tsx'
 
 const NO_SORT: readonly string[] = []
@@ -361,6 +366,10 @@ function InvoiceFormModal({
   const orderOptions = (supplierId ? (orders.data?.data ?? []) : []).filter((order) =>
     LINKABLE_ORDER.has(order.status),
   )
+  // Siparişe bağlı faturanın kalemleri sipariş kalemlerine bağlanır (DOM-FIN-095).
+  const orderId = values.purchaseOrderId ?? ''
+  const order = usePurchaseOrder(orderId)
+  const orderItems = orderId === '' ? [] : (order.data?.data.items ?? [])
   const gross = invoiceGrossCents(values)
   const busy = create.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -474,6 +483,14 @@ function InvoiceFormModal({
             </NativeSelect>
           )}
         </FormField>
+        {orderId === '' ? null : (
+          <InvoiceLineFields
+            form={form}
+            busy={busy}
+            items={orderItems}
+            netCents={invoiceNetCents(values)}
+          />
+        )}
         <FormField id="tfatura-vade-bicimi" label="Vade" error={errors.planMode}>
           {(control) => (
             <NativeSelect
@@ -528,7 +545,8 @@ type Dialog =
   | { kind: 'pay'; installment: SupplierInvoiceDetail['installments'][number] }
   | null
 
-function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
+/** Fatura ayrıntısı; eşleşmeyen faturalar listesi de aynı paneli açar (DOM-FIN-095). */
+export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const item = useSupplierInvoice(invoiceId)
   const [dialog, setDialog] = useState<Dialog>(null)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
@@ -614,6 +632,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           ))}
         </ul>
       </section>
+      <InvoiceMatchingSection invoice={invoice} />
       <SupplierPaymentsList payments={invoice.payments} />
       {dialog?.kind === 'plan' ? <PlanModal invoice={invoice} onClose={close} /> : null}
       {dialog?.kind === 'cancel' ? <CancelInvoiceModal invoice={invoice} onClose={close} /> : null}

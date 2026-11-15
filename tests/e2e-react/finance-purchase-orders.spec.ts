@@ -19,7 +19,10 @@ const ok = (result: ApiResult, status = 201) => {
 const ifMatch = (version: number) => ({ 'if-match': `"${String(version)}"` })
 /** Bugünden 30 gün sonrası (`YYYY-MM-DD`); geçerlilik günü geçmişte olamaz. */
 const dayFromNow = (days: number) =>
-  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+  // Sunucu günü İstanbul'a göre hesaplar; UTC günü gece 00:00–03:00 arasında bir gün geride kalır.
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
+    new Date(Date.now() + days * 86_400_000),
+  )
 const validUntil = () => dayFromNow(30)
 
 /** Bütçe ve 10.000 TL satır, iki tedarikçi, onaylı tek kalemli talep ve Beta'nın ucuz teklifi API'den kurulur. */

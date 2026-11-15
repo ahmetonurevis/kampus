@@ -21,7 +21,10 @@ const ok = (result: ApiResult, status = 201) => {
 }
 const ifMatch = (version: number) => ({ 'if-match': `"${String(version)}"` })
 const dayFromNow = (days: number) =>
-  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+  // Sunucu günü İstanbul'a göre hesaplar; UTC günü gece 00:00–03:00 arasında bir gün geride kalır.
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
+    new Date(Date.now() + days * 86_400_000),
+  )
 
 /**
  * Bütçe dönemi ve satırı, şirket (Bilişim) ve şahıs (Hizmet) tedarikçi, ikisine birer sipariş:

@@ -1,5 +1,5 @@
 {
-  "id": "4323ae97-9ea3-4ac4-9579-f052310304eb",
+  "id": "3631c97f-7400-4fcf-bdd8-ddf5b6995257",
   "prevId": "4426e26b-3d40-4d9b-9a70-f27125ef41d5",
   "version": "7",
   "dialect": "postgresql",
@@ -12792,436 +12792,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.purchase_approval_settings": {
-      "name": "purchase_approval_settings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "purchase_approval_settings_institution_id_institutions_id_fk": {
-          "name": "purchase_approval_settings_institution_id_institutions_id_fk",
-          "tableFrom": "purchase_approval_settings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.purchase_approval_tiers": {
-      "name": "purchase_approval_tiers",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_total_cents": {
-          "name": "min_total_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "approver_role": {
-          "name": "approver_role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approver_user_id": {
-          "name": "approver_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "purchase_approval_tiers_position_key": {
-          "name": "purchase_approval_tiers_position_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"purchase_approval_tiers\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "purchase_approval_tiers_institution_id_institutions_id_fk": {
-          "name": "purchase_approval_tiers_institution_id_institutions_id_fk",
-          "tableFrom": "purchase_approval_tiers",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "purchase_approval_tiers_pkey": {
-          "name": "purchase_approval_tiers_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "purchase_approval_tiers_position_check": {
-          "name": "purchase_approval_tiers_position_check",
-          "value": "\"purchase_approval_tiers\".\"position\" between 1 and 5"
-        },
-        "purchase_approval_tiers_amount_check": {
-          "name": "purchase_approval_tiers_amount_check",
-          "value": "\"purchase_approval_tiers\".\"min_total_cents\" between 0 and 1000000000000"
-        },
-        "purchase_approval_tiers_currency_check": {
-          "name": "purchase_approval_tiers_currency_check",
-          "value": "\"purchase_approval_tiers\".\"currency\" = 'TRY'"
-        },
-        "purchase_approval_tiers_approver_check": {
-          "name": "purchase_approval_tiers_approver_check",
-          "value": "(\"purchase_approval_tiers\".\"approver_role\" is null) <> (\"purchase_approval_tiers\".\"approver_user_id\" is null)\n        and (\"purchase_approval_tiers\".\"approver_role\" is null or \"purchase_approval_tiers\".\"approver_role\" in ('yonetici'))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.purchase_request_approval_steps": {
-      "name": "purchase_request_approval_steps",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "request_id": {
-          "name": "request_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_total_cents": {
-          "name": "min_total_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "approver_role": {
-          "name": "approver_role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approver_user_id": {
-          "name": "approver_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decision": {
-          "name": "decision",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_by_user_id": {
-          "name": "decided_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_at": {
-          "name": "decided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "purchase_request_approval_steps_position_key": {
-          "name": "purchase_request_approval_steps_position_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"purchase_request_approval_steps\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "purchase_request_approval_steps_request_idx": {
-          "name": "purchase_request_approval_steps_request_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "purchase_request_approval_steps_institution_id_institutions_id_fk": {
-          "name": "purchase_request_approval_steps_institution_id_institutions_id_fk",
-          "tableFrom": "purchase_request_approval_steps",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "purchase_request_approval_steps_request_fkey": {
-          "name": "purchase_request_approval_steps_request_fkey",
-          "tableFrom": "purchase_request_approval_steps",
-          "tableTo": "purchase_requests",
-          "columnsFrom": [
-            "institution_id",
-            "request_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "purchase_request_approval_steps_pkey": {
-          "name": "purchase_request_approval_steps_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "purchase_request_approval_steps_position_check": {
-          "name": "purchase_request_approval_steps_position_check",
-          "value": "\"purchase_request_approval_steps\".\"position\" between 1 and 5"
-        },
-        "purchase_request_approval_steps_amount_check": {
-          "name": "purchase_request_approval_steps_amount_check",
-          "value": "\"purchase_request_approval_steps\".\"min_total_cents\" between 0 and 1000000000000"
-        },
-        "purchase_request_approval_steps_currency_check": {
-          "name": "purchase_request_approval_steps_currency_check",
-          "value": "\"purchase_request_approval_steps\".\"currency\" = 'TRY'"
-        },
-        "purchase_request_approval_steps_approver_check": {
-          "name": "purchase_request_approval_steps_approver_check",
-          "value": "(\"purchase_request_approval_steps\".\"approver_role\" is null) <> (\"purchase_request_approval_steps\".\"approver_user_id\" is null)\n        and (\"purchase_request_approval_steps\".\"approver_role\" is null or \"purchase_request_approval_steps\".\"approver_role\" in ('yonetici'))"
-        },
-        "purchase_request_approval_steps_decision_check": {
-          "name": "purchase_request_approval_steps_decision_check",
-          "value": "(\"purchase_request_approval_steps\".\"decision\" is null and \"purchase_request_approval_steps\".\"decided_by_user_id\" is null and \"purchase_request_approval_steps\".\"decided_at\" is null and \"purchase_request_approval_steps\".\"note\" is null)\n        or (\"purchase_request_approval_steps\".\"decision\" in ('approved', 'rejected') and \"purchase_request_approval_steps\".\"decided_by_user_id\" is not null and \"purchase_request_approval_steps\".\"decided_at\" is not null\n          and (\"purchase_request_approval_steps\".\"decision\" <> 'rejected' or \"purchase_request_approval_steps\".\"note\" is not null))"
-        },
-        "purchase_request_approval_steps_note_check": {
-          "name": "purchase_request_approval_steps_note_check",
-          "value": "\"purchase_request_approval_steps\".\"note\" is null or char_length(\"purchase_request_approval_steps\".\"note\") between 1 and 500"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.purchase_order_items": {
       "name": "purchase_order_items",
       "schema": "",
@@ -22207,6 +21777,183 @@
         "privacy_notices_version_check": {
           "name": "privacy_notices_version_check",
           "value": "\"privacy_notices\".\"version\" = 1 and \"privacy_notices\".\"archived_at\" is null"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.campaign_codes": {
+      "name": "campaign_codes",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_cents": {
+          "name": "cost_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "campaign_codes_code_key": {
+          "name": "campaign_codes_code_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "campaign_codes_institution_id_institutions_id_fk": {
+          "name": "campaign_codes_institution_id_institutions_id_fk",
+          "tableFrom": "campaign_codes",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "campaign_codes_pkey": {
+          "name": "campaign_codes_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "campaign_codes_code_check": {
+          "name": "campaign_codes_code_check",
+          "value": "\"campaign_codes\".\"code\" ~ '^[A-Z0-9][A-Z0-9-]{2,19}$'"
+        },
+        "campaign_codes_name_check": {
+          "name": "campaign_codes_name_check",
+          "value": "char_length(\"campaign_codes\".\"name\") between 2 and 120"
+        },
+        "campaign_codes_channel_check": {
+          "name": "campaign_codes_channel_check",
+          "value": "\"campaign_codes\".\"channel\" in ('social_media', 'flyer', 'fair', 'referral', 'website', 'other')"
+        },
+        "campaign_codes_dates_check": {
+          "name": "campaign_codes_dates_check",
+          "value": "\"campaign_codes\".\"start_date\" <= \"campaign_codes\".\"end_date\""
+        },
+        "campaign_codes_cost_check": {
+          "name": "campaign_codes_cost_check",
+          "value": "\"campaign_codes\".\"cost_cents\" is null or \"campaign_codes\".\"cost_cents\" between 0 and 10000000000"
+        },
+        "campaign_codes_currency_check": {
+          "name": "campaign_codes_currency_check",
+          "value": "\"campaign_codes\".\"currency\" = 'TRY'"
         }
       },
       "isRLSEnabled": false

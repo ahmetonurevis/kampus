@@ -25,6 +25,10 @@ import {
   PROSPECT_SOURCES,
   scheduleMeetingSchema,
 } from '@kampus/school-core/lib/prospects.ts'
+import {
+  campaignCodeSchema,
+  normalizeCampaignCode,
+} from '@kampus/school-core/lib/prospect-campaigns.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import type { CoreRecord } from '@/hooks/use-core-collection.ts'
 import { slotLabel } from './prospect-rows.ts'
@@ -59,6 +63,13 @@ export function createFormSchema(type: InstitutionType) {
       interest: createProspectSchema.shape.interest,
       source: z.enum(PROSPECT_SOURCES, 'Aday kaynağını seçin.'),
       referrerStudentId: z.string().optional(),
+      /** Kampanya kodu (DOM-KAY-041); boş bırakılabilir, geçerliliği sunucu denetler. */
+      campaignCode: z
+        .string()
+        .optional()
+        .refine((value) => !text(value) || campaignCodeSchema.safeParse(value).success, {
+          message: 'Kodda yalnız İngilizce harf, rakam ve tire kullanın (3–20 karakter).',
+        }),
       minor: z.enum(['', 'yes', 'no']).optional(),
       guardianName: z.string().optional(),
       siblingOfId: z.string().optional(),
@@ -90,15 +101,19 @@ export type CreateFormValues = z.input<ReturnType<typeof createFormSchema>>
 export const isMinor = (minor: string | undefined, type: InstitutionType) =>
   !prospectAgeGroupRequired(type) || minor === 'yes'
 
-export function createDefaults(branchId = ''): CreateFormValues {
+export function createDefaults(
+  branchId = '',
+  campaign: { code: string; source?: (typeof PROSPECT_SOURCES)[number] | null } = { code: '' },
+): CreateFormValues {
   return {
     name: '',
     phone: '',
     email: '',
     branchId,
     interest: '',
-    source: 'Web sitesi',
+    source: campaign.source ?? 'Web sitesi',
     referrerStudentId: '',
+    campaignCode: campaign.code,
     minor: '',
     guardianName: '',
     siblingOfId: '',
@@ -120,6 +135,7 @@ export function createBody(
   const referrerStudentId = optional(values.referrerStudentId)
   const guardianName = optional(values.guardianName)
   const siblingOfId = optional(values.siblingOfId)
+  const campaignCode = optional(values.campaignCode)
   return {
     name: values.name,
     phone: values.phone,
@@ -128,6 +144,7 @@ export function createBody(
     interest: values.interest,
     source: values.source,
     ...(values.source === REFERRAL_SOURCE && referrerStudentId ? { referrerStudentId } : {}),
+    ...(campaignCode ? { campaignCode: normalizeCampaignCode(campaignCode) } : {}),
     ...(prospectAgeGroupRequired(type) ? { minor } : {}),
     ...(minor && guardianName ? { guardianName } : {}),
     ...(siblingOfId ? { siblingOfId } : {}),

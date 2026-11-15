@@ -29,6 +29,7 @@ import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/pla
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
+import { registerEnrollmentEokulImportRoutes } from './routes/enrollment-eokul-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
@@ -50,6 +51,7 @@ import { registerFinanceInstallmentImportRoutes } from './routes/finance-install
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
+import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
@@ -72,6 +74,7 @@ import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requ
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
+import { registerProspectCampaignRoutes } from './routes/prospect-campaigns.ts'
 import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -139,7 +142,8 @@ export const REDACTED_PATHS = [
   '*.nationalId',
   'birthDate',
   '*.birthDate',
-  // kvkk: Ç — pilot aktarım dosyası (IST-007): içerik hiçbir koşulda loglanmaz.
+  // kvkk: Ç — pilot aktarım ve e-Okul listesi dosyası (IST-007, IST-134): içerik hiçbir koşulda
+  // loglanmaz.
   'fileBase64',
   '*.fileBase64',
   // Finans: dekont/havale referansı, iade IBAN'ı ve hesap sahibi, nakil okulu, iptal gerekçesi.
@@ -483,9 +487,11 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   registerEnrollmentImportRoutes(app)
+  registerEnrollmentEokulImportRoutes(app)
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
   registerProspectSeasonWatchRoutes(app)
+  registerProspectCampaignRoutes(app)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)
@@ -512,6 +518,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceChemicalRoutes(app)
   registerFinanceSupplyRequestRoutes(app)
   registerFinanceMaintenanceRequestRoutes(app)
+  registerFinanceSeveranceRoutes(app)
   registerFinancePurchaseApprovalRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

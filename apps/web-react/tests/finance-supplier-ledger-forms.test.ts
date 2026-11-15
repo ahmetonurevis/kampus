@@ -9,6 +9,10 @@ import {
   invoiceFormField,
   invoiceFormSchema,
   invoiceGrossCents,
+  invoiceLinesNetCents,
+  invoiceNetCents,
+  MATCH_STATUS_VIEW,
+  orderLineRows,
   paymentBody,
   paymentDefaults,
   paymentFormField,
@@ -113,4 +117,55 @@ test('DOM-FIN-076: ödeme formu kalanı önerir; nakitte hesap gönderilmez, ban
   assert.equal(instructionEligible({ method: 'eft', cancelledAt: null }), true)
   assert.equal(instructionEligible({ method: 'cheque', cancelledAt: null }), false)
   assert.equal(instructionEligible({ method: 'transfer', cancelledAt: '2026-10-06' }), false)
+})
+
+const ORDER = '00000000-0000-4000-8000-0000000000b1'
+const ITEM = '00000000-0000-4000-8000-0000000000e1'
+
+test('DOM-FIN-095: siparişe bağlı fatura kalem ister; kalemler sipariş kaleminden önerilir ve gövdeye kuruşla girer (K-280)', () => {
+  const base = {
+    ...invoiceDefaults('2026-10-06'),
+    supplierId: SUPPLIER,
+    invoiceNumber: 'A-1',
+    amount: '1.200',
+    vat: '200',
+    dueDate: '2026-10-31',
+    purchaseOrderId: ORDER,
+  }
+  const issues = (values: object) =>
+    invoiceFormSchema.safeParse(values).error?.issues.map((issue) => issue.path.join('.')) ?? []
+  assert.deepEqual(issues(base), ['lines.root'])
+  const lines = orderLineRows([{ id: ITEM, quantity: 5, unitPriceCents: 20_000 }])
+  assert.deepEqual(lines, [
+    { orderItemId: ITEM, description: '', quantity: '5', unitPrice: '200,00' },
+  ])
+  assert.equal(invoiceLinesNetCents(lines), 100_000)
+  assert.equal(invoiceNetCents(base), 100_000)
+  assert.equal(invoiceNetCents({ ...base, amountIncludesVat: 'false' }), 120_000)
+  const extra = { orderItemId: '', description: ' Kargo ', quantity: '1', unitPrice: '50' }
+  const values = { ...base, lines: [...lines, extra] }
+  assert.deepEqual(issues(values), [])
+  assert.deepEqual(invoiceBody(values).lines, [
+    { orderItemId: ITEM, description: null, quantity: 5, unitPriceCents: 20_000 },
+    { orderItemId: null, description: 'Kargo', quantity: 1, unitPriceCents: 5_000 },
+  ])
+  assert.equal('lines' in invoiceBody({ ...values, purchaseOrderId: '' }), false)
+  assert.deepEqual(issues({ ...base, lines: [...lines, ...lines] }), ['lines.1.orderItemId'])
+  assert.deepEqual(issues({ ...base, lines: [{ ...extra, description: 'x' }] }), [
+    'lines.0.description',
+  ])
+  assert.deepEqual(issues({ ...base, lines: [{ ...lines[0], quantity: '1,5' }] }), [
+    'lines.0.quantity',
+  ])
+  assert.deepEqual(issues({ ...base, lines: [{ ...lines[0], unitPrice: '0' }] }), [
+    'lines.0.unitPrice',
+  ])
+  assert.equal(invoiceFormField('lines.1.unitPriceCents'), 'lines.1.unitPrice')
+  assert.equal(invoiceFormField('lines.0.orderItemId'), 'lines.0.orderItemId')
+  assert.equal(invoiceFormField('lines.0.bilinmeyen'), undefined)
+  assert.equal(invoiceFormField('lines'), 'root.lines')
+  assert.deepEqual(
+    [MATCH_STATUS_VIEW.matched.tone, MATCH_STATUS_VIEW.price_mismatch.tone],
+    ['green', 'amber'],
+  )
 })

@@ -12,6 +12,7 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { findFeeTariff } from '../db/fee-tariffs.ts'
+import { hasScholarshipEndForContract } from '../db/finance-scholarships.ts'
 import { allocatedByInvoice } from '../db/payments.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { loadStudentFamilies } from '../db/finance-renewal-candidates.ts'
@@ -257,10 +258,11 @@ export async function amendContractCommand(
         options,
         prepare: async (tx, actor, institutionType) => {
           await requireFamilyLoaded(tx, ctx.institutionId, [studentId], family)
-          const [tariff, allocated] = await Promise.all([
+          const [tariff, allocated, scholarshipEnded] = await Promise.all([
             // Ek protokolün taksit sayısı da tarifenin koşuluna bağlıdır (DOM-FIN-013).
             typeof tariffId === 'string' ? findFeeTariff(tx, ctx.institutionId, tariffId) : null,
             allocatedByInvoice(tx, ctx.institutionId, studentId),
+            hasScholarshipEndForContract(tx, ctx.institutionId, contractId),
           ])
           return (state, { now, makeId }) => {
             requireAuthorized(actor, 'contract.amend', {}, state, { now, institutionType })
@@ -271,6 +273,7 @@ export async function amendContractCommand(
               userId: ctx.actor.userId,
               now,
               makeId,
+              scholarshipEnded,
             })
           }
         },

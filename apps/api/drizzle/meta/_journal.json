@@ -694,6 +694,13 @@
       "when": 1794780673319,
       "tag": "0098_create_purchase_approval_steps",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1794781721814,
+      "tag": "0099_scholarship_revocation",
+      "breakpoints": true
     }
   ]
 }

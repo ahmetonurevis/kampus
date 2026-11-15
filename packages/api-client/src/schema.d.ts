@@ -3085,7 +3085,7 @@ export interface paths {
         };
         /**
          * Burs atamalarını listele
-         * @description Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. Roller: `yonetici`, `onburo`.
+         * @description Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. `endStatus` kesme ya da iptal durumudur (ON-283). Roller: `yonetici`, `onburo`.
          */
         get: operations["listScholarshipAwards"];
         put?: never;
@@ -3110,6 +3110,86 @@ export interface paths {
          * @description Atamanın MEBBİS'e işlendiği günü bir kez kaydeder (DOM-FIN-025); MEBBİS'e bağlantı yoktur. İkinci kez 409 `scholarship_mebbis_recorded`, gelecek gün 422 `scholarship_date_future`. `If-Match` zorunlu. Roller: `yonetici`.
          */
         post: operations["recordScholarshipMebbis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/end-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Burs kesme ya da iptal hesabını önizle
+         * @description Yazmadan hesaplar (DOM-FIN-025, K-264…K-266). `terminate`: kesme gününden sonra vadesi gelen burs payı yeni taksit olur; gün bugünden önce 422 `scholarship_end_date_past`, eğitim yılı dışı 422 `scholarship_end_date_out_of_year`. `revoke`: bugüne kadar uygulanan pay vade gününden bugüne kanuni faiziyle geri istenir. Etkisiz işlem 422 `scholarship_end_no_change`; ayrılan öğrenci 409 `scholarship_student_inactive`, açık ek protokol 409 `scholarship_contract_amendment_open`, kesilmiş burs 409 `scholarship_already_terminated`, iptal edilmiş 409 `scholarship_already_revoked`. Roller: `yonetici`.
+         */
+        post: operations["quoteScholarshipEnd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/ends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Burs kesme ve iptal kayıtları
+         * @description Atamanın kesme ve iptal kayıtları, yazma anındaki hesabıyla (geri isteme yazısı buradan üretilir). Gerekçe açıklaması yalnız burada döner. Roller: `yonetici`.
+         */
+        get: operations["listScholarshipEnds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bursu kes
+         * @description Bursu gerekçeyle ileriye etkili keser (DOM-FIN-025, K-265): kesme gününden sonra vadesi gelen burs payı sözleşmeye bağlı ayrı öğrenim taksiti olur, önceki taksitler değişmez; fon payı kalan bursa iner, ödeyiciye `scholarship_ended` bildirimi gider. `confirmedCents` önizlemedeki `totalCents`tir; değiştiyse 409 `scholarship_end_changed`. Önizlemenin hataları geçerlidir. `Idempotency-Key` ve `If-Match` (atama sürümü) zorunlu, taze oturum ister. Roller: `yonetici`.
+         */
+        post: operations["terminateScholarship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bursu gerçek dışı beyan nedeniyle iptal et ve geri iste
+         * @description Bursu geriye etkili iptal eder (DOM-FIN-025, K-266): bugüne kadar uygulanan pay ve 3095 sayılı Kanun kanuni faizi sözleşme dışı iki alacak (son ödeme 30 gün) olarak yazılır, sonraki taksitlerde burs kalkar; fon payı bırakılır, ödeyiciye bildirim gider. `confirmedCents` önizlemedeki `totalCents`tir; değiştiyse 409 `scholarship_end_changed`. `Idempotency-Key` ve `If-Match` zorunlu, taze oturum ister. Roller: `yonetici`.
+         */
+        post: operations["revokeScholarship"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10758,7 +10838,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -15534,7 +15614,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -39073,6 +39153,13 @@ export interface operations {
                             mebbisRecordedDate: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                            /**
+                             * @description Burs sürüyor, kesildi ya da gerçek dışı beyanla iptal edildi (ON-283)
+                             * @enum {string}
+                             */
+                            endStatus: "active" | "terminated" | "revoked";
+                            /** @description Son kesme ya da iptal günü (YYYY-MM-DD) */
+                            endedOn: string | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
                     };
@@ -39192,6 +39279,628 @@ export interface operations {
                             mebbisRecordedDate: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quoteScholarshipEnd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "terminate";
+                    effectiveDate: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "revoke";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            kind: "terminate" | "revoke";
+                            awardId: string;
+                            contractId: string;
+                            scholarshipCents: number;
+                            /** @description Taksitsiz tam burs; pay ayları sanaldır */
+                            fullScholarship: boolean;
+                            /** @description Yeni alacak toplamı; komutta `confirmedCents` */
+                            totalCents: number;
+                            reinstated: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                amountCents: number;
+                            }[];
+                            /** @description Kesme günü ya da geri isteme günü */
+                            effectiveDate: string;
+                            /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                            keptCents: number;
+                            /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                            reinstatedCents: number;
+                            /** @description Geri istenen burs anaparası */
+                            principalCents: number;
+                            /** @description Kanuni faiz */
+                            interestCents: number;
+                            /** @description Geri isteme alacağının son ödeme günü */
+                            clawbackDueDate: string | null;
+                            lines: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                /** @description Bu vadenin burs payı, kuruş */
+                                shareCents: number;
+                                /**
+                                 * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                 * @enum {string}
+                                 */
+                                status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                interestCents: number;
+                                interestDays: number;
+                                segments: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    from: string;
+                                    /** @description Aralığın sonu (hariç) */
+                                    to: string;
+                                    days: number;
+                                    /** @description Yıllık kanuni faiz, on binde birlik */
+                                    basisPoints: number;
+                                    /** @description Oranın dayanağı */
+                                    source: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listScholarshipEnds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            awardId: string;
+                            studentId: string;
+                            academicYear: number;
+                            programName: string;
+                            ends: {
+                                id: string;
+                                awardId: string;
+                                contractId: string;
+                                /** @enum {string} */
+                                kind: "terminate" | "revoke";
+                                /** @description Neden anahtarı; iptalde `false_declaration` */
+                                reason: string;
+                                /** @description Yazılan taksitler */
+                                invoiceIds: string[];
+                                createdAt: string;
+                                /** @description Kesme günü ya da geri isteme günü */
+                                effectiveDate: string;
+                                /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                                keptCents: number;
+                                /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                                reinstatedCents: number;
+                                /** @description Geri istenen burs anaparası */
+                                principalCents: number;
+                                /** @description Kanuni faiz */
+                                interestCents: number;
+                                /** @description Geri isteme alacağının son ödeme günü */
+                                clawbackDueDate: string | null;
+                                lines: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    dueDate: string;
+                                    /** @description Bu vadenin burs payı, kuruş */
+                                    shareCents: number;
+                                    /**
+                                     * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                     * @enum {string}
+                                     */
+                                    status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                    interestCents: number;
+                                    interestDays: number;
+                                    segments: {
+                                        /** @description Gün (YYYY-MM-DD) */
+                                        from: string;
+                                        /** @description Aralığın sonu (hariç) */
+                                        to: string;
+                                        days: number;
+                                        /** @description Yıllık kanuni faiz, on binde birlik */
+                                        basisPoints: number;
+                                        /** @description Oranın dayanağı */
+                                        source: string;
+                                    }[];
+                                }[];
+                                /** @description Gerekçe açıklaması */
+                                note: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    terminateScholarship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    reason: "discipline" | "academic" | "attendance" | "institution_decision" | "other";
+                    note: string;
+                    effectiveDate: string;
+                    confirmedCents: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            awardId: string;
+                            contractId: string;
+                            /** @enum {string} */
+                            kind: "terminate" | "revoke";
+                            /** @description Neden anahtarı; iptalde `false_declaration` */
+                            reason: string;
+                            /** @description Yazılan taksitler */
+                            invoiceIds: string[];
+                            createdAt: string;
+                            /** @description Kesme günü ya da geri isteme günü */
+                            effectiveDate: string;
+                            /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                            keptCents: number;
+                            /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                            reinstatedCents: number;
+                            /** @description Geri istenen burs anaparası */
+                            principalCents: number;
+                            /** @description Kanuni faiz */
+                            interestCents: number;
+                            /** @description Geri isteme alacağının son ödeme günü */
+                            clawbackDueDate: string | null;
+                            lines: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                /** @description Bu vadenin burs payı, kuruş */
+                                shareCents: number;
+                                /**
+                                 * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                 * @enum {string}
+                                 */
+                                status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                interestCents: number;
+                                interestDays: number;
+                                segments: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    from: string;
+                                    /** @description Aralığın sonu (hariç) */
+                                    to: string;
+                                    days: number;
+                                    /** @description Yıllık kanuni faiz, on binde birlik */
+                                    basisPoints: number;
+                                    /** @description Oranın dayanağı */
+                                    source: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revokeScholarship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    note: string;
+                    confirmedCents: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            awardId: string;
+                            contractId: string;
+                            /** @enum {string} */
+                            kind: "terminate" | "revoke";
+                            /** @description Neden anahtarı; iptalde `false_declaration` */
+                            reason: string;
+                            /** @description Yazılan taksitler */
+                            invoiceIds: string[];
+                            createdAt: string;
+                            /** @description Kesme günü ya da geri isteme günü */
+                            effectiveDate: string;
+                            /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                            keptCents: number;
+                            /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                            reinstatedCents: number;
+                            /** @description Geri istenen burs anaparası */
+                            principalCents: number;
+                            /** @description Kanuni faiz */
+                            interestCents: number;
+                            /** @description Geri isteme alacağının son ödeme günü */
+                            clawbackDueDate: string | null;
+                            lines: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                /** @description Bu vadenin burs payı, kuruş */
+                                shareCents: number;
+                                /**
+                                 * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                 * @enum {string}
+                                 */
+                                status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                interestCents: number;
+                                interestDays: number;
+                                segments: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    from: string;
+                                    /** @description Aralığın sonu (hariç) */
+                                    to: string;
+                                    days: number;
+                                    /** @description Yıllık kanuni faiz, on binde birlik */
+                                    basisPoints: number;
+                                    /** @description Oranın dayanağı */
+                                    source: string;
+                                }[];
+                            }[];
                         };
                     };
                 };

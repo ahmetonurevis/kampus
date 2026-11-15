@@ -5622,7 +5622,8 @@
               "referral_reward_earned",
               "package_hours_low",
               "package_expiring",
-              "package_expired"
+              "package_expired",
+              "scholarship_ended"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -25763,7 +25764,8 @@
               "referral_reward_earned",
               "package_hours_low",
               "package_expiring",
-              "package_expired"
+              "package_expired",
+              "scholarship_ended"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -79853,7 +79855,7 @@
         "tags": [
           "finance-scholarships"
         ],
-        "description": "Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. Roller: `yonetici`, `onburo`.",
+        "description": "Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. `endStatus` kesme ya da iptal durumudur (ON-283). Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -79935,6 +79937,22 @@
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991,
                             "description": "`If-Match` için kayıt sürümü"
+                          },
+                          "endStatus": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "terminated",
+                              "revoked"
+                            ],
+                            "description": "Burs sürüyor, kesildi ya da gerçek dışı beyanla iptal edildi (ON-283)"
+                          },
+                          "endedOn": {
+                            "description": "Son kesme ya da iptal günü (YYYY-MM-DD)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -79944,7 +79962,9 @@
                           "academicYear",
                           "amountCents",
                           "mebbisRecordedDate",
-                          "version"
+                          "version",
+                          "endStatus",
+                          "endedOn"
                         ],
                         "additionalProperties": false
                       }
@@ -80158,6 +80178,1409 @@
                         "amountCents",
                         "mebbisRecordedDate",
                         "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-awards/{awardId}/end-quote": {
+      "post": {
+        "operationId": "quoteScholarshipEnd",
+        "summary": "Burs kesme ya da iptal hesabını önizle",
+        "tags": [
+          "finance-scholarships"
+        ],
+        "description": "Yazmadan hesaplar (DOM-FIN-025, K-264…K-266). `terminate`: kesme gününden sonra vadesi gelen burs payı yeni taksit olur; gün bugünden önce 422 `scholarship_end_date_past`, eğitim yılı dışı 422 `scholarship_end_date_out_of_year`. `revoke`: bugüne kadar uygulanan pay vade gününden bugüne kanuni faiziyle geri istenir. Etkisiz işlem 422 `scholarship_end_no_change`; ayrılan öğrenci 409 `scholarship_student_inactive`, açık ek protokol 409 `scholarship_contract_amendment_open`, kesilmiş burs 409 `scholarship_already_terminated`, iptal edilmiş 409 `scholarship_already_revoked`. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "terminate"
+                        ]
+                      },
+                      "effectiveDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "effectiveDate"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "revoke"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "awardId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "terminate",
+                            "revoke"
+                          ]
+                        },
+                        "awardId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "scholarshipCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "fullScholarship": {
+                          "type": "boolean",
+                          "description": "Taksitsiz tam burs; pay ayları sanaldır"
+                        },
+                        "totalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yeni alacak toplamı; komutta `confirmedCents`"
+                        },
+                        "reinstated": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dueDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "dueDate",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "effectiveDate": {
+                          "type": "string",
+                          "description": "Kesme günü ya da geri isteme günü"
+                        },
+                        "keptCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesmede önceki dönemde kalan burs; fon payı buna iner"
+                        },
+                        "reinstatedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İleriye kalkan burs: yeni taksitlerin toplamı"
+                        },
+                        "principalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri istenen burs anaparası"
+                        },
+                        "interestCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kanuni faiz"
+                        },
+                        "clawbackDueDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "description": "Gün (YYYY-MM-DD)"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Geri isteme alacağının son ödeme günü"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dueDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "shareCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu vadenin burs payı, kuruş"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "kept",
+                                  "reinstated",
+                                  "clawback",
+                                  "already_reinstated"
+                                ],
+                                "description": "`kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay"
+                              },
+                              "interestCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "interestDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "segments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "description": "Gün (YYYY-MM-DD)"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "description": "Aralığın sonu (hariç)"
+                                    },
+                                    "days": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "basisPoints": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yıllık kanuni faiz, on binde birlik"
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "description": "Oranın dayanağı"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to",
+                                    "days",
+                                    "basisPoints",
+                                    "source"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "dueDate",
+                              "shareCents",
+                              "status",
+                              "interestCents",
+                              "interestDays",
+                              "segments"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "awardId",
+                        "contractId",
+                        "scholarshipCents",
+                        "fullScholarship",
+                        "totalCents",
+                        "reinstated",
+                        "effectiveDate",
+                        "keptCents",
+                        "reinstatedCents",
+                        "principalCents",
+                        "interestCents",
+                        "clawbackDueDate",
+                        "lines"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-awards/{awardId}/ends": {
+      "get": {
+        "operationId": "listScholarshipEnds",
+        "summary": "Burs kesme ve iptal kayıtları",
+        "tags": [
+          "finance-scholarships"
+        ],
+        "description": "Atamanın kesme ve iptal kayıtları, yazma anındaki hesabıyla (geri isteme yazısı buradan üretilir). Gerekçe açıklaması yalnız burada döner. Roller: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "awardId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "awardId": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "programName": {
+                          "type": "string"
+                        },
+                        "ends": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "awardId": {
+                                "type": "string"
+                              },
+                              "contractId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "terminate",
+                                  "revoke"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "description": "Neden anahtarı; iptalde `false_declaration`"
+                              },
+                              "invoiceIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Yazılan taksitler"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "effectiveDate": {
+                                "type": "string",
+                                "description": "Kesme günü ya da geri isteme günü"
+                              },
+                              "keptCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesmede önceki dönemde kalan burs; fon payı buna iner"
+                              },
+                              "reinstatedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İleriye kalkan burs: yeni taksitlerin toplamı"
+                              },
+                              "principalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Geri istenen burs anaparası"
+                              },
+                              "interestCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kanuni faiz"
+                              },
+                              "clawbackDueDate": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "description": "Gün (YYYY-MM-DD)"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Geri isteme alacağının son ödeme günü"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "dueDate": {
+                                      "type": "string",
+                                      "description": "Gün (YYYY-MM-DD)"
+                                    },
+                                    "shareCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Bu vadenin burs payı, kuruş"
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "kept",
+                                        "reinstated",
+                                        "clawback",
+                                        "already_reinstated"
+                                      ],
+                                      "description": "`kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay"
+                                    },
+                                    "interestCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "interestDays": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "segments": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "from": {
+                                            "type": "string",
+                                            "description": "Gün (YYYY-MM-DD)"
+                                          },
+                                          "to": {
+                                            "type": "string",
+                                            "description": "Aralığın sonu (hariç)"
+                                          },
+                                          "days": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "basisPoints": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Yıllık kanuni faiz, on binde birlik"
+                                          },
+                                          "source": {
+                                            "type": "string",
+                                            "description": "Oranın dayanağı"
+                                          }
+                                        },
+                                        "required": [
+                                          "from",
+                                          "to",
+                                          "days",
+                                          "basisPoints",
+                                          "source"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "dueDate",
+                                    "shareCents",
+                                    "status",
+                                    "interestCents",
+                                    "interestDays",
+                                    "segments"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "note": {
+                                "type": "string",
+                                "description": "Gerekçe açıklaması"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "awardId",
+                              "contractId",
+                              "kind",
+                              "reason",
+                              "invoiceIds",
+                              "createdAt",
+                              "effectiveDate",
+                              "keptCents",
+                              "reinstatedCents",
+                              "principalCents",
+                              "interestCents",
+                              "clawbackDueDate",
+                              "lines",
+                              "note"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "awardId",
+                        "studentId",
+                        "academicYear",
+                        "programName",
+                        "ends"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-awards/{awardId}/terminate": {
+      "post": {
+        "operationId": "terminateScholarship",
+        "summary": "Bursu kes",
+        "tags": [
+          "finance-scholarships"
+        ],
+        "description": "Bursu gerekçeyle ileriye etkili keser (DOM-FIN-025, K-265): kesme gününden sonra vadesi gelen burs payı sözleşmeye bağlı ayrı öğrenim taksiti olur, önceki taksitler değişmez; fon payı kalan bursa iner, ödeyiciye `scholarship_ended` bildirimi gider. `confirmedCents` önizlemedeki `totalCents`tir; değiştiyse 409 `scholarship_end_changed`. Önizlemenin hataları geçerlidir. `Idempotency-Key` ve `If-Match` (atama sürümü) zorunlu, taze oturum ister. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "discipline",
+                      "academic",
+                      "attendance",
+                      "institution_decision",
+                      "other"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 1000
+                  },
+                  "effectiveDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "confirmedCents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000000000
+                  }
+                },
+                "required": [
+                  "reason",
+                  "note",
+                  "effectiveDate",
+                  "confirmedCents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "awardId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "awardId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "terminate",
+                            "revoke"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "Neden anahtarı; iptalde `false_declaration`"
+                        },
+                        "invoiceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Yazılan taksitler"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "effectiveDate": {
+                          "type": "string",
+                          "description": "Kesme günü ya da geri isteme günü"
+                        },
+                        "keptCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesmede önceki dönemde kalan burs; fon payı buna iner"
+                        },
+                        "reinstatedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İleriye kalkan burs: yeni taksitlerin toplamı"
+                        },
+                        "principalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri istenen burs anaparası"
+                        },
+                        "interestCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kanuni faiz"
+                        },
+                        "clawbackDueDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "description": "Gün (YYYY-MM-DD)"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Geri isteme alacağının son ödeme günü"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dueDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "shareCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu vadenin burs payı, kuruş"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "kept",
+                                  "reinstated",
+                                  "clawback",
+                                  "already_reinstated"
+                                ],
+                                "description": "`kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay"
+                              },
+                              "interestCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "interestDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "segments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "description": "Gün (YYYY-MM-DD)"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "description": "Aralığın sonu (hariç)"
+                                    },
+                                    "days": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "basisPoints": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yıllık kanuni faiz, on binde birlik"
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "description": "Oranın dayanağı"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to",
+                                    "days",
+                                    "basisPoints",
+                                    "source"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "dueDate",
+                              "shareCents",
+                              "status",
+                              "interestCents",
+                              "interestDays",
+                              "segments"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "awardId",
+                        "contractId",
+                        "kind",
+                        "reason",
+                        "invoiceIds",
+                        "createdAt",
+                        "effectiveDate",
+                        "keptCents",
+                        "reinstatedCents",
+                        "principalCents",
+                        "interestCents",
+                        "clawbackDueDate",
+                        "lines"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/scholarship-awards/{awardId}/revoke": {
+      "post": {
+        "operationId": "revokeScholarship",
+        "summary": "Bursu gerçek dışı beyan nedeniyle iptal et ve geri iste",
+        "tags": [
+          "finance-scholarships"
+        ],
+        "description": "Bursu geriye etkili iptal eder (DOM-FIN-025, K-266): bugüne kadar uygulanan pay ve 3095 sayılı Kanun kanuni faizi sözleşme dışı iki alacak (son ödeme 30 gün) olarak yazılır, sonraki taksitlerde burs kalkar; fon payı bırakılır, ödeyiciye bildirim gider. `confirmedCents` önizlemedeki `totalCents`tir; değiştiyse 409 `scholarship_end_changed`. `Idempotency-Key` ve `If-Match` zorunlu, taze oturum ister. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 1000
+                  },
+                  "confirmedCents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000000000
+                  }
+                },
+                "required": [
+                  "note",
+                  "confirmedCents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "awardId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "awardId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "terminate",
+                            "revoke"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "Neden anahtarı; iptalde `false_declaration`"
+                        },
+                        "invoiceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Yazılan taksitler"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "effectiveDate": {
+                          "type": "string",
+                          "description": "Kesme günü ya da geri isteme günü"
+                        },
+                        "keptCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesmede önceki dönemde kalan burs; fon payı buna iner"
+                        },
+                        "reinstatedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İleriye kalkan burs: yeni taksitlerin toplamı"
+                        },
+                        "principalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri istenen burs anaparası"
+                        },
+                        "interestCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kanuni faiz"
+                        },
+                        "clawbackDueDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "description": "Gün (YYYY-MM-DD)"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Geri isteme alacağının son ödeme günü"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dueDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "shareCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu vadenin burs payı, kuruş"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "kept",
+                                  "reinstated",
+                                  "clawback",
+                                  "already_reinstated"
+                                ],
+                                "description": "`kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay"
+                              },
+                              "interestCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "interestDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "segments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "description": "Gün (YYYY-MM-DD)"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "description": "Aralığın sonu (hariç)"
+                                    },
+                                    "days": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "basisPoints": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yıllık kanuni faiz, on binde birlik"
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "description": "Oranın dayanağı"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to",
+                                    "days",
+                                    "basisPoints",
+                                    "source"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "dueDate",
+                              "shareCents",
+                              "status",
+                              "interestCents",
+                              "interestDays",
+                              "segments"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "awardId",
+                        "contractId",
+                        "kind",
+                        "reason",
+                        "invoiceIds",
+                        "createdAt",
+                        "effectiveDate",
+                        "keptCents",
+                        "reinstatedCents",
+                        "principalCents",
+                        "interestCents",
+                        "clawbackDueDate",
+                        "lines"
                       ],
                       "additionalProperties": false
                     }

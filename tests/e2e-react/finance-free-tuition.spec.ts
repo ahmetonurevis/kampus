@@ -14,7 +14,7 @@ const ADMIN_URL = '/yonetici/finans?gorunum=ucretsiz'
 const DESK_URL = '/onburo/tahsilat-takip?gorunum=ucretsiz'
 const STUDENT = 'Deniz Yılmaz'
 
-const region = (page: Page, name: string) => page.getByRole('region', { name })
+const region = (page: Page, name: string | RegExp) => page.getByRole('region', { name })
 
 test.describe('ON-284: ücretsiz okutma ekranı', () => {
   test('DOM-FIN-026: yönetici dönemi açar, kontenjanı kesinleştirir, adayı kabul eder, tutanağı açar ve MEBBİS günü işler', async ({

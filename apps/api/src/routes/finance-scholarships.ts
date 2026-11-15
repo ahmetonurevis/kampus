@@ -21,6 +21,7 @@ import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+import { registerScholarshipRevocationRoutes } from './finance-scholarship-revocation.ts'
 
 /**
  * Burs programı uçları (docs/domain/finans.md DOM-FIN-025; IST-105). Modül `finance`. Okuma
@@ -53,6 +54,12 @@ const awardSchema = z.object({
   amountCents: z.number().int().describe('Atamadaki burs tutarı, kuruş'),
   mebbisRecordedDate: z.string().nullable().describe("MEBBİS'e işlendiği gün"),
   version: z.number().int().describe('`If-Match` için kayıt sürümü'),
+})
+const listedAwardSchema = awardSchema.extend({
+  endStatus: z
+    .enum(['active', 'terminated', 'revoked'])
+    .describe('Burs sürüyor, kesildi ya da gerçek dışı beyanla iptal edildi (ON-283)'),
+  endedOn: z.string().nullable().describe('Son kesme ya da iptal günü (YYYY-MM-DD)'),
 })
 
 const awardResponse = dataResponse(awardSchema)
@@ -172,13 +179,13 @@ export function registerFinanceScholarshipRoutes(app: FastifyInstance) {
         tags: ['finance-scholarships'],
         summary: 'Burs atamalarını listele',
         description:
-          'Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. Roller: `yonetici`, `onburo`.',
+          'Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. `endStatus` kesme ya da iptal durumudur (ON-283). Roller: `yonetici`, `onburo`.',
         querystring: z.strictObject({
           ...pageQuerySchema.shape,
           programId: z.uuid('Program kimliği geçersiz.').optional(),
         }),
         response: {
-          200: z.object({ data: z.array(awardSchema), meta: pageMetaSchema }),
+          200: z.object({ data: z.array(listedAwardSchema), meta: pageMetaSchema }),
           ...commandErrors,
         },
       },
@@ -218,4 +225,5 @@ export function registerFinanceScholarshipRoutes(app: FastifyInstance) {
       return awardResponse.parse(sendBody(reply, result))
     },
   )
+  registerScholarshipRevocationRoutes(app)
 }

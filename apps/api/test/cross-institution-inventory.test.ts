@@ -1781,6 +1781,31 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: tedarikçi faturası üçlü eşleştirmesi (ON-277; DOM-FIN-095).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/supplier-invoices/:invoiceId/approve-match',
+          'approve(a.admin, bInvoice)',
+        ],
+        ['liste', 'GET /api/v1/finance/supplier-invoice-matches', 'get(MATCHES, a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/purchase-orders/:orderId/invoice-matching',
+          '`${ORDERS}/${String(b.order.id)}/invoice-matching`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-invoice-matching.test.ts',
+        'başka kurumun faturası ve siparişi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

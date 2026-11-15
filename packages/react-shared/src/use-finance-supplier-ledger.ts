@@ -36,6 +36,12 @@ export type SupplierLedgerRow =
   operations['listSupplierLedger']['responses'][200]['content']['application/json']['data'][number]
 export type SupplierStatement =
   operations['getSupplierStatement']['responses'][200]['content']['application/json']['data']
+export type SupplierInvoiceMatching = NonNullable<SupplierInvoiceDetail['matching']>
+export type SupplierInvoiceMatchRow =
+  operations['listSupplierInvoiceMatches']['responses'][200]['content']['application/json']['data'][number]
+export type SupplierInvoiceMatchQuery = Query<'listSupplierInvoiceMatches'>
+export type PurchaseOrderInvoiceMatching =
+  operations['getPurchaseOrderInvoiceMatching']['responses'][200]['content']['application/json']['data']
 export type SupplierInvoiceQuery = Query<'listSupplierInvoices'>
 export type SupplierPaymentQuery = Query<'listSupplierPayments'>
 export type SupplierLedgerQuery = Query<'listSupplierLedger'>
@@ -45,6 +51,12 @@ export const SUPPLIER_LEDGER_WARNING_CODES = [
   'supplier_invoice_exceeds_order_warning',
   'supplier_payment_instruction_exported_warning',
 ] as const
+
+/**
+ * Eşleşmeyen faturanın ödemesi (409, DOM-FIN-095 K-282): gövdedeki onayla geçilmez; önce faturada
+ * fark gerekçeyle onaylanır.
+ */
+export const INVOICE_MISMATCH_WARNING_CODE = 'supplier_payment_invoice_mismatch_warning'
 
 const LEDGER_KEY = [...PROCUREMENT_KEY, 'supplier-ledger'] as const
 /** Gün sonu raporu tahsilat önekinin altındadır; nakit ödeme ve iptali o günün raporuna girer (K-166). */
@@ -98,6 +110,60 @@ export function useSupplierInvoice(invoiceId: string) {
         params: { path: { invoiceId } },
         signal,
       }),
+  })
+}
+
+/** Eşleşmeyen faturalar (DOM-FIN-095); mal kabul ve fatura yazıları satın alma önekiyle tazeler. */
+export function useSupplierInvoiceMatches(query: SupplierInvoiceMatchQuery) {
+  return useFinanceListQuery({
+    key: [...LEDGER_KEY, 'matches', query],
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/supplier-invoice-matches', { params: { query }, signal }),
+  })
+}
+
+/** Eşleşmeyen faturalar CSV'si (`Accept: text/csv`); taze oturum ister, denetime düşer. */
+export function useSupplierInvoiceMatchExport() {
+  return useApiCommand({
+    request: (client, query: SupplierInvoiceMatchQuery) =>
+      client.GET('/api/v1/finance/supplier-invoice-matches', {
+        params: { query },
+        headers: { accept: 'text/csv' },
+        parseAs: 'text',
+      }),
+    invalidates: [],
+  })
+}
+
+/** Siparişin fatura ve kabul özeti; yalnız yönetici (`enabled` rol koşuludur). */
+export function usePurchaseOrderInvoiceMatching(orderId: string, enabled = true) {
+  return useApiQuery({
+    key: [...LEDGER_KEY, 'order-matching', orderId],
+    enabled: enabled && orderId !== '',
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/purchase-orders/{orderId}/invoice-matching', {
+        params: { path: { orderId } },
+        signal,
+      }),
+  })
+}
+
+/** Eşleştirme farkının gerekçeli onayı (`If-Match`; K-282). */
+export function useApproveInvoiceMatch() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { invoiceId: string; version: number; reason: string },
+      headers: CommandHeaders,
+    ) =>
+      client.POST('/api/v1/finance/supplier-invoices/{invoiceId}/approve-match', {
+        params: { path: { invoiceId: input.invoiceId }, header: versioned(headers) },
+        body: { reason: input.reason },
+      }),
+    invalidates: [LEDGER_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
   })
 }
 

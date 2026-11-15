@@ -22,6 +22,7 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { dayText } from './finance-supplier-ledger-forms.ts'
+import { SupplierInvoiceMatchesPanel } from './SupplierInvoiceMatchesPanel.tsx'
 import { SupplierInvoicesPanel } from './SupplierInvoicesPanel.tsx'
 import { SupplierPaymentsPanel } from './SupplierPaymentsPanel.tsx'
 
@@ -30,6 +31,7 @@ const VIEWS = {
   summary: { label: 'Cari özet', param: '' },
   invoices: { label: 'Faturalar', param: 'fatura' },
   payments: { label: 'Ödemeler ve talimat', param: 'odeme' },
+  matches: { label: 'Eşleşmeyen faturalar', param: 'eslesme' },
 } as const
 type LedgerView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -56,7 +58,7 @@ type Row = {
 
 /**
  * Tedarikçi carisi (`?gorunum=tedarikci-cari`; DOM-FIN-076, ON-143): cari özet, faturalar ve ödeme
- * planı, ödemeler ve talimat dosyası. Yalnız yönetici (K-160). Kampüs muhasebe defteri tutmaz
+ * planı, ödemeler ve talimat dosyası, eşleşmeyen faturalar (DOM-FIN-095). Yalnız yönetici (K-160). Kampüs muhasebe defteri tutmaz
  * (IST-142): bu ekran yönetim takibidir, resmi kayıt muhasebe programındadır.
  */
 export function FinanceSupplierLedgerSection() {
@@ -99,6 +101,7 @@ export function FinanceSupplierLedgerSection() {
       {view === 'summary' ? <LedgerSummary /> : null}
       {view === 'invoices' ? <SupplierInvoicesPanel /> : null}
       {view === 'payments' ? <SupplierPaymentsPanel /> : null}
+      {view === 'matches' ? <SupplierInvoiceMatchesPanel /> : null}
     </section>
   )
 }

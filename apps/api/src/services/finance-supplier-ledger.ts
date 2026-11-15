@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  INVOICE_MATCH_PRICE_TOLERANCE_CENTS,
+  planInvoiceMatchApproval,
+} from '@kampus/school-core/lib/finance-invoice-matching.ts'
 import { purchaseOrderAmounts } from '@kampus/school-core/lib/finance-purchase-orders.ts'
 import {
   defaultPaymentDescription,
@@ -21,6 +25,7 @@ import { maskIban, maskSupplierTaxNumber } from '@kampus/school-core/lib/finance
 
 import type { Database } from '../db/client.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
+import { approveInvoiceMatchRow, insertInvoiceLines } from '../db/finance-invoice-matching.ts'
 import { findPurchaseOrder, loadOrderItems } from '../db/finance-purchase-orders.ts'
 import { purchaseActorNames } from '../db/finance-purchase-requests.ts'
 import {
@@ -53,6 +58,7 @@ import { findSupplier, loadSupplierRefs } from '../db/finance-suppliers.ts'
 import { listBankAccounts } from '../db/payments.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { invoiceMatchFor, paymentInvoiceMatch } from './finance-invoice-matching.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -134,19 +140,22 @@ async function invoiceDetail(db: Database, ctx: ServiceContext, id: string) {
   const day = today(ctx)
   const invoice = await findSupplierInvoice(db, ctx.institutionId, id, day)
   if (invoice === null) throw new NotFoundError()
-  const [installments, payments, order] = await Promise.all([
+  const [installments, payments, order, matched] = await Promise.all([
     loadInstallments(db, ctx.institutionId, [id]),
     loadInvoicePayments(db, ctx.institutionId, id),
     invoice.purchaseOrderId === null
       ? null
       : findPurchaseOrder(db, ctx.institutionId, invoice.purchaseOrderId),
+    invoiceMatchFor(db, ctx.institutionId, invoice),
   ])
   const names = await purchaseActorNames(
     db,
     ctx.institutionId,
-    [invoice.createdByUserId, invoice.cancelledByUserId].filter(
-      (value): value is string => value !== null,
-    ),
+    [
+      invoice.createdByUserId,
+      invoice.cancelledByUserId,
+      matched?.stored.approvedByUserId ?? null,
+    ].filter((value): value is string => value !== null),
   )
   const nameOf = (userId: string | null) => (userId === null ? null : (names.get(userId) ?? null))
   const summary = invoiceSummary(invoice)
@@ -173,6 +182,22 @@ async function invoiceDetail(db: Database, ctx: ServiceContext, id: string) {
     createdByName: nameOf(invoice.createdByUserId),
     cancelledByName: nameOf(invoice.cancelledByUserId),
     cancelReason: invoice.cancelReason,
+    matching:
+      matched === null
+        ? null
+        : {
+            ...matched.match,
+            toleranceCents: INVOICE_MATCH_PRICE_TOLERANCE_CENTS,
+            approval:
+              matched.stored.approvedStatus === null
+                ? null
+                : {
+                    status: matched.stored.approvedStatus,
+                    approvedAt: matched.stored.approvedAt ?? '',
+                    approvedByName: nameOf(matched.stored.approvedByUserId),
+                    reason: matched.stored.approvalReason ?? '',
+                  },
+          },
     actions: supplierInvoiceActions({
       cancelled: invoice.cancelledAt !== null,
       hasPayments,
@@ -191,7 +216,7 @@ export async function listSupplierPaymentsFor(ctx: ServiceContext, query: Suppli
 
 // --- Fatura komutları ----------------------------------------------------------------------------
 
-/** Siparişin tedarikçisi, durumu, KDV dahil tutarı ve bağlı öteki faturaları (K-162). */
+/** Siparişin tedarikçisi, durumu, KDV dahil tutarı, kalemleri ve bağlı öteki faturaları (K-162, K-280). */
 async function orderLink(
   tx: Database,
   ctx: ServiceContext,
@@ -209,6 +234,7 @@ async function orderLink(
     status: order.status,
     grossCents: purchaseOrderAmounts(items.get(orderId) ?? []).totals.grossCents,
     invoicedCents,
+    itemIds: (items.get(orderId) ?? []).map((item) => item.id),
   }
 }
 
@@ -269,13 +295,14 @@ export function createSupplierInvoiceCommand(
           installments: plan.installments,
           now: ctx.now,
         })
+        await insertInvoiceLines(tx, ctx.institutionId, id, plan.lines, ctx.now)
         await auditWork(tx, ctx, 'supplier_invoice.create', entity, [
           'supplierId',
           'invoiceNumber',
           'invoiceDate',
           'amounts',
           'installments',
-          ...(plan.fields.purchaseOrderId === null ? [] : ['purchaseOrderId']),
+          ...(plan.fields.purchaseOrderId === null ? [] : ['purchaseOrderId', 'lines']),
           ...(plan.orderOverrunConfirmed ? ['confirmOverOrder'] : []),
           ...(plan.fields.note === null ? [] : ['note']),
         ])
@@ -357,6 +384,61 @@ export function transitionSupplierInvoiceCommand(
   )
 }
 
+/**
+ * Üçlü eşleştirme farkının gerekçeli onayı (DOM-FIN-095, K-282). Bugünkü sapma (miktar, fiyat,
+ * siparişte yok) faturaya yazılır; aynı sapma sürdükçe ödeme uyarısız girilir. Sapma kurum kilidi
+ * altında yeniden hesaplanır. Denetim kaydına alan adları düşer, gerekçe metni düşmez.
+ */
+export function approveInvoiceMatchCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: INVOICES, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'supplier_invoice.approve_match',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const invoice = await findSupplierInvoice(tx, ctx.institutionId, id, today(ctx))
+        if (invoice === null) throw new NotFoundError()
+        if (invoice.version !== expectedVersion) throw new ConflictError()
+        const matched = await invoiceMatchFor(tx, ctx.institutionId, invoice)
+        return {
+          run: () =>
+            planInvoiceMatchApproval(
+              { cancelled: invoice.cancelledAt !== null, match: matched?.match ?? null },
+              input,
+            ),
+        }
+      },
+      after: async (tx, plan) => {
+        const saved = await approveInvoiceMatchRow(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          status: plan.status,
+          reason: plan.reason,
+          userId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'supplier_invoice.approve_match', entity, [
+          'matchApprovedStatus',
+          'matchApprovalReason',
+        ])
+        body = { data: await invoiceDetail(tx, ctx, id) }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
 // --- Ödeme komutları -----------------------------------------------------------------------------
 
 /**
@@ -390,6 +472,11 @@ export function createSupplierPaymentCommand(
           listBankAccounts(tx, ctx.institutionId),
           paidDay === null ? false : isFinanceDayClosed(tx, ctx.institutionId, paidDay),
         ])
+        // Üçlü eşleştirme kurum kilidi altında okunur (DOM-FIN-095, K-282).
+        const invoiceMatch =
+          found === null
+            ? null
+            : await paymentInvoiceMatch(tx, ctx.institutionId, found.installment.invoiceId)
         return {
           run: () => {
             const plan = planSupplierPayment(input, {
@@ -405,6 +492,7 @@ export function createSupplierPaymentCommand(
               bankAccountIds: accounts.map((account) => account.id),
               dayClosed,
               today: today(ctx),
+              invoiceMatch,
             })
             if (found === null) throw new NotFoundError()
             return { plan, found }

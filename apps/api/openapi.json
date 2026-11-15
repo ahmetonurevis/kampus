@@ -122199,7 +122199,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.",
+        "description": "Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). Siparişe bağlı faturada `lines` zorunlu, siparişsizde yasak (400): sipariş kalemine bağlı (`orderItemId`, faturada bir kez) ya da siparişte olmayan (`description`) kalem, miktar ve KDV hariç birim fiyat; siparişin kalemi olmayan `orderItemId` 422 `supplier_invoice_line_item_not_in_order`, kalemlerin KDV hariç toplamı fatura netinden 1 TL'den çok saparsa 422 `supplier_invoice_lines_total_mismatch` (DOM-FIN-095, K-280). Miktar ya da fiyat farkı girişte reddedilmez, eşleştirmede görünür. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -122276,6 +122276,57 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "lines": {
+                    "description": "Fatura kalemleri (DOM-FIN-095): sipariş kalemine bağlı ya da siparişte olmayan; miktar ve KDV hariç birim fiyat. Siparişe bağlı faturada zorunlu",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "orderItemId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "description": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000
+                        },
+                        "unitPriceCents": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100000000000
+                        }
+                      },
+                      "required": [
+                        "quantity",
+                        "unitPriceCents"
+                      ],
+                      "additionalProperties": false
+                    }
                   },
                   "note": {
                     "default": null,
@@ -122702,6 +122753,242 @@
                             "null"
                           ]
                         },
+                        "matching": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "matched",
+                                    "quantity_mismatch",
+                                    "price_mismatch",
+                                    "unmatched"
+                                  ],
+                                  "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                },
+                                "lines": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "orderItemId": {
+                                        "description": "Sipariş kalemi; siparişte olmayan kalemde boş",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "description": "Sipariş kaleminin adı ya da siparişte olmayan kalemin adı"
+                                      },
+                                      "unit": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "piece",
+                                              "pack",
+                                              "box",
+                                              "kilogram",
+                                              "liter",
+                                              "meter",
+                                              "hour",
+                                              "day",
+                                              "month",
+                                              "service"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Sipariş miktarı"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderUnitPriceCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Siparişteki KDV hariç birim fiyat"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "acceptedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "İptal edilmemiş kabullerde kabul edilen"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "previouslyInvoicedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Bu faturadan önceki etkin faturalarda aynı kaleme faturalanan"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "invoicedQuantity": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu faturada faturalanan"
+                                      },
+                                      "invoiceUnitPriceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Faturadaki KDV hariç birim fiyat"
+                                      },
+                                      "quantityExcess": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar"
+                                      },
+                                      "unitPriceDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Birim fiyat farkı (fatura − sipariş)"
+                                      },
+                                      "lineDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Fiyat farkının kalem tutarına etkisi"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "matched",
+                                          "quantity_mismatch",
+                                          "price_mismatch",
+                                          "unmatched"
+                                        ],
+                                        "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                      }
+                                    },
+                                    "required": [
+                                      "orderItemId",
+                                      "name",
+                                      "unit",
+                                      "orderedQuantity",
+                                      "orderUnitPriceCents",
+                                      "acceptedQuantity",
+                                      "previouslyInvoicedQuantity",
+                                      "invoicedQuantity",
+                                      "invoiceUnitPriceCents",
+                                      "quantityExcess",
+                                      "unitPriceDifferenceCents",
+                                      "lineDifferenceCents",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "approved": {
+                                  "type": "boolean",
+                                  "description": "Bugünkü sapma gerekçeyle onaylanmış"
+                                },
+                                "approvalRequired": {
+                                  "type": "boolean",
+                                  "description": "Ödeme fark onayı istiyor (K-282)"
+                                },
+                                "toleranceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281)"
+                                },
+                                "approval": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "status": {
+                                          "type": "string",
+                                          "enum": [
+                                            "quantity_mismatch",
+                                            "price_mismatch",
+                                            "unmatched"
+                                          ],
+                                          "description": "Onaylanan sapma"
+                                        },
+                                        "approvedAt": {
+                                          "type": "string"
+                                        },
+                                        "approvedByName": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "reason": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "status",
+                                        "approvedAt",
+                                        "approvedByName",
+                                        "reason"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "lines",
+                                "approved",
+                                "approvalRequired",
+                                "toleranceCents",
+                                "approval"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş"
+                        },
                         "actions": {
                           "type": "object",
                           "properties": {
@@ -122750,6 +123037,7 @@
                         "createdByName",
                         "cancelledByName",
                         "cancelReason",
+                        "matching",
                         "actions"
                       ],
                       "additionalProperties": false
@@ -122853,7 +123141,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.",
+        "description": "Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş, üçlü eşleştirme (`matching`: kalem başına sipariş, kabul edilen, önceki faturalar, faturalanan miktar ve fiyat, sapma; siparişsiz faturada boş; DOM-FIN-095) ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -123250,6 +123538,242 @@
                             "null"
                           ]
                         },
+                        "matching": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "matched",
+                                    "quantity_mismatch",
+                                    "price_mismatch",
+                                    "unmatched"
+                                  ],
+                                  "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                },
+                                "lines": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "orderItemId": {
+                                        "description": "Sipariş kalemi; siparişte olmayan kalemde boş",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "description": "Sipariş kaleminin adı ya da siparişte olmayan kalemin adı"
+                                      },
+                                      "unit": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "piece",
+                                              "pack",
+                                              "box",
+                                              "kilogram",
+                                              "liter",
+                                              "meter",
+                                              "hour",
+                                              "day",
+                                              "month",
+                                              "service"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Sipariş miktarı"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderUnitPriceCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Siparişteki KDV hariç birim fiyat"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "acceptedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "İptal edilmemiş kabullerde kabul edilen"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "previouslyInvoicedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Bu faturadan önceki etkin faturalarda aynı kaleme faturalanan"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "invoicedQuantity": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu faturada faturalanan"
+                                      },
+                                      "invoiceUnitPriceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Faturadaki KDV hariç birim fiyat"
+                                      },
+                                      "quantityExcess": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar"
+                                      },
+                                      "unitPriceDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Birim fiyat farkı (fatura − sipariş)"
+                                      },
+                                      "lineDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Fiyat farkının kalem tutarına etkisi"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "matched",
+                                          "quantity_mismatch",
+                                          "price_mismatch",
+                                          "unmatched"
+                                        ],
+                                        "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                      }
+                                    },
+                                    "required": [
+                                      "orderItemId",
+                                      "name",
+                                      "unit",
+                                      "orderedQuantity",
+                                      "orderUnitPriceCents",
+                                      "acceptedQuantity",
+                                      "previouslyInvoicedQuantity",
+                                      "invoicedQuantity",
+                                      "invoiceUnitPriceCents",
+                                      "quantityExcess",
+                                      "unitPriceDifferenceCents",
+                                      "lineDifferenceCents",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "approved": {
+                                  "type": "boolean",
+                                  "description": "Bugünkü sapma gerekçeyle onaylanmış"
+                                },
+                                "approvalRequired": {
+                                  "type": "boolean",
+                                  "description": "Ödeme fark onayı istiyor (K-282)"
+                                },
+                                "toleranceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281)"
+                                },
+                                "approval": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "status": {
+                                          "type": "string",
+                                          "enum": [
+                                            "quantity_mismatch",
+                                            "price_mismatch",
+                                            "unmatched"
+                                          ],
+                                          "description": "Onaylanan sapma"
+                                        },
+                                        "approvedAt": {
+                                          "type": "string"
+                                        },
+                                        "approvedByName": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "reason": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "status",
+                                        "approvedAt",
+                                        "approvedByName",
+                                        "reason"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "lines",
+                                "approved",
+                                "approvalRequired",
+                                "toleranceCents",
+                                "approval"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş"
+                        },
                         "actions": {
                           "type": "object",
                           "properties": {
@@ -123298,6 +123822,7 @@
                         "createdByName",
                         "cancelledByName",
                         "cancelReason",
+                        "matching",
                         "actions"
                       ],
                       "additionalProperties": false
@@ -123859,6 +124384,242 @@
                             "null"
                           ]
                         },
+                        "matching": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "matched",
+                                    "quantity_mismatch",
+                                    "price_mismatch",
+                                    "unmatched"
+                                  ],
+                                  "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                },
+                                "lines": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "orderItemId": {
+                                        "description": "Sipariş kalemi; siparişte olmayan kalemde boş",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "description": "Sipariş kaleminin adı ya da siparişte olmayan kalemin adı"
+                                      },
+                                      "unit": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "piece",
+                                              "pack",
+                                              "box",
+                                              "kilogram",
+                                              "liter",
+                                              "meter",
+                                              "hour",
+                                              "day",
+                                              "month",
+                                              "service"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Sipariş miktarı"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderUnitPriceCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Siparişteki KDV hariç birim fiyat"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "acceptedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "İptal edilmemiş kabullerde kabul edilen"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "previouslyInvoicedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Bu faturadan önceki etkin faturalarda aynı kaleme faturalanan"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "invoicedQuantity": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu faturada faturalanan"
+                                      },
+                                      "invoiceUnitPriceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Faturadaki KDV hariç birim fiyat"
+                                      },
+                                      "quantityExcess": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar"
+                                      },
+                                      "unitPriceDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Birim fiyat farkı (fatura − sipariş)"
+                                      },
+                                      "lineDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Fiyat farkının kalem tutarına etkisi"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "matched",
+                                          "quantity_mismatch",
+                                          "price_mismatch",
+                                          "unmatched"
+                                        ],
+                                        "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                      }
+                                    },
+                                    "required": [
+                                      "orderItemId",
+                                      "name",
+                                      "unit",
+                                      "orderedQuantity",
+                                      "orderUnitPriceCents",
+                                      "acceptedQuantity",
+                                      "previouslyInvoicedQuantity",
+                                      "invoicedQuantity",
+                                      "invoiceUnitPriceCents",
+                                      "quantityExcess",
+                                      "unitPriceDifferenceCents",
+                                      "lineDifferenceCents",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "approved": {
+                                  "type": "boolean",
+                                  "description": "Bugünkü sapma gerekçeyle onaylanmış"
+                                },
+                                "approvalRequired": {
+                                  "type": "boolean",
+                                  "description": "Ödeme fark onayı istiyor (K-282)"
+                                },
+                                "toleranceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281)"
+                                },
+                                "approval": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "status": {
+                                          "type": "string",
+                                          "enum": [
+                                            "quantity_mismatch",
+                                            "price_mismatch",
+                                            "unmatched"
+                                          ],
+                                          "description": "Onaylanan sapma"
+                                        },
+                                        "approvedAt": {
+                                          "type": "string"
+                                        },
+                                        "approvedByName": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "reason": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "status",
+                                        "approvedAt",
+                                        "approvedByName",
+                                        "reason"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "lines",
+                                "approved",
+                                "approvalRequired",
+                                "toleranceCents",
+                                "approval"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş"
+                        },
                         "actions": {
                           "type": "object",
                           "properties": {
@@ -123907,6 +124668,7 @@
                         "createdByName",
                         "cancelledByName",
                         "cancelReason",
+                        "matching",
                         "actions"
                       ],
                       "additionalProperties": false
@@ -124448,6 +125210,242 @@
                             "null"
                           ]
                         },
+                        "matching": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "matched",
+                                    "quantity_mismatch",
+                                    "price_mismatch",
+                                    "unmatched"
+                                  ],
+                                  "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                },
+                                "lines": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "orderItemId": {
+                                        "description": "Sipariş kalemi; siparişte olmayan kalemde boş",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "description": "Sipariş kaleminin adı ya da siparişte olmayan kalemin adı"
+                                      },
+                                      "unit": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "piece",
+                                              "pack",
+                                              "box",
+                                              "kilogram",
+                                              "liter",
+                                              "meter",
+                                              "hour",
+                                              "day",
+                                              "month",
+                                              "service"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Sipariş miktarı"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderUnitPriceCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Siparişteki KDV hariç birim fiyat"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "acceptedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "İptal edilmemiş kabullerde kabul edilen"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "previouslyInvoicedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Bu faturadan önceki etkin faturalarda aynı kaleme faturalanan"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "invoicedQuantity": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu faturada faturalanan"
+                                      },
+                                      "invoiceUnitPriceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Faturadaki KDV hariç birim fiyat"
+                                      },
+                                      "quantityExcess": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar"
+                                      },
+                                      "unitPriceDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Birim fiyat farkı (fatura − sipariş)"
+                                      },
+                                      "lineDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Fiyat farkının kalem tutarına etkisi"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "matched",
+                                          "quantity_mismatch",
+                                          "price_mismatch",
+                                          "unmatched"
+                                        ],
+                                        "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                      }
+                                    },
+                                    "required": [
+                                      "orderItemId",
+                                      "name",
+                                      "unit",
+                                      "orderedQuantity",
+                                      "orderUnitPriceCents",
+                                      "acceptedQuantity",
+                                      "previouslyInvoicedQuantity",
+                                      "invoicedQuantity",
+                                      "invoiceUnitPriceCents",
+                                      "quantityExcess",
+                                      "unitPriceDifferenceCents",
+                                      "lineDifferenceCents",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "approved": {
+                                  "type": "boolean",
+                                  "description": "Bugünkü sapma gerekçeyle onaylanmış"
+                                },
+                                "approvalRequired": {
+                                  "type": "boolean",
+                                  "description": "Ödeme fark onayı istiyor (K-282)"
+                                },
+                                "toleranceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281)"
+                                },
+                                "approval": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "status": {
+                                          "type": "string",
+                                          "enum": [
+                                            "quantity_mismatch",
+                                            "price_mismatch",
+                                            "unmatched"
+                                          ],
+                                          "description": "Onaylanan sapma"
+                                        },
+                                        "approvedAt": {
+                                          "type": "string"
+                                        },
+                                        "approvedByName": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "reason": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "status",
+                                        "approvedAt",
+                                        "approvedByName",
+                                        "reason"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "lines",
+                                "approved",
+                                "approvalRequired",
+                                "toleranceCents",
+                                "approval"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş"
+                        },
                         "actions": {
                           "type": "object",
                           "properties": {
@@ -124496,6 +125494,7 @@
                         "createdByName",
                         "cancelledByName",
                         "cancelReason",
+                        "matching",
                         "actions"
                       ],
                       "additionalProperties": false
@@ -124560,6 +125559,1429 @@
             }
           },
           "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/supplier-invoices/{invoiceId}/approve-match": {
+      "post": {
+        "operationId": "approveSupplierInvoiceMatch",
+        "summary": "Fatura eşleştirme farkını onayla",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Üçlü eşleştirmenin bugünkü sapmasını (miktar farkı, fiyat farkı, siparişte olmayan kalem) gerekçeyle (5–500 karakter) onaylar; sapma aynı kaldıkça faturanın ödemesi uyarısız girilir, sapma değişirse yeniden onay ister (DOM-FIN-095, K-282). Siparişsiz fatura 422 `supplier_invoice_match_not_applicable`, eşleşen fatura 422 `supplier_invoice_match_already_matched`, aynı sapma zaten onaylıysa 422 `supplier_invoice_match_already_approved`, iptal edilmiş fatura 422 `supplier_invoice_cancelled`. Denetim `supplier_invoice.approve_match` (gerekçe metni yazılmaz). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "invoiceId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "invoiceNumber": {
+                          "type": "string",
+                          "description": "Fatura numarası; boşluksuz, büyük harf (K-161)"
+                        },
+                        "invoiceDate": {
+                          "type": "string",
+                          "description": "Fatura tarihi `YYYY-MM-DD`"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Son taksitin vadesi `YYYY-MM-DD`"
+                        },
+                        "nextDueDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "description": "Kalanı olan ilk taksitin vadesi; kalan yoksa boş `YYYY-MM-DD`"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "purchaseOrderId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV dahil tutar, kuruş; ödeme planının toplamı"
+                        },
+                        "paidCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin ödemelerin toplamı"
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan; iptal edilen faturada 0"
+                        },
+                        "overdueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "partially_paid",
+                            "overdue",
+                            "paid",
+                            "cancelled"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "amountIncludesVat": {
+                          "type": "boolean",
+                          "description": "Tutar girişte KDV dahil mi yazıldı"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "purchaseOrder": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "number": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "number"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı satın alma siparişi (DOM-FIN-073)"
+                        },
+                        "installments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "dueDate": {
+                                "type": "string",
+                                "description": "Vade `YYYY-MM-DD`"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksit tutarı"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksite yazılmış etkin ödemeler"
+                              },
+                              "remainingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksit kalanı"
+                              },
+                              "overdue": {
+                                "type": "boolean",
+                                "description": "Vadesi geçti ve kalanı var"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "dueDate",
+                              "amountCents",
+                              "paidCents",
+                              "remainingCents",
+                              "overdue"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ödeme planı, vade sırasıyla"
+                        },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "supplier": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "invoice": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "invoiceNumber": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "invoiceNumber"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "installmentId": {
+                                "type": "string"
+                              },
+                              "paidDate": {
+                                "type": "string",
+                                "description": "Ödeme günü `YYYY-MM-DD`"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenen tutar, kuruş"
+                              },
+                              "method": {
+                                "type": "string",
+                                "enum": [
+                                  "transfer",
+                                  "eft",
+                                  "cash",
+                                  "cheque"
+                                ]
+                              },
+                              "bankAccount": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "description": "Banka adı ve IBAN’ın son dört hanesi"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "label"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Ödemenin çıktığı kurum hesabı; nakitte boş"
+                              },
+                              "description": {
+                                "type": "string",
+                                "description": "Banka açıklaması; girilmediyse `Fatura <no> ödemesi`"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "instructionExportedAt": {
+                                "description": "Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "instructionExportCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "actions": {
+                                "type": "object",
+                                "properties": {
+                                  "cancel": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "cancel"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplier",
+                              "invoice",
+                              "installmentId",
+                              "paidDate",
+                              "amountCents",
+                              "method",
+                              "bankAccount",
+                              "description",
+                              "createdAt",
+                              "cancelledAt",
+                              "cancelReason",
+                              "instructionExportedAt",
+                              "instructionExportCount",
+                              "actions",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Faturanın ödemeleri (iptal edilenler dahil)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "createdByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "matching": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "matched",
+                                    "quantity_mismatch",
+                                    "price_mismatch",
+                                    "unmatched"
+                                  ],
+                                  "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                },
+                                "lines": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "orderItemId": {
+                                        "description": "Sipariş kalemi; siparişte olmayan kalemde boş",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "description": "Sipariş kaleminin adı ya da siparişte olmayan kalemin adı"
+                                      },
+                                      "unit": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "piece",
+                                              "pack",
+                                              "box",
+                                              "kilogram",
+                                              "liter",
+                                              "meter",
+                                              "hour",
+                                              "day",
+                                              "month",
+                                              "service"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Sipariş miktarı"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "orderUnitPriceCents": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Siparişteki KDV hariç birim fiyat"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "acceptedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "İptal edilmemiş kabullerde kabul edilen"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "previouslyInvoicedQuantity": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Bu faturadan önceki etkin faturalarda aynı kaleme faturalanan"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "invoicedQuantity": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu faturada faturalanan"
+                                      },
+                                      "invoiceUnitPriceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Faturadaki KDV hariç birim fiyat"
+                                      },
+                                      "quantityExcess": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar"
+                                      },
+                                      "unitPriceDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Birim fiyat farkı (fatura − sipariş)"
+                                      },
+                                      "lineDifferenceCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Fiyat farkının kalem tutarına etkisi"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "matched",
+                                          "quantity_mismatch",
+                                          "price_mismatch",
+                                          "unmatched"
+                                        ],
+                                        "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                                      }
+                                    },
+                                    "required": [
+                                      "orderItemId",
+                                      "name",
+                                      "unit",
+                                      "orderedQuantity",
+                                      "orderUnitPriceCents",
+                                      "acceptedQuantity",
+                                      "previouslyInvoicedQuantity",
+                                      "invoicedQuantity",
+                                      "invoiceUnitPriceCents",
+                                      "quantityExcess",
+                                      "unitPriceDifferenceCents",
+                                      "lineDifferenceCents",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "approved": {
+                                  "type": "boolean",
+                                  "description": "Bugünkü sapma gerekçeyle onaylanmış"
+                                },
+                                "approvalRequired": {
+                                  "type": "boolean",
+                                  "description": "Ödeme fark onayı istiyor (K-282)"
+                                },
+                                "toleranceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281)"
+                                },
+                                "approval": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "status": {
+                                          "type": "string",
+                                          "enum": [
+                                            "quantity_mismatch",
+                                            "price_mismatch",
+                                            "unmatched"
+                                          ],
+                                          "description": "Onaylanan sapma"
+                                        },
+                                        "approvedAt": {
+                                          "type": "string"
+                                        },
+                                        "approvedByName": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "reason": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "status",
+                                        "approvedAt",
+                                        "approvedByName",
+                                        "reason"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "lines",
+                                "approved",
+                                "approvalRequired",
+                                "toleranceCents",
+                                "approval"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş"
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "pay": {
+                              "type": "boolean"
+                            },
+                            "replan": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pay",
+                            "replan",
+                            "cancel"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Ödeme girişi, plan değişikliği ve iptal yapılabilir mi"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "invoiceNumber",
+                        "invoiceDate",
+                        "dueDate",
+                        "nextDueDate",
+                        "supplier",
+                        "purchaseOrderId",
+                        "netCents",
+                        "vatCents",
+                        "grossCents",
+                        "paidCents",
+                        "remainingCents",
+                        "overdueCents",
+                        "status",
+                        "cancelledAt",
+                        "version",
+                        "amountIncludesVat",
+                        "note",
+                        "purchaseOrder",
+                        "installments",
+                        "payments",
+                        "createdAt",
+                        "createdByName",
+                        "cancelledByName",
+                        "cancelReason",
+                        "matching",
+                        "actions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/supplier-invoice-matches": {
+      "get": {
+        "operationId": "listSupplierInvoiceMatches",
+        "summary": "Eşleşmeyen tedarikçi faturaları",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Siparişe bağlı iptal edilmemiş faturalar üçlü eşleştirme durumuyla (DOM-FIN-095): varsayılan `status=mismatched` eşleşmeyenler; `approval` onay bekleyen ya da onaylanmış. Kalemde faturalanan, önceki etkin faturalarla birlikte kabul edileni aşarsa miktar farkı; birim fiyat farkının kalem etkisi 1 TL'yi aşarsa fiyat farkı; siparişte olmayan kalem ya da kalemsiz fatura eşleşmez (K-281). Yeni fatura tarihi önce. `Accept: text/csv` ile aynı süzgeçle bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı); taze oturum ister (403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.invoice_matching_export`. Rol: `yonetici` (K-160). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "default": "mismatched",
+              "type": "string",
+              "enum": [
+                "mismatched",
+                "matched",
+                "quantity_mismatch",
+                "price_mismatch",
+                "unmatched"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Eşleştirme durumu; `mismatched` (varsayılan) eşleşme dışındaki bütün durumlar"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved"
+              ]
+            },
+            "in": "query",
+            "name": "approval",
+            "required": false,
+            "description": "`pending` onay bekleyen, `approved` farkı onaylanmış"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "supplierId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Fatura numarası, tedarikçi adı ya da sipariş numarasında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "invoiceNumber": {
+                            "type": "string"
+                          },
+                          "invoiceDate": {
+                            "type": "string",
+                            "description": "Fatura tarihi `YYYY-MM-DD`"
+                          },
+                          "supplier": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "purchaseOrder": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "grossCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV dahil tutar"
+                          },
+                          "remainingCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ödenmemiş kalan (KDV dahil)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "matched",
+                              "quantity_mismatch",
+                              "price_mismatch",
+                              "unmatched"
+                            ],
+                            "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                          },
+                          "approved": {
+                            "type": "boolean"
+                          },
+                          "approvalRequired": {
+                            "type": "boolean"
+                          },
+                          "approvedAt": {
+                            "description": "Geçerli fark onayının anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "quantityLines": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Miktar farkı olan kalem sayısı"
+                          },
+                          "priceLines": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Fiyat farkı olan kalem sayısı"
+                          },
+                          "unmatchedLines": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Siparişte olmayan kalem sayısı"
+                          },
+                          "priceDifferenceCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Fiyat farkı olan kalemlerin fark toplamı (KDV hariç)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "invoiceNumber",
+                          "invoiceDate",
+                          "supplier",
+                          "purchaseOrder",
+                          "grossCents",
+                          "remainingCents",
+                          "status",
+                          "approved",
+                          "approvalRequired",
+                          "approvedAt",
+                          "quantityLines",
+                          "priceLines",
+                          "unmatchedLines",
+                          "priceDifferenceCents"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-orders/{orderId}/invoice-matching": {
+      "get": {
+        "operationId": "getPurchaseOrderInvoiceMatching",
+        "summary": "Siparişin fatura ve mal kabul özeti",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Sipariş kalemi başına sipariş, kabul edilen (iptal edilmemiş kabuller) ve etkin faturalarda faturalanan miktar; siparişe bağlı faturalar eşleştirme durumu ve fark onayıyla (DOM-FIN-095). Olmayan ya da başka kurumun siparişi 404. Rol: `yonetici` (K-160). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "sent",
+                                "partially_received",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "matched",
+                                "quantity_mismatch",
+                                "price_mismatch",
+                                "unmatched"
+                              ],
+                              "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Etkin faturaların en ağır durumu; fatura yoksa boş"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "orderItemId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "orderedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sipariş miktarı"
+                              },
+                              "acceptedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kabul edilen"
+                              },
+                              "invoicedQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Etkin faturalarda faturalanan"
+                              },
+                              "unitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Siparişteki KDV hariç birim fiyat"
+                              },
+                              "differenceQuantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Faturalanan − kabul edilen; eksi faturası beklenen kabuldür"
+                              }
+                            },
+                            "required": [
+                              "orderItemId",
+                              "name",
+                              "unit",
+                              "orderedQuantity",
+                              "acceptedQuantity",
+                              "invoicedQuantity",
+                              "unitPriceCents",
+                              "differenceQuantity"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "invoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "invoiceNumber": {
+                                "type": "string"
+                              },
+                              "invoiceDate": {
+                                "type": "string"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar"
+                              },
+                              "cancelled": {
+                                "type": "boolean"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "matched",
+                                  "quantity_mismatch",
+                                  "price_mismatch",
+                                  "unmatched"
+                                ],
+                                "description": "`matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura"
+                              },
+                              "approved": {
+                                "type": "boolean"
+                              },
+                              "approvalRequired": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "invoiceNumber",
+                              "invoiceDate",
+                              "grossCents",
+                              "cancelled",
+                              "status",
+                              "approved",
+                              "approvalRequired"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Siparişe bağlı faturalar (iptal edilenler dahil), fatura tarihi sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "order",
+                        "status",
+                        "items",
+                        "invoices"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -124973,7 +127395,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde \"tedarikçi ödemesi\" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.",
+        "description": "Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde \"tedarikçi ödemesi\" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. Fatura sipariş ve mal kabulle eşleşmiyorsa ve fark onaylanmamışsa 409 `supplier_payment_invoice_mismatch_warning`: önce `POST /supplier-invoices/:invoiceId/approve-match` (DOM-FIN-095, K-282). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {

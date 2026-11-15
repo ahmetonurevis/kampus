@@ -255,7 +255,13 @@ describe('DOM-FIN-076: tedarikçi carisi uçları', () => {
       'supplier_invoice_supplier_not_found',
     )
     assertError(
-      await createInvoice(t.admin, invoiceBody(t, { purchaseOrderId: randomUUID() })),
+      await createInvoice(
+        t.admin,
+        invoiceBody(t, {
+          purchaseOrderId: randomUUID(),
+          lines: [{ orderItemId: randomUUID(), quantity: 5, unitPriceCents: 20_000 }],
+        }),
+      ),
       422,
       'supplier_invoice_order_not_found',
     )
@@ -326,8 +332,12 @@ describe('DOM-FIN-076: tedarikçi carisi uçları', () => {
   test('DOM-FIN-076, DOM-FIN-073: siparişe bağlı fatura; sipariş tutarı aşılırsa açık onay (K-162)', async () => {
     const t = await institution()
     const draft = await sentOrder(t, t.alpha)
+    // DOM-FIN-095: siparişe bağlı fatura kalemleriyle gelir (K-280).
+    const lines = (quantity: number) => [
+      { orderItemId: (draft.items as Json[])[0]?.id, quantity, unitPriceCents: 20_000 },
+    ]
     assertError(
-      await createInvoice(t.admin, invoiceBody(t, { purchaseOrderId: draft.id })),
+      await createInvoice(t.admin, invoiceBody(t, { purchaseOrderId: draft.id, lines: lines(5) })),
       422,
       'supplier_invoice_order_not_open',
     )
@@ -343,7 +353,7 @@ describe('DOM-FIN-076: tedarikçi carisi uçları', () => {
     assertError(
       await createInvoice(
         t.admin,
-        invoiceBody(t, { supplierId: t.beta.id, purchaseOrderId: sent.id }),
+        invoiceBody(t, { supplierId: t.beta.id, purchaseOrderId: sent.id, lines: lines(5) }),
       ),
       422,
       'supplier_invoice_order_supplier_mismatch',
@@ -351,13 +361,22 @@ describe('DOM-FIN-076: tedarikçi carisi uçları', () => {
     const first = ok(
       await createInvoice(
         t.admin,
-        invoiceBody(t, { purchaseOrderId: sent.id, amountCents: 200_000, vatCents: 40_000 }),
+        invoiceBody(t, {
+          purchaseOrderId: sent.id,
+          amountCents: 200_000,
+          vatCents: 40_000,
+          lines: lines(8),
+        }),
       ),
       201,
     )
     assert.deepEqual(first.purchaseOrder, { id: sent.id, number: sent.number })
     // 2.000 + 1.200 TL > 2.400 TL: uyarı, kayıt yok.
-    const over = invoiceBody(t, { invoiceNumber: 'ABC-2', purchaseOrderId: sent.id })
+    const over = invoiceBody(t, {
+      invoiceNumber: 'ABC-2',
+      purchaseOrderId: sent.id,
+      lines: lines(5),
+    })
     const warning = await createInvoice(t.admin, over)
     assertError(warning, 409, 'supplier_invoice_exceeds_order_warning')
     assert.match(warning.json().message as string, /800,00/)

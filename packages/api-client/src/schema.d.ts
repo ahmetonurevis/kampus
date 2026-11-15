@@ -5551,7 +5551,7 @@ export interface paths {
         head?: never;
         /**
          * Demirbaşı düzelt ya da durumunu değiştir
-         * @description Kısmi düzeltme; durum kullanımda, depoda ve arızalı arasında değişir, hurdaya ayırma ayrı uçtur. Hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`. Yalnız değişen bağ yeniden denetlenir; kurallar ve kodlar kayıttakiyle aynıdır. Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         * @description Kısmi düzeltme; durum kullanımda, depoda ve arızalı arasında değişir, hurdaya ayırma ayrı uçtur. Hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`. Yalnız değişen bağ yeniden denetlenir; kurallar ve kodlar kayıttakiyle aynıdır. Alım yılından sonra faydalı ömür değişmez (422 `fixed_asset_useful_life_locked`) ve normal yöntemden azalan bakiyelere geçilmez (422 `fixed_asset_depreciation_method_locked`); azalandan normale geçilir (VUK md. 318, K-287). Sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         patch: operations["updateFixedAsset"];
         trace?: never;

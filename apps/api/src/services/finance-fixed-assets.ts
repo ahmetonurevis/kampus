@@ -267,7 +267,16 @@ async function checksFor(
     tagTaken:
       changed('tagNumber') &&
       (await isFixedAssetTagTaken(tx, ctx.institutionId, draft.tagNumber, exceptId)),
-    ...(previous === null ? {} : { currentStatus: previous.asset.status }),
+    ...(previous === null
+      ? {}
+      : {
+          currentStatus: previous.asset.status,
+          currentDepreciation: {
+            usefulLifeYears: previous.asset.usefulLifeYears,
+            depreciationMethod: previous.asset.depreciationMethod,
+            acquisitionDate: previous.asset.acquisitionDate,
+          },
+        }),
   }
   if (draft.campusId !== null && changed('campusId'))
     checks.campusFound = (await campusNames(tx, ctx.institutionId, [draft.campusId])).size === 1

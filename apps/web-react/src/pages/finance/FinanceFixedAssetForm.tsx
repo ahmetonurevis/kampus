@@ -10,6 +10,7 @@ import {
 import { useSuppliers } from '@kampus/react-shared/use-finance-procurement.ts'
 import {
   DEFAULT_USEFUL_LIFE,
+  depreciationChangeLocks,
   DEPRECIATION_METHOD_LABELS,
   DEPRECIATION_METHODS,
   FIXED_ASSET_CATEGORIES,
@@ -72,6 +73,13 @@ export function FixedAssetFormModal({
   })
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
+  // İlk amortisman yılından sonra ömür değişmez, normalden azalana geçilmez (K-287; sunucu da denetler).
+  const locks = asset
+    ? depreciationChangeLocks(asset, dayKey())
+    : { usefulLifeLocked: false, decliningLocked: false }
+  const methodChoices = DEPRECIATION_METHODS.filter(
+    (value) => !(locks.decliningLocked && value === 'declining'),
+  ).map((value) => ({ value, label: DEPRECIATION_METHOD_LABELS[value] }))
   const fields = {
     setError: (name: string, error: { type: string; message: string }) => {
       const field = fixedAssetFormField(name)
@@ -139,7 +147,12 @@ export function FixedAssetFormModal({
     id: string,
     label: string,
     name: 'tagNumber' | 'name' | 'location' | 'value' | 'acquisitionDate' | 'usefulLifeYears',
-    extra: { description?: string; inputMode?: 'decimal' | 'numeric'; type?: 'date' } = {},
+    extra: {
+      description?: string
+      inputMode?: 'decimal' | 'numeric'
+      type?: 'date'
+      locked?: boolean
+    } = {},
   ) => (
     <FormField id={id} label={label} error={errors[name]} description={extra.description}>
       {(control) => (
@@ -148,7 +161,7 @@ export function FixedAssetFormModal({
           {...form.register(name)}
           {...(extra.inputMode ? { inputMode: extra.inputMode } : {})}
           {...(extra.type ? { type: extra.type } : {})}
-          disabled={busy}
+          disabled={busy || extra.locked === true}
         />
       )}
     </FormField>
@@ -161,10 +174,11 @@ export function FixedAssetFormModal({
     choices: readonly { value: string; label: string }[],
     placeholder?: string,
     onChange?: (value: string) => void,
+    description?: string,
   ) => {
     const registered = form.register(name)
     return (
-      <FormField id={id} label={label} error={errors[name]}>
+      <FormField id={id} label={label} error={errors[name]} description={description}>
         {(control) => (
           <NativeSelect
             {...control}
@@ -273,16 +287,21 @@ export function FixedAssetFormModal({
         )}
         {text('demirbas-omur', 'Faydalı ömür (yıl)', 'usefulLifeYears', {
           inputMode: 'numeric',
-          description: `Bu kategori için öneri ${String(DEFAULT_USEFUL_LIFE[category])} yıl (VUK listesi; mali müşavirce doğrulanmalı).`,
+          locked: locks.usefulLifeLocked,
+          description: locks.usefulLifeLocked
+            ? 'Amortisman ayrılmaya başladı; faydalı ömür yalnız alım yılında değiştirilebilir.'
+            : `Bu kategori için öneri ${String(DEFAULT_USEFUL_LIFE[category])} yıl (VUK listesi; mali müşavirce doğrulanmalı).`,
         })}
         {select(
           'demirbas-yontem',
           'Amortisman yöntemi',
           'depreciationMethod',
-          DEPRECIATION_METHODS.map((value) => ({
-            value,
-            label: DEPRECIATION_METHOD_LABELS[value],
-          })),
+          methodChoices,
+          undefined,
+          undefined,
+          locks.decliningLocked
+            ? 'Amortisman ayrılmaya başladı; normal yöntemden azalan bakiyelere geçilemez (VUK md. 318).'
+            : undefined,
         )}
         {asset?.receipt ? (
           <p className="col-span-full text-sm text-muted-foreground">

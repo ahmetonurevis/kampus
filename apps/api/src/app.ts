@@ -62,6 +62,7 @@ import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-child
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipFundRoutes } from './routes/finance-scholarship-funds.ts'
+import { registerScholarshipRevocationRoutes } from './routes/finance-scholarship-revocation.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerFinancePurchaseOrderRoutes } from './routes/finance-purchase-orders.ts'
 import { registerFinancePurchaseQuoteRoutes } from './routes/finance-purchase-quotes.ts'
@@ -482,6 +483,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerScholarshipRevocationRoutes(app)
   registerFinanceScholarshipFundRoutes(app)
   registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)

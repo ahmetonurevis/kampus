@@ -458,9 +458,9 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ### K23 · Satın alma, stok ve demirbaş
 
-| ID     | Görev                                                                     | Boyut | Durum       | Dal / commit           | Not                                                                                                                                     |
-| ------ | ------------------------------------------------------------------------- | ----- | ----------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| ON-277 | Fatura eşleştirme: sipariş, mal kabul ve gelen e-fatura üçlü eşleştirmesi | M     | çalışılıyor | onur/fatura-eslestirme | sipariş, mal kabul ve elle girilen tedarikçi faturası üçlü eşleştirmesi; e-Fatura sonra; migration 0101; DOM-FIN-095; K-280…K-283 öneri |
+| ID     | Görev                                                                     | Boyut | Durum | Dal / commit | Not                                                                                                                              |
+| ------ | ------------------------------------------------------------------------- | ----- | ----- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| ON-277 | Fatura eşleştirme: sipariş, mal kabul ve gelen e-fatura üçlü eşleştirmesi | M     | bitti | 14deb644     | elle girilen fatura kalemleriyle; e-Fatura sonra; migration 0097; DOM-FIN-095; K-280…K-283 öneri; envanter satırları (alan izni) |
 
 ### K24 · Bütçe, maliyet merkezi ve konsolide rapor
 

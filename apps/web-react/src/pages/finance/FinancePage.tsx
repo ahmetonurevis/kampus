@@ -71,6 +71,9 @@ const FinanceMaintenanceSection = lazy(async () => ({
 const FinanceMaterialSetsSection = lazy(async () => ({
   default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
 }))
+const FinanceSeveranceSection = lazy(async () => ({
+  default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -104,6 +107,7 @@ const VIEWS = {
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
+  severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -125,6 +129,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sarf talepleri (DOM-FIN-091) ikisine açıktır; ön büro karşılar ve dönüştürür, onay yöneticide (K-244).
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  * Arıza ve bakım (DOM-FIN-089) ikisine açıktır; ön büro bildirir, iş emrini yönetici yürütür (K-237).
+ * Kıdem/ihbar hesaplayıcı (DOM-FIN-094) yalnız yöneticidedir (K-272).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -136,7 +141,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'bankMatching' ||
       value === 'purchaseReport' ||
       value === 'supplierLedger' ||
-      value === 'fixedAssets'
+      value === 'fixedAssets' ||
+      value === 'severance'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -272,7 +278,8 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'materialSets' ||
       tab === 'supplyRequests' ||
       tab === 'fixedAssets' ||
-      tab === 'maintenance' ? (
+      tab === 'maintenance' ||
+      tab === 'severance' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
@@ -292,6 +299,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           ) : null}
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
           {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
+          {tab === 'severance' ? <FinanceSeveranceSection /> : null}
         </Suspense>
       ) : null}
       {tab === 'boardReport' ? (

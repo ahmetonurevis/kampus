@@ -1,5 +1,5 @@
 {
-  "id": "692d4a81-b2a8-4593-b712-0c92116c136d",
+  "id": "3631c97f-7400-4fcf-bdd8-ddf5b6995257",
   "prevId": "4426e26b-3d40-4d9b-9a70-f27125ef41d5",
   "version": "7",
   "dialect": "postgresql",
@@ -16965,272 +16965,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.supplier_invoice_lines": {
-      "name": "supplier_invoice_lines",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "order_item_id": {
-          "name": "order_item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unit_price_cents": {
-          "name": "unit_price_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "supplier_invoice_lines_position_key": {
-          "name": "supplier_invoice_lines_position_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoice_lines_order_item_key": {
-          "name": "supplier_invoice_lines_order_item_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "order_item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"supplier_invoice_lines\".\"order_item_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoice_lines_invoice_idx": {
-          "name": "supplier_invoice_lines_invoice_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "supplier_invoice_lines_order_item_idx": {
-          "name": "supplier_invoice_lines_order_item_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "order_item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "supplier_invoice_lines_institution_id_institutions_id_fk": {
-          "name": "supplier_invoice_lines_institution_id_institutions_id_fk",
-          "tableFrom": "supplier_invoice_lines",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "supplier_invoice_lines_invoice_fkey": {
-          "name": "supplier_invoice_lines_invoice_fkey",
-          "tableFrom": "supplier_invoice_lines",
-          "tableTo": "supplier_invoices",
-          "columnsFrom": [
-            "institution_id",
-            "invoice_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "supplier_invoice_lines_order_item_fkey": {
-          "name": "supplier_invoice_lines_order_item_fkey",
-          "tableFrom": "supplier_invoice_lines",
-          "tableTo": "purchase_order_items",
-          "columnsFrom": [
-            "institution_id",
-            "order_item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "supplier_invoice_lines_pkey": {
-          "name": "supplier_invoice_lines_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "supplier_invoice_lines_position_check": {
-          "name": "supplier_invoice_lines_position_check",
-          "value": "\"supplier_invoice_lines\".\"position\" >= 0"
-        },
-        "supplier_invoice_lines_quantity_check": {
-          "name": "supplier_invoice_lines_quantity_check",
-          "value": "\"supplier_invoice_lines\".\"quantity\" between 1 and 1000000"
-        },
-        "supplier_invoice_lines_price_check": {
-          "name": "supplier_invoice_lines_price_check",
-          "value": "\"supplier_invoice_lines\".\"unit_price_cents\" between 1 and 100000000000"
-        },
-        "supplier_invoice_lines_currency_check": {
-          "name": "supplier_invoice_lines_currency_check",
-          "value": "\"supplier_invoice_lines\".\"currency\" = 'TRY'"
-        },
-        "supplier_invoice_lines_description_check": {
-          "name": "supplier_invoice_lines_description_check",
-          "value": "(\"supplier_invoice_lines\".\"order_item_id\" is null) = (\"supplier_invoice_lines\".\"description\" is not null)\n        and (\"supplier_invoice_lines\".\"description\" is null or char_length(\"supplier_invoice_lines\".\"description\") between 2 and 200)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.supplier_invoices": {
       "name": "supplier_invoices",
       "schema": "",
@@ -17328,30 +17062,6 @@
         },
         "cancel_reason": {
           "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "match_approved_status": {
-          "name": "match_approved_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "match_approved_at": {
-          "name": "match_approved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "match_approved_by_user_id": {
-          "name": "match_approved_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "match_approval_reason": {
-          "name": "match_approval_reason",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -17553,10 +17263,6 @@
         "supplier_invoices_cancel_check": {
           "name": "supplier_invoices_cancel_check",
           "value": "((\"supplier_invoices\".\"cancelled_at\" is null) = (\"supplier_invoices\".\"cancelled_by_user_id\" is null))\n        and ((\"supplier_invoices\".\"cancelled_at\" is null) = (\"supplier_invoices\".\"cancel_reason\" is null))"
-        },
-        "supplier_invoices_match_approval_check": {
-          "name": "supplier_invoices_match_approval_check",
-          "value": "(\"supplier_invoices\".\"match_approved_status\" is null) = (\"supplier_invoices\".\"match_approved_at\" is null)\n        and (\"supplier_invoices\".\"match_approved_at\" is null) = (\"supplier_invoices\".\"match_approved_by_user_id\" is null)\n        and (\"supplier_invoices\".\"match_approved_at\" is null) = (\"supplier_invoices\".\"match_approval_reason\" is null)\n        and (\"supplier_invoices\".\"match_approved_status\" is null or \"supplier_invoices\".\"match_approved_status\" in ('quantity_mismatch', 'price_mismatch', 'unmatched'))\n        and (\"supplier_invoices\".\"match_approval_reason\" is null or char_length(\"supplier_invoices\".\"match_approval_reason\") <= 500)\n        and (\"supplier_invoices\".\"match_approved_at\" is null or \"supplier_invoices\".\"purchase_order_id\" is not null)"
         }
       },
       "isRLSEnabled": false
@@ -22071,6 +21777,183 @@
         "privacy_notices_version_check": {
           "name": "privacy_notices_version_check",
           "value": "\"privacy_notices\".\"version\" = 1 and \"privacy_notices\".\"archived_at\" is null"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.campaign_codes": {
+      "name": "campaign_codes",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_cents": {
+          "name": "cost_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "campaign_codes_code_key": {
+          "name": "campaign_codes_code_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "campaign_codes_institution_id_institutions_id_fk": {
+          "name": "campaign_codes_institution_id_institutions_id_fk",
+          "tableFrom": "campaign_codes",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "campaign_codes_pkey": {
+          "name": "campaign_codes_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "campaign_codes_code_check": {
+          "name": "campaign_codes_code_check",
+          "value": "\"campaign_codes\".\"code\" ~ '^[A-Z0-9][A-Z0-9-]{2,19}$'"
+        },
+        "campaign_codes_name_check": {
+          "name": "campaign_codes_name_check",
+          "value": "char_length(\"campaign_codes\".\"name\") between 2 and 120"
+        },
+        "campaign_codes_channel_check": {
+          "name": "campaign_codes_channel_check",
+          "value": "\"campaign_codes\".\"channel\" in ('social_media', 'flyer', 'fair', 'referral', 'website', 'other')"
+        },
+        "campaign_codes_dates_check": {
+          "name": "campaign_codes_dates_check",
+          "value": "\"campaign_codes\".\"start_date\" <= \"campaign_codes\".\"end_date\""
+        },
+        "campaign_codes_cost_check": {
+          "name": "campaign_codes_cost_check",
+          "value": "\"campaign_codes\".\"cost_cents\" is null or \"campaign_codes\".\"cost_cents\" between 0 and 10000000000"
+        },
+        "campaign_codes_currency_check": {
+          "name": "campaign_codes_currency_check",
+          "value": "\"campaign_codes\".\"currency\" = 'TRY'"
         }
       },
       "isRLSEnabled": false

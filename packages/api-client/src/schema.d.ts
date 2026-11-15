@@ -3543,7 +3543,7 @@ export interface paths {
         put?: never;
         /**
          * Aday ekle
-         * @description Ön büro yeni aday açar; aday `Yeni aday` aşamasında başlar, akademik veya finansal kayıt üretmez (core `createProspect`, DOM-KAY-001, DOM-KAY-009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, kaynak, aydınlatma metni sürümü, kanal bazında ticari ileti onayı; T.C. kimlik no, doğum tarihi, adres ve bilinmeyen alan 400 `validation_failed`. 18 yaş altı adayda veli adı zorunlu (422 `prospect_guardian_required`); dil okulunda yaş seçimi zorunlu (422 `prospect_age_required`). Pasif kampüs 422 `branch_unavailable`, olmayan referans öğrencisi 422 `referrer_not_found`. Aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`, iletişimi paylaşan farklı adlı aday kardeş seçilmeden 409 `prospect_contact_shared` (DOM-KAY-002, DOM-KAY-031); ret eşleşen adayın kimliğini ve iletişim bilgisini taşımaz. Tekillik kurumun bütün adaylarına kurum kilidi altında bakar; aynı adayı eşzamanlı iki istekten yalnız biri açar. Telefon, e-posta ve veli adı loglanmaz. Modül `crm`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Ön büro yeni aday açar; aday `Yeni aday` aşamasında başlar, akademik veya finansal kayıt üretmez (core `createProspect`, DOM-KAY-001, DOM-KAY-009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, kaynak, aydınlatma metni sürümü, kanal bazında ticari ileti onayı, isteğe bağlı kampanya kodu (`campaignCode`; büyük harfe çevrilir, DOM-KAY-041: kurumda yoksa ya da arşivliyse 422 `campaign_code_not_found`, pasifse 422 `campaign_code_inactive`, bugün kampanya günleri dışındaysa 422 `campaign_code_not_started`/`campaign_code_ended`; kaynak kodla zorlanmaz); T.C. kimlik no, doğum tarihi, adres ve bilinmeyen alan 400 `validation_failed`. 18 yaş altı adayda veli adı zorunlu (422 `prospect_guardian_required`); dil okulunda yaş seçimi zorunlu (422 `prospect_age_required`). Pasif kampüs 422 `branch_unavailable`, olmayan referans öğrencisi 422 `referrer_not_found`. Aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`, iletişimi paylaşan farklı adlı aday kardeş seçilmeden 409 `prospect_contact_shared` (DOM-KAY-002, DOM-KAY-031); ret eşleşen adayın kimliğini ve iletişim bilgisini taşımaz. Tekillik kurumun bütün adaylarına kurum kilidi altında bakar; aynı adayı eşzamanlı iki istekten yalnız biri açar. Telefon, e-posta ve veli adı loglanmaz. Modül `crm`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["createProspect"];
         delete?: never;
@@ -3812,6 +3812,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/eokul-student-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * e-Okul öğrenci listesini aktar
+         * @description Okul e-Okul'dan indirdiği öğrenci listesini CSV ya da Excel (.xlsx, ilk sayfa) olarak yükler (IST-134, DOM-KAY-042). Yalnız `school` türündeki kurumda vardır; öteki türlerde 404. `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır, eski ikili .xls okunmaz (`import_file_legacy_excel`). Başlık satırı ilk 20 satırda aranır; en çok 3.000 veri satırı. `mapping` verilmezse sütunlar başlık adlarından önerilir (`suggestedMapping`); kullanıcı düzeltip yeniden önizler. `branchId` aramayı bir kampüsle sınırlar, `fallbackClassId` sınıf sütunu olmayan dosyada bütün satırların sınıfıdır. Satır kurumdaki öğrenciyle T.C. kimlik no, yoksa okul no ile eşleşir ve `new`, `update`, `unchanged` ya da `invalid` olur. Mevcut öğrencide yalnız ad soyad, okul no, aynı düzeyde şube ve eksik kimlik yazılır; düzey farkı ve doğum tarihi farkı bilgidir. Bilinmeyen sınıf hatadır, sınıf açılmaz. Yeni öğrenci pilot aktarımının kuralıyla açılır: kimlik, doğum tarihi, veli adı ve telefonu zorunlu, aynı veli kardeşleri bağlar (DOM-KAY-012, DOM-KAY-013, DOM-KAY-036). `dryRun: true` önizlemedir: 200, satır bazında sorun, bilgi ve değişiklik; kimlik ve telefon maskeli; eşleme sorunu `mappingIssues`'ta döner ve satır işlenmez. Onay (`dryRun: false`) yalnız `lines` ile seçilen satırları kurum kilidi altında yeniden doğrular: eşleme sorunu 422 `eokul_mapping_invalid` (`issues` yolu `['mapping', alan]`), seçilen satır sorunu 422 `eokul_import_invalid` (`['rows', satır, alan]`), başarı 201 ve satırsız özet. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yönetici ve ön büro (öteki roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir. Dosya saklanmaz, içerik ve kimlik numarası loglanmaz; denetim kaydına (`student.eokul_import`) yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importEokulStudents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/installment-imports": {
         parameters: {
             query?: never;
@@ -3864,6 +3884,78 @@ export interface paths {
          * @description Açık adayların bugün ve yakın günlerde ilgilenilmesi gerekenleri (DOM-KAY-037). Pencere bugünden başlar, bugün dahil `days` gün (1–14, varsayılan 7; Europe/Istanbul). `meetings`: penceredeki tanışma görüşmeleri, saat sırasıyla (bitişi geçen `held`). `trials`: yalnız dil okulunda penceredeki deneme dersleri; gün dersin güncel kaydından, iptal edilen ya da programdan kalkan derse bağlı deneme yok. `followUps`: şu andan sonra başlayan görüşmesi ya da denemesi olmayan açık aday, ilk tutan nedenle bir kez (`first_contact`: açılışın ertesi gününe giren `Yeni aday`; `meeting_outcome`/`trial_outcome`: önceki bir gün yapılmış, aşaması hâlâ `Görüşme planlandı` ve sonrasında not yok; `stale`: son işlem 7 gün ya da daha eski); en çok gecikenler önce. Her bölüm toplamla birlikte en çok 50 satır döner. Satır aday kimliği, adı, aşaması ve kampüsünü taşır; telefon, e-posta, veli, not, ilgi ve kaynak dönmez. Arşivlenen aday sayılmaz. Bilinmeyen parametre ya da aralık dışı `days` 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
          */
         get: operations["getProspectSeasonWatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/campaign-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kampanya kodlarını listele
+         * @description Arşivlenmemiş kampanyalar, en yeni başlangıç önce (DOM-KAY-041). `status=usable` aday formunun seçenekleridir: etkin ve bugün (Europe/Istanbul) tarih aralığında olanlar. `q` kod ya da adda arar. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listCampaignCodes"];
+        put?: never;
+        /**
+         * Kampanya kodu ekle
+         * @description Kod (büyük harfe çevrilir; İngilizce harf, rakam ve tire, 3–20 karakter), ad, kanal (`social_media`, `flyer`, `fair`, `referral`, `website`, `other`), başlangıç–bitiş günü (iki uç dahil), isteğe bağlı maliyet (kuruş) ve etkinlik. Kod kurumda arşivliler dahil tekil: 409 `campaign_code_exists` (K-288). Bitiş başlangıçtan önceyse 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createCampaignCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/campaign-codes/{campaignId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kampanya kodu ayrıntısı
+         * @description Olmayan, arşivlenmiş ya da başka kurumun kampanyası 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getCampaignCode"];
+        put?: never;
+        post?: never;
+        /**
+         * Kampanya kodunu arşivle
+         * @description Arşivli kampanya listede görünmez, kodu yeni adaya bağlanmaz ve yeniden kullanılmaz; adayları kayıt hunisi kırılımında kalır. Olmayan ya da başka kurumun kampanyası 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        delete: operations["archiveCampaignCode"];
+        options?: never;
+        head?: never;
+        /**
+         * Kampanya kodunu düzelt ya da pasifleştir
+         * @description Kısmi düzeltme: ad, kanal, günler, maliyet (`null` siler) ve `isActive`. Kod değişmez (gövdede `code` 400). Birleşik günlerde bitiş başlangıçtan önceyse 422 `campaign_dates_invalid`. Pasif ya da günleri dışında kalan kampanyanın kodu yeni adaya bağlanmaz; bağlı adaylar değişmez. Sürüm tutmazsa 409 `version_conflict`; `If-Match` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        patch: operations["updateCampaignCode"];
+        trace?: never;
+    };
+    "/api/v1/prospects/funnel/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt hunisinin kampanya kırılımı
+         * @description Aralıkta açılan adayların (`dateFrom`/`dateTo`, açılış günü Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar) kampanya başına aday → görüşme → teklif → kesin kayıt sayıları (birikimli) ve dönüşüm oranı (DOM-KAY-041, IST-117). Satırlar: adayı olan her kampanya (arşivli dahil) ve aralıkla kesişen arşivlenmemiş kampanyalar; kodsuz adaylar `uncoded`, hepsi `total`. Maliyet girilmişse aday başı ve kayıt başı maliyet (kuruş); aralık kampanyanın bütün günlerini kapsamıyorsa `costPartial: true` ve birim maliyet `null` (K-290). Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz; küçük grup bastırılmaz (K-291). `Accept: text/csv` ile aynı tablo CSV iner (`;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı). Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectCampaignFunnel"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6558,6 +6650,26 @@ export interface paths {
          * @description Gerekçeyle iptal (K-237). Yönetici açık, atanmış ya da üzerinde çalışılan talebi iptal eder; ön büro ve öğretmen yalnız kendi bildirimini ve atanmamışken (başkasının bildirimi 403 `maintenance_not_owner`, atanmış talep 422 `maintenance_not_cancellable`). Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız kendi bildirimlerini görür; K-238). Modül `finance`. Geçersiz geçiş 422 `maintenance_status_invalid`; başka kurumun talebi 404; `If-Match` zorunlu, sürüm tutmazsa 409.
          */
         post: operations["cancelMaintenanceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/severance-estimates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kıdem ve ihbar tazminatını tahmin et
+         * @description Elle girilen işe giriş ve çıkış günü, aylık brüt ücret, düzenli yan ödemeler, çıkış nedeni ve ihbar bilgisinden kıdem ve ihbar tazminatının tahmini dökümünü döner (ON-205; DOM-FIN-094). **Hiçbir şey yazmaz**, hesap saklanmaz (K-273; `Idempotency-Key` gerekmez). Kıdem: bir tam yıl ve kıdem doğuran neden şartıyla esas aylık (giydirilmiş brüt ile çıkış günündeki tavanın küçüğü) × (tam yıl + artık gün / 365); gelir vergisinden istisna, damga vergisi binde 7,59. İhbar: yalnız işveren feshinde ve ihbar verilmediyse 4857 md. 17 süresi (2/4/6/8 hafta) × 7 × giydirilmiş aylık / 30; gelir vergisi `cumulativeTaxBaseCents` yoksa ilk dilim oranı, varsa dilimli (K-274); damga vergisi. Tutarlar kuruş. Tavan ve tarife tablosu dışındaki günde son bilinen değer kullanılır, `warnings` uyarır. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Tahmindir; bordro ya da mali müşavir hesabı yerine geçmez.
+         */
+        post: operations["estimateFinanceSeverance"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13577,6 +13689,87 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRowInput"][];
         };
+        /** @description Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null` */
+        EokulMappingInput: {
+            schoolNumber: number | null;
+            identityNumber: number | null;
+            fullName: number | null;
+            firstName: number | null;
+            lastName: number | null;
+            className: number | null;
+            grade: number | null;
+            section: number | null;
+            birthDate: number | null;
+            guardianName: number | null;
+            guardianPhone: number | null;
+            relationship: number | null;
+        };
+        EokulChangeInput: {
+            /** @enum {string} */
+            field: "name" | "schoolNumber" | "class" | "identity";
+            before: string | null;
+            /** @description Kimlik değişikliğinde iki değer de `null` (yalnız eklenir) */
+            after: string | null;
+        };
+        EokulImportRowInput: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı
+             * @enum {string}
+             */
+            status: "new" | "update" | "unchanged" | "invalid";
+            schoolNumber: string;
+            name: string;
+            /** @description Dosyadaki sınıf hücresi */
+            className: string;
+            /** @description Eşleşen Kampüs sınıfı; bulunamadıysa boş */
+            classLabel: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            /** @description Yalnız yeni öğrencide dolu */
+            guardianName: string;
+            /** @description Veli telefonu maskeli; yalnız yeni öğrencide dolu */
+            guardianPhoneMasked: string;
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            changes: components["schemas"]["EokulChangeInput"][];
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        EokulMappingIssueInput: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        EokulImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Başlık satırının dosyadaki yeri */
+            headerLine: number;
+            /** @description Başlık hücreleri (sütun eşleme seçenekleri) */
+            headers: {
+                index: number;
+                label: string;
+            }[];
+            suggestedMapping: components["schemas"]["EokulMappingInput"];
+            mapping: components["schemas"]["EokulMappingInput"];
+            /** @description Doluysa satırlar işlenmedi */
+            mappingIssues: components["schemas"]["EokulMappingIssueInput"][];
+            /** @description Başlıktan sonraki boş olmayan satır sayısı */
+            fileRowCount: number;
+            /** @description İşlenen öğrenci satırı (onayda seçilen satırlar) */
+            rowCount: number;
+            newCount: number;
+            updateCount: number;
+            unchangedCount: number;
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["EokulImportRowInput"][];
+        };
         EnrollmentFunnelStepInput: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -13831,6 +14024,82 @@ export interface components {
             paidCents: number;
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRowInput"][];
+        };
+        CampaignCodeInput: {
+            id: string;
+            /** @description Büyük harf kod; kurumda tekil, değişmez */
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            startDate: string;
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            endDate: string;
+            /** @description Toplam maliyet, kuruş; girilmediyse `null` */
+            costCents: number | null;
+            isActive: boolean;
+            /**
+             * @description Bugüne göre durum: `usable` (adaya bağlanabilir), `inactive`, `not_started`, `ended`
+             * @enum {string}
+             */
+            status: "usable" | "inactive" | "not_started" | "ended";
+            /** @description `If-Match` için kayıt sürümü */
+            version: number;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CampaignFunnelCountsInput: {
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        CampaignFunnelRowInput: {
+            campaign: {
+                id: string;
+                code: string;
+                name: string;
+                /** @enum {string} */
+                channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                startDate: string;
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                endDate: string;
+                costCents: number | null;
+                isActive: boolean;
+                archived: boolean;
+            };
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday başı maliyet, kuruş; maliyet ya da aday yoksa ya da aralık kısmiyse `null` */
+            costPerProspectCents: number | null;
+            /** @description Kesin kayıt başı maliyet, kuruş; aynı koşullarla `null` */
+            costPerEnrollmentCents: number | null;
+            /** @description Rapor aralığı kampanyanın bütün günlerini kapsamıyor (K-290) */
+            costPartial: boolean;
+        };
+        CampaignFunnelInput: {
+            dateFrom: string | null;
+            dateTo: string | null;
+            total: components["schemas"]["CampaignFunnelCountsInput"];
+            /** @description Kampanya koduyla açılmamış adaylar */
+            uncoded: components["schemas"]["CampaignFunnelCountsInput"];
+            rows: components["schemas"]["CampaignFunnelRowInput"][];
         };
         SeasonWatchMeetingInput: {
             prospectId: string;
@@ -18194,6 +18463,87 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRow"][];
         };
+        /** @description Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null` */
+        EokulMapping: {
+            schoolNumber: number | null;
+            identityNumber: number | null;
+            fullName: number | null;
+            firstName: number | null;
+            lastName: number | null;
+            className: number | null;
+            grade: number | null;
+            section: number | null;
+            birthDate: number | null;
+            guardianName: number | null;
+            guardianPhone: number | null;
+            relationship: number | null;
+        };
+        EokulChange: {
+            /** @enum {string} */
+            field: "name" | "schoolNumber" | "class" | "identity";
+            before: string | null;
+            /** @description Kimlik değişikliğinde iki değer de `null` (yalnız eklenir) */
+            after: string | null;
+        };
+        EokulImportRow: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı
+             * @enum {string}
+             */
+            status: "new" | "update" | "unchanged" | "invalid";
+            schoolNumber: string;
+            name: string;
+            /** @description Dosyadaki sınıf hücresi */
+            className: string;
+            /** @description Eşleşen Kampüs sınıfı; bulunamadıysa boş */
+            classLabel: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            /** @description Yalnız yeni öğrencide dolu */
+            guardianName: string;
+            /** @description Veli telefonu maskeli; yalnız yeni öğrencide dolu */
+            guardianPhoneMasked: string;
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            changes: components["schemas"]["EokulChange"][];
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        EokulMappingIssue: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        EokulImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Başlık satırının dosyadaki yeri */
+            headerLine: number;
+            /** @description Başlık hücreleri (sütun eşleme seçenekleri) */
+            headers: {
+                index: number;
+                label: string;
+            }[];
+            suggestedMapping: components["schemas"]["EokulMapping"];
+            mapping: components["schemas"]["EokulMapping"];
+            /** @description Doluysa satırlar işlenmedi */
+            mappingIssues: components["schemas"]["EokulMappingIssue"][];
+            /** @description Başlıktan sonraki boş olmayan satır sayısı */
+            fileRowCount: number;
+            /** @description İşlenen öğrenci satırı (onayda seçilen satırlar) */
+            rowCount: number;
+            newCount: number;
+            updateCount: number;
+            unchangedCount: number;
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["EokulImportRow"][];
+        };
         EnrollmentFunnelStep: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -18448,6 +18798,82 @@ export interface components {
             paidCents: number;
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRow"][];
+        };
+        CampaignCode: {
+            id: string;
+            /** @description Büyük harf kod; kurumda tekil, değişmez */
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            startDate: string;
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            endDate: string;
+            /** @description Toplam maliyet, kuruş; girilmediyse `null` */
+            costCents: number | null;
+            isActive: boolean;
+            /**
+             * @description Bugüne göre durum: `usable` (adaya bağlanabilir), `inactive`, `not_started`, `ended`
+             * @enum {string}
+             */
+            status: "usable" | "inactive" | "not_started" | "ended";
+            /** @description `If-Match` için kayıt sürümü */
+            version: number;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CampaignFunnelCounts: {
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        CampaignFunnelRow: {
+            campaign: {
+                id: string;
+                code: string;
+                name: string;
+                /** @enum {string} */
+                channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                startDate: string;
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                endDate: string;
+                costCents: number | null;
+                isActive: boolean;
+                archived: boolean;
+            };
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday başı maliyet, kuruş; maliyet ya da aday yoksa ya da aralık kısmiyse `null` */
+            costPerProspectCents: number | null;
+            /** @description Kesin kayıt başı maliyet, kuruş; aynı koşullarla `null` */
+            costPerEnrollmentCents: number | null;
+            /** @description Rapor aralığı kampanyanın bütün günlerini kapsamıyor (K-290) */
+            costPartial: boolean;
+        };
+        CampaignFunnel: {
+            dateFrom: string | null;
+            dateTo: string | null;
+            total: components["schemas"]["CampaignFunnelCounts"];
+            /** @description Kampanya koduyla açılmamış adaylar */
+            uncoded: components["schemas"]["CampaignFunnelCounts"];
+            rows: components["schemas"]["CampaignFunnelRow"][];
         };
         SeasonWatchMeeting: {
             prospectId: string;
@@ -42496,6 +42922,7 @@ export interface operations {
                     /** @enum {string} */
                     source: "Web sitesi" | "Veli referansı" | "Kampüs ziyareti" | "Telefon" | "Bursluluk sınavı" | "Sosyal medya" | "Kurumsal anlaşma";
                     referrerStudentId?: string;
+                    campaignCode?: string;
                     minor?: boolean;
                     guardianName?: string;
                     siblingOfId?: string;
@@ -44079,6 +44506,139 @@ export interface operations {
             };
         };
     };
+    importEokulStudents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                    mapping?: {
+                        schoolNumber?: number | null;
+                        identityNumber?: number | null;
+                        fullName?: number | null;
+                        firstName?: number | null;
+                        lastName?: number | null;
+                        className?: number | null;
+                        grade?: number | null;
+                        section?: number | null;
+                        birthDate?: number | null;
+                        guardianName?: number | null;
+                        guardianPhone?: number | null;
+                        relationship?: number | null;
+                    };
+                    branchId?: string;
+                    fallbackClassId?: string;
+                    lines?: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EokulImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EokulImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     importInstallments: {
         parameters: {
             query?: never;
@@ -44296,6 +44856,615 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ProspectSeasonWatch"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCampaignCodes: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kod ya da adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `usable`: etkin ve bugün tarih aralığında (aday formu); `active`/`inactive` bayrak */
+                status?: "usable" | "active" | "inactive";
+                channel?: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCampaignCode: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                    startDate: string;
+                    endDate: string;
+                    costCents?: number | null;
+                    /** @default true */
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCampaignCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveCampaignCode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCampaignCode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    channel?: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                    startDate?: string;
+                    endDate?: string;
+                    costCents?: number | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectCampaignFunnel: {
+        parameters: {
+            query?: {
+                /** @description Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignFunnel"];
                     };
                 };
             };
@@ -69634,6 +70803,165 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    estimateFinanceSeverance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    startDate: string;
+                    endDate: string;
+                    grossWageCents: number;
+                    /** @default 0 */
+                    regularBenefitsCents?: number;
+                    /** @enum {string} */
+                    exitReason: "employer_termination" | "employer_compelling" | "employee_just_cause" | "retirement" | "military_service" | "marriage" | "death" | "fixed_term_end" | "resignation" | "employer_misconduct";
+                    /** @default false */
+                    noticeGiven?: boolean;
+                    /** @default null */
+                    cumulativeTaxBaseCents?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            exitReason: "employer_termination" | "employer_compelling" | "employee_just_cause" | "retirement" | "military_service" | "marriage" | "death" | "fixed_term_end" | "resignation" | "employer_misconduct";
+                            noticeGiven: boolean;
+                            service: {
+                                /** @description `YYYY-MM-DD` */
+                                startDate: string;
+                                /** @description `YYYY-MM-DD` */
+                                endDate: string;
+                                /** @description Giriş ve çıkış günü dahil takvim günü */
+                                totalDays: number;
+                                /** @description Tam hizmet yılı */
+                                years: number;
+                                /** @description Son yıl dönümünden sonraki tam ay (gösterim) */
+                                months: number;
+                                /** @description Son tam aydan sonraki gün (gösterim) */
+                                days: number;
+                                /** @description Son yıl dönümünden sonraki gün (kıdemde 365’te bir) */
+                                remainderDays: number;
+                            };
+                            wage: {
+                                grossWageCents: number;
+                                regularBenefitsCents: number;
+                                /** @description Aylık giydirilmiş brüt: brüt + düzenli yan ödemeler */
+                                dressedWageCents: number;
+                                /** @description Aylık giydirilmiş brüt / 30 */
+                                dailyDressedWageCents: number;
+                            };
+                            severance: {
+                                /** @enum {string} */
+                                status: "eligible" | "reason_not_entitled" | "under_one_year";
+                                /** @description Tazminata esas gün (iki ondalık) */
+                                days: number;
+                                fullYears: number;
+                                remainderDays: number;
+                                ceiling: {
+                                    /** @description Uygulanan tavan döneminin başlangıcı */
+                                    from: string;
+                                    monthlyCents: number;
+                                    /** @description Çıkış günü tablonun son döneminden sonra */
+                                    stale: boolean;
+                                };
+                                ceilingApplied: boolean;
+                                /** @description Giydirilmiş aylık ile tavanın küçüğü */
+                                baseMonthlyCents: number;
+                                dailyWageCents: number;
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            notice: {
+                                /** @enum {string} */
+                                status: "eligible" | "reason_not_entitled" | "notice_given";
+                                weeks: 2 | 4 | 6 | 8;
+                                /** @description Ödenen gün: hak varsa hafta × 7, yoksa 0 */
+                                days: number;
+                                dailyWageCents: number;
+                                /** @enum {string} */
+                                incomeTaxMethod: "first_bracket" | "cumulative_base" | "none";
+                                taxYear: number;
+                                taxTableStale: boolean;
+                                incomeTaxRateBasisPoints: number;
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            totals: {
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            /** @description Uyarı kodları: `ceiling_stale` (tavan tabloda yok, son bilinen kullanıldı), `tax_table_stale` (tarife yılı yok), `resignation_notice_owed` (bildirimsiz istifada ihbarı çalışan öder) */
+                            warnings: ("ceiling_stale" | "tax_table_stale" | "resignation_notice_owed")[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

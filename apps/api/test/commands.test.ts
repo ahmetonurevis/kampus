@@ -68,6 +68,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations',
   'POST /api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel',
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel',
+  // Ücretsiz okutma kurul kararı ücreti kapatır, iade ödemesi para çıkışıdır (DOM-FIN-026, ON-284).
+  'POST /api/v1/finance/free-tuition/rounds/{roundId}/board-meetings',
+  'POST /api/v1/finance/free-tuition/awards/{awardId}/pay-refund',
   // Banka ekstresi toplu aktarımı ve eşleşme onayı tahsilat yazar (IST-115, DOM-FIN-069).
   'POST /api/v1/finance/bank-statement-imports',
   'POST /api/v1/finance/bank-transactions/{transactionId}/match',

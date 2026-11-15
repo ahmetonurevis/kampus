@@ -8,6 +8,7 @@ import {
 import { SUPPLIER_TYPES } from '@kampus/school-core/lib/finance-suppliers.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+import { invoiceMatchingSchema } from './finance-invoice-matching.schemas.ts'
 
 /** Tedarikçi carisi şemaları (DOM-FIN-076; ON-143). */
 
@@ -96,6 +97,7 @@ const invoiceDetailSchema = z.object({
   createdByName: z.string().nullable(),
   cancelledByName: z.string().nullable(),
   cancelReason: z.string().nullable(),
+  matching: invoiceMatchingSchema,
   actions: z
     .object({ pay: z.boolean(), replan: z.boolean(), cancel: z.boolean() })
     .describe('Ödeme girişi, plan değişikliği ve iptal yapılabilir mi'),

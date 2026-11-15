@@ -15,6 +15,7 @@ import {
   findScholarshipProgram,
   insertScholarshipProgram,
   listScholarshipAwards,
+  listScholarshipEnds,
   listScholarshipPrograms,
   scholarshipProgramNames,
   setScholarshipAwardMebbis,
@@ -39,10 +40,35 @@ export const listScholarshipProgramsFor = (
   query: { academicYear?: number | undefined; page: number; pageSize: number },
 ) => listScholarshipPrograms(ctx.db, ctx.institutionId, query)
 
-export const listScholarshipAwardsFor = (
+/** Atamalar, kesme ya da iptal durumlarıyla (ON-283); iptal kesmeden sonra gelir, önceliklidir. */
+export async function listScholarshipAwardsFor(
   ctx: ServiceContext,
   query: { programId?: string | undefined; page: number; pageSize: number },
-) => listScholarshipAwards(ctx.db, ctx.institutionId, query)
+) {
+  const { items, total } = await listScholarshipAwards(ctx.db, ctx.institutionId, query)
+  const ends = await listScholarshipEnds(
+    ctx.db,
+    ctx.institutionId,
+    items.map((item) => item.id),
+  )
+  return {
+    total,
+    items: items.map((item) => {
+      const own = ends.filter((end) => end.awardId === item.id)
+      const last = own.find((end) => end.kind === 'revoke') ?? own.at(-1)
+      return {
+        ...item,
+        endStatus:
+          last === undefined
+            ? ('active' as const)
+            : last.kind === 'revoke'
+              ? ('revoked' as const)
+              : ('terminated' as const),
+        endedOn: last?.effectiveDate ?? null,
+      }
+    }),
+  }
+}
 
 async function reloadProgram(tx: Database, ctx: ServiceContext, id: string) {
   const row = await findScholarshipProgram(tx, ctx.institutionId, id)

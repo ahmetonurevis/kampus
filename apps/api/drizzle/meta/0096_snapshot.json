@@ -1,5 +1,5 @@
 {
-  "id": "67e30908-7e3b-4078-9259-a746fd2c812c",
+  "id": "3631c97f-7400-4fcf-bdd8-ddf5b6995257",
   "prevId": "4426e26b-3d40-4d9b-9a70-f27125ef41d5",
   "version": "7",
   "dialect": "postgresql",
@@ -8975,7 +8975,6 @@
             }
           ],
           "isUnique": true,
-          "where": "\"fixed_asset_count_items\".\"archived_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -9706,12 +9705,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "barcode": {
-          "name": "barcode",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "name": {
           "name": "name",
           "type": "text",
@@ -9793,28 +9786,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "stock_items_barcode_key": {
-          "name": "stock_items_barcode_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "barcode",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"stock_items\".\"barcode\" is not null and \"stock_items\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -9847,10 +9818,6 @@
         "stock_items_text_check": {
           "name": "stock_items_text_check",
           "value": "\"stock_items\".\"code\" ~ '^[A-Z0-9][A-Z0-9._-]{0,19}$'\n        and char_length(\"stock_items\".\"name\") between 2 and 120"
-        },
-        "stock_items_barcode_check": {
-          "name": "stock_items_barcode_check",
-          "value": "\"stock_items\".\"barcode\" is null or \"stock_items\".\"barcode\" ~ '^[A-Z0-9][A-Z0-9._/+-]{0,39}$'"
         },
         "stock_items_category_check": {
           "name": "stock_items_category_check",
@@ -16322,253 +16289,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.stock_count_entries": {
-      "name": "stock_count_entries",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "count_id": {
-          "name": "count_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "item_id": {
-          "name": "item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sequence": {
-          "name": "sequence",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entered_at": {
-          "name": "entered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entered_by_user_id": {
-          "name": "entered_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "undone_at": {
-          "name": "undone_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "undone_by_user_id": {
-          "name": "undone_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stock_count_entries_sequence_key": {
-          "name": "stock_count_entries_sequence_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "count_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "sequence",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_count_entries_count_item_idx": {
-          "name": "stock_count_entries_count_item_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "count_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stock_count_entries_item_idx": {
-          "name": "stock_count_entries_item_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stock_count_entries_institution_id_institutions_id_fk": {
-          "name": "stock_count_entries_institution_id_institutions_id_fk",
-          "tableFrom": "stock_count_entries",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "stock_count_entries_count_fkey": {
-          "name": "stock_count_entries_count_fkey",
-          "tableFrom": "stock_count_entries",
-          "tableTo": "stock_counts",
-          "columnsFrom": [
-            "institution_id",
-            "count_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stock_count_entries_item_fkey": {
-          "name": "stock_count_entries_item_fkey",
-          "tableFrom": "stock_count_entries",
-          "tableTo": "stock_items",
-          "columnsFrom": [
-            "institution_id",
-            "item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stock_count_entries_pkey": {
-          "name": "stock_count_entries_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stock_count_entries_kind_check": {
-          "name": "stock_count_entries_kind_check",
-          "value": "\"stock_count_entries\".\"kind\" in ('scan', 'set')"
-        },
-        "stock_count_entries_quantity_check": {
-          "name": "stock_count_entries_quantity_check",
-          "value": "(\"stock_count_entries\".\"kind\" = 'scan' and \"stock_count_entries\".\"quantity\" between 1 and 1000000)\n        or (\"stock_count_entries\".\"kind\" = 'set' and (\"stock_count_entries\".\"quantity\" is null or \"stock_count_entries\".\"quantity\" between 0 and 1000000) and \"stock_count_entries\".\"undone_at\" is null)"
-        },
-        "stock_count_entries_undo_check": {
-          "name": "stock_count_entries_undo_check",
-          "value": "(\"stock_count_entries\".\"undone_at\" is null) = (\"stock_count_entries\".\"undone_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.stock_count_lines": {
       "name": "stock_count_lines",
       "schema": "",
@@ -22057,6 +21777,183 @@
         "privacy_notices_version_check": {
           "name": "privacy_notices_version_check",
           "value": "\"privacy_notices\".\"version\" = 1 and \"privacy_notices\".\"archived_at\" is null"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.campaign_codes": {
+      "name": "campaign_codes",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_cents": {
+          "name": "cost_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "campaign_codes_code_key": {
+          "name": "campaign_codes_code_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "campaign_codes_institution_id_institutions_id_fk": {
+          "name": "campaign_codes_institution_id_institutions_id_fk",
+          "tableFrom": "campaign_codes",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "campaign_codes_pkey": {
+          "name": "campaign_codes_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "campaign_codes_code_check": {
+          "name": "campaign_codes_code_check",
+          "value": "\"campaign_codes\".\"code\" ~ '^[A-Z0-9][A-Z0-9-]{2,19}$'"
+        },
+        "campaign_codes_name_check": {
+          "name": "campaign_codes_name_check",
+          "value": "char_length(\"campaign_codes\".\"name\") between 2 and 120"
+        },
+        "campaign_codes_channel_check": {
+          "name": "campaign_codes_channel_check",
+          "value": "\"campaign_codes\".\"channel\" in ('social_media', 'flyer', 'fair', 'referral', 'website', 'other')"
+        },
+        "campaign_codes_dates_check": {
+          "name": "campaign_codes_dates_check",
+          "value": "\"campaign_codes\".\"start_date\" <= \"campaign_codes\".\"end_date\""
+        },
+        "campaign_codes_cost_check": {
+          "name": "campaign_codes_cost_check",
+          "value": "\"campaign_codes\".\"cost_cents\" is null or \"campaign_codes\".\"cost_cents\" between 0 and 10000000000"
+        },
+        "campaign_codes_currency_check": {
+          "name": "campaign_codes_currency_check",
+          "value": "\"campaign_codes\".\"currency\" = 'TRY'"
         }
       },
       "isRLSEnabled": false

@@ -603,6 +603,7 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
         purchaseOrderId: alfaOrder.id,
         amountCents: 72_000,
         vatCents: 12_000,
+        lines: [{ orderItemId: orderItem, quantity: 6, unitPriceCents: 10_000 }],
       }),
       201,
     )
@@ -610,11 +611,23 @@ describe('DOM-FIN-075: satın alma raporu ucu', () => {
       await createInvoice(t, {
         supplierId: t.alpha.id,
         invoiceNumber: 'ALF-2',
+        invoiceDate: '2026-10-06',
         purchaseOrderId: alfaOrder.id,
         amountCents: 12_000,
         vatCents: 2_000,
+        lines: [{ orderItemId: orderItem, quantity: 1, unitPriceCents: 10_000 }],
       }),
       201,
+    )
+    // ALF-2 kabul edilenden fazlasını faturalar (DOM-FIN-095): ödemeden önce fark onaylanır.
+    ok(
+      await call(
+        'POST',
+        `${FINANCE}/supplier-invoices/${String(extra.id)}/approve-match`,
+        t.admin,
+        { reason: 'Eksik kalem sonraki teslimatta gelecek' },
+        ifMatch(extra.version),
+      ),
     )
     ok(await pay(t, first, 30_000), 201)
     ok(await pay(t, extra, 12_000), 201)

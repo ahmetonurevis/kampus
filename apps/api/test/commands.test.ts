@@ -33,6 +33,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Pilot verisi toplu aktarımı (IST-007; DOM-KAY-036, DOM-FIN-014).
   'POST /api/v1/prospects/student-imports',
   'POST /api/v1/finance/installment-imports',
+  // e-Okul öğrenci listesi aktarımı (IST-134; DOM-KAY-042).
+  'POST /api/v1/prospects/eokul-student-imports',
   // Tahsilat, iptal ve nakit ayarı (routes/payments.ts; DOM-FIN-031, DOM-FIN-033).
   'POST /api/v1/payments',
   'POST /api/v1/payments/{paymentId}/mebbis-record',
@@ -68,6 +70,13 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations',
   'POST /api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel',
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel',
+  // Burs kesme taksit yazar, gerçek dışı beyanda iptal geri isteme alacağı açar
+  // (routes/finance-scholarships.ts; DOM-FIN-025, ON-283).
+  'POST /api/v1/finance/scholarship-awards/{awardId}/terminate',
+  'POST /api/v1/finance/scholarship-awards/{awardId}/revoke',
+  // Ücretsiz okutma kurul kararı ücreti kapatır, iade ödemesi para çıkışıdır (DOM-FIN-026, ON-284).
+  'POST /api/v1/finance/free-tuition/rounds/{roundId}/board-meetings',
+  'POST /api/v1/finance/free-tuition/awards/{awardId}/pay-refund',
   // Banka ekstresi toplu aktarımı ve eşleşme onayı tahsilat yazar (IST-115, DOM-FIN-069).
   'POST /api/v1/finance/bank-statement-imports',
   'POST /api/v1/finance/bank-transactions/{transactionId}/match',

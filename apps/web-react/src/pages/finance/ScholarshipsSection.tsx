@@ -22,9 +22,12 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
+import { useScholarshipEndPdf } from '@/hooks/use-finance-scholarship-end-pdf.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
+import { PdfDialogButton } from './CorporateParts.tsx'
+import { ScholarshipEndDialog, type ScholarshipEndTarget } from './ScholarshipEndDialog.tsx'
 import {
   programBody,
   programDefaults,
@@ -52,6 +55,8 @@ type AwardRow = {
   programName: string
   amountCents: number
   mebbisRecordedDate: string | null
+  endStatus: 'active' | 'terminated' | 'revoked'
+  endedOn: string | null
   version: number
 }
 type DateTarget =
@@ -60,7 +65,7 @@ type DateTarget =
 
 const NO_SORT: readonly string[] = []
 const PROGRAM_MOBILE = ['name', 'valueLabel', 'notified']
-const AWARD_MOBILE = ['studentName', 'amount', 'mebbis']
+const AWARD_MOBILE = ['studentName', 'amount', 'status']
 const PROGRAM_FORM = 'burs-programi-formu'
 const DATE_FORM = 'burs-tarih-formu'
 const dayText = (day: string) => dateLabel(day, { year: 'numeric' })
@@ -91,6 +96,7 @@ export function ScholarshipsSection({
   const students = useCoreAll('students')
   const [creating, setCreating] = useState(false)
   const [dating, setDating] = useState<DateTarget | null>(null)
+  const [ending, setEnding] = useState<ScholarshipEndTarget | null>(null)
 
   const programRows = useMemo(
     () =>
@@ -163,26 +169,84 @@ export function ScholarshipsSection({
           ),
       },
       {
+        key: 'status',
+        label: 'Durum',
+        cell: (row) =>
+          row.endStatus === 'active' ? (
+            <StatusBadge text="Sürüyor" tone="green" />
+          ) : (
+            <StatusBadge
+              text={`${row.endStatus === 'revoked' ? 'İptal edildi' : 'Kesildi'}${row.endedOn ? ` · ${dayText(row.endedOn)}` : ''}`}
+              tone={row.endStatus === 'revoked' ? 'red' : 'amber'}
+            />
+          ),
+      },
+      {
         key: ACTIONS_KEY,
         label: 'İşlemler',
-        cell: (row) =>
-          canManage && row.mebbisRecordedDate === null ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              aria-label={`${row.studentName} bursunun MEBBİS gününü işle`}
-              onClick={() =>
-                setDating({
-                  kind: 'mebbis',
-                  id: row.id,
-                  version: row.version,
-                  name: row.studentName,
-                })
-              }
-            >
-              MEBBİS'e işlendi
-            </Button>
-          ) : null,
+        cell: (row) => {
+          if (!canManage) return null
+          const end = (kind: ScholarshipEndTarget['kind']) =>
+            setEnding({
+              kind,
+              awardId: row.id,
+              version: row.version,
+              studentName: row.studentName,
+              programName: row.programName,
+            })
+          return (
+            <div className="flex flex-wrap gap-2">
+              {row.mebbisRecordedDate === null ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-label={`${row.studentName} bursunun MEBBİS gününü işle`}
+                  onClick={() =>
+                    setDating({
+                      kind: 'mebbis',
+                      id: row.id,
+                      version: row.version,
+                      name: row.studentName,
+                    })
+                  }
+                >
+                  MEBBİS'e işlendi
+                </Button>
+              ) : null}
+              {row.endStatus === 'active' ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-label={`${row.studentName} bursunu kes`}
+                  onClick={() => end('terminate')}
+                >
+                  Bursu kes
+                </Button>
+              ) : null}
+              {row.endStatus !== 'revoked' ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`${row.studentName} bursu gerçek dışı beyan: iptal ve geri iste`}
+                  onClick={() => end('revoke')}
+                >
+                  Gerçek dışı beyan: iptal ve geri iste
+                </Button>
+              ) : null}
+              {row.endStatus !== 'active' ? (
+                <PdfDialogButton
+                  label="Karar yazısı"
+                  title={
+                    row.endStatus === 'revoked' ? 'Burs geri isteme yazısı' : 'Burs kesme bildirimi'
+                  }
+                  accessibleName={`${row.studentName} burs karar yazısı`}
+                  id={{ awardId: row.id, studentName: row.studentName }}
+                  usePdf={useScholarshipEndPdf}
+                />
+              ) : null}
+            </div>
+          )
+        },
       },
     ],
     [canManage, learner],
@@ -238,7 +302,8 @@ export function ScholarshipsSection({
             Burs atamaları
           </h2>
           <p className="text-sm text-muted-foreground">
-            Burs, kesin kayıt sırasında atanır. Atamanın MEBBİS'e işlendiği günü buradan kaydedin.
+            Burs, kesin kayıt sırasında atanır. Atamanın MEBBİS'e işlendiği günü, bursun kesilmesini
+            ve gerçek dışı beyanla iptalini buradan işleyin.
           </p>
         </header>
         <ServerDataTable
@@ -263,6 +328,7 @@ export function ScholarshipsSection({
         <ProgramModal academicYear={academicYear} onClose={() => setCreating(false)} />
       ) : null}
       {dating ? <DateModal target={dating} onClose={() => setDating(null)} /> : null}
+      {ending ? <ScholarshipEndDialog target={ending} onClose={() => setEnding(null)} /> : null}
     </div>
   )
 }

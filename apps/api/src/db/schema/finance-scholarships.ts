@@ -6,6 +6,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -13,8 +14,14 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
+import {
+  SCHOLARSHIP_END_KINDS,
+  SCHOLARSHIP_TERMINATION_REASONS,
+  type ScholarshipEndLine,
+} from '@kampus/school-core/lib/finance-scholarship-revocation.ts'
+
 import { institutions } from './auth.ts'
-import { requiredColumns } from './columns.ts'
+import { oneOf, requiredColumns } from './columns.ts'
 
 /**
  * Burs programı ve ataması (DOM-FIN-025). Program eğitim yılına bağlıdır; il millî eğitim
@@ -88,5 +95,64 @@ export const scholarshipAwards = pgTable(
       .on(table.institutionId, table.studentId, table.academicYear)
       .where(sql`${table.archivedAt} is null`),
     index('scholarship_awards_program_idx').on(table.institutionId, table.programId),
+  ],
+)
+
+/**
+ * Burs kesmesi ve gerçek dışı beyanla iptali (DOM-FIN-025; ON-283, K-264…K-267). Atama başına en
+ * çok bir kesme ve bir iptal; kesmeden sonra iptal yapılabilir, iptalden sonra işlem yoktur. Tutarlar
+ * yazma anının hesabıdır (geri isteme yazısı yeniden hesaplamaz); yeni taksitlerin kimlikleri
+ * `invoice_ids`'tedir. `contract_id` ve `invoice_ids` `records` kimlikleridir, yabancı anahtar değildir
+ * (ayrılış kaydıyla aynı, ADR 0010 046h). Gerekçe açıklaması serbest metindir, loglanmaz.
+ */
+export const scholarshipTerminations = pgTable(
+  'scholarship_terminations',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    awardId: uuid('award_id').notNull(),
+    contractId: text('contract_id').notNull(),
+    kind: text('kind').$type<(typeof SCHOLARSHIP_END_KINDS)[number]>().notNull(),
+    reason: text('reason').notNull(),
+    // kvkk: K
+    note: text('note').notNull(),
+    effectiveDate: date('effective_date').notNull(),
+    keptCents: bigint('kept_cents', { mode: 'number' }).notNull(),
+    reinstatedCents: bigint('reinstated_cents', { mode: 'number' }).notNull(),
+    principalCents: bigint('principal_cents', { mode: 'number' }).notNull(),
+    interestCents: bigint('interest_cents', { mode: 'number' }).notNull(),
+    clawbackDueDate: date('clawback_due_date'),
+    invoiceIds: text('invoice_ids').array().notNull(),
+    lines: jsonb('lines').$type<ScholarshipEndLine[]>().notNull(),
+    // kvkk: K
+    decidedByUserId: text('decided_by_user_id').notNull(),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({ name: 'scholarship_terminations_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'scholarship_terminations_award_fkey',
+      columns: [table.institutionId, table.awardId],
+      foreignColumns: [scholarshipAwards.institutionId, scholarshipAwards.id],
+    }),
+    check('scholarship_terminations_kind_check', oneOf(table.kind, SCHOLARSHIP_END_KINDS)),
+    check(
+      'scholarship_terminations_reason_check',
+      sql`(${table.kind} = 'revoke' and ${table.reason} = 'false_declaration') or (${table.kind} = 'terminate' and ${oneOf(table.reason, SCHOLARSHIP_TERMINATION_REASONS)})`,
+    ),
+    check(
+      'scholarship_terminations_amounts_check',
+      sql`${table.keptCents} >= 0 and ${table.reinstatedCents} >= 0 and ${table.principalCents} >= 0 and ${table.interestCents} >= 0`,
+    ),
+    check(
+      'scholarship_terminations_clawback_check',
+      sql`(${table.kind} = 'revoke') or (${table.principalCents} = 0 and ${table.interestCents} = 0 and ${table.clawbackDueDate} is null)`,
+    ),
+    uniqueIndex('scholarship_terminations_award_kind_key')
+      .on(table.institutionId, table.awardId, table.kind)
+      .where(sql`${table.archivedAt} is null`),
+    index('scholarship_terminations_contract_idx').on(table.institutionId, table.contractId),
   ],
 )

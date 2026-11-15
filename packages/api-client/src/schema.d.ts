@@ -6912,6 +6912,214 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/budget-draft-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe taslağı formunun seçenekleri
+         * @description Kapalı olmayan bütçe dönemleri, görülen etkin maliyet merkezleri (sorumlusu ve hazırlama hakkıyla) ve etkin bütçe kalemleri. Ön büro ve öğretmen yalnız sorumlusu olduğu merkezleri görür. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         */
+        get: operations["getBudgetDraftOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/cost-centers/{costCenterId}/budget-owner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Maliyet merkezinin bütçe sorumlusunu ata
+         * @description Merkezin bütçe sorumlusu kurumun etkin yönetici, öğretmen ya da ön büro üyeliğidir; `membershipId: null` sorumluyu kaldırır (K-257). Olmayan üyelik (başka kurumunki dahil) 422 `budget_owner_not_found`, öğrenci ya da veli 422 `budget_owner_not_staff`, pasif üyelik 422 `budget_owner_inactive`; başka kurumun merkezi 404. Rol: `yonetici` (K-256). Modül `finance`.
+         */
+        post: operations["setBudgetOwner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe taslaklarını listele
+         * @description Yeni başlayan dönem önce, dönem içinde merkez koduna göre; `periodId`, `costCenterId` ve `status` süzer. Toplamlar satırlardan hesaplanır. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         */
+        get: operations["listBudgetDrafts"];
+        put?: never;
+        /**
+         * Bütçe taslağı aç
+         * @description Dönem ve maliyet merkezi için taslak açar; satırlar merkezin dönemdeki onaylı bütçesinden doldurulur. Sorumlusu olmadığı merkez 403 `budget_draft_not_owner`, olmayan merkez 422 `cost_center_not_found`, pasif merkez 422 `cost_center_inactive`, olmayan dönem 422 `budget_period_not_found`, kapalı dönem 422 `budget_period_closed`, reddedilmemiş taslak varsa 409 `budget_draft_exists`. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         */
+        post: operations["createBudgetDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bütçe taslağı ayrıntısı ve revizyon geçmişi
+         * @description Taslak, satırlar ve revizyon geçmişi (sürüm, kim, ne zaman, değişen kalemler). Olmayan, başka kurumun ya da sorumlu için başka merkezin taslağı 404. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         */
+        get: operations["getBudgetDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Taslağın satırlarını yaz
+         * @description Satırların tamamı (kalem, tutar kuruş, gerekçe) yerine yazılır; bir kalem bir kez. Yalnız taslak ya da revizyonu istenen taslakta (422 `budget_draft_status_invalid`); olmayan kalem 422 `budget_item_not_found`, yeni eklenen pasif kalem 422 `budget_item_inactive`. `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         */
+        patch: operations["updateBudgetDraftLines"];
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Taslağı onaylı bütçe ve önceki dönemle karşılaştır
+         * @description Kalem bazında taslak, bu dönemin onaylı bütçesi, önceki dönemin planı ve tahakkuk esaslı gerçekleşeni (DOM-FIN-066; önceki dönem K-259). Salt okur; CSV tarayıcıda bu yanıttan üretilir. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         */
+        get: operations["getBudgetDraftComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taslağı onaya gönder
+         * @description Taslak ya da revizyonu istenen taslak `submitted` olur, sürüm bir artar; geçmişe sürümün satırları ve değişen kalemler yazılır. Satırsız taslak 422 `budget_draft_empty`; yeni ya da onaylı tutarı değişen kalemde gerekçe yoksa 422 `budget_draft_justification_required` (K-257). Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["submitBudgetDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taslağı onayla
+         * @description Onay bekleyen taslak `approved` olur; merkezin dönemdeki bütçe satırları aynı işlemde taslağa eşitlenir (yeni satır, tutar düzeltmesi, taslakta olmayan satırın kaldırılması; tutarı değişen satırın aylık dağılımı kalkar, K-258). Yeni satırda pasif merkez 422 `cost_center_inactive`, pasif kalem 422 `budget_item_inactive`. Rol: `yonetici` (K-256). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["approveBudgetDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}/request-revision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taslak için revizyon iste
+         * @description Onay bekleyen taslak gerekçeyle `revision_requested` olur; sorumlu düzeltip yeniden gönderir (K-256). Rol: `yonetici` (K-256). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["requestBudgetDraftRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taslağı reddet
+         * @description Onay bekleyen taslak gerekçeyle `rejected` olur ve kapanır; birim aynı dönem için yeni taslak açabilir (K-256). Rol: `yonetici` (K-256). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["rejectBudgetDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/budget-drafts/{draftId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Onaylı bütçe için yeni revizyon aç
+         * @description Onaylı taslak yeniden `draft` olur; onaylı bütçe satırları yeni sürüm onaylanana kadar değişmez (K-258). Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["reopenBudgetDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -73855,6 +74063,2150 @@ export interface operations {
                                 cancelledByName: string | null;
                                 /** @description `If-Match` için denetim sürümü */
                                 version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBudgetDraftOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periods: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            centers: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                path: string;
+                                /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                                owner: {
+                                    /** @description Sorumlunun kurum üyeliği */
+                                    membershipId: string;
+                                    /** @description Sorumlunun adı */
+                                    name: string | null;
+                                } | null;
+                                /** @description Oturumdaki kullanıcı bu merkezin taslağını hazırlar */
+                                canPrepare: boolean;
+                            }[];
+                            items: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "income" | "expense";
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setBudgetOwner: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                costCenterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Bütçe sorumlusunun kurum üyeliği; `null` sorumluyu kaldırır */
+                    membershipId: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            costCenterId: string;
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBudgetDrafts: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Bütçe dönemi */
+                periodId?: string;
+                /** @description Maliyet merkezi (birim) */
+                costCenterId?: string;
+                /** @description Durum */
+                status?: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createBudgetDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    periodId: string;
+                    /** Format: uuid */
+                    costCenterId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBudgetDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateBudgetDraftLines: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    lines: {
+                        /** Format: uuid */
+                        itemId: string;
+                        amountCents: number;
+                        /**
+                         * @description Gerekçe; onaylı tutardan farklı ya da yeni kalemde gönderimde zorunlu (K-257)
+                         * @default null
+                         */
+                        justification?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBudgetDraftComparison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            draftId: string;
+                            /**
+                             * @description Önceki dönem gerçekleşeni tahakkuk esaslıdır
+                             * @enum {string}
+                             */
+                            basis: "accrual";
+                            /** @description Bu dönemden önce biten son açık ya da kapalı dönem (K-259); yoksa boş */
+                            previousPeriod: {
+                                id: string;
+                                name: string;
+                                startDate: string;
+                                endDate: string;
+                            } | null;
+                            rows: {
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Taslaktaki tutar; kalem taslakta yoksa boş */
+                                draftCents: number | null;
+                                justification: string | null;
+                                /** @description Bu dönemin onaylı bütçesi; satır yoksa boş */
+                                approvedCents: number | null;
+                                /** @description Önceki dönemin planı */
+                                previousPlanCents: number | null;
+                                /** @description Önceki dönemin gerçekleşeni; hesaplanmıyorsa boş */
+                                previousActualCents: number | null;
+                                /** @description Taslak − önceki dönem gerçekleşeni */
+                                changeFromPreviousCents: number | null;
+                            }[];
+                            totals: {
+                                income: {
+                                    draftCents: number;
+                                    approvedCents: number;
+                                    previousPlanCents: number;
+                                    previousActualCents: number | null;
+                                };
+                                expense: {
+                                    draftCents: number;
+                                    approvedCents: number;
+                                    previousPlanCents: number;
+                                    previousActualCents: number | null;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitBudgetDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default null */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveBudgetDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default null */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    requestBudgetDraftRevision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectBudgetDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenBudgetDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                draftId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default null */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            period: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "open" | "closed";
+                                startDate: string;
+                                endDate: string;
+                            };
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string;
+                                isActive: boolean;
+                            };
+                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
+                            owner: {
+                                /** @description Sorumlunun kurum üyeliği */
+                                membershipId: string;
+                                /** @description Sorumlunun adı */
+                                name: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
+                            revision: number;
+                            /** @description Son onaylanan sürüm */
+                            approvedRevision: number | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            createdByName: string | null;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
+                            decisionNote: string | null;
+                            /** @description Taslağın gelir kalemleri toplamı */
+                            incomeCents: number;
+                            /** @description Taslağın gider kalemleri toplamı */
+                            expenseCents: number;
+                            lineCount: number;
+                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                requestRevision: boolean;
+                                reject: boolean;
+                                reopen: boolean;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            lines: {
+                                id: string;
+                                itemId: string;
+                                itemCode: string;
+                                itemName: string;
+                                /** @enum {string} */
+                                itemKind: "income" | "expense";
+                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
+                                itemActive: boolean;
+                                /** @description Planlanan tutar */
+                                amountCents: number;
+                                justification: string | null;
+                            }[];
+                            /** @description Revizyon geçmişi, eskiden yeniye */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
+                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                                /** @description Adımın sürüm numarası */
+                                revision: number;
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
+                                changes: {
+                                    itemId: string;
+                                    itemCode: string;
+                                    itemName: string;
+                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
+                                    beforeCents: number | null;
+                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
+                                    afterCents: number | null;
+                                }[] | null;
                             }[];
                         };
                     };

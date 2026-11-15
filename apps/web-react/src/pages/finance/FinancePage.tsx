@@ -72,6 +72,9 @@ const FinanceMaintenanceSection = lazy(async () => ({
 const FinanceMaintenancePlansSection = lazy(async () => ({
   default: (await import('./FinanceMaintenancePlansSection.tsx')).FinanceMaintenancePlansSection,
 }))
+const FinanceBudgetDraftsSection = lazy(async () => ({
+  default: (await import('./FinanceBudgetDraftsSection.tsx')).FinanceBudgetDraftsSection,
+}))
 const FinanceMaterialSetsSection = lazy(async () => ({
   default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
 }))
@@ -97,6 +100,7 @@ const VIEWS = {
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   budget: { label: 'Bütçe', param: 'butce' },
+  budgetDrafts: { label: 'Bütçe taslakları', param: 'butce-taslak' },
   costs: { label: 'Maliyet', param: 'maliyet' },
   suppliers: { label: 'Tedarikçiler', param: 'tedarikci' },
   purchaseRequests: { label: 'Satın alma talepleri', param: 'satin-alma' },
@@ -137,6 +141,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Kıdem/ihbar hesaplayıcı (DOM-FIN-094) yalnız yöneticidedir (K-272).
  * Periyodik bakım (DOM-FIN-092) ikisine açıktır; ön büro okur, planı ve denetimi yönetici yazar
  * (K-255). Sekme rozeti geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş plan sayısıdır (K-253).
+ * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
+ * onay yöneticide (K-256, K-257).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -300,7 +306,8 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'fixedAssets' ||
       tab === 'maintenance' ||
       tab === 'severance' ||
-      tab === 'maintenancePlans' ? (
+      tab === 'maintenancePlans' ||
+      tab === 'budgetDrafts' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
@@ -324,6 +331,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           {tab === 'maintenancePlans' ? (
             <FinanceMaintenancePlansSection role={session?.role ?? ''} />
           ) : null}
+          {tab === 'budgetDrafts' ? <FinanceBudgetDraftsSection isManager={isManager} /> : null}
         </Suspense>
       ) : null}
       {tab === 'boardReport' ? (

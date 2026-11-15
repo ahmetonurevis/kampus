@@ -708,6 +708,13 @@
       "when": 1794783119984,
       "tag": "0100_create_maintenance_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1794784835889,
+      "tag": "0101_create_budget_drafts",
+      "breakpoints": true
     }
   ]
 }

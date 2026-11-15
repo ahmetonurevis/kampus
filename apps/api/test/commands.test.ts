@@ -33,6 +33,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Pilot verisi toplu aktarımı (IST-007; DOM-KAY-036, DOM-FIN-014).
   'POST /api/v1/prospects/student-imports',
   'POST /api/v1/finance/installment-imports',
+  // e-Okul öğrenci listesi aktarımı (IST-134; DOM-KAY-042).
+  'POST /api/v1/prospects/eokul-student-imports',
   // Tahsilat, iptal ve nakit ayarı (routes/payments.ts; DOM-FIN-031, DOM-FIN-033).
   'POST /api/v1/payments',
   'POST /api/v1/payments/{paymentId}/mebbis-record',

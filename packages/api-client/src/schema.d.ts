@@ -3812,6 +3812,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/eokul-student-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * e-Okul öğrenci listesini aktar
+         * @description Okul e-Okul'dan indirdiği öğrenci listesini CSV ya da Excel (.xlsx, ilk sayfa) olarak yükler (IST-134, DOM-KAY-042). Yalnız `school` türündeki kurumda vardır; öteki türlerde 404. `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır, eski ikili .xls okunmaz (`import_file_legacy_excel`). Başlık satırı ilk 20 satırda aranır; en çok 3.000 veri satırı. `mapping` verilmezse sütunlar başlık adlarından önerilir (`suggestedMapping`); kullanıcı düzeltip yeniden önizler. `branchId` aramayı bir kampüsle sınırlar, `fallbackClassId` sınıf sütunu olmayan dosyada bütün satırların sınıfıdır. Satır kurumdaki öğrenciyle T.C. kimlik no, yoksa okul no ile eşleşir ve `new`, `update`, `unchanged` ya da `invalid` olur. Mevcut öğrencide yalnız ad soyad, okul no, aynı düzeyde şube ve eksik kimlik yazılır; düzey farkı ve doğum tarihi farkı bilgidir. Bilinmeyen sınıf hatadır, sınıf açılmaz. Yeni öğrenci pilot aktarımının kuralıyla açılır: kimlik, doğum tarihi, veli adı ve telefonu zorunlu, aynı veli kardeşleri bağlar (DOM-KAY-012, DOM-KAY-013, DOM-KAY-036). `dryRun: true` önizlemedir: 200, satır bazında sorun, bilgi ve değişiklik; kimlik ve telefon maskeli; eşleme sorunu `mappingIssues`'ta döner ve satır işlenmez. Onay (`dryRun: false`) yalnız `lines` ile seçilen satırları kurum kilidi altında yeniden doğrular: eşleme sorunu 422 `eokul_mapping_invalid` (`issues` yolu `['mapping', alan]`), seçilen satır sorunu 422 `eokul_import_invalid` (`['rows', satır, alan]`), başarı 201 ve satırsız özet. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yönetici ve ön büro (öteki roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir. Dosya saklanmaz, içerik ve kimlik numarası loglanmaz; denetim kaydına (`student.eokul_import`) yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importEokulStudents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/installment-imports": {
         parameters: {
             query?: never;
@@ -13517,6 +13537,87 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRowInput"][];
         };
+        /** @description Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null` */
+        EokulMappingInput: {
+            schoolNumber: number | null;
+            identityNumber: number | null;
+            fullName: number | null;
+            firstName: number | null;
+            lastName: number | null;
+            className: number | null;
+            grade: number | null;
+            section: number | null;
+            birthDate: number | null;
+            guardianName: number | null;
+            guardianPhone: number | null;
+            relationship: number | null;
+        };
+        EokulChangeInput: {
+            /** @enum {string} */
+            field: "name" | "schoolNumber" | "class" | "identity";
+            before: string | null;
+            /** @description Kimlik değişikliğinde iki değer de `null` (yalnız eklenir) */
+            after: string | null;
+        };
+        EokulImportRowInput: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı
+             * @enum {string}
+             */
+            status: "new" | "update" | "unchanged" | "invalid";
+            schoolNumber: string;
+            name: string;
+            /** @description Dosyadaki sınıf hücresi */
+            className: string;
+            /** @description Eşleşen Kampüs sınıfı; bulunamadıysa boş */
+            classLabel: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            /** @description Yalnız yeni öğrencide dolu */
+            guardianName: string;
+            /** @description Veli telefonu maskeli; yalnız yeni öğrencide dolu */
+            guardianPhoneMasked: string;
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            changes: components["schemas"]["EokulChangeInput"][];
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        EokulMappingIssueInput: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        EokulImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Başlık satırının dosyadaki yeri */
+            headerLine: number;
+            /** @description Başlık hücreleri (sütun eşleme seçenekleri) */
+            headers: {
+                index: number;
+                label: string;
+            }[];
+            suggestedMapping: components["schemas"]["EokulMappingInput"];
+            mapping: components["schemas"]["EokulMappingInput"];
+            /** @description Doluysa satırlar işlenmedi */
+            mappingIssues: components["schemas"]["EokulMappingIssueInput"][];
+            /** @description Başlıktan sonraki boş olmayan satır sayısı */
+            fileRowCount: number;
+            /** @description İşlenen öğrenci satırı (onayda seçilen satırlar) */
+            rowCount: number;
+            newCount: number;
+            updateCount: number;
+            unchangedCount: number;
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["EokulImportRowInput"][];
+        };
         EnrollmentFunnelStepInput: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -18133,6 +18234,87 @@ export interface components {
             existingGuardianCount: number;
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRow"][];
+        };
+        /** @description Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null` */
+        EokulMapping: {
+            schoolNumber: number | null;
+            identityNumber: number | null;
+            fullName: number | null;
+            firstName: number | null;
+            lastName: number | null;
+            className: number | null;
+            grade: number | null;
+            section: number | null;
+            birthDate: number | null;
+            guardianName: number | null;
+            guardianPhone: number | null;
+            relationship: number | null;
+        };
+        EokulChange: {
+            /** @enum {string} */
+            field: "name" | "schoolNumber" | "class" | "identity";
+            before: string | null;
+            /** @description Kimlik değişikliğinde iki değer de `null` (yalnız eklenir) */
+            after: string | null;
+        };
+        EokulImportRow: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı
+             * @enum {string}
+             */
+            status: "new" | "update" | "unchanged" | "invalid";
+            schoolNumber: string;
+            name: string;
+            /** @description Dosyadaki sınıf hücresi */
+            className: string;
+            /** @description Eşleşen Kampüs sınıfı; bulunamadıysa boş */
+            classLabel: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            /** @description Yalnız yeni öğrencide dolu */
+            guardianName: string;
+            /** @description Veli telefonu maskeli; yalnız yeni öğrencide dolu */
+            guardianPhoneMasked: string;
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            changes: components["schemas"]["EokulChange"][];
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        EokulMappingIssue: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        EokulImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Başlık satırının dosyadaki yeri */
+            headerLine: number;
+            /** @description Başlık hücreleri (sütun eşleme seçenekleri) */
+            headers: {
+                index: number;
+                label: string;
+            }[];
+            suggestedMapping: components["schemas"]["EokulMapping"];
+            mapping: components["schemas"]["EokulMapping"];
+            /** @description Doluysa satırlar işlenmedi */
+            mappingIssues: components["schemas"]["EokulMappingIssue"][];
+            /** @description Başlıktan sonraki boş olmayan satır sayısı */
+            fileRowCount: number;
+            /** @description İşlenen öğrenci satırı (onayda seçilen satırlar) */
+            rowCount: number;
+            newCount: number;
+            updateCount: number;
+            unchangedCount: number;
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["EokulImportRow"][];
         };
         EnrollmentFunnelStep: {
             /**
@@ -43942,6 +44124,139 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["StudentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importEokulStudents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                    mapping?: {
+                        schoolNumber?: number | null;
+                        identityNumber?: number | null;
+                        fullName?: number | null;
+                        firstName?: number | null;
+                        lastName?: number | null;
+                        className?: number | null;
+                        grade?: number | null;
+                        section?: number | null;
+                        birthDate?: number | null;
+                        guardianName?: number | null;
+                        guardianPhone?: number | null;
+                        relationship?: number | null;
+                    };
+                    branchId?: string;
+                    fallbackClassId?: string;
+                    lines?: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EokulImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EokulImportResult"];
                     };
                 };
             };

@@ -1743,6 +1743,10 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kıdem ve ihbar tazminatı tahmini (ON-205; DOM-FIN-094). Elle girdili hesap; kayıt yok.
+  'POST /api/v1/finance/severance-estimates': yok(
+    'elle girdili kıdem ve ihbar hesabı; kurum kaydı okumaz ve yazmaz, sonuç saklanmaz (K-273)',
+  ),
   // Onur: kampanya kodu ve huni kırılımı (ON-134; DOM-KAY-041). Envanter tablosunda Onur
   // bloklarının sonuna (ör. tedarikçi bloğunun yanına) eklenir; kanıt `prospect-campaigns.test.ts`.
   ...Object.fromEntries(

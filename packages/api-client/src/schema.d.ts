@@ -6576,6 +6576,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/severance-estimates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kıdem ve ihbar tazminatını tahmin et
+         * @description Elle girilen işe giriş ve çıkış günü, aylık brüt ücret, düzenli yan ödemeler, çıkış nedeni ve ihbar bilgisinden kıdem ve ihbar tazminatının tahmini dökümünü döner (ON-205; DOM-FIN-094). **Hiçbir şey yazmaz**, hesap saklanmaz (K-273; `Idempotency-Key` gerekmez). Kıdem: bir tam yıl ve kıdem doğuran neden şartıyla esas aylık (giydirilmiş brüt ile çıkış günündeki tavanın küçüğü) × (tam yıl + artık gün / 365); gelir vergisinden istisna, damga vergisi binde 7,59. İhbar: yalnız işveren feshinde ve ihbar verilmediyse 4857 md. 17 süresi (2/4/6/8 hafta) × 7 × giydirilmiş aylık / 30; gelir vergisi `cumulativeTaxBaseCents` yoksa ilk dilim oranı, varsa dilimli (K-274); damga vergisi. Tutarlar kuruş. Tavan ve tarife tablosu dışındaki günde son bilinen değer kullanılır, `warnings` uyarır. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Tahmindir; bordro ya da mali müşavir hesabı yerine geçmez.
+         */
+        post: operations["estimateFinanceSeverance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -69675,6 +69695,165 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    estimateFinanceSeverance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    startDate: string;
+                    endDate: string;
+                    grossWageCents: number;
+                    /** @default 0 */
+                    regularBenefitsCents?: number;
+                    /** @enum {string} */
+                    exitReason: "employer_termination" | "employer_compelling" | "employee_just_cause" | "retirement" | "military_service" | "marriage" | "death" | "fixed_term_end" | "resignation" | "employer_misconduct";
+                    /** @default false */
+                    noticeGiven?: boolean;
+                    /** @default null */
+                    cumulativeTaxBaseCents?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            exitReason: "employer_termination" | "employer_compelling" | "employee_just_cause" | "retirement" | "military_service" | "marriage" | "death" | "fixed_term_end" | "resignation" | "employer_misconduct";
+                            noticeGiven: boolean;
+                            service: {
+                                /** @description `YYYY-MM-DD` */
+                                startDate: string;
+                                /** @description `YYYY-MM-DD` */
+                                endDate: string;
+                                /** @description Giriş ve çıkış günü dahil takvim günü */
+                                totalDays: number;
+                                /** @description Tam hizmet yılı */
+                                years: number;
+                                /** @description Son yıl dönümünden sonraki tam ay (gösterim) */
+                                months: number;
+                                /** @description Son tam aydan sonraki gün (gösterim) */
+                                days: number;
+                                /** @description Son yıl dönümünden sonraki gün (kıdemde 365’te bir) */
+                                remainderDays: number;
+                            };
+                            wage: {
+                                grossWageCents: number;
+                                regularBenefitsCents: number;
+                                /** @description Aylık giydirilmiş brüt: brüt + düzenli yan ödemeler */
+                                dressedWageCents: number;
+                                /** @description Aylık giydirilmiş brüt / 30 */
+                                dailyDressedWageCents: number;
+                            };
+                            severance: {
+                                /** @enum {string} */
+                                status: "eligible" | "reason_not_entitled" | "under_one_year";
+                                /** @description Tazminata esas gün (iki ondalık) */
+                                days: number;
+                                fullYears: number;
+                                remainderDays: number;
+                                ceiling: {
+                                    /** @description Uygulanan tavan döneminin başlangıcı */
+                                    from: string;
+                                    monthlyCents: number;
+                                    /** @description Çıkış günü tablonun son döneminden sonra */
+                                    stale: boolean;
+                                };
+                                ceilingApplied: boolean;
+                                /** @description Giydirilmiş aylık ile tavanın küçüğü */
+                                baseMonthlyCents: number;
+                                dailyWageCents: number;
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            notice: {
+                                /** @enum {string} */
+                                status: "eligible" | "reason_not_entitled" | "notice_given";
+                                weeks: 2 | 4 | 6 | 8;
+                                /** @description Ödenen gün: hak varsa hafta × 7, yoksa 0 */
+                                days: number;
+                                dailyWageCents: number;
+                                /** @enum {string} */
+                                incomeTaxMethod: "first_bracket" | "cumulative_base" | "none";
+                                taxYear: number;
+                                taxTableStale: boolean;
+                                incomeTaxRateBasisPoints: number;
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            totals: {
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            /** @description Uyarı kodları: `ceiling_stale` (tavan tabloda yok, son bilinen kullanıldı), `tax_table_stale` (tarife yılı yok), `resignation_notice_owed` (bildirimsiz istifada ihbarı çalışan öder) */
+                            warnings: ("ceiling_stale" | "tax_table_stale" | "resignation_notice_owed")[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

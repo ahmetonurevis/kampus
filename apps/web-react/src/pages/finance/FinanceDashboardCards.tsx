@@ -9,6 +9,7 @@ import type { DashboardOf } from '@kampus/react-shared/dashboard.ts'
 import { useFinanceOverview } from '@kampus/react-shared/use-finance-exports.ts'
 import { useChemicalLots } from '@kampus/react-shared/use-finance-chemicals.ts'
 import { useCriticalStockItems } from '@kampus/react-shared/use-finance-inventory.ts'
+import { useMaintenancePlans } from '@kampus/react-shared/use-finance-maintenance-plans.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
@@ -38,6 +39,7 @@ import {
 } from './finance-dashboard-model.ts'
 import { EXPIRY_TONE, expiryText, lotText } from './finance-chemical-forms.ts'
 import { criticalQuantityText } from './finance-inventory-forms.ts'
+import { dueText, MAINTENANCE_PLAN_DUE_VIEW } from './finance-maintenance-plan-forms.ts'
 import { invoiceClassScope, invoiceRow } from './finance-rows.ts'
 
 const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success' } as const
@@ -168,6 +170,56 @@ function ChemicalExpiryCard({ ctx }: { ctx: DashboardCardContext }) {
               <StatusBadge
                 text={row.status === 'expired' ? 'Geçti' : 'Yaklaşıyor'}
                 tone={EXPIRY_TONE[row.status]}
+              />
+            </span>
+          </li>
+        ))}
+      </CardList>
+    </ListCard>
+  )
+}
+
+const MAINTENANCE_ATTENTION_QUERY = { page: 1, pageSize: 5, due: 'attention' } as const
+
+/**
+ * Periyodik bakım (DOM-FIN-092, K-253): geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş en
+ * acil beş plan. Plan yoksa (ya da liste gelmeden) kart çizilmez; plan listesi kampüse göre
+ * süzülmediği için kampüs seçiliyken kart gizlenir ve istek atılmaz.
+ */
+function MaintenancePlansCard({ ctx }: { ctx: DashboardCardContext }) {
+  const [params] = useSearchParams()
+  const branchSelected = params.has(BRANCH_PARAM)
+  const query = useMaintenancePlans(MAINTENANCE_ATTENTION_QUERY, !branchSelected)
+  const total = query.data?.meta.total ?? 0
+  if (branchSelected || (!query.error && total === 0)) return null
+  const path = ctx.role === 'onburo' ? FRONT_DESK_PATH : 'finans'
+  return (
+    <ListCard
+      title="Periyodik bakım"
+      description={`${number(total)} denetim gecikti, yaklaşıyor ya da hiç yapılmadı`}
+      action={{
+        label: 'Tümünü gör',
+        href: dashboardHref(ctx.role, path, { gorunum: 'bakim-plani', bakim_durum: 'attention' }),
+      }}
+      state={combineStates(query)}
+      isEmpty={false}
+      emptyText="Yaklaşan denetim yok."
+    >
+      <CardList label="Periyodik bakım">
+        {query.data?.data.map((row) => (
+          <li
+            key={row.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
+          >
+            <span className="min-w-0">
+              <span className="block font-medium">{row.name}</span>
+              <span className="block text-sm text-muted-foreground">{row.location}</span>
+            </span>
+            <span className="flex items-center gap-2 text-sm tabular-nums">
+              {row.dueStatus === 'never' ? null : dueText(row)}
+              <StatusBadge
+                text={MAINTENANCE_PLAN_DUE_VIEW[row.dueStatus].label}
+                tone={MAINTENANCE_PLAN_DUE_VIEW[row.dueStatus].tone}
               />
             </span>
           </li>
@@ -553,6 +605,16 @@ export const FINANCE_CARDS = [
     area: 'side',
     order: 406,
     component: ChemicalExpiryCard,
+  }),
+  // --- Yönetici ve ön büro: periyodik bakım (DOM-FIN-092; ON-240). Kimyasalın altında. ---
+  defineCard({
+    id: 'finans.periyodik-bakim',
+    roles: ['yonetici', 'onburo'],
+    module: 'finance',
+    section: (data) => ('finance' in data ? data.finance : null),
+    area: 'side',
+    order: 407,
+    component: MaintenancePlansCard,
   }),
 
   // --- Veli: çocuğun bakiyesi (DOM-FIN-052). Öğrencinin özetinde alan yoktur, kart çizilmez. ---

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { useFinanceTotals } from '@kampus/react-shared/use-finance-exports.ts'
+import { useMaintenancePlans } from '@kampus/react-shared/use-finance-maintenance-plans.ts'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
@@ -68,6 +69,9 @@ const FinanceFixedAssetsSection = lazy(async () => ({
 const FinanceMaintenanceSection = lazy(async () => ({
   default: (await import('./FinanceMaintenanceSection.tsx')).FinanceMaintenanceSection,
 }))
+const FinanceMaintenancePlansSection = lazy(async () => ({
+  default: (await import('./FinanceMaintenancePlansSection.tsx')).FinanceMaintenancePlansSection,
+}))
 const FinanceMaterialSetsSection = lazy(async () => ({
   default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
 }))
@@ -101,6 +105,7 @@ const VIEWS = {
   supplyRequests: { label: 'Sarf talepleri', param: 'sarf' },
   fixedAssets: { label: 'Demirbaşlar', param: 'demirbas' },
   maintenance: { label: 'Arıza ve bakım', param: 'ariza' },
+  maintenancePlans: { label: 'Periyodik bakım', param: 'bakim-plani' },
   eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
@@ -125,6 +130,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sarf talepleri (DOM-FIN-091) ikisine açıktır; ön büro karşılar ve dönüştürür, onay yöneticide (K-244).
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  * Arıza ve bakım (DOM-FIN-089) ikisine açıktır; ön büro bildirir, iş emrini yönetici yürütür (K-237).
+ * Periyodik bakım (DOM-FIN-092) ikisine açıktır; ön büro okur, planı ve denetimi yönetici yazar
+ * (K-255). Sekme rozeti geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş plan sayısıdır (K-253).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -144,6 +151,14 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
     if (value === 'eOzel') return institutionType !== 'school'
     return true
   })
+const ATTENTION_QUERY = { page: 1, pageSize: 1, due: 'attention' } as const
+
+/** Periyodik bakım sekmesinin rozeti: uyarıdaki plan sayısı; sıfırsa rozet yok. */
+function withMaintenanceBadge(options: typeof VIEW_OPTIONS, attention: number) {
+  return options.map((option) =>
+    option.value === 'maintenancePlans' && attention > 0 ? { ...option, count: attention } : option,
+  )
+}
 const viewOf = (param: string | null, options: typeof VIEW_OPTIONS): FinanceView =>
   options.find(({ value }) => param !== null && VIEWS[value].param === param)?.value ?? 'invoices'
 
@@ -159,7 +174,12 @@ export function FinancePage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const [params, setParams] = useSearchParams()
   const isManager = session?.role === 'yonetici'
-  const viewOptions = viewOptionsFor(session?.institution?.type, isManager)
+  const canReadPlans = isManager || session?.role === 'onburo'
+  const attentionPlans = useMaintenancePlans(ATTENTION_QUERY, canReadPlans)
+  const viewOptions = withMaintenanceBadge(
+    viewOptionsFor(session?.institution?.type, isManager),
+    attentionPlans.data?.meta.total ?? 0,
+  )
   const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const totalsQuery = useFinanceTotals()
   const totals = totalsQuery.data?.data
@@ -272,7 +292,8 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'materialSets' ||
       tab === 'supplyRequests' ||
       tab === 'fixedAssets' ||
-      tab === 'maintenance' ? (
+      tab === 'maintenance' ||
+      tab === 'maintenancePlans' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
@@ -292,6 +313,9 @@ export function FinancePage({ page }: { page: NavPage }) {
           ) : null}
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
           {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
+          {tab === 'maintenancePlans' ? (
+            <FinanceMaintenancePlansSection role={session?.role ?? ''} />
+          ) : null}
         </Suspense>
       ) : null}
       {tab === 'boardReport' ? (

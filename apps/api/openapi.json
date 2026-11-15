@@ -109168,7 +109168,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Yeni açılan önce; durum, birim ve dönemle süzülür, `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Yeni açılan önce; durum, birim ve dönemle süzülür, `awaitingMyApproval=true` sıranın oturumdaki kişide olduğu gönderilmiş talepleri verir (K-263), `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -109242,6 +109242,19 @@
             "name": "periodId",
             "required": false,
             "description": "Bütçe dönemi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "awaitingMyApproval",
+            "required": false,
+            "description": "`true`: \"Onayımı bekleyenler\" — sıranın oturumdaki kişide olduğu gönderilmiş talepler (K-263)"
           }
         ],
         "responses": {
@@ -110036,17 +110049,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -110100,6 +110245,7 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -110643,7 +110789,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), onay zinciri (kademe, onaylayan, karar ve zamanı; ON-223), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -111035,17 +111181,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -111099,6 +111377,7 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -111717,17 +111996,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -111781,6 +112192,7 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -111884,7 +112296,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "description": "Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Kurumun kademe eşikleri varsa tutarın (KDV dahil tahmini toplam) eriştiği kademeler talebe dondurulur; sonradan ayar değişse de bu talep etkilenmez (ON-223, K-261). Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -112319,17 +112731,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -112383,6 +112927,7 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -112486,7 +113031,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.",
+        "description": "Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129). Bütçe uyarısı her kademede yeniden denetlenir. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -112926,17 +113471,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -112990,6 +113667,7 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -113093,7 +113771,7 @@
         "tags": [
           "finance-procurement"
         ],
-        "description": "Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.",
+        "description": "Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -113526,17 +114204,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -113590,6 +114400,7 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -114126,17 +114937,149 @@
                               "type": "boolean"
                             },
                             "decide": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
                             }
                           },
                           "required": [
                             "edit",
                             "submit",
                             "cancel",
-                            "decide"
+                            "decide",
+                            "withdraw"
                           ],
                           "additionalProperties": false,
                           "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
                         },
                         "supplyRequest": {
                           "anyOf": [
@@ -114190,6 +115133,738 @@
                         "cancelledByName",
                         "cancelReason",
                         "actions",
+                        "approval",
+                        "supplyRequest"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-requests/{requestId}/withdraw": {
+      "post": {
+        "operationId": "withdrawPurchaseRequest",
+        "summary": "Satın alma talebini taslağa geri çek",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Gönderilmiş, kararı verilmemiş talebi taslağa döndürür; gövde boş ya da `{}`. Dondurulmuş onay kademeleri ve verilmiş kademe onayları düşer (arşivlenir); talep düzeltilip yeniden gönderilince kademeler güncel ayar ve tutarla yeniden hesaplanır (ON-223, K-261). Gönderilmemiş ya da kararı verilmiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Kurum içi talep numarası, ör. `ST-0001`"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted",
+                            "approved",
+                            "rejected",
+                            "cancelled"
+                          ]
+                        },
+                        "costCenter": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "code",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Talep eden birim (maliyet merkezi)"
+                        },
+                        "period": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Bütçe dönemi"
+                        },
+                        "budgetItem": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "code",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Gider kalemi"
+                        },
+                        "supplier": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Önerilen tedarikçi"
+                        },
+                        "justification": {
+                          "type": "string"
+                        },
+                        "itemCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "totalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş"
+                        },
+                        "requestedByUserId": {
+                          "type": "string"
+                        },
+                        "requestedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "piece",
+                                  "pack",
+                                  "box",
+                                  "kilogram",
+                                  "liter",
+                                  "meter",
+                                  "hour",
+                                  "day",
+                                  "month",
+                                  "service"
+                                ]
+                              },
+                              "estimatedUnitPriceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tahmini birim fiyat, kuruş"
+                              },
+                              "totalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Miktar × birim fiyat, kuruş"
+                              },
+                              "stockItem": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "code",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "quantity",
+                              "unit",
+                              "estimatedUnitPriceCents",
+                              "totalCents",
+                              "stockItem"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "plannedCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Dönem × merkez × kalem satırının planı; satır yoksa boş"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "approvedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç)"
+                            },
+                            "pendingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki kararı bekleyen talepler (bu talep hariç)"
+                            },
+                            "orderedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154)"
+                            },
+                            "receivedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154)"
+                            },
+                            "committedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154)"
+                            },
+                            "remainingCents": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Plan eksi taahhüt eksi gerçekleşen; plan yoksa boş, eksi olabilir"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "exceedsRemaining": {
+                              "type": "boolean",
+                              "description": "Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146)"
+                            },
+                            "overrunCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0"
+                            }
+                          },
+                          "required": [
+                            "plannedCents",
+                            "approvedCents",
+                            "pendingCents",
+                            "orderedCents",
+                            "receivedCents",
+                            "committedCents",
+                            "remainingCents",
+                            "exceedsRemaining",
+                            "overrunCents"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Bütçe kalanı ve aşım bilgisi (K-145)"
+                        },
+                        "submittedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionNote": {
+                          "description": "Onay notu ya da ret gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "edit": {
+                              "type": "boolean"
+                            },
+                            "submit": {
+                              "type": "boolean"
+                            },
+                            "cancel": {
+                              "type": "boolean"
+                            },
+                            "decide": {
+                              "type": "boolean",
+                              "description": "Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)"
+                            },
+                            "withdraw": {
+                              "type": "boolean",
+                              "description": "Gönderilmiş talebi taslağa geri çekme (K-261)"
+                            }
+                          },
+                          "required": [
+                            "edit",
+                            "submit",
+                            "cancel",
+                            "decide",
+                            "withdraw"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının bu talepte yapabileceği işlemler"
+                        },
+                        "approval": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "tiered"
+                              ],
+                              "description": "`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)"
+                            },
+                            "currentPosition": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "position": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kademe sırası, 1’den"
+                                  },
+                                  "minTotalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)"
+                                  },
+                                  "approverRole": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "yonetici"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                                  },
+                                  "approverUserId": {
+                                    "description": "Adlandırılmış onaylayan",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approverName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decision": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "approved",
+                                          "rejected"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Kademe kararı"
+                                  },
+                                  "decidedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "note": {
+                                    "description": "Onay notu ya da ret gerekçesi",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "position",
+                                  "minTotalCents",
+                                  "approverRole",
+                                  "approverUserId",
+                                  "approverName",
+                                  "decision",
+                                  "decidedByName",
+                                  "decidedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "currentPosition",
+                            "steps"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Onay zinciri (ON-223, K-260…K-262)"
+                        },
+                        "supplyRequest": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "number": {
+                                  "type": "string",
+                                  "description": "Sarf talebi numarası, ör. `SM-0001`"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "number"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "costCenter",
+                        "period",
+                        "budgetItem",
+                        "supplier",
+                        "justification",
+                        "itemCount",
+                        "totalCents",
+                        "requestedByUserId",
+                        "requestedByName",
+                        "submittedAt",
+                        "decidedAt",
+                        "cancelledAt",
+                        "createdAt",
+                        "version",
+                        "items",
+                        "budget",
+                        "submittedByName",
+                        "decidedByName",
+                        "decisionNote",
+                        "cancelledByName",
+                        "cancelReason",
+                        "actions",
+                        "approval",
                         "supplyRequest"
                       ],
                       "additionalProperties": false
@@ -158004,6 +159679,501 @@
             }
           },
           "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/purchase-approval-settings": {
+      "get": {
+        "operationId": "getPurchaseApprovalSettings",
+        "summary": "Satın alma onay kademeleri",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Kurumun satın alma talebi onay kademeleri (alt sınır ve onaylayan), adlandırılabilecek etkin yöneticiler ve ayar sürümü. Kademe yoksa talepleri her yönetici tek adımda onaylar (K-129). Rol: `yonetici`. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tiers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kademe sırası, 1’den"
+                              },
+                              "minTotalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Alt sınır: talebin KDV dahil tahmini toplamı bu tutara eşit ya da büyükse kademe gerekir, kuruş"
+                              },
+                              "approverRole": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "yonetici"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                              },
+                              "approverUserId": {
+                                "description": "Adlandırılmış onaylayan",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approverName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approverEligible": {
+                                "type": "boolean",
+                                "description": "Adlandırılmış kişi hâlâ kurumun etkin yöneticisi mi; değilse ayar yeniden kaydedilemez"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "minTotalCents",
+                              "approverRole",
+                              "approverUserId",
+                              "approverName",
+                              "approverEligible"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kademeler; boşsa talepleri her yönetici tek adımda onaylar (K-129)"
+                        },
+                        "approvers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Adlandırılabilecek kişiler: kurumun etkin yöneticileri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "tiers",
+                        "approvers",
+                        "version"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Satın alma talebi kademeli onay ayarı"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setPurchaseApprovalSettings",
+        "summary": "Satın alma onay kademelerini kaydet",
+        "tags": [
+          "finance-procurement"
+        ],
+        "description": "Kademe listesini bütün olarak yazar (ON-223, K-260): en çok 5 kademe, ilk kademe 0 alt sınırla başlar, alt sınırlar kesin artar; her kademe ya `approverRole: \"yonetici\"` (herhangi bir yönetici) ya da `approverUserId` (adlandırılmış kişi) taşır, aynı kişi iki kademede olamaz (400). Adlandırılmış kişi kurumun etkin yöneticisi değilse 422 `purchase_approval_approver_invalid` (başka kurumun kişisi de aynı yanıtı alır). Boş liste kademeli onayı kapatır. Ayar açık talepleri değiştirmez: kademeler gönderimde dondurulur (K-261). `If-Match` zorunlu (`GET` yanıtındaki sürüm; ayar hiç kaydedilmediyse 1); sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tiers": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "minTotalCents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000000000000
+                        },
+                        "approverRole": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "yonetici"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "approverUserId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "minTotalCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "tiers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tiers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kademe sırası, 1’den"
+                              },
+                              "minTotalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Alt sınır: talebin KDV dahil tahmini toplamı bu tutara eşit ya da büyükse kademe gerekir, kuruş"
+                              },
+                              "approverRole": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "yonetici"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş"
+                              },
+                              "approverUserId": {
+                                "description": "Adlandırılmış onaylayan",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approverName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approverEligible": {
+                                "type": "boolean",
+                                "description": "Adlandırılmış kişi hâlâ kurumun etkin yöneticisi mi; değilse ayar yeniden kaydedilemez"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "minTotalCents",
+                              "approverRole",
+                              "approverUserId",
+                              "approverName",
+                              "approverEligible"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kademeler; boşsa talepleri her yönetici tek adımda onaylar (K-129)"
+                        },
+                        "approvers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Adlandırılabilecek kişiler: kurumun etkin yöneticileri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "tiers",
+                        "approvers",
+                        "version"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Satın alma talebi kademeli onay ayarı"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

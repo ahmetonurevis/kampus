@@ -687,6 +687,13 @@
       "when": 1794779328465,
       "tag": "0097_supplier_invoice_matching",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794780673319,
+      "tag": "0098_create_purchase_approval_steps",
+      "breakpoints": true
     }
   ]
 }

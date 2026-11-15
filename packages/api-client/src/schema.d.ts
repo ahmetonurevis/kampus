@@ -4785,7 +4785,7 @@ export interface paths {
         };
         /**
          * Satın alma taleplerini listele
-         * @description Yeni açılan önce; durum, birim ve dönemle süzülür, `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Yeni açılan önce; durum, birim ve dönemle süzülür, `awaitingMyApproval=true` sıranın oturumdaki kişide olduğu gönderilmiş talepleri verir (K-263), `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         get: operations["listPurchaseRequests"];
         put?: never;
@@ -4849,7 +4849,7 @@ export interface paths {
         };
         /**
          * Satın alma talebi ayrıntısı
-         * @description Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), onay zinciri (kademe, onaylayan, karar ve zamanı; ON-223), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         get: operations["getPurchaseRequest"];
         put?: never;
@@ -4875,7 +4875,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini gönder
-         * @description Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Kurumun kademe eşikleri varsa tutarın (KDV dahil tahmini toplam) eriştiği kademeler talebe dondurulur; sonradan ayar değişse de bu talep etkilenmez (ON-223, K-261). Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["submitPurchaseRequest"];
         delete?: never;
@@ -4895,7 +4895,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini onayla
-         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129). Bütçe uyarısı her kademede yeniden denetlenir. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
          */
         post: operations["approvePurchaseRequest"];
         delete?: never;
@@ -4915,7 +4915,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini reddet
-         * @description Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         * @description Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
          */
         post: operations["rejectPurchaseRequest"];
         delete?: never;
@@ -4938,6 +4938,26 @@ export interface paths {
          * @description Taslak ya da gönderilmiş talebi gerekçeyle iptal eder; onaylanmış ya da reddedilmiş talep 422 `purchase_request_not_cancellable` (K-132). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["cancelPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Satın alma talebini taslağa geri çek
+         * @description Gönderilmiş, kararı verilmemiş talebi taslağa döndürür; gövde boş ya da `{}`. Dondurulmuş onay kademeleri ve verilmiş kademe onayları düşer (arşivlenir); talep düzeltilip yeniden gönderilince kademeler güncel ayar ve tutarla yeniden hesaplanır (ON-223, K-261). Gönderilmemiş ya da kararı verilmiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        post: operations["withdrawPurchaseRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6674,6 +6694,30 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-approval-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Satın alma onay kademeleri
+         * @description Kurumun satın alma talebi onay kademeleri (alt sınır ve onaylayan), adlandırılabilecek etkin yöneticiler ve ayar sürümü. Kademe yoksa talepleri her yönetici tek adımda onaylar (K-129). Rol: `yonetici`. Modül `finance`.
+         */
+        get: operations["getPurchaseApprovalSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Satın alma onay kademelerini kaydet
+         * @description Kademe listesini bütün olarak yazar (ON-223, K-260): en çok 5 kademe, ilk kademe 0 alt sınırla başlar, alt sınırlar kesin artar; her kademe ya `approverRole: "yonetici"` (herhangi bir yönetici) ya da `approverUserId` (adlandırılmış kişi) taşır, aynı kişi iki kademede olamaz (400). Adlandırılmış kişi kurumun etkin yöneticisi değilse 422 `purchase_approval_approver_invalid` (başka kurumun kişisi de aynı yanıtı alır). Boş liste kademeli onayı kapatır. Ayar açık talepleri değiştirmez: kademeler gönderimde dondurulur (K-261). `If-Match` zorunlu (`GET` yanıtındaki sürüm; ayar hiç kaydedilmediyse 1); sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici`. Modül `finance`.
+         */
+        patch: operations["setPurchaseApprovalSettings"];
         trace?: never;
     };
     "/api/v1/questions": {
@@ -52427,6 +52471,8 @@ export interface operations {
                 costCenterId?: string;
                 /** @description Bütçe dönemi */
                 periodId?: string;
+                /** @description `true`: "Onayımı bekleyenler" — sıranın oturumdaki kişide olduğu gönderilmiş talepler (K-263) */
+                awaitingMyApproval?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -52690,7 +52736,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -53118,7 +53194,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -53337,7 +53443,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -53540,7 +53676,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -53745,7 +53911,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -53948,7 +54144,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -54151,7 +54377,268 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
+                            };
+                            /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
+                            supplyRequest: {
+                                id: string;
+                                /** @description Sarf talebi numarası, ör. `SM-0001` */
+                                number: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never> | null;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
+                            }[];
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
+                                committedCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
+                                exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
+                                decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -70962,6 +71449,257 @@ export interface operations {
             };
             /** @description Default Response */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseApprovalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Satın alma talebi kademeli onay ayarı */
+                        data: {
+                            /** @description Kademeler; boşsa talepleri her yönetici tek adımda onaylar (K-129) */
+                            tiers: {
+                                /** @description Kademe sırası, 1’den */
+                                position: number;
+                                /** @description Alt sınır: talebin KDV dahil tahmini toplamı bu tutara eşit ya da büyükse kademe gerekir, kuruş */
+                                minTotalCents: number;
+                                /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                approverRole: "yonetici" | null;
+                                /** @description Adlandırılmış onaylayan */
+                                approverUserId: string | null;
+                                approverName: string | null;
+                                /** @description Adlandırılmış kişi hâlâ kurumun etkin yöneticisi mi; değilse ayar yeniden kaydedilemez */
+                                approverEligible: boolean;
+                            }[];
+                            /** @description Adlandırılabilecek kişiler: kurumun etkin yöneticileri */
+                            approvers: {
+                                userId: string;
+                                name: string;
+                            }[];
+                            /** @description `If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setPurchaseApprovalSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    tiers: {
+                        minTotalCents: number;
+                        /** @default null */
+                        approverRole?: "yonetici" | null;
+                        /** @default null */
+                        approverUserId?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Satın alma talebi kademeli onay ayarı */
+                        data: {
+                            /** @description Kademeler; boşsa talepleri her yönetici tek adımda onaylar (K-129) */
+                            tiers: {
+                                /** @description Kademe sırası, 1’den */
+                                position: number;
+                                /** @description Alt sınır: talebin KDV dahil tahmini toplamı bu tutara eşit ya da büyükse kademe gerekir, kuruş */
+                                minTotalCents: number;
+                                /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                approverRole: "yonetici" | null;
+                                /** @description Adlandırılmış onaylayan */
+                                approverUserId: string | null;
+                                approverName: string | null;
+                                /** @description Adlandırılmış kişi hâlâ kurumun etkin yöneticisi mi; değilse ayar yeniden kaydedilemez */
+                                approverEligible: boolean;
+                            }[];
+                            /** @description Adlandırılabilecek kişiler: kurumun etkin yöneticileri */
+                            approvers: {
+                                userId: string;
+                                name: string;
+                            }[];
+                            /** @description `If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

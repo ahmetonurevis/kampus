@@ -1806,6 +1806,48 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kademeli onay ayarı ve taslağa geri çekme (ON-223; DOM-FIN-071, K-260…K-263).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/purchase-approval-settings',
+          'get(SETTINGS, a.adminA.cookie)',
+        ],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/purchase-approval-settings',
+          'approverUserId: bFounder.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-purchase-approvals.test.ts',
+        'başka kurumun ayarı ve kişisi etkisiz; B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/purchase-requests/:requestId/withdraw',
+          "'withdraw', 'approve', 'reject'",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-purchase-approvals.test.ts',
+        'başka kurumun talebi geri çekilemez (404) ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

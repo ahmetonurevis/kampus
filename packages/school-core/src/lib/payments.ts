@@ -399,6 +399,8 @@ export function reversePayment(
     allocations: readonly PaymentAllocation[]
     /** Öğrencinin ayrılış kayıtları; iade ya da borç hesabı ayrılış öncesi tahsilata dayanır. */
     withdrawals?: readonly ReversalWithdrawal[]
+    /** Ücretsiz okutma iadesine giren taksitler (DOM-FIN-026, K-270); iade bu tahsilata dayanır. */
+    freeTuitionInvoiceIds?: ReadonlySet<string>
   },
   input: unknown,
 ): { reason: string } {
@@ -412,6 +414,13 @@ export function reversePayment(
     throw new DomainError(
       'payment_student_withdrawn',
       'Ayrılış hesabına giren tahsilat iptal edilemez; yalnız ayrılıştan sonra kalan borca alınan tahsilat iptal edilebilir.',
+      { kind: 'conflict' },
+    )
+  const refunded = payment.freeTuitionInvoiceIds
+  if (refunded && payment.allocations.some((allocation) => refunded.has(allocation.invoiceId)))
+    throw new DomainError(
+      'payment_free_tuition_refunded',
+      'Ücretsiz okutma iadesine giren tahsilat iptal edilemez.',
       { kind: 'conflict' },
     )
   const ids = new Set(payment.allocations.map((allocation) => allocation.invoiceId))

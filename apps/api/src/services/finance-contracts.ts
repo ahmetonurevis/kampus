@@ -6,6 +6,7 @@ import {
   setContractSignatory,
 } from '@kampus/school-core/lib/contract-approval.ts'
 import { requireAuthorized, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
+import { assertContractNotFreeTuition } from '@kampus/school-core/lib/finance-free-tuition.ts'
 import { contractPayerIsGuardian } from '@kampus/school-core/lib/finance-notifications.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
@@ -13,6 +14,7 @@ import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { findFeeTariff } from '../db/fee-tariffs.ts'
 import { allocatedByInvoice } from '../db/payments.ts'
+import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { loadStudentFamilies } from '../db/finance-renewal-candidates.ts'
 import { loadStudentGuardians } from '../db/student-guardians.ts'
@@ -257,13 +259,15 @@ export async function amendContractCommand(
         options,
         prepare: async (tx, actor, institutionType) => {
           await requireFamilyLoaded(tx, ctx.institutionId, [studentId], family)
-          const [tariff, allocated] = await Promise.all([
+          const [tariff, allocated, coverage] = await Promise.all([
             // Ek protokolün taksit sayısı da tarifenin koşuluna bağlıdır (DOM-FIN-013).
             typeof tariffId === 'string' ? findFeeTariff(tx, ctx.institutionId, tariffId) : null,
             allocatedByInvoice(tx, ctx.institutionId, studentId),
+            studentFreeTuitionCoverage(tx, ctx.institutionId, studentId),
           ])
           return (state, { now, makeId }) => {
             requireAuthorized(actor, 'contract.amend', {}, state, { now, institutionType })
+            assertContractNotFreeTuition(contractId, coverage.contractIds)
             return amendContract(state, contractId, input, {
               tariff,
               canApproveCapException: ctx.actor.role === 'yonetici',

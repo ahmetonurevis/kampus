@@ -43,7 +43,10 @@ export interface StoredWithdrawal {
 
 /** Gün sonundaki iade ödemesi satırı (M-13); IBAN ve hesap sahibi seçilmez. */
 export interface StoredDayRefund extends FinanceDayRefund {
-  withdrawalId: string
+  /** Ayrılış iadesinde ayrılış kaydı; ücretsiz okutma iadesinde boş. */
+  withdrawalId: string | null
+  /** Ücretsiz okutma iadesinde hak kaydı (DOM-FIN-026, K-270); ayrılış iadesinde boş. */
+  freeTuitionAwardId: string | null
   studentName: string | null
   bankAccountLabel: string | null
 }
@@ -390,6 +393,7 @@ export async function refundsPaidOnDay(
     .orderBy(asc(studentWithdrawals.updatedAt), asc(studentWithdrawals.id))
   return rows.map(({ bankName, bankIban, paidDate, ...row }) => ({
     ...row,
+    freeTuitionAwardId: null,
     // Süzgeç ödeme gününü eşitler; boş olamaz.
     paidDate: paidDate ?? day,
     bankAccountLabel: labelOf(bankName, bankIban),

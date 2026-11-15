@@ -46,6 +46,7 @@ import { registerFinanceFixedAssetAssignmentRoutes } from './routes/finance-fixe
 import { registerFinanceFixedAssetCountRoutes } from './routes/finance-fixed-asset-counts.ts'
 import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.ts'
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
+import { registerFinanceFreeTuitionRoutes } from './routes/finance-free-tuition.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
@@ -477,6 +478,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
   registerFinanceScholarshipFundRoutes(app)
+  registerFinanceFreeTuitionRoutes(app)
   registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)

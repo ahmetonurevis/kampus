@@ -770,6 +770,7 @@ describe('ayrılış ve iade uçları', () => {
     assert.deepEqual(after.refunds, [
       {
         withdrawalId: id,
+        freeTuitionAwardId: null,
         studentName: STUDENT?.name,
         amountCents: 3_000_000,
         paidDate: today,

@@ -37,6 +37,7 @@ const summaryOf = (count: number) =>
   )
 const refund = (index: number) => ({
   withdrawalId: `w${String(index)}`,
+  freeTuitionAwardId: null,
   studentName: 'Ece Yılmaz',
   amountCents: 12_500,
   paidDate: DAY,

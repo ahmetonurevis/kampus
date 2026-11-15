@@ -246,6 +246,11 @@ export interface WithdrawalContext {
   creditCents: number
   /** Öğrencinin paket satışları; dil okulu dışında boştur. */
   packageSales?: readonly WithdrawalPackageSale[]
+  /**
+   * Ücretsiz okutmanın kapsadığı sözleşmeler (DOM-FIN-026, K-270): öğrenim ücreti istenmez ve
+   * alınmış öğrenim ücreti hakkın kendi iade kaydıyla döndüğü için ayrılışta yeniden iade edilmez.
+   */
+  freeTuitionContractIds?: ReadonlySet<string>
   now: string
 }
 
@@ -350,6 +355,7 @@ function quoteContract(
   data: z.output<typeof withdrawalQuoteSchema>,
   started: boolean,
   allocated: ReadonlyMap<string, number>,
+  freeTuition = false,
 ): { line: WithdrawalContractLine; extras: WithdrawalExtraLine[] } {
   // Ücrete yazılan ve iade edilen saat aynı hareket kümesinden çıkar (DOM-DIL-051, K-43): ayrılıştan
   // sonraki ders ücrete girmez, iade edilir; elle girilen toplam girişin günüyle elenmez (K-21).
@@ -368,13 +374,18 @@ function quoteContract(
   // Paket saati gerçekleşmiş kayıttır: dönem başlangıcı girdisinden bağımsız kullanılmış sayılır.
   // İndirimli pakette de taban net ücrettir, saat payı net üzerinden işler (H-13, **doğrulanmalı**).
   const usageCents = sale || started ? share(baseCents) : 0
-  const paidCents = invoices
-    .filter(isTuition)
-    .reduce((sum, invoice) => sum + paidOf(invoice, allocated), 0)
+  // Ücretsiz okutmada öğrenim tahsilatı hakkın iadesindedir; burada ne ödenen ne hak edilen vardır.
+  const paidCents = freeTuition
+    ? 0
+    : invoices.filter(isTuition).reduce((sum, invoice) => sum + paidOf(invoice, allocated), 0)
   const scholarshipExempt = contract.scholarship !== undefined
   const computedCents = Math.min(baseCents, deductionCents + usageCents)
   // Burs öğrenim ücretini kapsar: ek hizmetin kullanılan payı bursludan da istenir.
-  const entitledCents = scholarshipExempt ? Math.min(computedCents, paidCents) : computedCents
+  const entitledCents = freeTuition
+    ? 0
+    : scholarshipExempt
+      ? Math.min(computedCents, paidCents)
+      : computedCents
   const extras = invoices
     .filter((invoice) => !isTuition(invoice))
     .map((invoice): WithdrawalExtraLine => ({
@@ -484,7 +495,15 @@ export function quoteWithdrawal(
   )
   const latest = account.at(-1)
   if (!latest) throw contractMissing(context.institutionType)
-  const quotes = account.map((item) => quoteContract(item, data, started, context.allocated))
+  const quotes = account.map((item) =>
+    quoteContract(
+      item,
+      data,
+      started,
+      context.allocated,
+      context.freeTuitionContractIds?.has(item.contract.id) ?? false,
+    ),
+  )
   const lines = quotes.map((quote) => quote.line)
   const total = (pick: (line: WithdrawalContractLine) => number) =>
     lines.reduce((sum, line) => sum + pick(line), 0)

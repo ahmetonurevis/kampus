@@ -52,7 +52,11 @@ export function importInstallmentsRequest(
   })
 }
 
-const INVALID_CODES = new Set(['student_import_invalid', 'installment_import_invalid'])
+const INVALID_CODES = new Set([
+  'student_import_invalid',
+  'installment_import_invalid',
+  'eokul_import_invalid',
+])
 
 /** Dosya düzeyindeki sorun: başlık, satır sınırı, okunamayan dosya (422; alana yazılır). */
 export function isImportFileError(error: ApiError): boolean {

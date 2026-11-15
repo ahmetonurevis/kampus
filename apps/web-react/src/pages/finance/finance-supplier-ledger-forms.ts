@@ -20,6 +20,16 @@ import {
   supplierInvoiceSchema,
   type SupplierInvoiceStatus,
 } from '@kampus/school-core/lib/finance-supplier-ledger.ts'
+import {
+  INVOICE_LINE_DESCRIPTION_MAX,
+  INVOICE_LINES_MAX,
+  INVOICE_MATCH_STATUS_LABELS,
+  type InvoiceMatchStatus,
+} from '@kampus/school-core/lib/finance-invoice-matching.ts'
+import {
+  PURCHASE_QUANTITY_MAX,
+  PURCHASE_UNIT_PRICE_MAX_CENTS,
+} from '@kampus/school-core/lib/finance-purchase-requests.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 const AMOUNT_MESSAGE = 'Tutarı 1.234,56 biçiminde, sıfırdan büyük girin.'
@@ -98,6 +108,82 @@ export const planDefaults = (invoice: SupplierInvoiceDetail): PlanFormValues => 
   })),
 })
 
+// --- Fatura kalemleri (DOM-FIN-095) -------------------------------------------------------------
+
+/** Kalem satırı: `orderItemId` boşsa siparişte olmayan kalemdir ve ad ister (K-280). */
+const lineRow = z
+  .object({
+    orderItemId: z.string(),
+    description: z
+      .string()
+      .trim()
+      .max(
+        INVOICE_LINE_DESCRIPTION_MAX,
+        `En fazla ${String(INVOICE_LINE_DESCRIPTION_MAX)} karakter girebilirsiniz.`,
+      ),
+    quantity: z
+      .string()
+      .refine(
+        (value) =>
+          /^\d+$/.test(value.trim()) &&
+          Number(value) >= 1 &&
+          Number(value) <= PURCHASE_QUANTITY_MAX,
+        { message: 'Miktarı 1 ya da daha büyük tam sayı girin.' },
+      ),
+    unitPrice: z
+      .string()
+      .refine(
+        (value) =>
+          parseAmountInput(value, { maxCents: PURCHASE_UNIT_PRICE_MAX_CENTS, allowZero: false }) !==
+          null,
+        { message: AMOUNT_MESSAGE },
+      ),
+  })
+  .superRefine((row, context) => {
+    if (row.orderItemId === '' && row.description.trim().length < 2)
+      context.addIssue({
+        code: 'custom',
+        path: ['description'],
+        message: 'Siparişte olmayan kalemin adını en az 2 karakterle yazın.',
+      })
+  })
+export type InvoiceLineRow = z.input<typeof lineRow>
+
+const lineCents = (text: string) =>
+  parseAmountInput(text, { maxCents: PURCHASE_UNIT_PRICE_MAX_CENTS, allowZero: false }) ?? 0
+
+/** Kalemlerin KDV hariç toplamı (formda gösterilir; sunucu ±1 TL ile denetler, K-280). */
+export const invoiceLinesNetCents = (rows: readonly Partial<InvoiceLineRow>[]) =>
+  rows.reduce(
+    (total, row) =>
+      total +
+      (/^\d+$/.test((row.quantity ?? '').trim()) ? Number(row.quantity) : 0) *
+        lineCents(row.unitPrice ?? ''),
+    0,
+  )
+
+/** Sipariş kalemlerinden öneri: sipariş miktarı ve fiyatı (kullanıcı faturaya göre düzeltir). */
+export function orderLineRows(
+  items: readonly { id: string; quantity: number; unitPriceCents: number }[],
+): InvoiceLineRow[] {
+  return items.map((item) => ({
+    orderItemId: item.id,
+    description: '',
+    quantity: String(item.quantity),
+    unitPrice: amountText(item.unitPriceCents),
+  }))
+}
+
+/** KDV hariç tutar: dahilse girilen tutar − KDV, değilse girilen tutar. */
+export function invoiceNetCents(values: {
+  amount?: string | undefined
+  amountIncludesVat?: string | undefined
+  vat?: string | undefined
+}): number {
+  const amount = parseLedgerAmount(values.amount ?? '') ?? 0
+  return values.amountIncludesVat === 'false' ? amount : amount - centsOf(values.vat ?? '')
+}
+
 // --- Fatura --------------------------------------------------------------------------------------
 
 const invoiceShape = supplierInvoiceSchema.shape
@@ -121,6 +207,9 @@ export const invoiceFormSchema = z
     planMode: z.enum(['single', 'plan']),
     dueDate: z.string(),
     installments: z.array(installmentRow).max(SUPPLIER_INSTALLMENTS_MAX),
+    lines: z
+      .array(lineRow)
+      .max(INVOICE_LINES_MAX, `En fazla ${String(INVOICE_LINES_MAX)} kalem girilebilir.`),
   })
   .superRefine((value, context) => {
     if (value.planMode === 'single' && !daySchema.safeParse(value.dueDate).success)
@@ -131,6 +220,23 @@ export const invoiceFormSchema = z
         path: ['installments', 'root'],
         message: 'En az bir taksit girin.',
       })
+    if (value.purchaseOrderId !== '' && value.lines.length === 0)
+      context.addIssue({
+        code: 'custom',
+        path: ['lines', 'root'],
+        message: 'Siparişe bağlı faturada fatura kalemlerini girin.',
+      })
+    const seen = new Set<string>()
+    value.lines.forEach((line, index) => {
+      if (line.orderItemId === '') return
+      if (seen.has(line.orderItemId))
+        context.addIssue({
+          code: 'custom',
+          path: ['lines', index, 'orderItemId'],
+          message: 'Bir sipariş kalemi faturada bir kez yazılır.',
+        })
+      seen.add(line.orderItemId)
+    })
     const amount = parseLedgerAmount(value.amount)
     const vat = parseLedgerAmount(value.vat, true)
     if (amount !== null && vat !== null && value.amountIncludesVat === 'true' && vat >= amount)
@@ -154,6 +260,7 @@ export const invoiceDefaults = (today: string): InvoiceFormValues => ({
   planMode: 'single',
   dueDate: '',
   installments: [],
+  lines: [],
 })
 
 /** KDV dahil toplam: dahilse girilen tutar, değilse tutar + KDV. */
@@ -178,6 +285,16 @@ export function invoiceBody(
     amountIncludesVat: values.amountIncludesVat === 'true',
     vatCents: centsOf(values.vat),
     purchaseOrderId: blankToNull(values.purchaseOrderId),
+    ...(values.purchaseOrderId === ''
+      ? {}
+      : {
+          lines: values.lines.map((line) => ({
+            orderItemId: blankToNull(line.orderItemId),
+            description: line.orderItemId === '' ? line.description.trim() : null,
+            quantity: Number(line.quantity),
+            unitPriceCents: lineCents(line.unitPrice),
+          })),
+        }),
     note: blankToNull(values.note),
     ...(values.planMode === 'single'
       ? { dueDate: values.dueDate }
@@ -187,13 +304,27 @@ export function invoiceBody(
 }
 
 type InvoiceField =
-  keyof InvoiceFormValues | `installments.${number}.${'dueDate' | 'amount'}` | 'root.installments'
+  | keyof InvoiceFormValues
+  | `installments.${number}.${'dueDate' | 'amount'}`
+  | `lines.${number}.${keyof InvoiceLineRow}`
+  | 'root.installments'
+  | 'root.lines'
 
-/** Sunucu alan yolu (`amountCents`, `installments.0.amountCents`) form alanına çevrilir. */
+const LINE_FIELDS: Record<string, keyof InvoiceLineRow> = {
+  orderItemId: 'orderItemId',
+  description: 'description',
+  quantity: 'quantity',
+  unitPriceCents: 'unitPrice',
+}
+
+/** Sunucu alan yolu (`amountCents`, `installments.0.amountCents`, `lines.0.quantity`) form alanına çevrilir. */
 export function invoiceFormField(name: string): InvoiceField | undefined {
   const row = /^installments\.(\d+)\.(dueDate|amountCents)$/.exec(name)
   if (row)
     return `installments.${Number(row[1])}.${row[2] === 'amountCents' ? 'amount' : 'dueDate'}`
+  const line = /^lines\.(\d+)\.(\w+)$/.exec(name)
+  const lineField = line ? LINE_FIELDS[line[2] ?? ''] : undefined
+  if (line && lineField) return `lines.${Number(line[1])}.${lineField}`
   const map: Record<string, InvoiceField> = {
     supplierId: 'supplierId',
     invoiceNumber: 'invoiceNumber',
@@ -204,6 +335,7 @@ export function invoiceFormField(name: string): InvoiceField | undefined {
     purchaseOrderId: 'purchaseOrderId',
     note: 'note',
     installments: 'root.installments',
+    lines: 'root.lines',
   }
   return map[name]
 }
@@ -287,6 +419,16 @@ export const INVOICE_STATUS_VIEW: Readonly<
   overdue: { label: SUPPLIER_INVOICE_STATUS_LABELS.overdue, tone: 'red' },
   paid: { label: SUPPLIER_INVOICE_STATUS_LABELS.paid, tone: 'green' },
   cancelled: { label: SUPPLIER_INVOICE_STATUS_LABELS.cancelled, tone: 'gray' },
+}
+
+/** Eşleştirme durumu rozeti (DOM-FIN-095): eşleşti yeşil, fiyat farkı sarı, miktar ve siparişte yok kırmızı. */
+export const MATCH_STATUS_VIEW: Readonly<
+  Record<InvoiceMatchStatus, { label: string; tone: BadgeTone }>
+> = {
+  matched: { label: INVOICE_MATCH_STATUS_LABELS.matched, tone: 'green' },
+  price_mismatch: { label: INVOICE_MATCH_STATUS_LABELS.price_mismatch, tone: 'amber' },
+  quantity_mismatch: { label: INVOICE_MATCH_STATUS_LABELS.quantity_mismatch, tone: 'red' },
+  unmatched: { label: INVOICE_MATCH_STATUS_LABELS.unmatched, tone: 'red' },
 }
 
 /** Talimat dosyasına girebilen ödeme: etkin havale ya da EFT (K-164). */

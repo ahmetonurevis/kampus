@@ -224,6 +224,12 @@ export interface AmendContractContext {
   userId: string
   now: string
   makeId: MakeId
+  /**
+   * Sözleşmenin bursu kesildi ya da iptal edildi mi (ON-283, K-265). Kesmenin yazdığı burs payı
+   * taksitleri sözleşme kaleminde görünmez; ek protokol neti burs kalemiyle yeniden hesaplayıp onları
+   * düşürürdü. Bu yüzden ek protokol reddedilir.
+   */
+  scholarshipEnded?: boolean
 }
 
 /** Yalnız yürürlükteki onaylı sürüm değiştirilir; onaysız sözleşmenin zaten imzası yoktur. */
@@ -340,6 +346,11 @@ export function amendContract(
   const data = amendContractSchema.parse(input)
   const source = contractOf(state, contractId)
   assertAmendable(state, source)
+  if (context.scholarshipEnded === true)
+    throw conflict(
+      'contract_scholarship_ended',
+      'Bursu kesilen ya da iptal edilen sözleşmeye ek protokol yapılmaz; yeni koşullar yenilemeyle işlenir.',
+    )
   if (data.firstDueDate < dayKey(context.now))
     throw new DomainError('contract_amendment_date_past', 'İlk vade geçmiş bir gün olamaz.', {
       path: ['firstDueDate'],

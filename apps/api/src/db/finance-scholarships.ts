@@ -1,7 +1,11 @@
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
-import { scholarshipAwards, scholarshipPrograms } from './schema/finance-scholarships.ts'
+import {
+  scholarshipAwards,
+  scholarshipPrograms,
+  scholarshipTerminations,
+} from './schema/finance-scholarships.ts'
 
 /** Burs programı ve ataması deposu (DOM-FIN-025); her sorgu kurum kapsamlıdır. */
 
@@ -307,4 +311,101 @@ export async function archiveStudentScholarshipAwards(
     )
     .returning({ id: scholarshipAwards.id })
   return rows.map((row) => row.id)
+}
+
+// Burs kesmesi ve iptali (ON-283; DOM-FIN-025, K-264…K-267).
+
+export type StoredScholarshipEnd = typeof scholarshipTerminations.$inferSelect
+
+/** Atamaların kesme ve iptal kayıtları, eskiden yeniye. */
+export async function listScholarshipEnds(
+  db: Database,
+  institutionId: string,
+  awardIds: readonly string[],
+): Promise<StoredScholarshipEnd[]> {
+  if (awardIds.length === 0) return []
+  return db
+    .select()
+    .from(scholarshipTerminations)
+    .where(
+      and(
+        eq(scholarshipTerminations.institutionId, institutionId),
+        isNull(scholarshipTerminations.archivedAt),
+        inArray(scholarshipTerminations.awardId, [...awardIds]),
+      ),
+    )
+    .orderBy(asc(scholarshipTerminations.createdAt), asc(scholarshipTerminations.id))
+}
+
+export async function insertScholarshipEnd(
+  tx: Database,
+  institutionId: string,
+  input: Omit<
+    StoredScholarshipEnd,
+    'institutionId' | 'createdAt' | 'updatedAt' | 'archivedAt' | 'version'
+  > & { now: Date },
+): Promise<void> {
+  const { now, ...row } = input
+  await tx
+    .insert(scholarshipTerminations)
+    .values({ institutionId, ...row, createdAt: now, updatedAt: now })
+}
+
+/** Kesme ya da iptal atamanın sürümünü artırır (`If-Match`); sürüm tutmazsa `false` (409). */
+export async function touchScholarshipAward(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; expectedVersion: number; now: Date },
+): Promise<boolean> {
+  const rows = await tx
+    .update(scholarshipAwards)
+    .set({ version: sql`${scholarshipAwards.version} + 1`, updatedAt: input.now })
+    .where(
+      and(
+        activeAward(institutionId),
+        eq(scholarshipAwards.id, input.id),
+        eq(scholarshipAwards.version, input.expectedVersion),
+      ),
+    )
+    .returning({ id: scholarshipAwards.id })
+  return rows.length === 1
+}
+
+/** Program adı; geri isteme yazısı ve bilgi metni için. */
+export async function scholarshipProgramName(
+  db: Database,
+  institutionId: string,
+  programId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ name: scholarshipPrograms.name })
+    .from(scholarshipPrograms)
+    .where(
+      and(
+        eq(scholarshipPrograms.institutionId, institutionId),
+        eq(scholarshipPrograms.id, programId),
+      ),
+    )
+    .limit(1)
+  return row?.name ?? null
+}
+
+/** Sözleşme sürümünün bursu kesildi ya da iptal edildi mi; ek protokol reddedilir (K-265). */
+export async function hasScholarshipEndForContract(
+  db: Database,
+  institutionId: string,
+  contractId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: scholarshipTerminations.id })
+    .from(scholarshipTerminations)
+    .where(
+      and(
+        eq(scholarshipTerminations.institutionId, institutionId),
+        isNull(scholarshipTerminations.archivedAt),
+        eq(scholarshipTerminations.contractId, contractId),
+      ),
+    )
+    .limit(1)
+  return row !== undefined
 }

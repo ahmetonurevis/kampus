@@ -42,7 +42,10 @@ export type PurchaseRequestQuery = Query<'listPurchaseRequests'>
 export type PurchaseBudgetStatus =
   operations['getPurchaseBudgetStatus']['responses'][200]['content']['application/json']['data']
 export type PurchaseBudgetStatusQuery = Query<'getPurchaseBudgetStatus'>
-export type PurchaseRequestTransition = 'submit' | 'approve' | 'reject' | 'cancel'
+export type PurchaseRequestTransition = 'submit' | 'approve' | 'reject' | 'cancel' | 'withdraw'
+export type PurchaseApprovalSettingsView =
+  operations['getPurchaseApprovalSettings']['responses'][200]['content']['application/json']['data']
+export type PurchaseApprovalSettingsBody = JsonBody<'setPurchaseApprovalSettings'>
 
 export const PROCUREMENT_CHANGED_MESSAGE =
   'Kayıt başka biri tarafından değiştirildi. Liste güncellendi.'
@@ -182,7 +185,8 @@ export function useUpdatePurchaseRequest() {
 }
 
 /**
- * Gönder, onayla, reddet, iptal et; onay ve ret yalnız yönetici (K-129). Gönderim ve onayda bütçe
+ * Gönder, onayla, reddet, iptal et, taslağa geri çek; onay ve ret yalnız yönetici (K-129), kademeli
+ * onayda sıradaki kademenin onaylayanı (ON-223, K-262). Gönderim ve onayda bütçe
  * uyarısı 409 döner; ekran uyarıyı gösterip `confirmOverBudget` ile yeniden gönderir (ON-245, K-146).
  */
 export function useTransitionPurchaseRequest() {
@@ -223,10 +227,46 @@ export function useTransitionPurchaseRequest() {
             params,
             body: { reason: input.reason ?? '' },
           })
+        case 'withdraw':
+          return client.POST('/api/v1/finance/purchase-requests/{requestId}/withdraw', {
+            params,
+            body: {},
+          })
         default:
           return input.action satisfies never
       }
     },
+    invalidates: [PROCUREMENT_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+// --- Kademeli onay ayarı -------------------------------------------------------------------------
+
+/** Satın alma onay kademeleri (yönetici; ON-223, K-260). */
+export function usePurchaseApprovalSettings(enabled = true) {
+  return useApiQuery({
+    key: [...PROCUREMENT_KEY, 'approval-settings'],
+    enabled,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/purchase-approval-settings', { signal }),
+  })
+}
+
+/** Kademe listesini bütün olarak kaydeder; sürüm `If-Match` ile denetlenir. */
+export function useSetPurchaseApprovalSettings() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { version: number; body: PurchaseApprovalSettingsBody },
+      headers: CommandHeaders,
+    ) =>
+      client.PATCH('/api/v1/finance/purchase-approval-settings', {
+        params: { header: versioned(headers) },
+        body: input.body,
+      }),
     invalidates: [PROCUREMENT_KEY],
     version: (input) => input.version,
     messages: MESSAGES,

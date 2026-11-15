@@ -4,7 +4,10 @@ import { createSeed } from '../../../packages/school-core/src/data/seed.ts'
 import { setInstitutionAcademicYear } from '../../../apps/api/src/db/academic-years.ts'
 import { connectPostgres } from '../../../apps/api/src/db/client.ts'
 import { insertFeeTariff } from '../../../apps/api/src/db/fee-tariffs.ts'
-import { insertScholarshipProgram } from '../../../apps/api/src/db/finance-scholarships.ts'
+import {
+  insertScholarshipAward,
+  insertScholarshipProgram,
+} from '../../../apps/api/src/db/finance-scholarships.ts'
 import { insertMissingRecords } from '../../../apps/api/src/db/records.ts'
 import { feeTariffs } from '../../../apps/api/src/db/schema/fee-tariffs.ts'
 
@@ -89,7 +92,9 @@ export async function seedScholarshipContract(input: {
   contractId: string
   amountCents: number
   scholarshipCents: number
-}): Promise<void> {
+  /** Kesin kayıttaki gibi burs ataması da yazılır (ON-283 burs kesme ekranı); kimliği döner. */
+  withAward?: boolean
+}): Promise<string | null> {
   const { db, close } = connectPostgres(e2e.databaseUrl)
   const now = new Date()
   // Kurumun eğitim yılı tenant'taki gibi örnek veriden gelir.
@@ -156,6 +161,18 @@ export async function seedScholarshipContract(input: {
       ],
       now,
     )
+    if (input.withAward !== true) return null
+    const awardId = randomUUID()
+    await insertScholarshipAward(db, input.institutionId, {
+      id: awardId,
+      programId,
+      studentId: input.studentId,
+      academicYear,
+      amountCents: input.scholarshipCents,
+      awardedByUserId: 'e2e-yonetici',
+      now,
+    })
+    return awardId
   } finally {
     await close()
   }

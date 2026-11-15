@@ -165,6 +165,12 @@ function PaymentFormModal({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-4"
       >
+        {invoice.matching?.approvalRequired ? (
+          <p role="alert" className="rounded-md border border-warning p-3 text-sm">
+            Fatura sipariş ve mal kabulle eşleşmiyor. Ödeme, fatura ayrıntısında fark gerekçeyle
+            onaylanana kadar kaydedilmez.
+          </p>
+        ) : null}
         <FormField id="todeme-gun" label="Ödeme günü" error={errors.paidDate}>
           {(control) => (
             <Input {...control} type="date" {...form.register('paidDate')} disabled={busy} />

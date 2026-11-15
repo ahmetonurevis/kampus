@@ -24,10 +24,21 @@ import {
   SUPPLIER_REASON_MAX,
   type SupplierPaymentMethod,
 } from '@kampus/school-core/lib/finance-supplier-ledger.ts'
+import {
+  INVOICE_LINE_DESCRIPTION_MAX,
+  INVOICE_LINE_DESCRIPTION_MIN,
+  INVOICE_MATCH_REASON_MAX,
+  INVOICE_MISMATCH_STATUSES,
+  type InvoiceMismatchStatus,
+} from '@kampus/school-core/lib/finance-invoice-matching.ts'
+import {
+  PURCHASE_QUANTITY_MAX,
+  PURCHASE_UNIT_PRICE_MAX_CENTS,
+} from '@kampus/school-core/lib/finance-purchase-requests.ts'
 
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
-import { purchaseOrders } from './finance-purchase-orders.ts'
+import { purchaseOrderItems, purchaseOrders } from './finance-purchase-orders.ts'
 import { suppliers } from './finance-suppliers.ts'
 import { bankAccounts } from './payments.ts'
 
@@ -36,7 +47,9 @@ const n = (value: number) => sql.raw(String(value))
 /**
  * Tedarikçi faturası (DOM-FIN-076; ON-143). Net, KDV ve KDV dahil tutar saklanır (fatura belgesinin
  * kopyası); ödenen ve kalan ödemelerden hesaplanır. Numara tedarikçide etkin faturalar arasında
- * tekildir (K-161). Silinmez, gerekçeyle iptal edilir.
+ * tekildir (K-161). Silinmez, gerekçeyle iptal edilir. Üçlü eşleştirmenin sapması gerekçeyle
+ * onaylanır (DOM-FIN-095, K-282): onaylanan durum, onaylayan, an ve gerekçe saklanır; eşleştirme
+ * sonucu saklanmaz.
  */
 export const supplierInvoices = pgTable(
   'supplier_invoices',
@@ -61,6 +74,11 @@ export const supplierInvoices = pgTable(
     // kvkk: K
     cancelledByUserId: text('cancelled_by_user_id'),
     cancelReason: text('cancel_reason'),
+    matchApprovedStatus: text('match_approved_status').$type<InvoiceMismatchStatus>(),
+    matchApprovedAt: timestamp('match_approved_at', { withTimezone: true }),
+    // kvkk: K
+    matchApprovedByUserId: text('match_approved_by_user_id'),
+    matchApprovalReason: text('match_approval_reason'),
     ...requiredColumns(),
   },
   (table) => [
@@ -96,12 +114,83 @@ export const supplierInvoices = pgTable(
       sql`((${table.cancelledAt} is null) = (${table.cancelledByUserId} is null))
         and ((${table.cancelledAt} is null) = (${table.cancelReason} is null))`,
     ),
+    check(
+      'supplier_invoices_match_approval_check',
+      sql`(${table.matchApprovedStatus} is null) = (${table.matchApprovedAt} is null)
+        and (${table.matchApprovedAt} is null) = (${table.matchApprovedByUserId} is null)
+        and (${table.matchApprovedAt} is null) = (${table.matchApprovalReason} is null)
+        and (${table.matchApprovedStatus} is null or ${oneOf(table.matchApprovedStatus, INVOICE_MISMATCH_STATUSES)})
+        and (${table.matchApprovalReason} is null or char_length(${table.matchApprovalReason}) <= ${n(INVOICE_MATCH_REASON_MAX)})
+        and (${table.matchApprovedAt} is null or ${table.purchaseOrderId} is not null)`,
+    ),
     uniqueIndex('supplier_invoices_number_key')
       .on(table.institutionId, table.supplierId, table.invoiceNumber)
       .where(sql`${table.cancelledAt} is null and ${table.archivedAt} is null`),
     index('supplier_invoices_supplier_idx').on(table.institutionId, table.supplierId),
     index('supplier_invoices_purchase_order_idx').on(table.institutionId, table.purchaseOrderId),
     index('supplier_invoices_date_idx').on(table.institutionId, table.invoiceDate),
+  ],
+)
+
+/**
+ * Tedarikçi faturası kalemi (DOM-FIN-095; ON-277): siparişe bağlı faturada sipariş kalemine bağlı
+ * (`order_item_id`) ya da siparişte olmayan (ad zorunlu) satır; faturalanan miktar ve KDV hariç
+ * birim fiyat. Fatura girişiyle yazılır, değişmez (düzeltme faturanın iptali ve yeniden girişidir).
+ */
+export const supplierInvoiceLines = pgTable(
+  'supplier_invoice_lines',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    invoiceId: uuid('invoice_id').notNull(),
+    position: integer('position').notNull(),
+    orderItemId: uuid('order_item_id'),
+    description: text('description'),
+    quantity: integer('quantity').notNull(),
+    unitPriceCents: bigint('unit_price_cents', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('TRY'),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({ name: 'supplier_invoice_lines_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'supplier_invoice_lines_invoice_fkey',
+      columns: [table.institutionId, table.invoiceId],
+      foreignColumns: [supplierInvoices.institutionId, supplierInvoices.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'supplier_invoice_lines_order_item_fkey',
+      columns: [table.institutionId, table.orderItemId],
+      foreignColumns: [purchaseOrderItems.institutionId, purchaseOrderItems.id],
+    }).onDelete('restrict'),
+    check('supplier_invoice_lines_position_check', sql`${table.position} >= 0`),
+    check(
+      'supplier_invoice_lines_quantity_check',
+      sql`${table.quantity} between 1 and ${n(PURCHASE_QUANTITY_MAX)}`,
+    ),
+    check(
+      'supplier_invoice_lines_price_check',
+      sql`${table.unitPriceCents} between 1 and ${n(PURCHASE_UNIT_PRICE_MAX_CENTS)}`,
+    ),
+    check('supplier_invoice_lines_currency_check', sql`${table.currency} = 'TRY'`),
+    // Sipariş kalemine bağlı satırın adı sipariş kalemindedir; bağsız satır ad taşır.
+    check(
+      'supplier_invoice_lines_description_check',
+      sql`(${table.orderItemId} is null) = (${table.description} is not null)
+        and (${table.description} is null or char_length(${table.description}) between ${n(INVOICE_LINE_DESCRIPTION_MIN)} and ${n(INVOICE_LINE_DESCRIPTION_MAX)})`,
+    ),
+    uniqueIndex('supplier_invoice_lines_position_key').on(
+      table.institutionId,
+      table.invoiceId,
+      table.position,
+    ),
+    uniqueIndex('supplier_invoice_lines_order_item_key')
+      .on(table.institutionId, table.invoiceId, table.orderItemId)
+      .where(sql`${table.orderItemId} is not null`),
+    index('supplier_invoice_lines_invoice_idx').on(table.institutionId, table.invoiceId),
+    index('supplier_invoice_lines_order_item_idx').on(table.institutionId, table.orderItemId),
   ],
 )
 

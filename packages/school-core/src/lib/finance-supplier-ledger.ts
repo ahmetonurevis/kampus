@@ -5,6 +5,13 @@ import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { assertPaymentDayOpen } from './finance-day-closings.ts'
 import { dayKey, money } from './format.ts'
+import {
+  assertInvoicePayable,
+  checkSupplierInvoiceLines,
+  supplierInvoiceLinesSchema,
+  type InvoiceMatch,
+  type SupplierInvoiceLine,
+} from './finance-invoice-matching.ts'
 import type { PurchaseOrderStatus } from './finance-purchase-orders.ts'
 
 /**
@@ -123,7 +130,8 @@ const invoiceNumberSchema = z
  * Yeni tedarikçi faturası (DOM-FIN-076). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır;
  * net, KDV ve KDV dahil toplam saklanır. Vade tek gün (`dueDate`, tek taksit) ya da ödeme planıdır
  * (`installments`); ikisinden biri verilir. `confirmOverOrder` sipariş tutarını aşan faturanın açık
- * onayıdır (K-162).
+ * onayıdır (K-162). Siparişe bağlı faturada kalemler (`lines`) zorunlu, siparişsiz faturada yoktur
+ * (DOM-FIN-095, K-280).
  */
 export const supplierInvoiceSchema = z
   .strictObject({
@@ -140,6 +148,11 @@ export const supplierInvoiceSchema = z
       .min(0, 'KDV eksi olamaz.')
       .max(SUPPLIER_AMOUNT_MAX_CENTS, 'KDV en çok 1.000.000.000,00 ₺ olabilir.'),
     purchaseOrderId: z.uuid('Sipariş geçersiz.').nullable().default(null),
+    lines: supplierInvoiceLinesSchema
+      .optional()
+      .describe(
+        'Fatura kalemleri (DOM-FIN-095): sipariş kalemine bağlı ya da siparişte olmayan; miktar ve KDV hariç birim fiyat. Siparişe bağlı faturada zorunlu',
+      ),
     note: optionalText(SUPPLIER_INVOICE_NOTE_MAX),
     confirmOverOrder: z.boolean('Sipariş aşımı onayı geçersiz.').optional(),
   })
@@ -161,6 +174,18 @@ export const supplierInvoiceSchema = z
         code: 'custom',
         path: ['amountCents'],
         message: 'KDV dahil toplam en çok 1.000.000.000,00 ₺ olabilir.',
+      })
+    if (value.purchaseOrderId !== null && value.lines === undefined)
+      context.addIssue({
+        code: 'custom',
+        path: ['lines'],
+        message: 'Siparişe bağlı faturada fatura kalemlerini girin.',
+      })
+    if (value.purchaseOrderId === null && value.lines !== undefined)
+      context.addIssue({
+        code: 'custom',
+        path: ['lines'],
+        message: 'Fatura kalemleri yalnız siparişe bağlı faturada girilir.',
       })
   })
 export type SupplierInvoiceInput = z.input<typeof supplierInvoiceSchema>
@@ -472,6 +497,8 @@ export interface InvoiceOrderLink {
   grossCents: number
   /** Siparişe bağlı öteki etkin faturaların KDV dahil toplamı. */
   invoicedCents: number
+  /** Siparişin kalem kimlikleri; fatura kalemleri bunlara bağlanır (K-280). */
+  itemIds: readonly string[]
 }
 
 export interface SupplierInvoiceContext {
@@ -487,6 +514,8 @@ export interface SupplierInvoiceContext {
 export interface PlannedSupplierInvoice extends InvoiceAmounts {
   fields: SupplierInvoiceFields
   installments: SupplierInstallmentInput[]
+  /** Siparişe bağlı faturanın kalemleri; siparişsiz faturada boş (K-280). */
+  lines: SupplierInvoiceLine[]
   /** Sipariş aşımı açık onayla geçildiyse `true` (denetim kaydına düşer). */
   orderOverrunConfirmed: boolean
 }
@@ -546,6 +575,7 @@ export function planSupplierInvoice(
     { grossCents: amounts.grossCents, invoiceDate: fields.invoiceDate },
   )
   let orderOverrunConfirmed = false
+  let lines: SupplierInvoiceLine[] = []
   if (fields.purchaseOrderId !== null) {
     const order = context.order ?? null
     if (order === null)
@@ -562,6 +592,10 @@ export function planSupplierInvoice(
         'Fatura yalnız gönderilmiş siparişe bağlanır.',
         'purchaseOrderId',
       )
+    lines = checkSupplierInvoiceLines(fields.lines ?? [], {
+      orderItemIds: order.itemIds,
+      netCents: amounts.netCents,
+    })
     if (order.invoicedCents + amounts.grossCents > order.grossCents) {
       if (fields.confirmOverOrder !== true)
         throw new DomainError(
@@ -578,7 +612,7 @@ export function planSupplierInvoice(
       'Bu tedarikçide aynı numaralı bir fatura kayıtlı.',
       { kind: 'conflict', path: ['invoiceNumber'] },
     )
-  return { fields, ...amounts, installments, orderOverrunConfirmed }
+  return { fields, ...amounts, installments, lines, orderOverrunConfirmed }
 }
 
 export interface SupplierInvoiceState {
@@ -637,12 +671,19 @@ export interface SupplierPaymentContext {
   /** Ödeme günü kapatılmış mı (`DOM-FIN-036`); yalnız nakitte bakılır, nakit gün sonuna girer (K-166). */
   dayClosed: boolean
   today: string
+  /**
+   * Faturanın üçlü eşleştirmesi (DOM-FIN-095); siparişsiz faturada `null`. Sapması onaylanmamış
+   * faturanın ödemesi 409 uyarıyla durur (K-282).
+   */
+  invoiceMatch: Pick<InvoiceMatch, 'status' | 'approved'> | null
 }
 
 /**
  * Ödeme (DOM-FIN-076): taksitin kalanını aşamaz (kurum kilidi altında yeniden hesaplanır), gün
  * bugünden sonra ve fatura tarihinden önce olamaz; nakit dışı ödeme kurumun banka hesabından çıkar.
- * Kapatılmış güne nakit ödeme yazılmaz (K-166).
+ * Kapatılmış güne nakit ödeme yazılmaz (K-166). Sipariş ve mal kabulle eşleşmeyen faturanın
+ * ödemesi, fark gerekçeyle onaylanana kadar 409 `supplier_payment_invoice_mismatch_warning` ile durur
+ * (DOM-FIN-095, K-282); denetim öteki kurallardan sonradır.
  */
 export function planSupplierPayment(
   input: unknown,
@@ -681,6 +722,7 @@ export function planSupplierPayment(
       'amountCents',
     )
   if (data.method === 'cash') assertPaymentDayOpen(context.dayClosed)
+  assertInvoicePayable(context.invoiceMatch)
   return data
 }
 

@@ -16,6 +16,9 @@ import {
   severanceRequestSchema,
   servicePeriod,
   servicePeriodLabel,
+  severanceBreakdownRows,
+  severanceFacts,
+  severanceNotes,
   severanceWarningCodes,
   severanceWarnings,
   wageTariffFor,
@@ -118,7 +121,7 @@ test('DOM-FIN-094: tavan tablosu sıralı ve son dönemden altı ay sonra günce
   assert.throws(() => severanceCeilingOn('2021-12-31'), RangeError)
   const stale = severanceEstimate(input({ endDate: '2026-11-15' }))
   assert.equal(stale.severance.ceiling.stale, true)
-  assert.match(severanceWarnings(stale).join(' '), /2026-01-01 dönemi tavanı/)
+  assert.match(severanceWarnings(stale).join(' '), /1 Ocak 2026 dönemi tavanı/)
 })
 
 test('DOM-FIN-094: bir yıldan az çalışmada kıdem yok; tam bir yıl (giriş ve çıkış dahil) hak doğurur', () => {
@@ -342,4 +345,42 @@ test('DOM-FIN-094: gösterim metinleri', () => {
   assert.ok(SEVERANCE_STATUS_LABELS.under_one_year.includes('bir yıldan az'))
   assert.ok(NOTICE_STATUS_LABELS.notice_given.includes('İhbar süresi verildi'))
   assert.ok(INCOME_TAX_METHOD_LABELS.first_bracket.includes('İlk dilim'))
+})
+
+test('DOM-FIN-094: döküm satırları, dayanaklar ve notlar ekran ile PDF için aynıdır', () => {
+  const result = severanceEstimate(
+    input({
+      startDate: '2020-03-15',
+      endDate: '2025-09-30',
+      grossWageCents: 5_000_000,
+      regularBenefitsCents: 500_000,
+    }),
+  )
+  assert.deepEqual(severanceBreakdownRows(result), [
+    ['Hak', 'Var', 'Var', '—'],
+    ['Esas gün', '166,44', '56', '—'],
+    ['Günlük brüt ücret', '1.797,32 ₺', '1.833,33 ₺', '—'],
+    ['Brüt tutar', '299.143,43 ₺', '102.666,67 ₺', '401.810,10 ₺'],
+    ['Gelir vergisi', '0,00 ₺', '15.400,00 ₺', '15.400,00 ₺'],
+    ['Damga vergisi', '2.270,50 ₺', '779,24 ₺', '3.049,74 ₺'],
+    ['Net tutar', '296.872,93 ₺', '86.487,43 ₺', '383.360,36 ₺'],
+  ])
+  const facts = Object.fromEntries(severanceFacts(result))
+  assert.equal(facts['Hizmet süresi'], '5 yıl 6 ay 16 gün')
+  assert.equal(facts['Giydirilmiş aylık brüt'], '55.000,00 ₺')
+  assert.equal(facts['Kıdem tavanı'], '53.919,68 ₺ (1 Temmuz 2025 dönemi), uygulandı')
+  assert.equal(facts['İhbar süresi'], '8 hafta')
+  assert.match(facts['İhbarda gelir vergisi'] ?? '', /İlk dilim oranı.*2025 tarifesi/)
+  assert.deepEqual(severanceNotes(result), [])
+
+  const given = severanceEstimate(input({ noticeGiven: true, startDate: '2025-01-01' }))
+  assert.deepEqual(severanceNotes(given), [
+    'Kıdem: Hizmet süresi bir yıldan az; kıdem tazminatı doğmaz.',
+    'İhbar: İhbar süresi verildi; ihbar tazminatı doğmaz.',
+  ])
+  const givenFacts = Object.fromEntries(severanceFacts(given))
+  assert.equal(givenFacts['İhbar süresi'], '4 hafta (verildi)')
+  assert.equal(givenFacts['İhbarda gelir vergisi'], 'Gelir vergisi yok')
+  assert.equal(givenFacts['Kıdem tavanı'], '46.655,43 ₺ (1 Ocak 2025 dönemi)')
+  assert.deepEqual(severanceBreakdownRows(given)[0], ['Hak', 'Yok', 'Yok', '—'])
 })

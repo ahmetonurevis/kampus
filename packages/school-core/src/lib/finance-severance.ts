@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { Role } from '../modules/navigation.ts'
 import { daySchema } from './domain.ts'
+import { dateLabel, money } from './format.ts'
 
 /**
  * Kıdem ve ihbar tazminatı tahmini (docs/domain/finans.md DOM-FIN-094; ON-205). Elle girdili saf
@@ -232,6 +233,9 @@ const parts = (day: string) => {
   return { year, month, date }
 }
 const pad = (value: number, length = 2) => String(value).padStart(length, '0')
+/** Gösterim: 1 Ocak 2026. */
+const dayText = (day: string) =>
+  dateLabel(`${day}T09:00:00.000Z`, { day: 'numeric', month: 'long', year: 'numeric' })
 const lastDayOfMonth = (year: number, month: number) =>
   new Date(Date.UTC(year, month, 0)).getUTCDate()
 
@@ -582,7 +586,7 @@ export function severanceWarnings(estimate: WarningSource): string[] {
   return severanceWarningCodes(estimate).map((code) => {
     switch (code) {
       case 'ceiling_stale':
-        return `Çıkış günü için kıdem tavanı tabloda yok; son bilinen ${estimate.severance.ceiling.from} dönemi tavanı kullanıldı. Güncel tavanı doğrulayın.`
+        return `Çıkış günü için kıdem tavanı tabloda yok; son bilinen ${dayText(estimate.severance.ceiling.from)} dönemi tavanı kullanıldı. Güncel tavanı doğrulayın.`
       case 'tax_table_stale':
         return `Çıkış yılının gelir vergisi tarifesi tabloda yok; ${String(estimate.notice.taxYear)} tarifesi kullanıldı.`
       case 'resignation_notice_owed':
@@ -591,4 +595,79 @@ export function severanceWarnings(estimate: WarningSource): string[] {
         return code satisfies never
     }
   })
+}
+
+// --- Döküm (ekran ve PDF aynı satırları kullanır) ------------------------------------------------
+
+type BreakdownSource = WarningSource & {
+  service: Pick<ServicePeriod, 'years' | 'months' | 'days'>
+  wage: SeveranceEstimate['wage']
+  severance: SeveranceLine
+  notice: NoticeLine
+  totals: SeveranceEstimate['totals']
+}
+
+// Intl kurucusu bir kez kurulur (format.ts ile aynı gerekçe).
+const dayFormatter = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 })
+const dayCount = (value: number) => dayFormatter.format(value)
+
+/** Kalem kalem döküm: [kalem, kıdem, ihbar, toplam]. */
+export function severanceBreakdownRows(estimate: BreakdownSource): string[][] {
+  const { severance, notice, totals } = estimate
+  const right = (status: string) => (status === 'eligible' ? 'Var' : 'Yok')
+  return [
+    ['Hak', right(severance.status), right(notice.status), '—'],
+    ['Esas gün', dayCount(severance.days), dayCount(notice.days), '—'],
+    ['Günlük brüt ücret', money(severance.dailyWageCents), money(notice.dailyWageCents), '—'],
+    ['Brüt tutar', money(severance.grossCents), money(notice.grossCents), money(totals.grossCents)],
+    [
+      'Gelir vergisi',
+      money(severance.incomeTaxCents),
+      money(notice.incomeTaxCents),
+      money(totals.incomeTaxCents),
+    ],
+    [
+      'Damga vergisi',
+      money(severance.stampTaxCents),
+      money(notice.stampTaxCents),
+      money(totals.stampTaxCents),
+    ],
+    ['Net tutar', money(severance.netCents), money(notice.netCents), money(totals.netCents)],
+  ]
+}
+
+/** Hesabın dayanakları: hizmet süresi, ücret, tavan, ihbar süresi ve vergi yöntemi. */
+export function severanceFacts(estimate: BreakdownSource): [string, string][] {
+  const { wage, severance, notice } = estimate
+  return [
+    ['Çıkış nedeni', SEVERANCE_EXIT_REASON_INFO[estimate.exitReason].label],
+    ['Hizmet süresi', servicePeriodLabel(estimate.service)],
+    ['Aylık brüt ücret', money(wage.grossWageCents)],
+    ['Düzenli yan ödemeler', money(wage.regularBenefitsCents)],
+    ['Giydirilmiş aylık brüt', money(wage.dressedWageCents)],
+    [
+      'Kıdem tavanı',
+      `${money(severance.ceiling.monthlyCents)} (${dayText(severance.ceiling.from)} dönemi)${severance.ceilingApplied ? ', uygulandı' : ''}`,
+    ],
+    ['İhbar süresi', `${String(notice.weeks)} hafta${estimate.noticeGiven ? ' (verildi)' : ''}`],
+    [
+      'İhbarda gelir vergisi',
+      notice.incomeTaxMethod === 'none'
+        ? INCOME_TAX_METHOD_LABELS.none
+        : `${INCOME_TAX_METHOD_LABELS[notice.incomeTaxMethod]}, ${String(notice.taxYear)} tarifesi`,
+    ],
+  ]
+}
+
+/** Hak doğmayan kalemin nedeni ve uyarılar. */
+export function severanceNotes(estimate: BreakdownSource): string[] {
+  return [
+    ...(estimate.severance.status === 'eligible'
+      ? []
+      : [`Kıdem: ${SEVERANCE_STATUS_LABELS[estimate.severance.status]}.`]),
+    ...(estimate.notice.status === 'eligible'
+      ? []
+      : [`İhbar: ${NOTICE_STATUS_LABELS[estimate.notice.status]}.`]),
+    ...severanceWarnings(estimate),
+  ]
 }

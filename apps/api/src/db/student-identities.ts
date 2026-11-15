@@ -93,3 +93,26 @@ export async function findStudentIdentity(db: Database, institutionId: string, s
     .limit(1)
   return row ?? null
 }
+
+/**
+ * Kurumun arşivlenmemiş bütün kimlik satırları: öğrenci → kimlik no ve doğum tarihi (e-Okul
+ * aktarımının eşleşmesi, IST-134). Tek sorgudur; sonuç kişisel veridir, loglanmaz ve yanıta girmez.
+ */
+export async function loadInstitutionIdentities(
+  db: Database,
+  institutionId: string,
+): Promise<Map<string, { number: string; birthDate: string }>> {
+  const rows = await db
+    .select({
+      studentId: studentIdentities.studentId,
+      number: studentIdentities.identityNumber,
+      birthDate: studentIdentities.birthDate,
+    })
+    .from(studentIdentities)
+    .where(
+      and(eq(studentIdentities.institutionId, institutionId), isNull(studentIdentities.archivedAt)),
+    )
+  return new Map(
+    rows.map((row) => [row.studentId, { number: row.number, birthDate: row.birthDate }]),
+  )
+}

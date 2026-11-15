@@ -128,15 +128,16 @@ function resultBody(rowCount: number, plan: StudentImportPlan, dryRun: boolean) 
   }
 }
 
-/** Kimlik ve veli bağı satırları, hesaplı velinin yeni çocuğu (DOM-KAY-013, ON-128), denetim. */
-async function writeSideRecords(
+/**
+ * Aktarılan öğrencilerin kimlik ve veli bağı satırları, hesaplı velinin yeni çocuğu (DOM-KAY-013,
+ * ON-128). e-Okul aktarımı da kullanır (IST-134). Yazılan veli bağı sayısını döner.
+ */
+export async function writeImportedStudentLinks(
   tx: Database,
   ctx: ServiceContext,
   applied: readonly AppliedStudent[],
   academicYear: number,
-  batchId: string,
-  rowCount: number,
-) {
+): Promise<number> {
   const accounts = new Map<string, string | null>()
   let bondCount = 0
   for (const item of applied) {
@@ -175,6 +176,19 @@ async function writeSideRecords(
     if (accountId !== null)
       await linkChildToAccount(tx, ctx.institutionId, accountId, item.studentId, ctx.now)
   }
+  return bondCount
+}
+
+/** Kimlik ve veli bağı satırları ve sayılı denetim kaydı. */
+async function writeSideRecords(
+  tx: Database,
+  ctx: ServiceContext,
+  applied: readonly AppliedStudent[],
+  academicYear: number,
+  batchId: string,
+  rowCount: number,
+) {
+  const bondCount = await writeImportedStudentLinks(tx, ctx, applied, academicYear)
   if (applied.length === 0) return
   await tx.insert(auditLog).values({
     institutionId: ctx.institutionId,

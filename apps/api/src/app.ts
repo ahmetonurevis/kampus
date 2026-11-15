@@ -29,6 +29,7 @@ import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/pla
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
+import { registerEnrollmentEokulImportRoutes } from './routes/enrollment-eokul-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
@@ -139,7 +140,8 @@ export const REDACTED_PATHS = [
   '*.nationalId',
   'birthDate',
   '*.birthDate',
-  // kvkk: Ç — pilot aktarım dosyası (IST-007): içerik hiçbir koşulda loglanmaz.
+  // kvkk: Ç — pilot aktarım ve e-Okul listesi dosyası (IST-007, IST-134): içerik hiçbir koşulda
+  // loglanmaz.
   'fileBase64',
   '*.fileBase64',
   // Finans: dekont/havale referansı, iade IBAN'ı ve hesap sahibi, nakil okulu, iptal gerekçesi.
@@ -483,6 +485,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   registerEnrollmentImportRoutes(app)
+  registerEnrollmentEokulImportRoutes(app)
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
   registerProspectSeasonWatchRoutes(app)

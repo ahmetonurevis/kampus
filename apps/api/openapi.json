@@ -17785,6 +17785,434 @@
           "rows"
         ]
       },
+      "EokulMappingInput": {
+        "type": "object",
+        "properties": {
+          "schoolNumber": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "identityNumber": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fullName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "className": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "birthDate": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardianName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardianPhone": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schoolNumber",
+          "identityNumber",
+          "fullName",
+          "firstName",
+          "lastName",
+          "className",
+          "grade",
+          "section",
+          "birthDate",
+          "guardianName",
+          "guardianPhone",
+          "relationship"
+        ],
+        "description": "Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null`"
+      },
+      "EokulChangeInput": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "name",
+              "schoolNumber",
+              "class",
+              "identity"
+            ]
+          },
+          "before": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "after": {
+            "description": "Kimlik değişikliğinde iki değer de `null` (yalnız eklenir)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "before",
+          "after"
+        ]
+      },
+      "EokulImportRowInput": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "update",
+              "unchanged",
+              "invalid"
+            ],
+            "description": "`new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı"
+          },
+          "schoolNumber": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string",
+            "description": "Dosyadaki sınıf hücresi"
+          },
+          "classLabel": {
+            "type": "string",
+            "description": "Eşleşen Kampüs sınıfı; bulunamadıysa boş"
+          },
+          "identityMasked": {
+            "type": "string",
+            "description": "Kimlik numarasının yalnız son dört hanesi görünür"
+          },
+          "guardianName": {
+            "type": "string",
+            "description": "Yalnız yeni öğrencide dolu"
+          },
+          "guardianPhoneMasked": {
+            "type": "string",
+            "description": "Veli telefonu maskeli; yalnız yeni öğrencide dolu"
+          },
+          "guardianMatch": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "file",
+                  "existing",
+                  "self"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EokulChangeInput"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssueInput"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportNoticeInput"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "schoolNumber",
+          "name",
+          "className",
+          "classLabel",
+          "identityMasked",
+          "guardianName",
+          "guardianPhoneMasked",
+          "guardianMatch",
+          "changes",
+          "issues",
+          "notices"
+        ]
+      },
+      "EokulMappingIssueInput": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ]
+      },
+      "EokulImportResultInput": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "headerLine": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Başlık satırının dosyadaki yeri"
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "index",
+                "label"
+              ]
+            },
+            "description": "Başlık hücreleri (sütun eşleme seçenekleri)"
+          },
+          "suggestedMapping": {
+            "$ref": "#/components/schemas/EokulMappingInput"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/EokulMappingInput"
+          },
+          "mappingIssues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EokulMappingIssueInput"
+            },
+            "description": "Doluysa satırlar işlenmedi"
+          },
+          "fileRowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Başlıktan sonraki boş olmayan satır sayısı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "İşlenen öğrenci satırı (onayda seçilen satırlar)"
+          },
+          "newCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "updateCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "unchangedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "newGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Açılacak yeni veli kaydı sayısı"
+          },
+          "existingGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bağlanılacak mevcut veli kaydı sayısı"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EokulImportRowInput"
+            },
+            "description": "Yalnız önizlemede dolu; satırlar maskeli"
+          }
+        },
+        "required": [
+          "dryRun",
+          "headerLine",
+          "headers",
+          "suggestedMapping",
+          "mapping",
+          "mappingIssues",
+          "fileRowCount",
+          "rowCount",
+          "newCount",
+          "updateCount",
+          "unchangedCount",
+          "invalidCount",
+          "newGuardianCount",
+          "existingGuardianCount",
+          "rows"
+        ]
+      },
       "EnrollmentFunnelStepInput": {
         "type": "object",
         "properties": {
@@ -37433,6 +37861,440 @@
           "rowCount",
           "readyCount",
           "skippedCount",
+          "invalidCount",
+          "newGuardianCount",
+          "existingGuardianCount",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "EokulMapping": {
+        "type": "object",
+        "properties": {
+          "schoolNumber": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "identityNumber": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fullName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "className": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "birthDate": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardianName": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardianPhone": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schoolNumber",
+          "identityNumber",
+          "fullName",
+          "firstName",
+          "lastName",
+          "className",
+          "grade",
+          "section",
+          "birthDate",
+          "guardianName",
+          "guardianPhone",
+          "relationship"
+        ],
+        "additionalProperties": false,
+        "description": "Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null`"
+      },
+      "EokulChange": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "name",
+              "schoolNumber",
+              "class",
+              "identity"
+            ]
+          },
+          "before": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "after": {
+            "description": "Kimlik değişikliğinde iki değer de `null` (yalnız eklenir)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "before",
+          "after"
+        ],
+        "additionalProperties": false
+      },
+      "EokulImportRow": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dosyadaki satır"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "update",
+              "unchanged",
+              "invalid"
+            ],
+            "description": "`new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı"
+          },
+          "schoolNumber": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string",
+            "description": "Dosyadaki sınıf hücresi"
+          },
+          "classLabel": {
+            "type": "string",
+            "description": "Eşleşen Kampüs sınıfı; bulunamadıysa boş"
+          },
+          "identityMasked": {
+            "type": "string",
+            "description": "Kimlik numarasının yalnız son dört hanesi görünür"
+          },
+          "guardianName": {
+            "type": "string",
+            "description": "Yalnız yeni öğrencide dolu"
+          },
+          "guardianPhoneMasked": {
+            "type": "string",
+            "description": "Veli telefonu maskeli; yalnız yeni öğrencide dolu"
+          },
+          "guardianMatch": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "file",
+                  "existing",
+                  "self"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EokulChange"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssue"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportNotice"
+            }
+          }
+        },
+        "required": [
+          "line",
+          "status",
+          "schoolNumber",
+          "name",
+          "className",
+          "classLabel",
+          "identityMasked",
+          "guardianName",
+          "guardianPhoneMasked",
+          "guardianMatch",
+          "changes",
+          "issues",
+          "notices"
+        ],
+        "additionalProperties": false
+      },
+      "EokulMappingIssue": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "EokulImportResult": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "description": "`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı"
+          },
+          "headerLine": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Başlık satırının dosyadaki yeri"
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "index",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Başlık hücreleri (sütun eşleme seçenekleri)"
+          },
+          "suggestedMapping": {
+            "$ref": "#/components/schemas/EokulMapping"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/EokulMapping"
+          },
+          "mappingIssues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EokulMappingIssue"
+            },
+            "description": "Doluysa satırlar işlenmedi"
+          },
+          "fileRowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Başlıktan sonraki boş olmayan satır sayısı"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "İşlenen öğrenci satırı (onayda seçilen satırlar)"
+          },
+          "newCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "updateCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "unchangedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "invalidCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "newGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Açılacak yeni veli kaydı sayısı"
+          },
+          "existingGuardianCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bağlanılacak mevcut veli kaydı sayısı"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EokulImportRow"
+            },
+            "description": "Yalnız önizlemede dolu; satırlar maskeli"
+          }
+        },
+        "required": [
+          "dryRun",
+          "headerLine",
+          "headers",
+          "suggestedMapping",
+          "mapping",
+          "mappingIssues",
+          "fileRowCount",
+          "rowCount",
+          "newCount",
+          "updateCount",
+          "unchangedCount",
           "invalidCount",
           "newGuardianCount",
           "existingGuardianCount",
@@ -89867,6 +90729,343 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/StudentImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/eokul-student-imports": {
+      "post": {
+        "operationId": "importEokulStudents",
+        "summary": "e-Okul öğrenci listesini aktar",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Okul e-Okul'dan indirdiği öğrenci listesini CSV ya da Excel (.xlsx, ilk sayfa) olarak yükler (IST-134, DOM-KAY-042). Yalnız `school` türündeki kurumda vardır; öteki türlerde 404. `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır, eski ikili .xls okunmaz (`import_file_legacy_excel`). Başlık satırı ilk 20 satırda aranır; en çok 3.000 veri satırı. `mapping` verilmezse sütunlar başlık adlarından önerilir (`suggestedMapping`); kullanıcı düzeltip yeniden önizler. `branchId` aramayı bir kampüsle sınırlar, `fallbackClassId` sınıf sütunu olmayan dosyada bütün satırların sınıfıdır. Satır kurumdaki öğrenciyle T.C. kimlik no, yoksa okul no ile eşleşir ve `new`, `update`, `unchanged` ya da `invalid` olur. Mevcut öğrencide yalnız ad soyad, okul no, aynı düzeyde şube ve eksik kimlik yazılır; düzey farkı ve doğum tarihi farkı bilgidir. Bilinmeyen sınıf hatadır, sınıf açılmaz. Yeni öğrenci pilot aktarımının kuralıyla açılır: kimlik, doğum tarihi, veli adı ve telefonu zorunlu, aynı veli kardeşleri bağlar (DOM-KAY-012, DOM-KAY-013, DOM-KAY-036). `dryRun: true` önizlemedir: 200, satır bazında sorun, bilgi ve değişiklik; kimlik ve telefon maskeli; eşleme sorunu `mappingIssues`'ta döner ve satır işlenmez. Onay (`dryRun: false`) yalnız `lines` ile seçilen satırları kurum kilidi altında yeniden doğrular: eşleme sorunu 422 `eokul_mapping_invalid` (`issues` yolu `['mapping', alan]`), seçilen satır sorunu 422 `eokul_import_invalid` (`['rows', satır, alan]`), başarı 201 ve satırsız özet. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yönetici ve ön büro (öteki roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir. Dosya saklanmaz, içerik ve kimlik numarası loglanmaz; denetim kaydına (`student.eokul_import`) yalnız alan adları ve sayılar yazılır.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileBase64": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 6990508,
+                    "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+                  },
+                  "dryRun": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "mapping": {
+                    "type": "object",
+                    "properties": {
+                      "schoolNumber": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "identityNumber": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "fullName": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "firstName": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastName": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "className": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "grade": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "section": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "birthDate": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "guardianName": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "guardianPhone": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "relationship": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "branchId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "fallbackClassId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "lines": {
+                    "maxItems": 3000,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000000
+                    }
+                  }
+                },
+                "required": [
+                  "fileBase64"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/EokulImportResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/EokulImportResult"
                     }
                   },
                   "required": [

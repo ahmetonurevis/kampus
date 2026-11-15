@@ -31,6 +31,7 @@ const OTHER = '00000000-0000-4000-8000-0000000000a2'
 const ORDER = '00000000-0000-4000-8000-0000000000b1'
 const INSTALLMENT = '00000000-0000-4000-8000-0000000000c1'
 const ACCOUNT = '00000000-0000-4000-8000-0000000000d1'
+const ORDER_ITEM = '00000000-0000-4000-8000-0000000000e1'
 const TODAY = '2026-10-06'
 const CONTEXT: SupplierInvoiceContext = {
   supplier: { id: SUPPLIER },
@@ -127,9 +128,15 @@ test('DOM-FIN-076: siparişe bağlı fatura aynı tedarikçinin gönderilmiş si
     status: 'sent' as const,
     grossCents: 150_000,
     invoicedCents: 0,
+    itemIds: [ORDER_ITEM],
   }
+  // DOM-FIN-095: siparişe bağlı fatura kalemleriyle gelir (K-280).
   const linked = (overrides: Record<string, unknown> = {}) =>
-    invoice({ purchaseOrderId: ORDER, ...overrides })
+    invoice({
+      purchaseOrderId: ORDER,
+      lines: [{ orderItemId: ORDER_ITEM, quantity: 5, unitPriceCents: 20_000 }],
+      ...overrides,
+    })
   assert.equal(planSupplierInvoice(linked(), { ...CONTEXT, order }).orderOverrunConfirmed, false)
   assert.throws(
     () => planSupplierInvoice(linked(), { ...CONTEXT, order: null }),
@@ -203,6 +210,7 @@ const PAYMENT_CONTEXT: SupplierPaymentContext = {
   bankAccountIds: [ACCOUNT],
   dayClosed: false,
   today: TODAY,
+  invoiceMatch: null,
 }
 const payment = (overrides: Record<string, unknown> = {}) => ({
   installmentId: INSTALLMENT,

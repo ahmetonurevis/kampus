@@ -5083,7 +5083,7 @@ export interface paths {
         put?: never;
         /**
          * Tedarikçi faturası ve ödeme planı kaydet
-         * @description Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). Siparişe bağlı faturada `lines` zorunlu, siparişsizde yasak (400): sipariş kalemine bağlı (`orderItemId`, faturada bir kez) ya da siparişte olmayan (`description`) kalem, miktar ve KDV hariç birim fiyat; siparişin kalemi olmayan `orderItemId` 422 `supplier_invoice_line_item_not_in_order`, kalemlerin KDV hariç toplamı fatura netinden 1 TL'den çok saparsa 422 `supplier_invoice_lines_total_mismatch` (DOM-FIN-095, K-280). Miktar ya da fiyat farkı girişte reddedilmez, eşleştirmede görünür. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
          */
         post: operations["createSupplierInvoice"];
         delete?: never;
@@ -5101,7 +5101,7 @@ export interface paths {
         };
         /**
          * Tedarikçi faturası ayrıntısı
-         * @description Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş, üçlü eşleştirme (`matching`: kalem başına sipariş, kabul edilen, önceki faturalar, faturalanan miktar ve fiyat, sapma; siparişsiz faturada boş; DOM-FIN-095) ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.
          */
         get: operations["getSupplierInvoice"];
         put?: never;
@@ -5152,6 +5152,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/supplier-invoices/{invoiceId}/approve-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fatura eşleştirme farkını onayla
+         * @description Üçlü eşleştirmenin bugünkü sapmasını (miktar farkı, fiyat farkı, siparişte olmayan kalem) gerekçeyle (5–500 karakter) onaylar; sapma aynı kaldıkça faturanın ödemesi uyarısız girilir, sapma değişirse yeniden onay ister (DOM-FIN-095, K-282). Siparişsiz fatura 422 `supplier_invoice_match_not_applicable`, eşleşen fatura 422 `supplier_invoice_match_already_matched`, aynı sapma zaten onaylıysa 422 `supplier_invoice_match_already_approved`, iptal edilmiş fatura 422 `supplier_invoice_cancelled`. Denetim `supplier_invoice.approve_match` (gerekçe metni yazılmaz). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["approveSupplierInvoiceMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-invoice-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eşleşmeyen tedarikçi faturaları
+         * @description Siparişe bağlı iptal edilmemiş faturalar üçlü eşleştirme durumuyla (DOM-FIN-095): varsayılan `status=mismatched` eşleşmeyenler; `approval` onay bekleyen ya da onaylanmış. Kalemde faturalanan, önceki etkin faturalarla birlikte kabul edileni aşarsa miktar farkı; birim fiyat farkının kalem etkisi 1 TL'yi aşarsa fiyat farkı; siparişte olmayan kalem ya da kalemsiz fatura eşleşmez (K-281). Yeni fatura tarihi önce. `Accept: text/csv` ile aynı süzgeçle bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı); taze oturum ister (403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.invoice_matching_export`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["listSupplierInvoiceMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders/{orderId}/invoice-matching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Siparişin fatura ve mal kabul özeti
+         * @description Sipariş kalemi başına sipariş, kabul edilen (iptal edilmemiş kabuller) ve etkin faturalarda faturalanan miktar; siparişe bağlı faturalar eşleştirme durumu ve fark onayıyla (DOM-FIN-095). Olmayan ya da başka kurumun siparişi 404. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["getPurchaseOrderInvoiceMatching"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/supplier-payments": {
         parameters: {
             query?: never;
@@ -5167,7 +5227,7 @@ export interface paths {
         put?: never;
         /**
          * Taksite tedarikçi ödemesi kaydet
-         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. Fatura sipariş ve mal kabulle eşleşmiyorsa ve fark onaylanmamışsa 409 `supplier_payment_invoice_mismatch_warning`: önce `POST /supplier-invoices/:invoiceId/approve-match` (DOM-FIN-095, K-282). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
          */
         post: operations["createSupplierPayment"];
         delete?: never;
@@ -55893,6 +55953,15 @@ export interface operations {
                     vatCents: number;
                     /** @default null */
                     purchaseOrderId?: string | null;
+                    /** @description Fatura kalemleri (DOM-FIN-095): sipariş kalemine bağlı ya da siparişte olmayan; miktar ve KDV hariç birim fiyat. Siparişe bağlı faturada zorunlu */
+                    lines?: {
+                        /** @default null */
+                        orderItemId?: string | null;
+                        /** @default null */
+                        description?: string | null;
+                        quantity: number;
+                        unitPriceCents: number;
+                    }[];
                     /** @default null */
                     note?: string | null;
                     confirmOverOrder?: boolean;
@@ -56003,6 +56072,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56201,6 +56321,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56414,6 +56585,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56623,6 +56845,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56680,6 +56953,526 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveSupplierInvoiceMatch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Tutar girişte KDV dahil mi yazıldı */
+                            amountIncludesVat: boolean;
+                            note: string | null;
+                            /** @description Bağlı satın alma siparişi (DOM-FIN-073) */
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            } | null;
+                            /** @description Ödeme planı, vade sırasıyla */
+                            installments: {
+                                id: string;
+                                position: number;
+                                /** @description Vade `YYYY-MM-DD` */
+                                dueDate: string;
+                                /** @description Taksit tutarı */
+                                amountCents: number;
+                                /** @description Taksite yazılmış etkin ödemeler */
+                                paidCents: number;
+                                /** @description Taksit kalanı */
+                                remainingCents: number;
+                                /** @description Vadesi geçti ve kalanı var */
+                                overdue: boolean;
+                            }[];
+                            /** @description Faturanın ödemeleri (iptal edilenler dahil) */
+                            payments: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                };
+                                invoice: {
+                                    id: string;
+                                    invoiceNumber: string;
+                                };
+                                installmentId: string;
+                                /** @description Ödeme günü `YYYY-MM-DD` */
+                                paidDate: string;
+                                /** @description Ödenen tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "transfer" | "eft" | "cash" | "cheque";
+                                /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                                bankAccount: {
+                                    id: string;
+                                    /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                    label: string;
+                                } | null;
+                                /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                                description: string;
+                                createdAt: string;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                                instructionExportedAt: string | null;
+                                instructionExportCount: number;
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
+                            /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
+                            actions: {
+                                pay: boolean;
+                                replan: boolean;
+                                cancel: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSupplierInvoiceMatches: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Eşleştirme durumu; `mismatched` (varsayılan) eşleşme dışındaki bütün durumlar */
+                status?: "mismatched" | "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                /** @description `pending` onay bekleyen, `approved` farkı onaylanmış */
+                approval?: "pending" | "approved";
+                supplierId?: string;
+                /** @description Fatura numarası, tedarikçi adı ya da sipariş numarasında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            };
+                            /** @description KDV dahil tutar */
+                            grossCents: number;
+                            /** @description Ödenmemiş kalan (KDV dahil) */
+                            remainingCents: number;
+                            /**
+                             * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                             * @enum {string}
+                             */
+                            status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                            approved: boolean;
+                            approvalRequired: boolean;
+                            /** @description Geçerli fark onayının anı */
+                            approvedAt: string | null;
+                            /** @description Miktar farkı olan kalem sayısı */
+                            quantityLines: number;
+                            /** @description Fiyat farkı olan kalem sayısı */
+                            priceLines: number;
+                            /** @description Siparişte olmayan kalem sayısı */
+                            unmatchedLines: number;
+                            /** @description Fiyat farkı olan kalemlerin fark toplamı (KDV hariç) */
+                            priceDifferenceCents: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseOrderInvoiceMatching: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            order: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            };
+                            /** @description Etkin faturaların en ağır durumu; fatura yoksa boş */
+                            status: ("matched" | "quantity_mismatch" | "price_mismatch" | "unmatched") | null;
+                            items: {
+                                orderItemId: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Sipariş miktarı */
+                                orderedQuantity: number;
+                                /** @description Kabul edilen */
+                                acceptedQuantity: number;
+                                /** @description Etkin faturalarda faturalanan */
+                                invoicedQuantity: number;
+                                /** @description Siparişteki KDV hariç birim fiyat */
+                                unitPriceCents: number;
+                                /** @description Faturalanan − kabul edilen; eksi faturası beklenen kabuldür */
+                                differenceQuantity: number;
+                            }[];
+                            /** @description Siparişe bağlı faturalar (iptal edilenler dahil), fatura tarihi sırasıyla */
+                            invoices: {
+                                id: string;
+                                invoiceNumber: string;
+                                invoiceDate: string;
+                                /** @description KDV dahil tutar */
+                                grossCents: number;
+                                cancelled: boolean;
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                approved: boolean;
+                                approvalRequired: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

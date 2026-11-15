@@ -161,7 +161,13 @@ async function seedOrders(school: Tenant) {
             amountCents,
             amountIncludesVat: true,
             vatCents,
-            ...(linked ? { purchaseOrderId: order.id } : {}),
+            // DOM-FIN-095: siparişe bağlı fatura kabul edilen 5 kalemi sipariş fiyatıyla faturalar.
+            ...(linked
+              ? {
+                  purchaseOrderId: order.id,
+                  lines: [{ orderItemId: orderItem?.id, quantity: 5, unitPriceCents: 19_000 }],
+                }
+              : {}),
           },
           { 'idempotency-key': crypto.randomUUID() },
         ),

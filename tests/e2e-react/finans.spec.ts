@@ -576,6 +576,50 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Yeni burs programı' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-025, ON-283: yönetici gerçek dışı beyanda bursu iptal eder, hesabı ve bilgi metnini görür, geri isteme yazısını alır', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s22'] })
+    await seedScholarshipContract({
+      institutionId: school.institutionId,
+      studentId: 's22',
+      contractId: 'e2e-burs-iptal-sozlesme',
+      amountCents: 1_000_000,
+      scholarshipCents: 500_000,
+      withAward: true,
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=burs`)
+    const awards = page.getByRole('table', { name: 'Burs atamaları' })
+    await expect(awards).toContainText('Sürüyor')
+    await page.getByRole('button', { name: /gerçek dışı beyan: iptal ve geri iste$/ }).click()
+    const dialog = page.getByRole('dialog', { name: 'Gerçek dışı beyan: iptal ve geri iste' })
+    // Gerekçesiz önizleme istenmez.
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(dialog.getByText('Gerekçeyi yazın (en az 2 karakter).')).toBeVisible()
+    await dialog.getByLabel('Gerçek dışı beyanın açıklaması').fill('Gelir belgesi gerçeğe aykırı.')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(dialog.getByRole('heading', { name: 'Hesap önizlemesi' })).toBeVisible()
+    await expect(dialog.getByText('Veliye bilgi metni')).toBeVisible()
+    await expect(dialog).toContainText('3095 sayılı Kanun')
+    await dialog.getByRole('button', { name: 'İptal et ve geri iste' }).click()
+    await expect(page.getByText('Burs iptal edildi, geri isteme yazıldı.')).toBeVisible()
+    await expect(awards).toContainText('İptal edildi')
+    await expect(page.getByRole('button', { name: /bursunu kes$/ })).toHaveCount(0)
+
+    await page.getByRole('button', { name: /burs karar yazısı$/ }).click()
+    const preview = page.getByRole('dialog', { name: 'Burs geri isteme yazısı · Önizleme' })
+    const downloading = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    const download = await downloading
+    expect(download.suggestedFilename()).toMatch(/^burs-geri-isteme-[0-9a-f]{8}\.pdf$/)
+    const text = await pdfText(download)
+    expect(text).toContain('Burs iptali ve geri isteme yazısı')
+    expect(text).not.toContain('Gelir belgesi gerçeğe aykırı.')
+  })
+
   test('DOM-FIN-013: yönetici peşin ve süreli koşulu ilan eder; görüntülemede görünür, koşulsuz yayım reddedilir', async ({
     page,
     loginAs,

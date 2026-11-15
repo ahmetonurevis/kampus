@@ -16,6 +16,7 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
+import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
 import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
 import { allocatedByInvoice, listBankAccounts, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -148,12 +149,21 @@ async function accountContext(
   tx: Database,
   ctx: ServiceContext,
   studentId: string,
-): Promise<Pick<WithdrawalContext, 'allocated' | 'creditCents' | 'packageSales'>> {
+): Promise<
+  Pick<WithdrawalContext, 'allocated' | 'creditCents' | 'packageSales' | 'freeTuitionContractIds'>
+> {
   const allocated = await allocatedByInvoice(tx, ctx.institutionId, studentId)
   const total = await paymentTotal(tx, ctx.institutionId, studentId)
   const distributed = [...allocated.values()].reduce((sum, value) => sum + value, 0)
   const packageSales = await loadWithdrawalPackageSales(tx, ctx.institutionId, studentId)
-  return { allocated, creditCents: Math.max(total - distributed, 0), packageSales }
+  // Ücretsiz okutmalı sözleşmede öğrenim ücreti istenmez, iadesi hakkın kendisindedir (K-270).
+  const { contractIds } = await studentFreeTuitionCoverage(tx, ctx.institutionId, studentId)
+  return {
+    allocated,
+    creditCents: Math.max(total - distributed, 0),
+    packageSales,
+    freeTuitionContractIds: contractIds,
+  }
 }
 
 /**

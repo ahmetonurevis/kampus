@@ -45,6 +45,7 @@ import {
   statementPaymentCount,
 } from '../db/finance-bank-transactions.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
+import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -313,6 +314,12 @@ export async function reversePaymentCommand(
         if (payment === null) throw new NotFoundError()
         if (payment.version !== expectedVersion) throw new ConflictError()
         const withdrawals = await withdrawalsForReversal(tx, ctx.institutionId, payment.studentId)
+        // Ücretsiz okutma iadesi kabul anındaki tahsilata dayanır (K-270).
+        const { refundedInvoiceIds } = await studentFreeTuitionCoverage(
+          tx,
+          ctx.institutionId,
+          payment.studentId,
+        )
         // İptal iptal gününe yazılır: tahsilatın günü kapalı olabilir, bugün kapalıysa olmaz.
         const todayClosed = await isFinanceDayClosed(tx, ctx.institutionId, dayKey(ctx.now))
         return {
@@ -326,6 +333,7 @@ export async function reversePaymentCommand(
                 reversedAt: payment.reversedAt?.toISOString() ?? null,
                 allocations: payment.allocations,
                 withdrawals,
+                freeTuitionInvoiceIds: refundedInvoiceIds,
               },
               input,
             )

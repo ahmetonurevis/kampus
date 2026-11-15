@@ -3340,6 +3340,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/free-tuition/rounds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ücretsiz okutma dönemlerini listele
+         * @description Dönemleri yeni yıl önce; bugünkü öğrenci sayısı ve en az kontenjan (`freeQuotaCount`, %3) canlı hesaplanır, kesinleşen kontenjan ve aday/kabul sayısıyla (DOM-FIN-026, K-268). Rol: `yonetici`.
+         */
+        get: operations["listFreeTuitionRounds"];
+        put?: never;
+        /**
+         * Ücretsiz okutma dönemi aç
+         * @description Eğitim yılı ve öğretimin başladığı günle dönem açar (K-268). Aynı yıl ikinci kez 409 `free_tuition_round_exists`. Rol: `yonetici`.
+         */
+        post: operations["createFreeTuitionRound"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/rounds/{roundId}/confirm-quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ücretsiz okutma kontenjanını kesinleştir
+         * @description Öğrenci sayısı kilit altında yeniden sayılır; kontenjan en az sayının altına inerse 422 `free_tuition_quota_below_minimum`, kabul sayısının altına inerse 422 `free_tuition_quota_below_accepted` (K-268). `If-Match` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["confirmFreeTuitionQuota"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/rounds/{roundId}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ücretsiz okutma adaylarını listele
+         * @description Dönemin adayları kayıt sırasıyla; `status` süzer (K-269). Başka kurumun dönemi 404. Rol: `yonetici`.
+         */
+        get: operations["listFreeTuitionApplications"];
+        put?: never;
+        /**
+         * Ücretsiz okutma adayı ekle
+         * @description Öğrenci, sabit listeden gerekçe ve teslim edilen belge işaretleriyle aday kaydeder; belgenin kendisi ve serbest metin alınmaz (K-269). Dönemde ikinci başvuru 409 `free_tuition_application_exists`, o yıl bursu olan öğrenci 422 `free_tuition_scholarship_conflict`, pasif ya da başka kurumun öğrencisi 404. Rol: `yonetici`.
+         */
+        post: operations["createFreeTuitionApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/applications/{applicationId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adayın teslim ettiği belgeleri işaretle
+         * @description Belge işaretlerini bütün olarak yazar; kabul ya da ret almış adayda 409 `free_tuition_application_decided` (K-269). `If-Match` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["updateFreeTuitionDocuments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/rounds/{roundId}/board-meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Değerlendirme kurulu toplantılarını listele
+         * @description Dönemin toplantıları yeni önce, karar sayılarıyla (K-270). Rol: `yonetici`.
+         */
+        get: operations["listFreeTuitionBoardMeetings"];
+        put?: never;
+        /**
+         * Değerlendirme kurulu kararını kaydet
+         * @description Toplantı günü, üyeler (3–9) ve adaylara kabul/yedek/ret kararı (DOM-FIN-026, K-270). Kabul edilen öğrencinin o yılki ödenmemiş öğrenim taksitleri aynı işlemde kapanır, öğrenim taksitlerine alınmış tutar iade kaydı olur; son gün öğretim başlangıcından iki ay sonradır. Kontenjan kesinleşmemişse 422 `free_tuition_quota_not_confirmed`, kabul kontenjanı aşarsa 422 `free_tuition_quota_exceeded`, karar verilmiş aday 409 `free_tuition_application_decided`, başka dönemin ya da kurumun adayı 404, sözleşmesi yoksa 422 `free_tuition_contract_missing`, onay bekleyen ek protokol 409 `free_tuition_amendment_pending`, bursu olan 422 `free_tuition_scholarship_conflict` (hata yolu kararın satırını gösterir). `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["recordFreeTuitionBoard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/board-meetings/{meetingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurul toplantısını ve kararlarını getir
+         * @description Tutanak PDF'inin verisi: toplantı günü, üyeler, adayların adı, gerekçesi, belgeleri ve kararı (K-270). Başka kurumun toplantısı 404. Rol: `yonetici`.
+         */
+        get: operations["getFreeTuitionBoardMeeting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/awards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ücretsiz okutma haklarını listele
+         * @description Haklar iade son gününe göre; `roundId`, `mebbis=unrecorded` (MEBBİS'e işlenmemişler, K-271) ve `refundStatus` süzer. IBAN yalnız son dört hanesiyle döner. Rol: `yonetici`.
+         */
+        get: operations["listFreeTuitionAwards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/awards/{awardId}/mebbis-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hakkın MEBBİS'e işlendiğini kaydet
+         * @description İşlendiği günü bir kez kaydeder; MEBBİS'e otomatik gönderim yoktur (IST-143, K-271). Gelecek gün 422 `free_tuition_date_future`, kabul gününden önce 422 `free_tuition_mebbis_before_award`, ikinci kez 409 `free_tuition_mebbis_recorded`. `If-Match` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["recordFreeTuitionMebbis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/free-tuition/awards/{awardId}/pay-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ücretsiz okutma iadesini ödenmiş işaretle
+         * @description Ayrılış iadesinin kurallarıyla (DOM-FIN-041, K-270): hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`, kurum hesabı geçersizse 422 `refund_bank_account_invalid`, ödeme günü kapatılmışsa 422 `finance_day_closed`, kabul gününden önce 422 `free_tuition_refund_before_award`, iade yoksa 409 `free_tuition_refund_not_due`, ödenmişse 409 `refund_already_paid`. İade ödeme gününün gün sonuna girer (M-13). Taze oturum; `If-Match` ve `Idempotency-Key` zorunlu; anahtar kaydı maskeli IBAN ve hesap sahibini saklamaz. Rol: `yonetici`.
+         */
+        post: operations["payFreeTuitionRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/referral-rewards": {
         parameters: {
             query?: never;
@@ -33318,7 +33510,10 @@ export interface operations {
                             }[];
                             /** @description O gün ödenen ayrılış iadeleri (M-13); IBAN ve hesap sahibi yok. Kapalı günde de güncel liste */
                             refunds: {
-                                withdrawalId: string;
+                                /** @description Ayrılış iadesinde ayrılış kaydı; değilse boş */
+                                withdrawalId: string | null;
+                                /** @description Ücretsiz okutma iadesinde hak kaydı (DOM-FIN-026); değilse boş */
+                                freeTuitionAwardId: string | null;
                                 studentName: string | null;
                                 /** @description Ödenen iade (kuruş) */
                                 amountCents: number;
@@ -41525,6 +41720,1522 @@ export interface operations {
                                 /** @description `If-Match` için hareket sürümü (iptal) */
                                 version: number;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFreeTuitionRounds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Öğretimin başladığı gün (YYYY-MM-DD) */
+                            teachingStartDate: string;
+                            /** @description Bugünkü etkin öğrenci sayısı */
+                            currentStudentCount: number;
+                            /** @description Bugünkü öğrenci sayısına göre en az kontenjan (%3, 0,5 yukarı) */
+                            currentMinimumQuota: number;
+                            /** @description Kesinleşmedeki öğrenci sayısı */
+                            studentCount: number | null;
+                            /** @description Kesinleşmedeki en az kontenjan */
+                            computedQuota: number | null;
+                            /** @description Kesinleşen kontenjan; boşsa kesinleşmedi */
+                            confirmedQuota: number | null;
+                            quotaConfirmedAt: string | null;
+                            applicationCount: number;
+                            acceptedCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createFreeTuitionRound: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    teachingStartDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Öğretimin başladığı gün (YYYY-MM-DD) */
+                            teachingStartDate: string;
+                            /** @description Bugünkü etkin öğrenci sayısı */
+                            currentStudentCount: number;
+                            /** @description Bugünkü öğrenci sayısına göre en az kontenjan (%3, 0,5 yukarı) */
+                            currentMinimumQuota: number;
+                            /** @description Kesinleşmedeki öğrenci sayısı */
+                            studentCount: number | null;
+                            /** @description Kesinleşmedeki en az kontenjan */
+                            computedQuota: number | null;
+                            /** @description Kesinleşen kontenjan; boşsa kesinleşmedi */
+                            confirmedQuota: number | null;
+                            quotaConfirmedAt: string | null;
+                            applicationCount: number;
+                            acceptedCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirmFreeTuitionQuota: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                roundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirmedQuota: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Öğretimin başladığı gün (YYYY-MM-DD) */
+                            teachingStartDate: string;
+                            /** @description Bugünkü etkin öğrenci sayısı */
+                            currentStudentCount: number;
+                            /** @description Bugünkü öğrenci sayısına göre en az kontenjan (%3, 0,5 yukarı) */
+                            currentMinimumQuota: number;
+                            /** @description Kesinleşmedeki öğrenci sayısı */
+                            studentCount: number | null;
+                            /** @description Kesinleşmedeki en az kontenjan */
+                            computedQuota: number | null;
+                            /** @description Kesinleşen kontenjan; boşsa kesinleşmedi */
+                            confirmedQuota: number | null;
+                            quotaConfirmedAt: string | null;
+                            applicationCount: number;
+                            acceptedCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFreeTuitionApplications: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Aday durumu */
+                status?: "pending" | "accepted" | "reserve" | "rejected";
+            };
+            header?: never;
+            path: {
+                roundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /**
+                             * @description Gerekçe kodu (sabit liste)
+                             * @enum {string}
+                             */
+                            reason: "financial_need" | "martyr_veteran_relative" | "duty_disabled_parent" | "protection_order" | "parent_loss" | "other";
+                            /** @description Teslim edilen belge kodları */
+                            documents: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                            /** @enum {string} */
+                            status: "pending" | "accepted" | "reserve" | "rejected";
+                            boardMeetingId: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createFreeTuitionApplication: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                roundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** @enum {string} */
+                    reason: "financial_need" | "martyr_veteran_relative" | "duty_disabled_parent" | "protection_order" | "parent_loss" | "other";
+                    /** @default [] */
+                    documents?: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /**
+                             * @description Gerekçe kodu (sabit liste)
+                             * @enum {string}
+                             */
+                            reason: "financial_need" | "martyr_veteran_relative" | "duty_disabled_parent" | "protection_order" | "parent_loss" | "other";
+                            /** @description Teslim edilen belge kodları */
+                            documents: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                            /** @enum {string} */
+                            status: "pending" | "accepted" | "reserve" | "rejected";
+                            boardMeetingId: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateFreeTuitionDocuments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    documents: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /**
+                             * @description Gerekçe kodu (sabit liste)
+                             * @enum {string}
+                             */
+                            reason: "financial_need" | "martyr_veteran_relative" | "duty_disabled_parent" | "protection_order" | "parent_loss" | "other";
+                            /** @description Teslim edilen belge kodları */
+                            documents: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                            /** @enum {string} */
+                            status: "pending" | "accepted" | "reserve" | "rejected";
+                            boardMeetingId: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFreeTuitionBoardMeetings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            meetingDate: string;
+                            memberCount: number;
+                            acceptedCount: number;
+                            reserveCount: number;
+                            rejectedCount: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordFreeTuitionBoard: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                roundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    meetingDate: string;
+                    members: {
+                        name: string;
+                        title: string;
+                    }[];
+                    decisions: {
+                        /** Format: uuid */
+                        applicationId: string;
+                        /** @enum {string} */
+                        decision: "accepted" | "reserve" | "rejected";
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            academicYear: number;
+                            meetingDate: string;
+                            members: {
+                                name: string;
+                                title: string;
+                            }[];
+                            decisions: {
+                                applicationId: string;
+                                studentId: string;
+                                studentName: string | null;
+                                /** @enum {string} */
+                                reason: "financial_need" | "martyr_veteran_relative" | "duty_disabled_parent" | "protection_order" | "parent_loss" | "other";
+                                documents: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                                /** @enum {string} */
+                                decision: "accepted" | "reserve" | "rejected";
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFreeTuitionBoardMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meetingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            academicYear: number;
+                            meetingDate: string;
+                            members: {
+                                name: string;
+                                title: string;
+                            }[];
+                            decisions: {
+                                applicationId: string;
+                                studentId: string;
+                                studentName: string | null;
+                                /** @enum {string} */
+                                reason: "financial_need" | "martyr_veteran_relative" | "duty_disabled_parent" | "protection_order" | "parent_loss" | "other";
+                                documents: ("application_form" | "income_statement" | "household_statement" | "status_document" | "report_card")[];
+                                /** @enum {string} */
+                                decision: "accepted" | "reserve" | "rejected";
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listFreeTuitionAwards: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                roundId?: string;
+                /** @description `unrecorded`: MEBBİS'e işlenmemiş haklar */
+                mebbis?: "recorded" | "unrecorded";
+                /** @description İade durumu */
+                refundStatus?: "none" | "pending" | "paid";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            applicationId: string;
+                            boardMeetingId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            academicYear: number;
+                            /** @description Kabul günü (kurul toplantısı) */
+                            acceptedDate: string;
+                            /** @description İadenin ödeyicisini veren sözleşme */
+                            contractId: string;
+                            /** @description Hakkın kapsadığı sözleşmeler */
+                            contractIds: string[];
+                            cancelledInvoiceIds: string[];
+                            refundedInvoiceIds: string[];
+                            /** @description Kapanan taksitlerin tahsil edilmemiş kısmı, kuruş */
+                            waivedCents: number;
+                            /** @description İade edilecek öğrenim tahsilatı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin son günü */
+                            refundDueDate: string;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği gün */
+                            mebbisRecordedDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordFreeTuitionMebbis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    recordedDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            applicationId: string;
+                            boardMeetingId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            academicYear: number;
+                            /** @description Kabul günü (kurul toplantısı) */
+                            acceptedDate: string;
+                            /** @description İadenin ödeyicisini veren sözleşme */
+                            contractId: string;
+                            /** @description Hakkın kapsadığı sözleşmeler */
+                            contractIds: string[];
+                            cancelledInvoiceIds: string[];
+                            refundedInvoiceIds: string[];
+                            /** @description Kapanan taksitlerin tahsil edilmemiş kısmı, kuruş */
+                            waivedCents: number;
+                            /** @description İade edilecek öğrenim tahsilatı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin son günü */
+                            refundDueDate: string;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği gün */
+                            mebbisRecordedDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    payFreeTuitionRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    paidDate: string;
+                    iban: string;
+                    accountHolder: string;
+                    /** Format: uuid */
+                    bankAccountId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            roundId: string;
+                            applicationId: string;
+                            boardMeetingId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            academicYear: number;
+                            /** @description Kabul günü (kurul toplantısı) */
+                            acceptedDate: string;
+                            /** @description İadenin ödeyicisini veren sözleşme */
+                            contractId: string;
+                            /** @description Hakkın kapsadığı sözleşmeler */
+                            contractIds: string[];
+                            cancelledInvoiceIds: string[];
+                            refundedInvoiceIds: string[];
+                            /** @description Kapanan taksitlerin tahsil edilmemiş kısmı, kuruş */
+                            waivedCents: number;
+                            /** @description İade edilecek öğrenim tahsilatı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin son günü */
+                            refundDueDate: string;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği gün */
+                            mebbisRecordedDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

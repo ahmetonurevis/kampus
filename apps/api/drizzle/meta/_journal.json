@@ -715,6 +715,13 @@
       "when": 1794784835889,
       "tag": "0101_create_budget_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1794785706006,
+      "tag": "0102_create_free_tuition_awards",
+      "breakpoints": true
     }
   ]
 }

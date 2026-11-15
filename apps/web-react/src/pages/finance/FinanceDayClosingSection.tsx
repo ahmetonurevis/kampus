@@ -148,7 +148,7 @@ const validDay = (value: string | null, today: string) =>
 const stampOf = (at: string) => `${dateLabel(at, { year: 'numeric' })} ${timeLabel(at)}`
 
 const refundRow = (line: FinanceDayReport['refunds'][number]): RefundRow => ({
-  id: line.withdrawalId,
+  id: line.withdrawalId ?? line.freeTuitionAwardId ?? '',
   studentName: line.studentName ?? '—',
   bankAccount: line.bankAccountLabel ?? '—',
   amountCents: line.amountCents,

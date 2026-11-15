@@ -32,6 +32,7 @@ import {
 } from '../db/finance-supplier-ledger.ts'
 import { loadPaymentSettings, paymentsTouchingDay, type StoredPayment } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
+import { freeTuitionRefundsPaidOnDay } from '../db/finance-free-tuition.ts'
 import { refundsPaidOnDay, type StoredDayRefund } from '../db/withdrawals.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -84,6 +85,17 @@ export interface FinanceDayLine {
 
 /** O gün ödenen ayrılış iadesi (M-13); IBAN ve hesap sahibi yoktur. */
 export type FinanceDayRefundLine = StoredDayRefund
+
+/**
+ * O gün ödenen iadeler (M-13): ayrılış iadeleri ve ücretsiz okutma iadeleri (DOM-FIN-026, K-270).
+ * İkisi de banka havalesiyle kurum hesabından çıkar, günün "iade ödemesi" satırına girer.
+ */
+async function dayRefunds(db: Database, institutionId: string, day: string) {
+  return [
+    ...(await refundsPaidOnDay(db, institutionId, day)),
+    ...(await freeTuitionRefundsPaidOnDay(db, institutionId, day)),
+  ]
+}
 
 /** O gün kasadan ödenen tedarikçi ödemesi (K-166); IBAN ve vergi numarası yoktur. */
 export interface FinanceDaySupplierLine {
@@ -240,7 +252,7 @@ export function financeDayReportFor(
     collections: [],
     load: async (tx) => {
       const payments = summaryPayments(await dayPayments(tx, ctx, closingDate))
-      const refunds = await refundsPaidOnDay(tx, ctx.institutionId, closingDate)
+      const refunds = await dayRefunds(tx, ctx.institutionId, closingDate)
       const supplierPayments = await daySupplierPayments(tx, ctx, closingDate)
       const closings = await closingViews(
         tx,
@@ -301,7 +313,7 @@ export function closeFinanceDayCommand(
       entity: { type: ENTITY, id },
       load: async (tx) => {
         const payments = summaryPayments(await dayPayments(tx, ctx, closingDate))
-        const refunds = await refundsPaidOnDay(tx, ctx.institutionId, closingDate)
+        const refunds = await dayRefunds(tx, ctx.institutionId, closingDate)
         const supplierPayments = await daySupplierPayments(tx, ctx, closingDate)
         const alreadyClosed = await isFinanceDayClosed(tx, ctx.institutionId, closingDate)
         const { cashPaymentsEnabled: cashEnabled } = await loadPaymentSettings(

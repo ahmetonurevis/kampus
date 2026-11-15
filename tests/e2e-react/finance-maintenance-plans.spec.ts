@@ -58,7 +58,10 @@ test.describe('DOM-FIN-092: periyodik bakım ekranı', () => {
     const panel = page.getByRole('dialog', { name: 'Bakım planı' })
     await expect(panel.getByRole('heading', { name: 'Söndürücüler' })).toBeVisible()
     await expect(panel.getByText('Denetim kaydı yok', { exact: true }).first()).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(panel).toBeHidden()
     await expect(page.getByRole('button', { name: /Periyodik bakım\s*2/ })).toBeVisible()
+    await section.getByRole('button', { name: 'Söndürücüler ayrıntısını aç' }).click()
 
     const inspection = panel.getByRole('form', { name: 'Denetim kaydet' })
     await inspection.getByLabel('Denetimi yapan').fill('Beta Yangın Ltd.')
@@ -75,7 +78,6 @@ test.describe('DOM-FIN-092: periyodik bakım ekranı', () => {
     await records.getByRole('button', { name: /için arıza talebi aç/ }).click()
     await expect(records.getByRole('link', { name: 'AT-0001' })).toBeVisible()
     await expect(records.getByRole('button', { name: /için arıza talebi aç/ })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /Periyodik bakım\s*1/ })).toBeVisible()
 
     await expect
       .poll(async () => {
@@ -93,6 +95,9 @@ test.describe('DOM-FIN-092: periyodik bakım ekranı', () => {
 
     await page.keyboard.press('Escape')
     await expect(panel).toBeHidden()
+    // Söndürücüler denetlendi (zamanında); rozet yalnız geciken kazanı sayar. Açık panel sayfayı
+    // erişilebilirlik ağacından gizlediği için rozet panel kapanınca okunur.
+    await expect(page.getByRole('button', { name: /Periyodik bakım\s*1/ })).toBeVisible()
     const downloading = page.waitForEvent('download')
     await section.getByRole('button', { name: 'CSV indir' }).click()
     const file = await downloading

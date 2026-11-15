@@ -9,7 +9,9 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // birim ve API testlerindedir (`tests/finance-suppliers.test.ts`,
 // `tests/finance-purchase-requests.test.ts`, `apps/api/test/finance-*.test.ts`); burada yönetici
 // tedarikçi ekler ve talebi açıp onaylar, ön büro talep açar ama onaylayamaz; bütçeyi aşan talep
-// gönderimde ve onayda uyarıdan sonra açık onayla geçer (ON-245).
+// gönderimde ve onayda uyarıdan sonra açık onayla geçer (ON-245). Kademeli onayın kural dalları
+// `tests/finance-purchase-approvals.test.ts` ve `apps/api/test/finance-purchase-approvals.test.ts`
+// içindedir; burada yönetici kademe tanımlar, zincir ekranda ilerler (ON-223).
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
@@ -181,6 +183,59 @@ test.describe('DOM-FIN-070, DOM-FIN-071: tedarikçi ve satın alma talebi ekran�
     await decision.getByRole('button', { name: 'Aşımı onaylayarak onayla' }).click()
     await expect(decision).toBeHidden()
     await expect(panel.getByText('Onaylandı', { exact: true }).first()).toBeVisible()
+  })
+
+  test('DOM-FIN-071, ON-223: yönetici onay kademesi tanımlar; talep zincirle ilerler, aynı kişi ikinci kademeyi onaylayamaz', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'] })
+    await seedBudget(school)
+    const admin = await loginAs(school.user('yonetici'))
+    await admin.goto('/yonetici/ayarlar?sekme=satin-alma-onayi')
+    const settings = admin.getByRole('form', { name: 'Satın alma onay kademeleri' })
+    await expect(settings.getByText('Kademe tanımlı değil')).toBeVisible()
+    await settings.getByRole('button', { name: 'Kademe ekle' }).click()
+    await settings.getByRole('button', { name: 'Kademe ekle' }).click()
+    await settings.getByLabel('2. kademe alt sınırı (₺)').fill('1.000,00')
+    await settings.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(
+      settings.getByText(
+        'Kayıtlı ayar: 0,00 ₺ ve üstü → herhangi bir yönetici; 1.000,00 ₺ ve üstü → herhangi bir yönetici.',
+      ),
+    ).toBeVisible()
+
+    const desk = await loginAs(school.user('onburo'))
+    await desk.goto(`${DESK}?gorunum=satin-alma`)
+    const form = await fillRequest(desk, 'Toner')
+    await form.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(form).toBeHidden()
+    const deskPanel = desk.getByRole('dialog', { name: 'Satın alma talebi' })
+    await deskPanel.getByRole('button', { name: 'Onaya gönder' }).click()
+    const deskChain = deskPanel.getByRole('list', { name: 'Onay kademeleri' })
+    await expect(deskChain.getByRole('listitem')).toHaveCount(2)
+    await expect(deskChain.getByRole('listitem').first()).toContainText('Bekliyor')
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN}?gorunum=satin-alma`)
+    const requests = page.getByRole('region', { name: 'Satın alma talepleri' })
+    await requests.getByRole('button', { name: 'Filtreler', exact: true }).click()
+    await requests
+      .getByLabel('Onay', { exact: true })
+      .selectOption({ label: 'Onayımı bekleyenler' })
+    await requests.getByRole('button', { name: 'ST-0001 talebini aç' }).click()
+    const panel = page.getByRole('dialog', { name: 'Satın alma talebi' })
+    await panel.getByRole('button', { name: 'Onayla' }).click()
+    const decision = page.getByRole('dialog', { name: 'Talebi onayla' })
+    await decision.getByRole('button', { name: 'Onayla' }).click()
+    await expect(decision).toBeHidden()
+    const chain = panel.getByRole('list', { name: 'Onay kademeleri' })
+    await expect(chain.getByRole('listitem').first()).toContainText('Onaylandı')
+    await expect(chain.getByRole('listitem').nth(1)).toContainText('Bekliyor')
+    await expect(panel.getByText('Gönderildi', { exact: true }).first()).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Onayla' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(requests.getByText('Bu seçimle eşleşen talep yok.')).toBeVisible()
   })
 
   test('DOM-FIN-071: ön büro talep açar ve gönderir, onaylayamaz; tedarikçiyi salt okur; dar ekranda taşma yok', async ({

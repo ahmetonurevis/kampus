@@ -71,6 +71,9 @@ const FinanceMaintenanceSection = lazy(async () => ({
 const FinanceMaterialSetsSection = lazy(async () => ({
   default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
 }))
+const FreeTuitionSection = lazy(async () => ({
+  default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -86,6 +89,7 @@ const VIEWS = {
   corporate: { label: 'Kurumsal müşteriler', param: 'kurumsal' },
   scholarships: { label: 'Burslar', param: 'burs' },
   scholarshipFunds: { label: 'Burs fonları', param: 'burs-fonu' },
+  freeTuition: { label: 'Ücretsiz okutma', param: 'ucretsiz' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
@@ -125,6 +129,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sarf talepleri (DOM-FIN-091) ikisine açıktır; ön büro karşılar ve dönüştürür, onay yöneticide (K-244).
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  * Arıza ve bakım (DOM-FIN-089) ikisine açıktır; ön büro bildirir, iş emrini yönetici yürütür (K-237).
+ * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -136,7 +141,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'bankMatching' ||
       value === 'purchaseReport' ||
       value === 'supplierLedger' ||
-      value === 'fixedAssets'
+      value === 'fixedAssets' ||
+      value === 'freeTuition'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -241,6 +247,13 @@ export function FinancePage({ page }: { page: NavPage }) {
         />
       ) : null}
       {tab === 'scholarshipFunds' ? <ScholarshipFundsSection canManage={isManager} /> : null}
+      {tab === 'freeTuition' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          <FreeTuitionSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        </Suspense>
+      ) : null}
       {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
       {tab === 'referrals' ? <ReferralRewardsSection /> : null}
       {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}

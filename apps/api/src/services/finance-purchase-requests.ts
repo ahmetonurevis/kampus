@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto'
 
+import {
+  currentApprovalStep,
+  planApprovalDecision,
+  requiredApprovalSteps,
+  type PurchaseApprovalDecision,
+  type PurchaseApprovalStepPlan,
+} from '@kampus/school-core/lib/finance-purchase-approvals.ts'
 import { supplyRequestNumber } from '@kampus/school-core/lib/finance-supply-requests.ts'
 import {
   confirmPurchaseBudget,
@@ -10,6 +17,7 @@ import {
   planPurchaseRequestReject,
   planPurchaseRequestSubmit,
   planPurchaseRequestUpdate,
+  planPurchaseRequestWithdraw,
   purchaseBudgetInfo,
   purchaseRequestActions,
   purchaseRequestNumber,
@@ -19,6 +27,14 @@ import {
 
 import type { Database } from '../db/client.ts'
 import { loadBudgetItems, loadBudgetPeriods, loadCostCenters } from '../db/finance-budget.ts'
+import {
+  archiveApprovalSteps,
+  decideApprovalStep,
+  insertApprovalSteps,
+  loadApprovalSteps,
+  loadPurchaseApprovalSettings,
+  type StoredApprovalStep,
+} from '../db/finance-purchase-approvals.ts'
 import { loadStockItemLabels, loadStockItemsByIds } from '../db/finance-inventory.ts'
 import {
   findPurchaseRequest,
@@ -47,8 +63,10 @@ import { auditWork } from './task-work.ts'
  * yükler, core'a karar verdirir, aynı transaction'da yazar ve denetim kaydı bırakır. Bütçe kalanı
  * okumada hesaplanır, saklanmaz (K-145). Gönderim ve onayda kalan kurum kilidi altında yeniden
  * hesaplanır; aşım ya da bütçesiz talep açık onay ister (ON-245, K-146). Kalem isteğe bağlı olarak
- * kurumun stok kartına bağlanır; bağ siparişe kopyalanır (ON-339, K-221). Rol ve modül denetimi
- * rotadadır.
+ * kurumun stok kartına bağlanır; bağ siparişe kopyalanır (ON-339, K-221). Kurumun kademe eşikleri
+ * varsa gönderimde gereken kademeler talebe dondurulur, onay ve ret sıradaki kademeye yazılır, son
+ * kademe talebi onaylar; geri çekme kademeleri arşivler (ON-223, K-260…K-263). Rol ve modül
+ * denetimi rotadadır.
  */
 
 const ENTITY = 'purchase_requests'
@@ -152,8 +170,16 @@ function summaryView(request: StoredPurchaseRequest, names: ReadonlyMap<string, 
   }
 }
 
-export async function listPurchaseRequestsFor(ctx: ServiceContext, query: PurchaseRequestQuery) {
-  const { items, total } = await listPurchaseRequests(ctx.db, ctx.institutionId, query)
+export async function listPurchaseRequestsFor(
+  ctx: ServiceContext,
+  query: Omit<PurchaseRequestQuery, 'awaitingApprovalOf'> & { awaitingMyApproval?: boolean },
+) {
+  const { awaitingMyApproval, ...filters } = query
+  // "Onayımı bekleyenler" (K-263) oturumdaki kişiye göre süzülür; başka kişi adına sorulamaz.
+  const { items, total } = await listPurchaseRequests(ctx.db, ctx.institutionId, {
+    ...filters,
+    ...(awaitingMyApproval === true ? { awaitingApprovalOf: ctx.actor } : {}),
+  })
   const names = await purchaseActorNames(
     ctx.db,
     ctx.institutionId,
@@ -162,8 +188,34 @@ export async function listPurchaseRequestsFor(ctx: ServiceContext, query: Purcha
   return { items: items.map((item) => summaryView(item, names)), total }
 }
 
+/**
+ * Onay zinciri (K-261, K-262): kademeli talepte dondurulmuş kademeler, onaylayanları ve kararları;
+ * kademesiz talep tek adımlı yönetici onayıdır (K-129), karar izi talebin kendisindedir.
+ */
+function approvalView(
+  steps: readonly StoredApprovalStep[],
+  nameOf: (id: string | null) => string | null,
+) {
+  return {
+    mode: steps.length === 0 ? ('single' as const) : ('tiered' as const),
+    currentPosition: currentApprovalStep(steps)?.position ?? null,
+    steps: steps.map((step) => ({
+      position: step.position,
+      minTotalCents: step.minTotalCents,
+      approverRole: step.approverRole,
+      approverUserId: step.approverUserId,
+      approverName: nameOf(step.approverUserId),
+      decision: step.decision,
+      decidedByName: nameOf(step.decidedByUserId),
+      decidedAt: step.decidedAt,
+      note: step.note,
+    })),
+  }
+}
+
 async function detailView(db: Database, ctx: ServiceContext, id: string) {
   const request = await requestOf(db, ctx, id)
+  const steps = await loadApprovalSteps(db, ctx.institutionId, id)
   const [items, figures, names] = await Promise.all([
     loadPurchaseRequestItems(db, ctx.institutionId, id),
     loadPurchaseBudgetFigures(db, ctx.institutionId, {
@@ -180,6 +232,7 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
         request.submittedByUserId,
         request.decidedByUserId,
         request.cancelledByUserId,
+        ...steps.flatMap((step) => [step.approverUserId, step.decidedByUserId]),
       ].filter((value): value is string => value !== null),
     ),
   ])
@@ -205,7 +258,8 @@ async function detailView(db: Database, ctx: ServiceContext, id: string) {
     decisionNote: request.decisionNote,
     cancelledByName: nameOf(request.cancelledByUserId),
     cancelReason: request.cancelReason,
-    actions: purchaseRequestActions(request, ctx.actor),
+    approval: approvalView(steps, nameOf),
+    actions: purchaseRequestActions(request, ctx.actor, steps),
     // Talep bir sarf talebinin kalanından açıldıysa (DOM-FIN-091, K-246) o talep.
     supplyRequest:
       supply === null ? null : { id: supply.id, number: supplyRequestNumber(supply.sequence) },
@@ -368,17 +422,25 @@ export function updatePurchaseRequestCommand(
   )
 }
 
-type Transition = 'submit' | 'approve' | 'reject' | 'cancel'
+type Transition = 'submit' | 'approve' | 'reject' | 'cancel' | 'withdraw'
 
 type TransitionPlan = {
   changes: PurchaseRequestUpdate
   /** Açık onayla geçilen bütçe uyarısı; denetim kaydına `confirmOverBudget` olarak düşer (K-146). */
   budgetWarning: PurchaseBudgetWarning | null
+  /** Gönderimde talebe dondurulacak kademeler (K-261); kademe ayarı yoksa boş. */
+  freezeSteps?: PurchaseApprovalStepPlan[]
+  /** Sıradaki kademeye yazılacak karar (K-262); tek adımlı onayda yok. */
+  stepDecision?: { position: number; decision: PurchaseApprovalDecision; note: string | null }
+  /** Taslağa geri çekmede dondurulmuş kademeler arşivlenir (K-261). */
+  archiveSteps?: boolean
 }
 
 /**
- * Durum geçişi: gönder, onayla, reddet, iptal et (DOM-FIN-071). Gönderim ve onayda bütçe kalanı
- * kurum kilidi altında yüklenir: eşzamanlı iki talep aynı kalanı birlikte tüketemez (ON-245).
+ * Durum geçişi: gönder, onayla, reddet, iptal et, taslağa geri çek (DOM-FIN-071). Gönderim ve onayda
+ * bütçe kalanı kurum kilidi altında yüklenir: eşzamanlı iki talep aynı kalanı birlikte tüketemez
+ * (ON-245). Gönderim kurumun kademe eşiklerinden gereken kademeleri dondurur; onay ve ret kademeli
+ * talepte sıradaki kademeye yazılır, talebi yalnız son onay ya da ret kapatır (ON-223, K-262).
  */
 export function transitionPurchaseRequestCommand(
   ctx: ServiceContext,
@@ -415,6 +477,12 @@ export function transitionPurchaseRequestCommand(
             : null
         const checkBudget = (confirmed: boolean | undefined) =>
           budget === null ? null : confirmPurchaseBudget(budget, confirmed)
+        const settings =
+          transition === 'submit' ? await loadPurchaseApprovalSettings(tx, ctx.institutionId) : null
+        const steps =
+          transition === 'approve' || transition === 'reject'
+            ? await loadApprovalSteps(tx, ctx.institutionId, id)
+            : []
         return {
           run: (): TransitionPlan => {
             switch (transition) {
@@ -427,6 +495,8 @@ export function transitionPurchaseRequestCommand(
                 )
                 return {
                   budgetWarning: checkBudget(confirmOverBudget),
+                  // Eşik o anki ayardan ve tutardan hesaplanır, talebe dondurulur (K-261).
+                  freezeSteps: requiredApprovalSteps(settings?.tiers ?? [], current.totalCents),
                   changes: {
                     status: 'submitted',
                     submittedAt: ctx.now,
@@ -436,26 +506,63 @@ export function transitionPurchaseRequestCommand(
               }
               case 'approve': {
                 const { note, confirmOverBudget } = planPurchaseRequestApprove(current, input, refs)
+                const outcome = planApprovalDecision(
+                  steps,
+                  current.requestedByUserId,
+                  ctx.actor,
+                  'approved',
+                )
+                const budgetWarning = checkBudget(confirmOverBudget)
                 return {
-                  budgetWarning: checkBudget(confirmOverBudget),
-                  changes: {
-                    status: 'approved',
-                    decidedAt: ctx.now,
-                    decidedByUserId: ctx.actor.userId,
-                    decisionNote: note,
-                  },
+                  budgetWarning,
+                  ...(outcome === null
+                    ? {}
+                    : { stepDecision: { position: outcome.position, decision: 'approved', note } }),
+                  // Ara kademe onayı talebi gönderilmiş bırakır; yalnız sürümü ilerler (K-262).
+                  changes:
+                    outcome === null || outcome.completes
+                      ? {
+                          status: 'approved',
+                          decidedAt: ctx.now,
+                          decidedByUserId: ctx.actor.userId,
+                          decisionNote: note,
+                        }
+                      : {},
                 }
               }
               case 'reject': {
                 const { reason } = planPurchaseRequestReject(current, input)
+                const outcome = planApprovalDecision(
+                  steps,
+                  current.requestedByUserId,
+                  ctx.actor,
+                  'rejected',
+                )
                 return {
                   budgetWarning: null,
+                  ...(outcome === null
+                    ? {}
+                    : {
+                        stepDecision: {
+                          position: outcome.position,
+                          decision: 'rejected',
+                          note: reason,
+                        },
+                      }),
                   changes: {
                     status: 'rejected',
                     decidedAt: ctx.now,
                     decidedByUserId: ctx.actor.userId,
                     decisionNote: reason,
                   },
+                }
+              }
+              case 'withdraw': {
+                planPurchaseRequestWithdraw(current, input, ctx.actor)
+                return {
+                  budgetWarning: null,
+                  archiveSteps: true,
+                  changes: { status: 'draft', submittedAt: null, submittedByUserId: null },
                 }
               }
               case 'cancel': {
@@ -476,7 +583,7 @@ export function transitionPurchaseRequestCommand(
           },
         }
       },
-      after: async (tx, { changes, budgetWarning }) => {
+      after: async (tx, { changes, budgetWarning, freezeSteps, stepDecision, archiveSteps }) => {
         const saved = await updatePurchaseRequest(tx, ctx.institutionId, {
           id,
           expectedVersion,
@@ -484,8 +591,23 @@ export function transitionPurchaseRequestCommand(
           now: ctx.now,
         })
         if (!saved) throw new ConflictError()
+        if (archiveSteps === true) await archiveApprovalSteps(tx, ctx.institutionId, id, ctx.now)
+        if (freezeSteps !== undefined)
+          await insertApprovalSteps(tx, ctx.institutionId, id, freezeSteps, ctx.now)
+        if (stepDecision !== undefined) {
+          const decided = await decideApprovalStep(tx, ctx.institutionId, {
+            requestId: id,
+            ...stepDecision,
+            userId: ctx.actor.userId,
+            now: ctx.now,
+          })
+          if (!decided) throw new ConflictError()
+        }
         await auditWork(tx, ctx, action, entity, [
           ...Object.keys(changes),
+          ...(freezeSteps !== undefined && freezeSteps.length > 0 ? ['approvalSteps'] : []),
+          ...(stepDecision === undefined ? [] : ['approvalStep']),
+          ...(archiveSteps === true ? ['approvalSteps'] : []),
           ...(budgetWarning === null ? [] : ['confirmOverBudget']),
         ])
         body = await requestBody(tx, ctx, id)

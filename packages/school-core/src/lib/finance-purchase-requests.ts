@@ -2,14 +2,19 @@ import { z } from 'zod'
 
 import { DomainError } from './errors.ts'
 import { BUDGET_AMOUNT_MAX_CENTS, type BudgetItemKind } from './finance-budget.ts'
+import {
+  canDecideApprovalStep,
+  type PurchaseApprovalStepState,
+} from './finance-purchase-approvals.ts'
 import { money } from './format.ts'
 
 /**
  * Satın alma talebi (docs/domain/finans.md DOM-FIN-071; ON-222, K23 satın alma). Talep eden birim
  * bir maliyet merkezidir, talep bir bütçe dönemine ve gider kalemine yazılır (DOM-FIN-062).
  * Durum taslak → gönderildi → onaylandı ya da reddedildi; taslak ve gönderilmiş talep iptal edilir.
- * Onay bugün yöneticinin tek adımlı kararıdır: kademeli eşik ve iş akışı motoru (K27) yoktur,
- * ON-223 ile gelir (K-129). Gönderim ve onayda bütçe kalanını aşan ya da bütçe satırı olmayan talep
+ * Onay kurumun kademe eşikleri yoksa yöneticinin tek adımlı kararıdır (K-129); eşik varsa gönderimde
+ * dondurulan kademeler sırayla onaylanır (ON-223, `finance-purchase-approvals.ts`, K-260…K-263).
+ * Gönderilmiş talep taslağa geri çekilebilir; kademeler yeniden gönderimde hesaplanır. Gönderim ve onayda bütçe kalanını aşan ya da bütçe satırı olmayan talep
  * açık onay ister (ON-245, K-145…K-148). Fonksiyonlar saftır; servis bağlı kayıtları yükler, karar
  * burada verilir.
  */
@@ -185,6 +190,8 @@ export const cancelPurchaseRequestSchema = z.strictObject({
   reason: reasonSchema('İptal gerekçesini yazın.'),
 })
 export type CancelPurchaseRequestInput = z.input<typeof cancelPurchaseRequestSchema>
+/** Taslağa geri çekmenin gövdesi boştur (ON-223, K-261). */
+export const withdrawPurchaseRequestSchema = z.strictObject({})
 
 // --- Hesap ---------------------------------------------------------------------------------------
 
@@ -517,7 +524,10 @@ export function planPurchaseRequestSubmit(
   return data
 }
 
-/** Onay: gönderilmiş talep, dönem hâlâ açık. Yönetici kendi açtığı talebi de onaylar (K-129). */
+/**
+ * Onay: gönderilmiş talep, dönem hâlâ açık. Tek adımlı onayda yönetici kendi açtığı talebi de onaylar
+ * (K-129); kademeli onayda sıra ve ayrılık kuralı `planApprovalDecision` ile ayrıca denetlenir.
+ */
 export function planPurchaseRequestApprove(
   request: PurchaseRequestState,
   input: unknown,
@@ -574,17 +584,47 @@ export function planPurchaseRequestCancel(
   return data
 }
 
-/** Rolün talepte yapabileceği işlemler (ekran düğmeleri; sunucu aynı kuralları yeniden denetler). */
+/**
+ * Taslağa geri çekme (ON-223, K-261): gönderilmiş talep, kararı verilmeden taslağa döner; tutar ya
+ * da kalem bu yolla düzeltilir. Dondurulmuş kademeler ve verilmiş kademe onayları düşer, yeniden
+ * gönderimde güncel ayar ve tutarla hesaplanır. Kim gönderebiliyorsa o geri çeker (K-128).
+ */
+export function planPurchaseRequestWithdraw(
+  request: PurchaseRequestState,
+  input: unknown,
+  actor: PurchaseActor,
+): z.output<typeof withdrawPurchaseRequestSchema> {
+  const data = withdrawPurchaseRequestSchema.parse(input ?? {})
+  assertOwner(request, actor)
+  assertStatus(
+    request,
+    ['submitted'],
+    'purchase_request_not_submitted',
+    'Yalnız gönderilmiş ve kararı verilmemiş talep taslağa geri çekilebilir.',
+  )
+  return data
+}
+
+/**
+ * Rolün talepte yapabileceği işlemler (ekran düğmeleri; sunucu aynı kuralları yeniden denetler).
+ * Kademeli onayda (`steps` dolu) karar yalnız sıradaki kademenin onaylayanınındır (K-262).
+ */
 export function purchaseRequestActions(
   request: PurchaseRequestState,
   actor: { userId: string; role: RequestRole | string },
-): { edit: boolean; submit: boolean; cancel: boolean; decide: boolean } {
+  steps: readonly PurchaseApprovalStepState[] = [],
+): { edit: boolean; submit: boolean; cancel: boolean; decide: boolean; withdraw: boolean } {
   const owner = actor.role === 'yonetici' || request.requestedByUserId === actor.userId
   const staff = actor.role === 'yonetici' || actor.role === 'onburo'
+  const submitted = request.status === 'submitted'
   return {
     edit: staff && owner && request.status === 'draft',
     submit: staff && owner && request.status === 'draft',
-    cancel: staff && owner && (request.status === 'draft' || request.status === 'submitted'),
-    decide: actor.role === 'yonetici' && request.status === 'submitted',
+    cancel: staff && owner && (request.status === 'draft' || submitted),
+    decide:
+      actor.role === 'yonetici' &&
+      submitted &&
+      (steps.length === 0 || canDecideApprovalStep(steps, request.requestedByUserId, actor)),
+    withdraw: staff && owner && submitted,
   }
 }

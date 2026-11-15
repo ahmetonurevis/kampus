@@ -289,18 +289,21 @@ test('DOM-FIN-071: rol ve duruma göre ekran işlemleri', () => {
     submit: true,
     cancel: true,
     decide: false,
+    withdraw: false,
   })
   assert.deepEqual(purchaseRequestActions(draft(), { userId: 'test-other', role: 'onburo' }), {
     edit: false,
     submit: false,
     cancel: false,
     decide: false,
+    withdraw: false,
   })
   assert.deepEqual(purchaseRequestActions(draft({ status: 'submitted' }), ADMIN), {
     edit: false,
     submit: false,
     cancel: true,
     decide: true,
+    withdraw: true,
   })
   assert.deepEqual(purchaseRequestActions(draft({ status: 'submitted' }), FRONT).decide, false)
   assert.deepEqual(purchaseRequestActions(draft({ status: 'approved' }), ADMIN), {
@@ -308,13 +311,14 @@ test('DOM-FIN-071: rol ve duruma göre ekran işlemleri', () => {
     submit: false,
     cancel: false,
     decide: false,
+    withdraw: false,
   })
   assert.deepEqual(
     purchaseRequestActions(draft({ requestedByUserId: 'test-teacher' }), {
       userId: 'test-teacher',
       role: 'ogretmen',
     }),
-    { edit: false, submit: false, cancel: false, decide: false },
+    { edit: false, submit: false, cancel: false, decide: false, withdraw: false },
   )
 })
 

@@ -230,7 +230,13 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
       exceedsRemaining: false,
       overrunCents: 0,
     })
-    assert.deepEqual(first.actions, { edit: true, submit: true, cancel: true, decide: false })
+    assert.deepEqual(first.actions, {
+      edit: true,
+      submit: true,
+      cancel: true,
+      decide: false,
+      withdraw: false,
+    })
     assert.deepEqual(first.supplier, { id: t.supplier.id, name: 'Örnek Bilişim A.Ş.' })
     assert.equal(first.requestedByName, 'Test Yönetici')
     const second = await create(t.admin, body(t, { supplierId: null }))
@@ -325,7 +331,13 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
       'purchase_request_not_owner',
     )
     const viewed = ok(await get(`${REQUESTS}/${String(adminRequest.id)}`, front))
-    assert.deepEqual(viewed.actions, { edit: false, submit: false, cancel: false, decide: false })
+    assert.deepEqual(viewed.actions, {
+      edit: false,
+      submit: false,
+      cancel: false,
+      decide: false,
+      withdraw: false,
+    })
     assert.deepEqual(await rowsOf(t.id), before)
     assertError(
       await call('PATCH', url, front, { justification: 'Sürüm eski kaldı' }, ifMatch(1)),
@@ -347,7 +359,13 @@ describe('DOM-FIN-071: satın alma talebi uçları', () => {
     const submitted = ok(await act(t.admin, request, 'submit'))
     assert.equal(submitted.status, 'submitted')
     assert.equal(typeof submitted.submittedAt, 'string')
-    assert.deepEqual(submitted.actions, { edit: false, submit: false, cancel: true, decide: true })
+    assert.deepEqual(submitted.actions, {
+      edit: false,
+      submit: false,
+      cancel: true,
+      decide: true,
+      withdraw: true,
+    })
     assertError(
       await call(
         'PATCH',

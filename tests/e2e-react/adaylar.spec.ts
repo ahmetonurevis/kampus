@@ -305,6 +305,60 @@ test.describe('aday ekleme', () => {
   })
 })
 
+test.describe('kampanya kodu', () => {
+  test('kampanya bağlantısı formu kodla açar; kaynak kanaldan önerilir, aday kampanyaya bağlanır ve kırılımda sayılır (DOM-KAY-041)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'] })
+    const client = await api(school.user('onburo'))
+    const created = await client.post(
+      '/api/v1/prospects/campaign-codes',
+      {
+        code: 'YAZ26',
+        name: 'Yaz okulu ilanı',
+        channel: 'social_media',
+        startDate: istanbulDay(-1),
+        endDate: istanbulDay(30),
+        costCents: 1_000_000,
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(created.status).toBe(201)
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?kampanya=yaz26`)
+
+    const form = page.getByRole('dialog', { name: 'Yeni aday ekle' })
+    await expect(form.getByLabel('Kampanya kodu (isteğe bağlı)')).toHaveValue('YAZ26')
+    await expect(form.getByLabel('Kaynak')).toHaveValue('Sosyal medya')
+    await form.getByLabel('Aday adı soyadı').fill('Deniz Kampanya')
+    await form.getByLabel('Veli adı soyadı').fill('Selma Kampanya')
+    await form.getByLabel('Veli telefonu').fill('0555 030 91 01')
+    await form.getByLabel('İlgilendiği program').fill('5. Sınıf · Ortaokul')
+    await form.getByLabel('Aydınlatma metni adaya gösterildi').check()
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+    await expect(toast(page, 'Aday eklendi.')).toBeVisible()
+    await expect(form).toBeHidden()
+    await expect(page).not.toHaveURL(/kampanya=/)
+
+    const saved = (await prospectsOf(client)).map(
+      (item) => item.record as ProspectItem['record'] & { campaignCode?: string },
+    )
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.campaignCode).toBe('YAZ26')
+
+    await page.getByRole('button', { name: 'Kampanya kodları' }).click()
+    await expect(bodyRows(page, 'Kampanya kodları').first()).toContainText('YAZ26')
+    const funnel = tableOf(page, 'Kampanya bazlı dönüşüm')
+    await expect(funnel.getByRole('row', { name: /YAZ26/ })).toContainText('%0')
+    await expect(funnel.getByRole('row', { name: /YAZ26/ }).getByRole('cell').nth(1)).toHaveText(
+      '1',
+    )
+  })
+})
+
 test.describe('aday detayı', () => {
   test('aşama yalnız geçerli hedeflere değişir; vazgeçmede neden istenir, vazgeçen yeniden açılır (DOM-KAY-005, DOM-KAY-030)', async ({
     page,

@@ -10,6 +10,7 @@ import { UsersSection } from './UsersSection.tsx'
 import type { SettingsEntry } from './settings-tabs.ts'
 
 // Onur: kayıt ve finans
+import { FinancePurchaseApprovalSettings } from './FinancePurchaseApprovalSettings.tsx'
 import { PaymentSettingsSection } from './PaymentSettingsSection.tsx'
 
 const ONUR_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
@@ -23,6 +24,17 @@ const ONUR_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
     module: 'finance',
     order: 28,
     component: PaymentSettingsSection,
+  },
+  // Satın alma talebinin kademeli onay eşikleri (ON-223, K-260); finans kapalıysa sekme kapanır.
+  {
+    kind: 'tab',
+    id: 'purchase-approval',
+    label: 'Satın alma onayı',
+    param: 'satin-alma-onayi',
+    roles: ['yonetici'],
+    module: 'finance',
+    order: 29,
+    component: FinancePurchaseApprovalSettings,
   },
 ]
 // Onur: kayıt ve finans sonu

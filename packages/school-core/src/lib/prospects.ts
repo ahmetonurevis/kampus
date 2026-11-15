@@ -6,6 +6,12 @@ import type { Participant } from './communication.ts'
 import { requiredText, type MakeId } from './domain.ts'
 import { learnerWords } from './enrollment-learner.ts'
 import { DomainError } from './errors.ts'
+import { dayKey } from './format.ts'
+import {
+  campaignCodeSchema,
+  requireUsableCampaign,
+  type CampaignRef,
+} from './prospect-campaigns.ts'
 import type { RequestActor } from './requests.ts'
 import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
 
@@ -46,6 +52,11 @@ export type ProspectOptions = {
   institutionType?: InstitutionType
   /** Notu yazan kişinin gösterilen adı (API: oturum kullanıcısı); eski kayıtlar `author` okur. */
   authorName?: string
+  /**
+   * Gövdedeki kampanya koduna karşılık gelen kampanya (DOM-KAY-041); servis kurumda arşivlenmemiş
+   * kampanyalar arasında arar, bulamazsa `null` verir. Kod girilmemişse okunmaz.
+   */
+  campaign?: CampaignRef | null
 }
 
 // --- Sözlük -------------------------------------------------------------------------------
@@ -231,6 +242,11 @@ export type ProspectFields = {
   guardianName?: string
   /** Veli referansında referans veren öğrenci (DOM-KAY-007). */
   referrerStudentId?: string
+  /** Adayın açılırken bağlandığı kampanya ve kodu (DOM-KAY-041); kaynak gibi değişmez. */
+  campaignId?: string
+  campaignCode?: string
+  /** `Teklif verildi` aşamasına ilk geçiş anı; huni kırılımında teklif adımı (DOM-KAY-041). */
+  offeredAt?: string
   /** İletişimi paylaşan kardeş aday (DOM-KAY-031). */
   siblingOfId?: string
   /** Gösterilen aydınlatma metninin sürümü ve anı (DOM-KAY-003, KVKK md. 10). */
@@ -305,6 +321,8 @@ export const createProspectSchema = z
       .max(200, 'En fazla 200 karakter girebilirsiniz.'),
     source: z.enum(PROSPECT_SOURCES, 'Aday kaynağını seçin.'),
     referrerStudentId: identifier('Referans veren öğrenciyi seçin.').optional(),
+    /** Kampanya kodu (DOM-KAY-041); büyük harfe çevrilir, geçerliliği işlemde denetlenir. */
+    campaignCode: campaignCodeSchema.optional(),
     /** Dil okulunda zorunlu; okulda verilmezse 18 yaş altı sayılır, `false` reddedilir. */
     minor: z.boolean('18 yaş altı olup olmadığını seçin.').optional(),
     guardianName: personName.optional(),
@@ -598,6 +616,13 @@ export function createProspect(
       )
   }
   rejectDuplicate(duplicate, data.siblingOfId !== undefined)
+  const campaign =
+    data.campaignCode === undefined
+      ? null
+      : requireUsableCampaign(
+          options.campaign?.code === data.campaignCode ? options.campaign : null,
+          dayKey(now),
+        )
   const consent = data.marketingConsent ?? {}
   const prospect: ProspectRecord = {
     id: makeId('pr'),
@@ -615,6 +640,7 @@ export function createProspect(
     minor,
     ...(minor && data.guardianName !== undefined ? { guardianName: data.guardianName } : {}),
     ...(data.referrerStudentId !== undefined ? { referrerStudentId: data.referrerStudentId } : {}),
+    ...(campaign !== null ? { campaignId: campaign.id, campaignCode: campaign.code } : {}),
     ...(data.siblingOfId !== undefined ? { siblingOfId: data.siblingOfId } : {}),
     privacyNotice: { version: data.privacyNoticeVersion, shownAt: now },
     marketingConsent: {
@@ -732,6 +758,8 @@ export function changeProspectStage(
     delete prospect.lostAt
     if (data.siblingOfId !== undefined) prospect.siblingOfId = data.siblingOfId
   }
+  // Teklif izi huni kırılımında vazgeçen adayın da teklif aldığını gösterir (DOM-KAY-041, K-290).
+  if (data.stage === 'Teklif verildi') prospect.offeredAt ??= now
   prospect.stage = data.stage
   prospect.updatedAt = now
   return prospect
@@ -876,6 +904,8 @@ export function revertProspectStage(
     }
     if (future(prospect.trialLesson?.date)) delete prospect.trialLesson
   }
+  // Yanlışlıkla verilmiş teklif sayılmaz: teklif aşamasından geri dönülünce iz kalkar (K-290).
+  if (current === 'Teklif verildi') delete prospect.offeredAt
   prospect.stageReverts = [
     ...(prospect.stageReverts ?? []),
     { from: current, to: data.stage, reason: data.reason, at: now, by: actorOf(by) },

@@ -7,12 +7,14 @@ import {
   type PurchaseRequestDetail,
 } from '@kampus/react-shared/use-finance-procurement.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
+import { PURCHASE_APPROVER_ROLE_LABELS } from '@kampus/school-core/lib/finance-purchase-approvals.ts'
 import {
   PURCHASE_REQUEST_STATUSES,
   PURCHASE_REQUEST_STATUS_LABELS,
   PURCHASE_UNIT_LABELS,
   type PurchaseRequestStatus,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -48,6 +50,9 @@ const STATUS_OPTIONS = PURCHASE_REQUEST_STATUSES.map((value) => ({
   value,
   label: PURCHASE_REQUEST_STATUS_LABELS[value],
 }))
+/** "Onayımı bekleyenler" süzgecinin tek seçeneği (ON-223, K-263); yalnız yöneticide görünür. */
+const AWAITING_MINE = 'benim'
+const AWAITING_OPTIONS = [{ value: AWAITING_MINE, label: 'Onayımı bekleyenler' }]
 const text = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null)
 const isStatus = (value: string | null): value is PurchaseRequestStatus =>
   PURCHASE_REQUEST_STATUSES.some((status) => status === value)
@@ -69,14 +74,19 @@ type Row = {
  * düzeltir, gönderir ve iptal eder (ön büro yalnız kendi talebini; K-128); onay ve ret yöneticidedir
  * (K-129). Talep ayrıntısı (`?talep=`) bütçe kalanını ve aşımı gösterir; kalanı aşan ya da bütçesiz
  * talebin gönderimi ve onayı sunucunun uyarısından sonra açık onay ister (ON-245, K-145, K-146).
- * Kademeli onay ON-223 ile gelir.
+ * Kurumun onay kademeleri varsa ayrıntı onay zincirini gösterir, karar düğmesi yalnız sıradaki
+ * onaylayanda çıkar; yönetici "Onayımı bekleyenler" süzgeciyle sırası kendisinde olanları görür
+ * (ON-223, K-260…K-263). Gönderilmiş talep taslağa geri çekilebilir.
  */
 export function FinancePurchaseRequestsSection() {
+  const { session } = useAuth()
+  const manager = session?.role === 'yonetici'
   const list = useListState('satin-alma-talepleri', { urlPrefix: 'talep_' })
   const search = useDebouncedValue(list.state.query).trim()
   const status = text(list.state.filters.status)
   const costCenterId = text(list.state.filters.costCenterId)
   const periodId = text(list.state.filters.periodId)
+  const awaitingMine = manager && text(list.state.filters.awaiting) === AWAITING_MINE
   const requests = usePurchaseRequests({
     page: list.state.page,
     pageSize: list.state.pageSize,
@@ -84,6 +94,7 @@ export function FinancePurchaseRequestsSection() {
     ...(isStatus(status) ? { status } : {}),
     ...(costCenterId ? { costCenterId } : {}),
     ...(periodId ? { periodId } : {}),
+    ...(awaitingMine ? { awaitingMyApproval: 'true' as const } : {}),
   })
   const options = usePurchaseRequestOptions()
   const panel = useDetailPanel('talep')
@@ -158,8 +169,11 @@ export function FinancePurchaseRequestsSection() {
           label: item.name,
         })),
       },
+      ...(manager
+        ? [{ key: 'awaiting', label: 'Onay', type: 'select' as const, options: AWAITING_OPTIONS }]
+        : []),
     ],
-    [options.data],
+    [options.data, manager],
   )
 
   return (
@@ -173,8 +187,8 @@ export function FinancePurchaseRequestsSection() {
             Satın alma talepleri
           </h2>
           <p className="text-sm text-muted-foreground">
-            Birimlerin gerekçeli ihtiyaçları; talep bir gider kalemine yazılır, onayı yönetici
-            verir.
+            Birimlerin gerekçeli ihtiyaçları; talep bir gider kalemine yazılır, onayı yönetici ya da
+            kurumun onay kademeleri verir.
           </p>
         </div>
         <Button onClick={() => setCreating(true)}>
@@ -236,6 +250,14 @@ function RequestDetail({ requestId }: { requestId: string }) {
   // Bütçe uyarısı (K-146) okunan sürüme bağlıdır: talep değişince uyarı kalkar, yeniden denetlenir.
   const warningKey = `${request.id}|${String(request.version)}`
   const warned = warning !== null && warning.key === warningKey
+  const withdraw = async () => {
+    const outcome = await transition.submit({
+      requestId: request.id,
+      version: request.version,
+      action: 'withdraw',
+    })
+    if (outcome.status === 'success') notify.success(`${request.number} taslağa geri çekildi.`)
+  }
   const submit = async () => {
     const outcome = await transition.submit(
       {
@@ -301,6 +323,17 @@ function RequestDetail({ requestId }: { requestId: string }) {
               </Button>
             </>
           ) : null}
+          {request.actions.withdraw ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void withdraw()}
+            >
+              <Icon name="Undo2" size={16} aria-hidden="true" />
+              Taslağa geri çek
+            </Button>
+          ) : null}
           {request.actions.cancel ? (
             <Button
               type="button"
@@ -318,6 +351,7 @@ function RequestDetail({ requestId }: { requestId: string }) {
           </p>
         ) : null}
       </section>
+      <ApprovalChain request={request} />
       <BudgetInfo request={request} />
       <section aria-labelledby="talep-kalemleri" className="grid gap-3">
         <h3 id="talep-kalemleri" className="text-base font-semibold">
@@ -392,6 +426,81 @@ function Facts({ request }: { request: PurchaseRequestDetail }) {
         ['Açan', request.requestedByName ?? '—'],
       ]}
     />
+  )
+}
+
+const STEP_DECISION_TEXT = { approved: 'Onaylandı', rejected: 'Reddedildi' } as const
+
+/**
+ * Onay zinciri (ON-223, K-261, K-262): kademeli talepte her kademenin alt sınırı, onaylayanı ve
+ * kararı (kişi, zaman, not); sıradaki kademe "Bekliyor" ile işaretlenir. Kademesiz gönderilmiş talep
+ * tek adımlı yönetici onayındadır (K-129). Taslakta kademeler gönderimde belirlenir.
+ */
+function ApprovalChain({ request }: { request: PurchaseRequestDetail }) {
+  const { approval } = request
+  if (approval.mode === 'single' && request.status !== 'submitted') return null
+  return (
+    <section aria-labelledby="talep-onay-zinciri" className="grid gap-3">
+      <h3 id="talep-onay-zinciri" className="text-base font-semibold">
+        Onay zinciri
+      </h3>
+      {approval.mode === 'single' ? (
+        <p className="text-sm text-muted-foreground">
+          Tek adımlı onay: talebi herhangi bir yönetici onaylar ya da reddeder.
+        </p>
+      ) : (
+        <ol className="grid gap-2" aria-label="Onay kademeleri">
+          {approval.steps.map((step) => {
+            const current = step.position === approval.currentPosition
+            const state = step.decision
+              ? STEP_DECISION_TEXT[step.decision]
+              : current
+                ? 'Bekliyor'
+                : request.status === 'rejected'
+                  ? 'Karar gerekmedi'
+                  : 'Sırada'
+            const approver =
+              step.approverUserId === null
+                ? PURCHASE_APPROVER_ROLE_LABELS[step.approverRole ?? 'yonetici']
+                : (step.approverName ?? 'Adı bilinmeyen kişi')
+            return (
+              <li
+                key={step.position}
+                aria-current={current ? 'step' : undefined}
+                className="grid gap-1 rounded-lg border px-3 py-2 text-sm"
+              >
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {`${String(step.position)}. kademe · ${approver}`}
+                  </span>
+                  <StatusBadge
+                    text={state}
+                    tone={
+                      step.decision === 'approved'
+                        ? 'green'
+                        : step.decision === 'rejected'
+                          ? 'red'
+                          : current
+                            ? 'amber'
+                            : 'gray'
+                    }
+                  />
+                </span>
+                <span className="text-muted-foreground">
+                  {`${money(step.minTotalCents)} ve üstü talepler`}
+                </span>
+                {step.decidedAt ? (
+                  <span className="text-muted-foreground">
+                    {`${timeText(step.decidedAt)} · ${step.decidedByName ?? '—'}`}
+                  </span>
+                ) : null}
+                {step.note ? <span className="[overflow-wrap:anywhere]">{step.note}</span> : null}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </section>
   )
 }
 

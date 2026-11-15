@@ -54,6 +54,12 @@ const awardSchema = z.object({
   mebbisRecordedDate: z.string().nullable().describe("MEBBİS'e işlendiği gün"),
   version: z.number().int().describe('`If-Match` için kayıt sürümü'),
 })
+const listedAwardSchema = awardSchema.extend({
+  endStatus: z
+    .enum(['active', 'terminated', 'revoked'])
+    .describe('Burs sürüyor, kesildi ya da gerçek dışı beyanla iptal edildi (ON-283)'),
+  endedOn: z.string().nullable().describe('Son kesme ya da iptal günü (YYYY-MM-DD)'),
+})
 
 const awardResponse = dataResponse(awardSchema)
 
@@ -172,13 +178,13 @@ export function registerFinanceScholarshipRoutes(app: FastifyInstance) {
         tags: ['finance-scholarships'],
         summary: 'Burs atamalarını listele',
         description:
-          'Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. Roller: `yonetici`, `onburo`.',
+          'Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. `endStatus` kesme ya da iptal durumudur (ON-283). Roller: `yonetici`, `onburo`.',
         querystring: z.strictObject({
           ...pageQuerySchema.shape,
           programId: z.uuid('Program kimliği geçersiz.').optional(),
         }),
         response: {
-          200: z.object({ data: z.array(awardSchema), meta: pageMetaSchema }),
+          200: z.object({ data: z.array(listedAwardSchema), meta: pageMetaSchema }),
           ...commandErrors,
         },
       },

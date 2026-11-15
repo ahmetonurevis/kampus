@@ -1,5 +1,5 @@
 {
-  "id": "3e62252c-8723-4c3b-a20d-9c4d528f8485",
+  "id": "3631c97f-7400-4fcf-bdd8-ddf5b6995257",
   "prevId": "4426e26b-3d40-4d9b-9a70-f27125ef41d5",
   "version": "7",
   "dialect": "postgresql",
@@ -9679,953 +9679,6 @@
         "fixed_assets_scrap_check": {
           "name": "fixed_assets_scrap_check",
           "value": "((\"fixed_assets\".\"status\" = 'scrapped') = (\"fixed_assets\".\"scrapped_at\" is not null))\n        and ((\"fixed_assets\".\"scrapped_at\" is null) = (\"fixed_assets\".\"scrap_date\" is null))\n        and ((\"fixed_assets\".\"scrapped_at\" is null) = (\"fixed_assets\".\"scrapped_by_user_id\" is null))\n        and ((\"fixed_assets\".\"scrapped_at\" is null) = (\"fixed_assets\".\"scrap_reason\" is null))\n        and (\"fixed_assets\".\"scrap_date\" is null or \"fixed_assets\".\"scrap_date\" >= \"fixed_assets\".\"acquisition_date\")"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.free_tuition_applications": {
-      "name": "free_tuition_applications",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "round_id": {
-          "name": "round_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "documents": {
-          "name": "documents",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "board_meeting_id": {
-          "name": "board_meeting_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "free_tuition_applications_round_idx": {
-          "name": "free_tuition_applications_round_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "round_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_applications_student_key": {
-          "name": "free_tuition_applications_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "round_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"free_tuition_applications\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_applications_meeting_idx": {
-          "name": "free_tuition_applications_meeting_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "board_meeting_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"free_tuition_applications\".\"board_meeting_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "free_tuition_applications_institution_id_institutions_id_fk": {
-          "name": "free_tuition_applications_institution_id_institutions_id_fk",
-          "tableFrom": "free_tuition_applications",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "free_tuition_applications_round_fkey": {
-          "name": "free_tuition_applications_round_fkey",
-          "tableFrom": "free_tuition_applications",
-          "tableTo": "free_tuition_rounds",
-          "columnsFrom": [
-            "institution_id",
-            "round_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "free_tuition_applications_meeting_fkey": {
-          "name": "free_tuition_applications_meeting_fkey",
-          "tableFrom": "free_tuition_applications",
-          "tableTo": "free_tuition_board_meetings",
-          "columnsFrom": [
-            "institution_id",
-            "board_meeting_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "free_tuition_applications_pkey": {
-          "name": "free_tuition_applications_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "free_tuition_applications_reason_check": {
-          "name": "free_tuition_applications_reason_check",
-          "value": "\"free_tuition_applications\".\"reason\" in ('financial_need', 'martyr_veteran_relative', 'duty_disabled_parent', 'protection_order', 'parent_loss', 'other')"
-        },
-        "free_tuition_applications_documents_check": {
-          "name": "free_tuition_applications_documents_check",
-          "value": "\"free_tuition_applications\".\"documents\" <@ array['application_form', 'income_statement', 'household_statement', 'status_document', 'report_card']::text[]"
-        },
-        "free_tuition_applications_status_check": {
-          "name": "free_tuition_applications_status_check",
-          "value": "\"free_tuition_applications\".\"status\" in ('pending', 'accepted', 'reserve', 'rejected')"
-        },
-        "free_tuition_applications_meeting_check": {
-          "name": "free_tuition_applications_meeting_check",
-          "value": "(\"free_tuition_applications\".\"status\" = 'pending') = (\"free_tuition_applications\".\"board_meeting_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.free_tuition_awards": {
-      "name": "free_tuition_awards",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "round_id": {
-          "name": "round_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "application_id": {
-          "name": "application_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "board_meeting_id": {
-          "name": "board_meeting_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "accepted_date": {
-          "name": "accepted_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contract_id": {
-          "name": "contract_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contract_ids": {
-          "name": "contract_ids",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_invoice_ids": {
-          "name": "cancelled_invoice_ids",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "refunded_invoice_ids": {
-          "name": "refunded_invoice_ids",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "waived_cents": {
-          "name": "waived_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "refund_cents": {
-          "name": "refund_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "refund_due_date": {
-          "name": "refund_due_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "refund_paid_date": {
-          "name": "refund_paid_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_iban": {
-          "name": "refund_iban",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_account_holder": {
-          "name": "refund_account_holder",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_paid_by_user_id": {
-          "name": "refund_paid_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_bank_account_id": {
-          "name": "refund_bank_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mebbis_recorded_date": {
-          "name": "mebbis_recorded_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "awarded_by_user_id": {
-          "name": "awarded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "free_tuition_awards_application_key": {
-          "name": "free_tuition_awards_application_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "application_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_awards_student_year_key": {
-          "name": "free_tuition_awards_student_year_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "academic_year",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"free_tuition_awards\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_awards_round_idx": {
-          "name": "free_tuition_awards_round_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "round_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_awards_meeting_idx": {
-          "name": "free_tuition_awards_meeting_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "board_meeting_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_awards_refund_bank_account_idx": {
-          "name": "free_tuition_awards_refund_bank_account_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "refund_bank_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"free_tuition_awards\".\"refund_bank_account_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "free_tuition_awards_refund_paid_idx": {
-          "name": "free_tuition_awards_refund_paid_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "refund_paid_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"free_tuition_awards\".\"refund_paid_date\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "free_tuition_awards_institution_id_institutions_id_fk": {
-          "name": "free_tuition_awards_institution_id_institutions_id_fk",
-          "tableFrom": "free_tuition_awards",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "free_tuition_awards_round_fkey": {
-          "name": "free_tuition_awards_round_fkey",
-          "tableFrom": "free_tuition_awards",
-          "tableTo": "free_tuition_rounds",
-          "columnsFrom": [
-            "institution_id",
-            "round_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "free_tuition_awards_application_fkey": {
-          "name": "free_tuition_awards_application_fkey",
-          "tableFrom": "free_tuition_awards",
-          "tableTo": "free_tuition_applications",
-          "columnsFrom": [
-            "institution_id",
-            "application_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "free_tuition_awards_meeting_fkey": {
-          "name": "free_tuition_awards_meeting_fkey",
-          "tableFrom": "free_tuition_awards",
-          "tableTo": "free_tuition_board_meetings",
-          "columnsFrom": [
-            "institution_id",
-            "board_meeting_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "free_tuition_awards_refund_bank_account_fkey": {
-          "name": "free_tuition_awards_refund_bank_account_fkey",
-          "tableFrom": "free_tuition_awards",
-          "tableTo": "bank_accounts",
-          "columnsFrom": [
-            "institution_id",
-            "refund_bank_account_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "free_tuition_awards_pkey": {
-          "name": "free_tuition_awards_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "free_tuition_awards_amounts_check": {
-          "name": "free_tuition_awards_amounts_check",
-          "value": "\"free_tuition_awards\".\"waived_cents\" >= 0 and \"free_tuition_awards\".\"refund_cents\" >= 0"
-        },
-        "free_tuition_awards_currency_check": {
-          "name": "free_tuition_awards_currency_check",
-          "value": "\"free_tuition_awards\".\"currency\" = 'TRY'"
-        },
-        "free_tuition_awards_refund_paid_check": {
-          "name": "free_tuition_awards_refund_paid_check",
-          "value": "(\"free_tuition_awards\".\"refund_paid_date\" is null) = (\"free_tuition_awards\".\"refund_iban\" is null)\n        and (\"free_tuition_awards\".\"refund_paid_date\" is null) = (\"free_tuition_awards\".\"refund_account_holder\" is null)\n        and (\"free_tuition_awards\".\"refund_paid_date\" is null) = (\"free_tuition_awards\".\"refund_paid_by_user_id\" is null)\n        and (\"free_tuition_awards\".\"refund_paid_date\" is null) = (\"free_tuition_awards\".\"refund_bank_account_id\" is null)\n        and (\"free_tuition_awards\".\"refund_paid_date\" is null or \"free_tuition_awards\".\"refund_cents\" > 0)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.free_tuition_board_meetings": {
-      "name": "free_tuition_board_meetings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "round_id": {
-          "name": "round_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "meeting_date": {
-          "name": "meeting_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "members": {
-          "name": "members",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "decisions": {
-          "name": "decisions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "free_tuition_board_meetings_round_idx": {
-          "name": "free_tuition_board_meetings_round_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "round_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "free_tuition_board_meetings_institution_id_institutions_id_fk": {
-          "name": "free_tuition_board_meetings_institution_id_institutions_id_fk",
-          "tableFrom": "free_tuition_board_meetings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "free_tuition_board_meetings_round_fkey": {
-          "name": "free_tuition_board_meetings_round_fkey",
-          "tableFrom": "free_tuition_board_meetings",
-          "tableTo": "free_tuition_rounds",
-          "columnsFrom": [
-            "institution_id",
-            "round_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "free_tuition_board_meetings_pkey": {
-          "name": "free_tuition_board_meetings_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "free_tuition_board_meetings_members_check": {
-          "name": "free_tuition_board_meetings_members_check",
-          "value": "jsonb_typeof(\"free_tuition_board_meetings\".\"members\") = 'array' and jsonb_array_length(\"free_tuition_board_meetings\".\"members\") between 3 and 9"
-        },
-        "free_tuition_board_meetings_decisions_check": {
-          "name": "free_tuition_board_meetings_decisions_check",
-          "value": "jsonb_typeof(\"free_tuition_board_meetings\".\"decisions\") = 'array' and jsonb_array_length(\"free_tuition_board_meetings\".\"decisions\") > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.free_tuition_rounds": {
-      "name": "free_tuition_rounds",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "teaching_start_date": {
-          "name": "teaching_start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_count": {
-          "name": "student_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "computed_quota": {
-          "name": "computed_quota",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmed_quota": {
-          "name": "confirmed_quota",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quota_confirmed_by_user_id": {
-          "name": "quota_confirmed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quota_confirmed_at": {
-          "name": "quota_confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "free_tuition_rounds_year_key": {
-          "name": "free_tuition_rounds_year_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "academic_year",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"free_tuition_rounds\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "free_tuition_rounds_institution_id_institutions_id_fk": {
-          "name": "free_tuition_rounds_institution_id_institutions_id_fk",
-          "tableFrom": "free_tuition_rounds",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "free_tuition_rounds_pkey": {
-          "name": "free_tuition_rounds_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "free_tuition_rounds_quota_check": {
-          "name": "free_tuition_rounds_quota_check",
-          "value": "(\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"quota_confirmed_at\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"student_count\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"computed_quota\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"quota_confirmed_by_user_id\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null or (\"free_tuition_rounds\".\"student_count\" >= 0\n          and \"free_tuition_rounds\".\"computed_quota\" >= 0 and \"free_tuition_rounds\".\"confirmed_quota\" >= \"free_tuition_rounds\".\"computed_quota\"))"
         }
       },
       "isRLSEnabled": false
@@ -22724,6 +21777,183 @@
         "privacy_notices_version_check": {
           "name": "privacy_notices_version_check",
           "value": "\"privacy_notices\".\"version\" = 1 and \"privacy_notices\".\"archived_at\" is null"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.campaign_codes": {
+      "name": "campaign_codes",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_cents": {
+          "name": "cost_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "campaign_codes_code_key": {
+          "name": "campaign_codes_code_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "campaign_codes_institution_id_institutions_id_fk": {
+          "name": "campaign_codes_institution_id_institutions_id_fk",
+          "tableFrom": "campaign_codes",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "campaign_codes_pkey": {
+          "name": "campaign_codes_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "campaign_codes_code_check": {
+          "name": "campaign_codes_code_check",
+          "value": "\"campaign_codes\".\"code\" ~ '^[A-Z0-9][A-Z0-9-]{2,19}$'"
+        },
+        "campaign_codes_name_check": {
+          "name": "campaign_codes_name_check",
+          "value": "char_length(\"campaign_codes\".\"name\") between 2 and 120"
+        },
+        "campaign_codes_channel_check": {
+          "name": "campaign_codes_channel_check",
+          "value": "\"campaign_codes\".\"channel\" in ('social_media', 'flyer', 'fair', 'referral', 'website', 'other')"
+        },
+        "campaign_codes_dates_check": {
+          "name": "campaign_codes_dates_check",
+          "value": "\"campaign_codes\".\"start_date\" <= \"campaign_codes\".\"end_date\""
+        },
+        "campaign_codes_cost_check": {
+          "name": "campaign_codes_cost_check",
+          "value": "\"campaign_codes\".\"cost_cents\" is null or \"campaign_codes\".\"cost_cents\" between 0 and 10000000000"
+        },
+        "campaign_codes_currency_check": {
+          "name": "campaign_codes_currency_check",
+          "value": "\"campaign_codes\".\"currency\" = 'TRY'"
         }
       },
       "isRLSEnabled": false

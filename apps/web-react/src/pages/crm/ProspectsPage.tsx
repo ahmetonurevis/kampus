@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
@@ -30,6 +30,9 @@ import {
 } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { ProspectCampaignFunnelSection } from './ProspectCampaignFunnelSection.tsx'
+import { ProspectCampaignsSection } from './ProspectCampaignsSection.tsx'
+import { campaignCodeFromParam } from './prospect-campaign-forms.ts'
 import { NEW_PROSPECT, ProspectFormPanel } from './ProspectFormPanel.tsx'
 import {
   ALL_STAGES,
@@ -61,6 +64,11 @@ const SORTABLE = sortableColumns(LIST)
 const MOBILE_COLUMNS = ['interest', 'stageLabel', 'branch']
 const ALL = 'all'
 const STAGE_COUNTS = { groupBy: 'stage' } as const
+const VIEW_PARAM = 'gorunum'
+const CAMPAIGN_VIEW = 'kampanya'
+/** `?kampanya=KOD`: yeni aday formunu kampanya koduyla açar (DOM-KAY-041). */
+const CAMPAIGN_PARAM = 'kampanya'
+const FORM_CLEARS = [CAMPAIGN_PARAM]
 
 /**
  * Aday Öğrenciler (ön büro, Vue `Crm.vue` `adaylar`): sunucu sayfalı tablo; aşama, kaynak ve
@@ -69,7 +77,9 @@ const STAGE_COUNTS = { groupBy: 'stage' } as const
  * genelindeki sayıları gösterir; kayıt tarihi aralığı sunucuda `createdAt` gününe göre süzülür
  * (aralık bellektedir, adrese yazılmaz).
  * Aday adı detay sayfasına (`/onburo/aday/:id`) götürür; "Yeni aday ekle" sağ panelde açılır
- * (`?aday-form=yeni`). CSV tüm filtrelenmiş sonucu içerir.
+ * (`?aday-form=yeni`). CSV tüm filtrelenmiş sonucu içerir. `?kampanya=KOD` formu kampanya koduyla
+ * açar; "Kampanya kodları" görünümü (`?gorunum=kampanya`) kodları ve kampanya kırılımını gösterir
+ * (DOM-KAY-041, ON-134).
  */
 export function ProspectsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -97,7 +107,35 @@ export function ProspectsPage({ page }: { page: NavPage }) {
     () => prospects.data?.rows.map((item) => prospectRow(item, type, lookups)),
     [prospects.data, type, lookups],
   )
-  const form = useDetailPanel('aday-form')
+  const form = useDetailPanel('aday-form', FORM_CLEARS)
+  const [params, setParams] = useSearchParams()
+  const campaignView = params.get(VIEW_PARAM) === CAMPAIGN_VIEW
+  const campaignParam = params.get(CAMPAIGN_PARAM)
+  const formOpen = form.selectedId !== '' || campaignParam !== null
+  const setView = (campaigns: boolean) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (campaigns) next.set(VIEW_PARAM, CAMPAIGN_VIEW)
+        else next.delete(VIEW_PARAM)
+        return next
+      },
+      { preventScrollReset: true },
+    )
+  const closeForm = () => {
+    if (form.selectedId !== '') {
+      form.close()
+      return
+    }
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete(CAMPAIGN_PARAM)
+        return next
+      },
+      { replace: true, preventScrollReset: true },
+    )
+  }
   const fetchAll = useCoreFetchAll('prospects')
   const csv = useCsvExport()
   const filters = useMemo(() => [stageFilter(type), SOURCE_FILTER, CREATED_FILTER], [type])
@@ -183,6 +221,10 @@ export function ProspectsPage({ page }: { page: NavPage }) {
         description={page.description}
         actions={
           <>
+            <Button variant="secondary" onClick={() => setView(!campaignView)}>
+              <Icon name={campaignView ? 'UsersRound' : 'Megaphone'} size={17} aria-hidden="true" />
+              {campaignView ? 'Aday listesi' : 'Kampanya kodları'}
+            </Button>
             <Button
               variant="secondary"
               onClick={download}
@@ -199,70 +241,81 @@ export function ProspectsPage({ page }: { page: NavPage }) {
           </>
         }
       />
-      <section
-        aria-labelledby="aday-tablosu"
-        className="panel overflow-hidden rounded-card border bg-surface"
-      >
-        <header className="panel-heading px-6 pt-6 pb-2">
-          <h2 id="aday-tablosu" className="text-lg font-semibold">
-            Adaylar
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {prospects.data?.total ?? 0} aday · arama ad, telefon ve ilgi alanında çalışır
-          </p>
-        </header>
-        <div className="px-6 max-[650px]:px-4">
-          <LineTabs
-            label="Aday aşaması"
-            value={stage || ALL_STAGES}
-            options={tabs}
-            onChange={(value) =>
-              list.dispatch({
-                type: 'filter',
-                key: 'stage',
-                value: value === ALL_STAGES ? '' : value,
-              })
+      {campaignView ? (
+        <>
+          <ProspectCampaignsSection />
+          <ProspectCampaignFunnelSection />
+        </>
+      ) : (
+        <section
+          aria-labelledby="aday-tablosu"
+          className="panel overflow-hidden rounded-card border bg-surface"
+        >
+          <header className="panel-heading px-6 pt-6 pb-2">
+            <h2 id="aday-tablosu" className="text-lg font-semibold">
+              Adaylar
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {prospects.data?.total ?? 0} aday · arama ad, telefon ve ilgi alanında çalışır
+            </p>
+          </header>
+          <div className="px-6 max-[650px]:px-4">
+            <LineTabs
+              label="Aday aşaması"
+              value={stage || ALL_STAGES}
+              options={tabs}
+              onChange={(value) =>
+                list.dispatch({
+                  type: 'filter',
+                  key: 'stage',
+                  value: value === ALL_STAGES ? '' : value,
+                })
+              }
+            />
+          </div>
+          <ServerDataTable
+            list={list}
+            rows={rows}
+            total={prospects.data?.total ?? 0}
+            sortable={SORTABLE}
+            filters={filters}
+            columns={columns}
+            mobileColumns={MOBILE_COLUMNS}
+            caption={`Aday ${learnerWords(type).plural}`}
+            empty="Henüz aday kaydı yok."
+            loading={prospects.isPending}
+            fetching={prospects.isFetching && !prospects.isPending}
+            error={
+              prospects.error ? (
+                <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
+              ) : undefined
+            }
+            externalActive={branchId !== ''}
+            externalLabel={`Kampüs: ${lookups.branches.get(branchId) ?? ''}`}
+            onReset={() => setBranch(ALL)}
+            toolbar={
+              <NativeSelect
+                aria-label="Kampüs filtresi"
+                value={branchId || ALL}
+                onChange={(event) => setBranch(event.target.value)}
+                className="min-h-9 text-sm"
+              >
+                <NativeSelectOption value={ALL}>Tüm kampüsler</NativeSelectOption>
+                {(branches.data ?? []).map(({ record }) => (
+                  <NativeSelectOption key={record.id} value={record.id}>
+                    {record.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
             }
           />
-        </div>
-        <ServerDataTable
-          list={list}
-          rows={rows}
-          total={prospects.data?.total ?? 0}
-          sortable={SORTABLE}
-          filters={filters}
-          columns={columns}
-          mobileColumns={MOBILE_COLUMNS}
-          caption={`Aday ${learnerWords(type).plural}`}
-          empty="Henüz aday kaydı yok."
-          loading={prospects.isPending}
-          fetching={prospects.isFetching && !prospects.isPending}
-          error={
-            prospects.error ? (
-              <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
-            ) : undefined
-          }
-          externalActive={branchId !== ''}
-          externalLabel={`Kampüs: ${lookups.branches.get(branchId) ?? ''}`}
-          onReset={() => setBranch(ALL)}
-          toolbar={
-            <NativeSelect
-              aria-label="Kampüs filtresi"
-              value={branchId || ALL}
-              onChange={(event) => setBranch(event.target.value)}
-              className="min-h-9 text-sm"
-            >
-              <NativeSelectOption value={ALL}>Tüm kampüsler</NativeSelectOption>
-              {(branches.data ?? []).map(({ record }) => (
-                <NativeSelectOption key={record.id} value={record.id}>
-                  {record.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          }
-        />
-      </section>
-      <ProspectFormPanel open={form.selectedId !== ''} onClose={form.close} />
+        </section>
+      )}
+      <ProspectFormPanel
+        open={formOpen}
+        onClose={closeForm}
+        campaignCode={campaignCodeFromParam(campaignParam)}
+      />
     </>
   )
 }

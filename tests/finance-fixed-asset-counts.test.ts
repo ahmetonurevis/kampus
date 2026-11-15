@@ -14,6 +14,7 @@ import {
   FIXED_ASSET_COUNT_MAX_ITEMS,
   normalizeFixedAssetCountCode,
   planFixedAssetCountClose,
+  planFixedAssetCountScanUndo,
   planFixedAssetCountRelocate,
   planFixedAssetCountScan,
   planFixedAssetCountStart,
@@ -290,6 +291,30 @@ test('DOM-FIN-087: yalnız açık sayım tamamlanır ya da iptal edilir (K-234)'
     assert.throws(
       () => planFixedAssetCountClose({ status }),
       isDomainError('fixed_asset_count_closed'),
+    )
+})
+
+test('DOM-FIN-087, K-286: okutma açık sayımda geri alınır; beklenen satır okunmamışa döner, listede olmayan kalkar', () => {
+  assert.equal(
+    planFixedAssetCountScanUndo({ status: 'open' }, { inScope: true, result: 'found' }),
+    'reset',
+  )
+  assert.equal(
+    planFixedAssetCountScanUndo({ status: 'open' }, { inScope: true, result: 'misplaced' }),
+    'reset',
+  )
+  assert.equal(
+    planFixedAssetCountScanUndo({ status: 'open' }, { inScope: false, result: 'found' }),
+    'remove',
+  )
+  assert.throws(
+    () => planFixedAssetCountScanUndo({ status: 'open' }, { inScope: true, result: 'pending' }),
+    isDomainError('fixed_asset_count_item_not_scanned', 'rule'),
+  )
+  for (const status of ['completed', 'cancelled'] as const)
+    assert.throws(
+      () => planFixedAssetCountScanUndo({ status }, { inScope: true, result: 'found' }),
+      isDomainError('fixed_asset_count_closed', 'rule'),
     )
 })
 

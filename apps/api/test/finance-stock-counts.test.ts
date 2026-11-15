@@ -12,7 +12,11 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { stockMovements } from '../src/db/schema/finance-inventory.ts'
-import { stockCountLines, stockCounts } from '../src/db/schema/finance-stock-counts.ts'
+import {
+  stockCountEntries,
+  stockCountLines,
+  stockCounts,
+} from '../src/db/schema/finance-stock-counts.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -154,6 +158,10 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
     call('POST', `${COUNTS}/${String(count.id)}/quantities`, cookie, body)
   const detail = async (cookie: string, count: Json) =>
     ok(await get(`${COUNTS}/${String(count.id)}`, cookie))
+  const undo = (cookie: string | null, count: Json, entryId: unknown) =>
+    call('POST', `${COUNTS}/${String(count.id)}/entries/${String(entryId)}/undo`, cookie, {})
+  const entriesOf = async (cookie: string, count: Json) =>
+    (await get(`${COUNTS}/${String(count.id)}/entries`, cookie)).json().data as Json[]
   const complete = (cookie: string, count: Json, version: unknown = count.version) =>
     call('POST', `${COUNTS}/${String(count.id)}/complete`, cookie, {}, ifMatch(version))
   const cancel = (cookie: string, count: Json, reason = 'Yanlış depo seçildi') =>
@@ -167,6 +175,7 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
       db.select().from(stockCounts).where(eq(stockCounts.institutionId, institutionId)),
       db.select().from(stockCountLines).where(eq(stockCountLines.institutionId, institutionId)),
       db.select().from(stockMovements).where(eq(stockMovements.institutionId, institutionId)),
+      db.select().from(stockCountEntries).where(eq(stockCountEntries.institutionId, institutionId)),
     ])
 
   test('DOM-FIN-081, K-228, K-229, K-230: başlatma anlık görüntü alır; okutma ve elle miktar fark raporuna, tamamlama düzeltme hareketine dönüşür', async () => {
@@ -297,6 +306,88 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
     assert.equal(
       ok(await scan(t.admin, count, { code: '8690000000017' })).itemName,
       'Tükenmez kalem',
+    )
+  })
+
+  test('DOM-FIN-081, K-285: son ya da seçili okutma geri alınır; satır kalan girişlerden hesaplanır, denetime düşer', async () => {
+    const t = await institution()
+    const count = ok(await start(t.admin, t), 201)
+    const first = ok(await scan(t.admin, count, { code: 'KAG-A4', quantity: 10 }))
+    minutesLater(5)
+    const second = ok(await scan(t.admin, count, { code: 'KAG-A4', quantity: 5 }))
+    minutesLater(10)
+    const third = ok(await scan(t.admin, count, { code: 'KAG-A4', quantity: 2 }))
+    assert.equal(third.countedQuantity, 17)
+    // Son okutma geri alınır: miktar düşer, son sayım anı önceki okutmaya döner (K-231).
+    const afterLast = ok(await undo(t.admin, count, third.entryId))
+    assert.equal(afterLast.countedQuantity, 15)
+    assert.equal(afterLast.countedAt, second.countedAt)
+    assert.equal(afterLast.entryId, third.entryId)
+    // Seçili (aradaki) okutma geri alınır.
+    const afterMiddle = ok(await undo(t.admin, count, second.entryId))
+    assert.equal(afterMiddle.countedQuantity, 10)
+    assert.equal(afterMiddle.countedAt, first.countedAt)
+    // Mükerrer geri alma reddedilir, kayıt değişmez.
+    const before = await rows(t.id)
+    assertError(await undo(t.admin, count, third.entryId), 422, 'stock_count_scan_already_undone')
+    assert.deepEqual(await rows(t.id), before)
+
+    const history = await entriesOf(t.admin, count)
+    assert.deepEqual(
+      history.map((row) => [row.kind, row.quantity, row.undoneAt !== null, row.canUndo]),
+      [
+        ['scan', 2, true, false],
+        ['scan', 5, true, false],
+        ['scan', 10, false, true],
+      ],
+    )
+    assert.equal(history[0]?.itemCode, 'KAG-A4')
+    assert.ok(typeof history[0]?.undoneByName === 'string')
+
+    // Tek okutması geri alınan kart sayılmamış olur ve rapordan düşer.
+    const pen = ok(await scan(t.admin, count, { code: '8690000000017' }))
+    assert.equal(ok(await undo(t.admin, count, pen.entryId)).countedQuantity, null)
+    const open = await detail(t.admin, count)
+    assert.deepEqual(
+      (open.counted as Json[]).map((row) => [row.itemCode, row.countedQuantity]),
+      [['KAG-A4', 10]],
+    )
+    assert.ok((open.uncounted as Json[]).some((row) => row.itemCode === '8690000000017'))
+
+    const audit = await db
+      .select({ action: auditLog.action, changes: auditLog.changes })
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, t.id))
+    assert.equal(audit.filter((row) => row.action === 'stock_count.scan_undo').length, 3)
+  })
+
+  test('DOM-FIN-081, K-285: elle yazılan miktar geri alınmaz; sonrasında elle miktar yazılan okutma ve kapanmış sayım reddedilir', async () => {
+    const t = await institution()
+    const count = ok(await start(t.admin, t), 201)
+    const scanned = ok(await scan(t.admin, count, { code: 'KAG-A4', quantity: 4 }))
+    const manual = ok(await setQuantity(t.admin, count, { itemId: t.paper.id, countedQuantity: 9 }))
+    assert.equal(typeof manual.entryId, 'string')
+    const before = await rows(t.id)
+    assertError(await undo(t.admin, count, manual.entryId), 422, 'stock_count_entry_not_scan')
+    assertError(await undo(t.admin, count, scanned.entryId), 422, 'stock_count_scan_superseded')
+    assertError(await undo(t.admin, count, randomUUID()), 404, 'not_found')
+    assertError(await undo(t.admin, count, 'x'), 400, 'validation_failed')
+    assert.deepEqual(await rows(t.id), before)
+    // Elle miktardan sonraki okutma geri alınabilir.
+    const later = ok(await scan(t.admin, count, { code: 'KAG-A4' }))
+    assert.equal(ok(await undo(t.admin, count, later.entryId)).countedQuantity, 9)
+    // Başka sayımın girişi bu sayımda yok sayılır.
+    const annexCount = ok(await start(t.admin, t, { warehouseId: t.annex.id }), 201)
+    assertError(await undo(t.admin, annexCount, later.entryId), 404, 'not_found')
+
+    const pending = ok(await scan(t.admin, count, { code: 'KAG-A4' }))
+    ok(await complete(t.admin, count, (await detail(t.admin, count)).version))
+    const closed = await rows(t.id)
+    assertError(await undo(t.admin, count, pending.entryId), 422, 'stock_count_closed')
+    assert.deepEqual(await rows(t.id), closed)
+    assert.equal(
+      (await entriesOf(t.admin, count)).every((row) => row.canUndo === false),
+      true,
     )
   })
 
@@ -476,13 +567,19 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
       assertError(await get(COUNTS, cookie), 403, 'forbidden')
       assertError(await get(`${COUNTS}/${String(count.id)}`, cookie), 403, 'forbidden')
       assertError(await scan(cookie, count, { code: 'KAG-A4' }), 403, 'forbidden')
+      assertError(await get(`${COUNTS}/${String(count.id)}/entries`, cookie), 403, 'forbidden')
+      assertError(await undo(cookie, count, randomUUID()), 403, 'forbidden')
     }
+    assertError(await undo(null, count, randomUUID()), 401)
     const front = await member(t.id, 'onburo')
     assert.equal((ok(await get(COUNTS, front)) as unknown as Json[]).length, 1)
     const seen = await detail(front, count)
     assert.deepEqual(seen.actions, { count: true, complete: false, cancel: false })
-    ok(await scan(front, count, { code: 'KAG-A4' }))
+    const frontScan = ok(await scan(front, count, { code: 'KAG-A4' }))
     ok(await setQuantity(front, count, { itemId: t.pen.id, countedQuantity: 6 }))
+    // Ön büro okutma geçmişini okur ve okutmayı geri alır (K-285).
+    assert.equal((await entriesOf(front, count)).length, 2)
+    ok(await undo(front, count, frontScan.entryId))
     const before = await rows(t.id)
     assertError(await start(front, t, { warehouseId: t.annex.id }), 403, 'forbidden')
     assertError(await complete(front, count), 403, 'forbidden')
@@ -500,6 +597,12 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
       'module_disabled',
     )
     assertError(await scan(closed.admin, someCount, { code: 'X' }), 403, 'module_disabled')
+    assertError(await undo(closed.admin, someCount, randomUUID()), 403, 'module_disabled')
+    assertError(
+      await get(`${COUNTS}/${String(someCount.id)}/entries`, closed.admin),
+      403,
+      'module_disabled',
+    )
     assertError(await complete(closed.admin, someCount), 403, 'module_disabled')
   })
 
@@ -507,7 +610,7 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
     const a = await institution()
     const b = await institution()
     const bCount = ok(await start(b.admin, b), 201)
-    ok(await scan(b.admin, bCount, { code: 'KAG-A4', quantity: 2 }))
+    const bScan = ok(await scan(b.admin, bCount, { code: 'KAG-A4', quantity: 2 }))
     const bOnly = ok(
       await call('POST', ITEMS, b.admin, {
         code: 'YALNIZ-B',
@@ -529,6 +632,8 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
     )
     assertError(await complete(a.admin, bCount), 404, 'not_found')
     assertError(await cancel(a.admin, bCount), 404, 'not_found')
+    assertError(await get(`${bCountUrl}/entries`, a.admin), 404, 'not_found')
+    assertError(await undo(a.admin, bCount, bScan.entryId), 404, 'not_found')
     assertError(
       await start(a.admin, a, { warehouseId: b.main.id }),
       422,
@@ -546,6 +651,9 @@ describe('DOM-FIN-081: stok sayımı uçları', () => {
       422,
       'stock_item_not_found',
     )
+    // B okutması A'nın sayımında da yoktur.
+    assertError(await undo(a.admin, aCount, bScan.entryId), 404, 'not_found')
+    assert.deepEqual(await entriesOf(a.admin, aCount), [])
     assert.deepEqual(await rows(b.id), before)
 
     const listOf = async () =>

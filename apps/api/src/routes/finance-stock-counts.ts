@@ -19,19 +19,25 @@ import {
   getStockCountFor,
   listStockCountsFor,
   scanStockCountCommand,
+  listStockCountEntriesFor,
   setStockCountLineCommand,
   startStockCountCommand,
+  undoStockCountScanCommand,
 } from '../services/finance-stock-counts.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
   completeStockCountBody,
+  stockCountEntryListQuery,
+  stockCountEntryListResponse,
+  stockCountEntryParams,
   stockCountLineResponse,
   stockCountListQuery,
   stockCountListResponse,
   stockCountParams,
   stockCountResponse,
+  undoStockCountScanBody,
 } from './finance-stock-counts.schemas.ts'
 
 /**
@@ -144,7 +150,7 @@ export function registerFinanceStockCountRoutes(app: FastifyInstance) {
         operationId: 'scanStockCount',
         tags,
         summary: 'Sayıma kart okut',
-        description: `Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara \`quantity\` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 \`stock_count_item_not_found\`; pasif kart 422 \`stock_item_inactive\`. ${CLOSED} \`Idempotency-Key\` zorunlu: aynı okutma iki kez sayılmaz. ${READERS}`,
+        description: `Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara \`quantity\` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Her okutma sayım girişi olarak yazılır, yanıttaki \`entryId\` ile geri alınabilir (K-285). Kod bulunmazsa 422 \`stock_count_item_not_found\`; pasif kart 422 \`stock_item_inactive\`. ${CLOSED} \`Idempotency-Key\` zorunlu: aynı okutma iki kez sayılmaz. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: stockCountParams,
         body: stockCountScanSchema,
@@ -182,6 +188,57 @@ export function registerFinanceStockCountRoutes(app: FastifyInstance) {
         contextOf(request),
         request.params.countId,
         request.commandInput,
+        options(request, 'optional').idempotency,
+      )
+      return stockCountLineResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.get(
+    `${COUNTS}/:countId/entries`,
+    {
+      preValidation: guarded(STOCK_COUNT_READ_ROLES),
+      schema: {
+        operationId: 'listStockCountEntries',
+        tags,
+        summary: 'Sayım girişleri (okutma geçmişi)',
+        description: `Okutmalar (\`scan\`, eklenen miktar) ve elle yazılan miktarlar (\`set\`), en yeni önce; kart, giren kişi, geri alma izi ve okutmanın şimdi geri alınıp alınamayacağı (\`canUndo\`, K-285). \`kind\` ile süzülür. Olmayan ya da başka kurumun sayımı 404. ${READERS}`,
+        params: stockCountParams,
+        querystring: stockCountEntryListQuery,
+        response: { 200: stockCountEntryListResponse, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize, kind } = request.query
+      const { items, total } = await listStockCountEntriesFor(
+        contextOf(request),
+        request.params.countId,
+        { page, pageSize, kind },
+      )
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.post(
+    `${COUNTS}/:countId/entries/:entryId/undo`,
+    {
+      preValidation: [...guarded(STOCK_COUNT_ENTRY_ROLES), rejectIfMatch(), captureInput()],
+      schema: {
+        operationId: 'undoStockCountScan',
+        tags,
+        summary: 'Okutmayı geri al',
+        description: `Açık sayımda okutmanın eklediği miktar satırdan düşülür; satırın sayılan miktarı ve son sayım anı kalan girişlerden yeniden hesaplanır, hiç giriş kalmazsa kalem sayılmamış olur. Okutma silinmez, geri alındı izi taşır ve denetim kaydına düşer (K-285). Elle yazılan miktar geri alınmaz (422 \`stock_count_entry_not_scan\`; satırdan düzeltilir); geri alınmış okutma 422 \`stock_count_scan_already_undone\`; okutmadan sonra kartın miktarı elle yazıldıysa 422 \`stock_count_scan_superseded\`. Olmayan ya da başka sayımın girişi 404. ${CLOSED} ${READERS}`,
+        headers: commandHeadersSchema('optional', { ifMatch: false }),
+        params: stockCountEntryParams,
+        body: undoStockCountScanBody,
+        response: { 200: stockCountLineResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await undoStockCountScanCommand(
+        contextOf(request),
+        request.params.countId,
+        request.params.entryId,
         options(request, 'optional').idempotency,
       )
       return stockCountLineResponse.parse(sendBody(reply, result))

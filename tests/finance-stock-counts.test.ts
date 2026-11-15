@@ -15,13 +15,17 @@ import {
   planStockCountCancel,
   planStockCountComplete,
   planStockCountLineSet,
+  canUndoStockCountEntry,
+  countedStateFromEntries,
   findStockItemByScan,
   planStockCountScan,
+  planStockCountScanUndo,
   planStockCountStart,
   stockCountActions,
   stockCountReport,
   stockCountReportCsv,
   type CountMovement,
+  type StockCountEntry,
   type StockCountLine,
 } from '../packages/school-core/src/lib/finance-stock-counts.ts'
 
@@ -493,4 +497,101 @@ test('DOM-FIN-081: fark raporu CSV sayılan ve sayılmayan kalemleri kaçışlı
   assert.ok(rows[0]?.startsWith('"Kod";"Ürün";"Birim";"Sistem (anlık görüntü)"'))
   assert.equal(rows[1], `"KAG-A4";"'=A4 kâğıt";"paket";10;0;10;7;-3;12,50;-37,50;"Eksik"`)
   assert.equal(rows[2], `"KALEM";"Kalem";"adet";2;;;;;;;"Sayılmadı"`)
+})
+
+const entry = (
+  sequence: number,
+  kind: 'scan' | 'set',
+  quantity: number | null,
+  extra: Partial<StockCountEntry> = {},
+): StockCountEntry => ({
+  id: `e${String(sequence)}`,
+  itemId: PAPER,
+  sequence,
+  kind,
+  quantity,
+  enteredAt: `2026-10-06T08:${String(10 + sequence)}:00.000Z`,
+  enteredByUserId: sequence % 2 === 0 ? 'u-b' : 'u-a',
+  undoneAt: null,
+  ...extra,
+})
+
+test('DOM-FIN-081, K-285: satırın sayılan miktarı geri alınmamış girişlerin sırayla uygulanmasıdır', () => {
+  assert.deepEqual(countedStateFromEntries([]), {
+    countedQuantity: null,
+    countedAt: null,
+    countedByUserId: null,
+  })
+  // Sıra karışık gelse de sıra numarasıyla uygulanır; elle giriş miktarı yazar, okutma ekler.
+  const entries = [entry(3, 'scan', 2), entry(1, 'scan', 5), entry(2, 'set', 10)]
+  assert.deepEqual(countedStateFromEntries(entries), {
+    countedQuantity: 12,
+    countedAt: '2026-10-06T08:13:00.000Z',
+    countedByUserId: 'u-a',
+  })
+  // Geri alınan okutma sayılmaz; son geçerli giriş sayım anıdır.
+  const undone = [entry(1, 'scan', 5), entry(2, 'scan', 2, { undoneAt: STARTED })]
+  assert.deepEqual(countedStateFromEntries(undone), {
+    countedQuantity: 5,
+    countedAt: '2026-10-06T08:11:00.000Z',
+    countedByUserId: 'u-a',
+  })
+  // "Sayılmadı" elle girişi satırı boşaltır; sonraki okutma sıfırdan sayar.
+  assert.equal(
+    countedStateFromEntries([entry(1, 'scan', 5), entry(2, 'set', null)]).countedQuantity,
+    null,
+  )
+  assert.equal(
+    countedStateFromEntries([entry(1, 'scan', 5), entry(2, 'set', null), entry(3, 'scan', 1)])
+      .countedQuantity,
+    1,
+  )
+})
+
+test('DOM-FIN-081, K-285: okutma geri alınır; son okutma ya da aradaki okutma satırı yeniden hesaplar', () => {
+  const entries = [entry(1, 'scan', 1), entry(2, 'scan', 16), entry(3, 'scan', 3)]
+  // Son okutma: miktar düşer, sayım anı önceki okutmaya döner.
+  assert.deepEqual(planStockCountScanUndo(OPEN, entries[2]!, entries), {
+    countedQuantity: 17,
+    countedAt: '2026-10-06T08:12:00.000Z',
+    countedByUserId: 'u-b',
+  })
+  // Aradaki okutma: miktar düşer, sayım anı son okutmadır.
+  assert.deepEqual(planStockCountScanUndo(OPEN, entries[1]!, entries), {
+    countedQuantity: 4,
+    countedAt: '2026-10-06T08:13:00.000Z',
+    countedByUserId: 'u-a',
+  })
+  // Tek okutma geri alınınca kalem sayılmamış olur.
+  assert.equal(planStockCountScanUndo(OPEN, entries[0]!, [entries[0]!]).countedQuantity, null)
+})
+
+test('DOM-FIN-081, K-285: elle miktar, geri alınmış okutma, sonrasında elle yazılan miktar ve kapalı sayım geri almayı reddeder', () => {
+  const scan = entry(1, 'scan', 4)
+  const manual = entry(2, 'set', 9)
+  assert.throws(
+    () => planStockCountScanUndo(OPEN, manual, [scan, manual]),
+    ruleCode('stock_count_entry_not_scan'),
+  )
+  assert.throws(
+    () => planStockCountScanUndo(OPEN, scan, [scan, manual]),
+    ruleCode('stock_count_scan_superseded'),
+  )
+  const undone = { ...scan, undoneAt: STARTED }
+  assert.throws(
+    () => planStockCountScanUndo(OPEN, undone, [undone]),
+    ruleCode('stock_count_scan_already_undone'),
+  )
+  for (const status of ['completed', 'cancelled'] as const)
+    assert.throws(
+      () => planStockCountScanUndo({ status }, scan, [scan]),
+      ruleCode('stock_count_closed'),
+    )
+  // Ekran düğmesi aynı kuralı söyler.
+  assert.equal(canUndoStockCountEntry(OPEN, scan, null), true)
+  assert.equal(canUndoStockCountEntry(OPEN, scan, 2), false)
+  assert.equal(canUndoStockCountEntry(OPEN, entry(3, 'scan', 1), 2), true)
+  assert.equal(canUndoStockCountEntry(OPEN, manual, null), false)
+  assert.equal(canUndoStockCountEntry(OPEN, undone, null), false)
+  assert.equal(canUndoStockCountEntry({ status: 'completed' }, scan, null), false)
 })

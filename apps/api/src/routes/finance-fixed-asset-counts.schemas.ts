@@ -75,6 +75,18 @@ export const scanResponse = dataResponse(
   }),
 )
 
+export const undoScanResponse = dataResponse(
+  z.object({
+    itemId: z.string(),
+    removed: z
+      .boolean()
+      .describe(
+        '`true`: listede olmayan demirbaşın satırı kaldırıldı (arşivlendi); `false`: satır okunmamışa döndü',
+      ),
+    summary: summarySchema,
+  }),
+)
+
 const placeSchema = z.object({
   campusId: z.string().nullable(),
   campusName: z.string().nullable(),

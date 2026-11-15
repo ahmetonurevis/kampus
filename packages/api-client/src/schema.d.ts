@@ -5799,7 +5799,7 @@ export interface paths {
         put?: never;
         /**
          * Sayıma kart okut
-         * @description Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         * @description Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Her okutma sayım girişi olarak yazılır, yanıttaki `entryId` ile geri alınabilir (K-285). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
          */
         post: operations["scanStockCount"];
         delete?: never;
@@ -5822,6 +5822,46 @@ export interface paths {
          * @description Kartın sayılan miktarını doğrudan yazar (0–1.000.000); `null` sayımı geri alır, kalem "sayılmadı" olur (K-229). Kart bu kurumda yoksa 422 `stock_item_not_found`; anlık görüntüde olmayan pasif kart sayılmaz. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
          */
         post: operations["setStockCountQuantity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sayım girişleri (okutma geçmişi)
+         * @description Okutmalar (`scan`, eklenen miktar) ve elle yazılan miktarlar (`set`), en yeni önce; kart, giren kişi, geri alma izi ve okutmanın şimdi geri alınıp alınamayacağı (`canUndo`, K-285). `kind` ile süzülür. Olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         */
+        get: operations["listStockCountEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stock-counts/{countId}/entries/{entryId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Okutmayı geri al
+         * @description Açık sayımda okutmanın eklediği miktar satırdan düşülür; satırın sayılan miktarı ve son sayım anı kalan girişlerden yeniden hesaplanır, hiç giriş kalmazsa kalem sayılmamış olur. Okutma silinmez, geri alındı izi taşır ve denetim kaydına düşer (K-285). Elle yazılan miktar geri alınmaz (422 `stock_count_entry_not_scan`; satırdan düzeltilir); geri alınmış okutma 422 `stock_count_scan_already_undone`; okutmadan sonra kartın miktarı elle yazıldıysa 422 `stock_count_scan_superseded`. Olmayan ya da başka sayımın girişi 404. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.
+         */
+        post: operations["undoStockCountScan"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6106,6 +6146,26 @@ export interface paths {
          * @description Tamamlanmış sayımda yanlış konumda bulunan demirbaşın kampüsü ve konumu okutulduğu yere yazılır; durum ve zimmet değişmez (K-235). Tamamlanmamış sayım 422 `fixed_asset_count_not_completed`, yanlış konumda olmayan satır 422 `fixed_asset_count_item_not_misplaced`, düzeltilmiş satır 422 `fixed_asset_count_item_relocated`, hurdaya ayrılmış demirbaş 422 `fixed_asset_scrapped`, artık olmayan kampüs 422 `fixed_asset_campus_not_found`. `If-Match` satırın sürümüdür. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         post: operations["relocateFixedAssetCountItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/fixed-asset-counts/{countId}/items/{itemId}/undo-scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Okutmayı geri al
+         * @description Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (`pending`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-286). Kapanmış sayım 422 `fixed_asset_count_closed`, okunmamış satır 422 `fixed_asset_count_item_not_scanned`; sürüm tutmazsa 409 `version_conflict`. `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). Olmayan ya da başka kurumun satırı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         */
+        post: operations["undoFixedAssetCountScan"];
         delete?: never;
         options?: never;
         head?: never;
@@ -62570,6 +62630,8 @@ export interface operations {
                             /** @description Sayılan miktar; boşsa sayılmadı */
                             countedQuantity: number | null;
                             countedAt: string | null;
+                            /** @description Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan "sayılmadı" girişinde boş */
+                            entryId: string | null;
                         };
                     };
                 };
@@ -62689,6 +62751,253 @@ export interface operations {
                             /** @description Sayılan miktar; boşsa sayılmadı */
                             countedQuantity: number | null;
                             countedAt: string | null;
+                            /** @description Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan "sayılmadı" girişinde boş */
+                            entryId: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStockCountEntries: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Giriş türü */
+                kind?: "scan" | "set";
+            };
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Sayım içindeki sıra; girişler bu sırayla uygulanır */
+                            sequence: number;
+                            /**
+                             * @description `scan` okutma (eklenen miktar), `set` elle yazılan satır miktarı
+                             * @enum {string}
+                             */
+                            kind: "scan" | "set";
+                            /** @description Okutmada eklenen miktar; elle girişte yeni miktar, boşsa "sayılmadı" */
+                            quantity: number | null;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            enteredAt: string;
+                            enteredByName: string | null;
+                            /** @description Okutma geri alındıysa anı */
+                            undoneAt: string | null;
+                            undoneByName: string | null;
+                            /** @description Oturumdaki kullanıcı bu okutmayı şimdi geri alabilir: açık sayım, geri alınmamış okutma, sonrasında elle miktar yok */
+                            canUndo: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    undoStockCountScan: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                countId: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            countId: string;
+                            itemId: string;
+                            itemCode: string;
+                            itemName: string;
+                            /** @enum {string} */
+                            unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter";
+                            /** @description Anlık görüntüdeki miktar (sonradan sayılan kartta 0) */
+                            systemQuantity: number;
+                            /** @description Sayılan miktar; boşsa sayılmadı */
+                            countedQuantity: number | null;
+                            countedAt: string | null;
+                            /** @description Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan "sayılmadı" girişinde boş */
+                            entryId: string | null;
                         };
                     };
                 };
@@ -64885,6 +65194,129 @@ export interface operations {
                             relocatedAt: string | null;
                             /** @description `If-Match` için sürüm (konum düzeltmesi) */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    undoFixedAssetCountScan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                countId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            itemId: string;
+                            /** @description `true`: listede olmayan demirbaşın satırı kaldırıldı (arşivlendi); `false`: satır okunmamışa döndü */
+                            removed: boolean;
+                            /** @description Satırlardan sayılan özet */
+                            summary: {
+                                /** @description Beklenen listedeki demirbaş sayısı */
+                                expected: number;
+                                /** @description Kayıtlı yerinde bulunan */
+                                found: number;
+                                /** @description Başka yerde bulunan */
+                                misplaced: number;
+                                /** @description Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan */
+                                pending: number;
+                                /** @description Beklenen listede olmayan, okutulan kurum demirbaşı */
+                                extra: number;
+                            };
                         };
                     };
                 };

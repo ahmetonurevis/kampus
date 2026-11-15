@@ -135926,7 +135926,7 @@
         "tags": [
           "finance-inventory"
         ],
-        "description": "Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "description": "Okunan kod (barkod okuyucu klavye gibi yazar; büyük harfe çevrilir) önce kartın barkoduyla, sonra kart koduyla eşleşir (K-284); sayılan miktara `quantity` (varsayılan 1) eklenir; anlık görüntüde olmayan kart için satır açılır (K-229). Her okutma sayım girişi olarak yazılır, yanıttaki `entryId` ile geri alınabilir (K-285). Kod bulunmazsa 422 `stock_count_item_not_found`; pasif kart 422 `stock_item_inactive`. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. `Idempotency-Key` zorunlu: aynı okutma iki kez sayılmaz. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -136034,6 +136034,13 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "entryId": {
+                          "description": "Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan \"sayılmadı\" girişinde boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -136044,7 +136051,8 @@
                         "unit",
                         "systemQuantity",
                         "countedQuantity",
-                        "countedAt"
+                        "countedAt",
+                        "entryId"
                       ],
                       "additionalProperties": false
                     }
@@ -136262,6 +136270,13 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "entryId": {
+                          "description": "Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan \"sayılmadı\" girişinde boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -136272,7 +136287,493 @@
                         "unit",
                         "systemQuantity",
                         "countedQuantity",
-                        "countedAt"
+                        "countedAt",
+                        "entryId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}/entries": {
+      "get": {
+        "operationId": "listStockCountEntries",
+        "summary": "Sayım girişleri (okutma geçmişi)",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Okutmalar (`scan`, eklenen miktar) ve elle yazılan miktarlar (`set`), en yeni önce; kart, giren kişi, geri alma izi ve okutmanın şimdi geri alınıp alınamayacağı (`canUndo`, K-285). `kind` ile süzülür. Olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "scan",
+                "set"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Giriş türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "sequence": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Sayım içindeki sıra; girişler bu sırayla uygulanır"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "scan",
+                              "set"
+                            ],
+                            "description": "`scan` okutma (eklenen miktar), `set` elle yazılan satır miktarı"
+                          },
+                          "quantity": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Okutmada eklenen miktar; elle girişte yeni miktar, boşsa \"sayılmadı\""
+                          },
+                          "itemId": {
+                            "type": "string"
+                          },
+                          "itemCode": {
+                            "type": "string"
+                          },
+                          "itemName": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "piece",
+                              "pack",
+                              "box",
+                              "kilogram",
+                              "liter",
+                              "meter"
+                            ]
+                          },
+                          "enteredAt": {
+                            "type": "string"
+                          },
+                          "enteredByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "undoneAt": {
+                            "description": "Okutma geri alındıysa anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "undoneByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "canUndo": {
+                            "type": "boolean",
+                            "description": "Oturumdaki kullanıcı bu okutmayı şimdi geri alabilir: açık sayım, geri alınmamış okutma, sonrasında elle miktar yok"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "sequence",
+                          "kind",
+                          "quantity",
+                          "itemId",
+                          "itemCode",
+                          "itemName",
+                          "unit",
+                          "enteredAt",
+                          "enteredByName",
+                          "undoneAt",
+                          "undoneByName",
+                          "canUndo"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stock-counts/{countId}/entries/{entryId}/undo": {
+      "post": {
+        "operationId": "undoStockCountScan",
+        "summary": "Okutmayı geri al",
+        "tags": [
+          "finance-inventory"
+        ],
+        "description": "Açık sayımda okutmanın eklediği miktar satırdan düşülür; satırın sayılan miktarı ve son sayım anı kalan girişlerden yeniden hesaplanır, hiç giriş kalmazsa kalem sayılmamış olur. Okutma silinmez, geri alındı izi taşır ve denetim kaydına düşer (K-285). Elle yazılan miktar geri alınmaz (422 `stock_count_entry_not_scan`; satırdan düzeltilir); geri alınmış okutma 422 `stock_count_scan_already_undone`; okutmadan sonra kartın miktarı elle yazıldıysa 422 `stock_count_scan_superseded`. Olmayan ya da başka sayımın girişi 404. Tamamlanan ya da iptal edilen sayım değişmez (422 `stock_count_closed`); olmayan ya da başka kurumun sayımı 404. Roller: `yonetici`, `onburo` (K-228). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "entryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "countId": {
+                          "type": "string"
+                        },
+                        "itemId": {
+                          "type": "string"
+                        },
+                        "itemCode": {
+                          "type": "string"
+                        },
+                        "itemName": {
+                          "type": "string"
+                        },
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "piece",
+                            "pack",
+                            "box",
+                            "kilogram",
+                            "liter",
+                            "meter"
+                          ]
+                        },
+                        "systemQuantity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Anlık görüntüdeki miktar (sonradan sayılan kartta 0)"
+                        },
+                        "countedQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sayılan miktar; boşsa sayılmadı"
+                        },
+                        "countedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entryId": {
+                          "description": "Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan \"sayılmadı\" girişinde boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "countId",
+                        "itemId",
+                        "itemCode",
+                        "itemName",
+                        "unit",
+                        "systemQuantity",
+                        "countedQuantity",
+                        "countedAt",
+                        "entryId"
                       ],
                       "additionalProperties": false
                     }
@@ -141243,6 +141744,230 @@
                         "scannedAt",
                         "relocatedAt",
                         "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/fixed-asset-counts/{countId}/items/{itemId}/undo-scan": {
+      "post": {
+        "operationId": "undoFixedAssetCountScan",
+        "summary": "Okutmayı geri al",
+        "tags": [
+          "finance-fixed-assets"
+        ],
+        "description": "Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (`pending`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-286). Kapanmış sayım 422 `fixed_asset_count_closed`, okunmamış satır 422 `fixed_asset_count_item_not_scanned`; sürüm tutmazsa 409 `version_conflict`. `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). Olmayan ya da başka kurumun satırı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "countId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "itemId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "itemId": {
+                          "type": "string"
+                        },
+                        "removed": {
+                          "type": "boolean",
+                          "description": "`true`: listede olmayan demirbaşın satırı kaldırıldı (arşivlendi); `false`: satır okunmamışa döndü"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "expected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listedeki demirbaş sayısı"
+                            },
+                            "found": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kayıtlı yerinde bulunan"
+                            },
+                            "misplaced": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Başka yerde bulunan"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Okunmayan beklenen demirbaş; tamamlanmış sayımda bulunamayan"
+                            },
+                            "extra": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Beklenen listede olmayan, okutulan kurum demirbaşı"
+                            }
+                          },
+                          "required": [
+                            "expected",
+                            "found",
+                            "misplaced",
+                            "pending",
+                            "extra"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Satırlardan sayılan özet"
+                        }
+                      },
+                      "required": [
+                        "itemId",
+                        "removed",
+                        "summary"
                       ],
                       "additionalProperties": false
                     }

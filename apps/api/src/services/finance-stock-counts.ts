@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import type { StockItemRef, StockWarehouseRef } from '@kampus/school-core/lib/finance-inventory.ts'
 import {
+  canUndoStockCountEntry,
   planStockCountCancel,
   planStockCountComplete,
   planStockCountLineSet,
   planStockCountScan,
+  planStockCountScanUndo,
   planStockCountStart,
   stockCountActions,
   stockCountReport,
@@ -28,6 +30,13 @@ import { purchaseActorNames } from '../db/finance-purchase-requests.ts'
 import {
   closeStockCount,
   findStockCount,
+  findStockCountEntry,
+  insertStockCountEntry,
+  listStockCountEntries,
+  loadItemCountEntries,
+  loadLastManualSequences,
+  markStockCountEntryUndone,
+  writeStockCountLineState,
   freezeStockCountLines,
   insertStockCount,
   listStockCounts,
@@ -55,6 +64,7 @@ import { auditWork } from './task-work.ts'
 
 const COUNT = 'stock_counts'
 const LINE = 'stock_count_lines'
+const ENTRY = 'stock_count_entries'
 
 const field = (input: unknown, key: string): string | undefined => {
   if (typeof input !== 'object' || input === null) return undefined
@@ -281,8 +291,14 @@ async function loadCount(tx: Database, ctx: ServiceContext, countId: string) {
   return { count, lines, lineByItem: new Map(lines.map((line) => [line.itemId, line])) }
 }
 
-/** Okutulan ya da elle girilen satırın yanıtı. */
-async function lineBody(tx: Database, ctx: ServiceContext, countId: string, itemId: string) {
+/** Okutulan ya da elle girilen satırın yanıtı; `entryId` yazılan sayım girişidir (K-285). */
+async function lineBody(
+  tx: Database,
+  ctx: ServiceContext,
+  countId: string,
+  itemId: string,
+  entryId: string | null,
+) {
   const [lines, items] = await Promise.all([
     loadStockCountLines(tx, ctx.institutionId, countId),
     loadStockItemsByIds(tx, ctx.institutionId, [itemId]),
@@ -299,6 +315,7 @@ async function lineBody(tx: Database, ctx: ServiceContext, countId: string, item
       systemQuantity: line?.systemQuantity ?? 0,
       countedQuantity: line?.countedQuantity ?? null,
       countedAt: line?.countedAt ?? null,
+      entryId,
     },
   }
 }
@@ -343,10 +360,20 @@ export function scanStockCountCommand(
           countedByUserId: ctx.actor.userId,
           now: ctx.now,
         })
+        const entryId = randomUUID()
+        await insertStockCountEntry(tx, ctx.institutionId, {
+          id: entryId,
+          countId,
+          itemId: result.itemId,
+          kind: 'scan',
+          quantity: result.scannedQuantity,
+          userId: ctx.actor.userId,
+          now: ctx.now,
+        })
         await auditWork(tx, ctx, 'stock_count.scan', { type: LINE, id: lineId }, [
           'countedQuantity',
         ])
-        body = await lineBody(tx, ctx, countId, result.itemId)
+        body = await lineBody(tx, ctx, countId, result.itemId, entryId)
       },
     },
     () => ({ statusCode: 200, body }),
@@ -388,6 +415,7 @@ export function setStockCountLineCommand(
       },
       after: async (tx, result) => {
         // Hiç sayılmamış, anlık görüntüde olmayan kartı "sayılmadı" yapmak satır açmaz.
+        let entryId: string | null = null
         if (!(result.isNew && result.countedQuantity === null)) {
           await writeStockCountLine(tx, ctx.institutionId, {
             countId,
@@ -397,11 +425,123 @@ export function setStockCountLineCommand(
             countedByUserId: ctx.actor.userId,
             now: ctx.now,
           })
+          entryId = randomUUID()
+          await insertStockCountEntry(tx, ctx.institutionId, {
+            id: entryId,
+            countId,
+            itemId: result.itemId,
+            kind: 'set',
+            quantity: result.countedQuantity,
+            userId: ctx.actor.userId,
+            now: ctx.now,
+          })
           await auditWork(tx, ctx, 'stock_count.line', { type: LINE, id: lineId }, [
             'countedQuantity',
           ])
         }
-        body = await lineBody(tx, ctx, countId, result.itemId)
+        body = await lineBody(tx, ctx, countId, result.itemId, entryId)
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/**
+ * Sayım girişleri (K-285): okutmalar ve elle yazılan miktarlar, en yeni önce; kart, kişi, geri
+ * alma izi ve okutmanın şimdi geri alınıp alınamayacağı.
+ */
+export async function listStockCountEntriesFor(
+  ctx: ServiceContext,
+  countId: string,
+  query: { page: number; pageSize: number; kind?: 'scan' | 'set' | undefined },
+) {
+  const count = await findStockCount(ctx.db, ctx.institutionId, countId)
+  if (count === null) throw new NotFoundError()
+  const { items, total } = await listStockCountEntries(ctx.db, ctx.institutionId, countId, query)
+  const itemIds = items.map((entry) => entry.itemId)
+  const [cards, names, lastManual] = await Promise.all([
+    loadStockItemsByIds(ctx.db, ctx.institutionId, itemIds),
+    purchaseActorNames(
+      ctx.db,
+      ctx.institutionId,
+      items.flatMap((entry) => [
+        entry.enteredByUserId,
+        ...(entry.undoneByUserId === null ? [] : [entry.undoneByUserId]),
+      ]),
+    ),
+    loadLastManualSequences(ctx.db, ctx.institutionId, countId, itemIds),
+  ])
+  const cardById = byId(cards)
+  const mayCount = stockCountActions(ctx.actor.role).count
+  return {
+    items: items.map((entry) => ({
+      id: entry.id,
+      sequence: entry.sequence,
+      kind: entry.kind,
+      quantity: entry.quantity,
+      ...itemView(cardById, entry.itemId),
+      itemId: entry.itemId,
+      enteredAt: entry.enteredAt,
+      enteredByName: names.get(entry.enteredByUserId) ?? null,
+      undoneAt: entry.undoneAt,
+      undoneByName:
+        entry.undoneByUserId === null ? null : (names.get(entry.undoneByUserId) ?? null),
+      canUndo:
+        mayCount && canUndoStockCountEntry(count, entry, lastManual.get(entry.itemId) ?? null),
+    })),
+    total,
+  }
+}
+
+/**
+ * Okutmayı geri alma (K-285): yalnız açık sayımda ve geri alınmamış okutmada; okutmadan sonra
+ * kartın miktarı elle yazıldıysa geri alınmaz. Satırın sayılan miktarı ve son sayım anı kalan
+ * girişlerden yeniden hesaplanır; okutma silinmez. Denetim kaydına alan adları yazılır. 200.
+ */
+export function undoStockCountScanCommand(
+  ctx: ServiceContext,
+  countId: string,
+  entryId: string,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: ENTRY, id: entryId }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'stock_count.scan_undo',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const count = await findStockCount(tx, ctx.institutionId, countId)
+        if (count === null) throw new NotFoundError()
+        const entry = await findStockCountEntry(tx, ctx.institutionId, countId, entryId)
+        if (entry === null) throw new NotFoundError()
+        const itemEntries = await loadItemCountEntries(tx, ctx.institutionId, countId, entry.itemId)
+        return {
+          run: () => ({
+            itemId: entry.itemId,
+            state: planStockCountScanUndo(count, entry, itemEntries),
+          }),
+        }
+      },
+      after: async (tx, { itemId, state }) => {
+        const undone = await markStockCountEntryUndone(tx, ctx.institutionId, {
+          countId,
+          id: entryId,
+          userId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        if (!undone) throw new ConflictError()
+        await writeStockCountLineState(tx, ctx.institutionId, {
+          countId,
+          itemId,
+          state,
+          now: ctx.now,
+        })
+        await auditWork(tx, ctx, 'stock_count.scan_undo', entity, ['undoneAt', 'countedQuantity'])
+        body = await lineBody(tx, ctx, countId, itemId, entryId)
       },
     },
     () => ({ statusCode: 200, body }),

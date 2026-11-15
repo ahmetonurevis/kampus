@@ -345,7 +345,7 @@ export function planStockCountScan(
     items: Iterable<ScannableStockItem>
     lines: ReadonlyMap<string, Pick<StockCountLine, 'countedQuantity'>>
   },
-): CountedLine & { countedQuantity: number; item: StockItemRef } {
+): CountedLine & { countedQuantity: number; scannedQuantity: number; item: StockItemRef } {
   const data = stockCountScanSchema.parse(input)
   assertOpen(count)
   const found = findStockItemByScan(context.items, data.code)
@@ -360,7 +360,13 @@ export function planStockCountScan(
   const countedQuantity = (line?.countedQuantity ?? 0) + data.quantity
   if (countedQuantity > STOCK_QUANTITY_MAX)
     throw ruleError('stock_count_quantity_too_large', 'Sayılan miktar çok büyük.', ['quantity'])
-  return { itemId: item.id, countedQuantity, isNew: line === undefined, item }
+  return {
+    itemId: item.id,
+    countedQuantity,
+    scannedQuantity: data.quantity,
+    isNew: line === undefined,
+    item,
+  }
 }
 
 /**
@@ -385,6 +391,81 @@ export function planStockCountLineSet(
     if (data.countedQuantity !== null) assertItem(item, ['itemId'])
   }
   return { itemId: data.itemId, countedQuantity: data.countedQuantity, isNew: line === undefined }
+}
+
+/** Sayım girişi (K-285): satırın sayılan miktarını sırayla değiştiren okutma ya da elle miktar. */
+export interface StockCountEntry {
+  id: string
+  itemId: string
+  /** Sayım içinde artan sıra; girişler bu sırayla uygulanır. */
+  sequence: number
+  kind: StockCountEntryKind
+  /** Okutmada eklenen miktar (≥ 1); elle girişte yeni miktar, `null` "sayılmadı". */
+  quantity: number | null
+  enteredAt: string
+  enteredByUserId: string
+  undoneAt: string | null
+}
+
+/** Satırın girişlerden hesaplanan sayım durumu; `countedQuantity` boşsa kalem sayılmamıştır. */
+export interface CountedState {
+  countedQuantity: number | null
+  countedAt: string | null
+  countedByUserId: string | null
+}
+
+/**
+ * Satırın sayılan miktarı (K-285): geri alınmamış girişler sırayla uygulanır; okutma miktarı ekler,
+ * elle giriş miktarı yazar. Son sayım anı ve sayan son geçerli giriştir; miktar boşsa sayım anı da
+ * boştur (K-231 beklenen miktarı bu ana göre hesaplanır).
+ */
+export function countedStateFromEntries(entries: readonly StockCountEntry[]): CountedState {
+  let state: CountedState = { countedQuantity: null, countedAt: null, countedByUserId: null }
+  for (const entry of [...entries].sort((a, b) => a.sequence - b.sequence)) {
+    if (entry.undoneAt !== null) continue
+    const countedQuantity =
+      entry.kind === 'scan' ? (state.countedQuantity ?? 0) + (entry.quantity ?? 0) : entry.quantity
+    state =
+      countedQuantity === null
+        ? { countedQuantity: null, countedAt: null, countedByUserId: null }
+        : { countedQuantity, countedAt: entry.enteredAt, countedByUserId: entry.enteredByUserId }
+  }
+  return state
+}
+
+/**
+ * Okutmayı geri alma (K-285): yalnız açık sayımda ve yalnız okutma (elle yazılan miktar satırdan
+ * düzeltilir, 422 `stock_count_entry_not_scan`); geri alınmış okutma 422
+ * `stock_count_scan_already_undone`. Okutmadan sonra aynı kartın miktarı elle yazıldıysa okutma o
+ * miktarın içinde kalmamıştır, geri alınmaz (422 `stock_count_scan_superseded`). Satırın yeni
+ * durumu kalan girişlerden hesaplanır; okutma silinmez, geri alındı izi taşır.
+ */
+export function planStockCountScanUndo(
+  count: Pick<StockCountRef, 'status'>,
+  entry: StockCountEntry,
+  /** Aynı kartın bu sayımdaki bütün girişleri (geri alınanlar dahil). */
+  itemEntries: readonly StockCountEntry[],
+): CountedState {
+  assertOpen(count)
+  if (entry.kind !== 'scan')
+    throw ruleError(
+      'stock_count_entry_not_scan',
+      'Yalnız okutma geri alınır; elle yazılan miktarı satırdan düzeltin.',
+    )
+  if (entry.undoneAt !== null)
+    throw ruleError('stock_count_scan_already_undone', 'Bu okutma zaten geri alındı.')
+  if (
+    itemEntries.some(
+      (other) => other.kind === 'set' && other.undoneAt === null && other.sequence > entry.sequence,
+    )
+  )
+    throw ruleError(
+      'stock_count_scan_superseded',
+      'Bu okutmadan sonra kartın miktarı elle yazıldı; okutma geri alınamaz, miktarı satırdan düzeltin.',
+    )
+  return countedStateFromEntries(
+    itemEntries.filter((other) => other.id !== entry.id && other.itemId === entry.itemId),
+  )
 }
 
 export interface StockCountAdjustment {
@@ -447,6 +528,20 @@ export function planStockCountCancel(count: Pick<StockCountRef, 'status'>, input
   const { reason } = cancelStockCountSchema.parse(input)
   assertOpen(count)
   return { reason }
+}
+
+/** Girişin geri alınabilir olup olmadığı (ekran düğmesi; sunucu `planStockCountScanUndo` ile denetler). */
+export function canUndoStockCountEntry(
+  count: Pick<StockCountRef, 'status'>,
+  entry: Pick<StockCountEntry, 'kind' | 'undoneAt' | 'sequence' | 'itemId'>,
+  lastManualSequence: number | null,
+): boolean {
+  return (
+    count.status === 'open' &&
+    entry.kind === 'scan' &&
+    entry.undoneAt === null &&
+    (lastManualSequence === null || lastManualSequence < entry.sequence)
+  )
 }
 
 /** Rolün sayımda yapabileceği işlemler (ekran düğmeleri; sunucu aynı kuralları denetler). */

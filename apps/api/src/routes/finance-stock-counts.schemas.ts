@@ -2,7 +2,10 @@ import { z } from 'zod'
 
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import { STOCK_UNITS } from '@kampus/school-core/lib/finance-inventory.ts'
-import { STOCK_COUNT_STATUSES } from '@kampus/school-core/lib/finance-stock-counts.ts'
+import {
+  STOCK_COUNT_ENTRY_KINDS,
+  STOCK_COUNT_STATUSES,
+} from '@kampus/school-core/lib/finance-stock-counts.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
@@ -104,6 +107,49 @@ export const stockCountLineResponse = dataResponse(
     systemQuantity: quantity('Anlık görüntüdeki miktar (sonradan sayılan kartta 0)'),
     countedQuantity: z.number().int().nullable().describe('Sayılan miktar; boşsa sayılmadı'),
     countedAt: z.string().nullable(),
+    entryId: z
+      .string()
+      .nullable()
+      .describe(
+        'Yazılan ya da geri alınan sayım girişi (K-285); okutmayı geri almak için. Satır açmayan "sayılmadı" girişinde boş',
+      ),
   }),
 )
+
+/** Sayım girişi (K-285): okutma ya da elle yazılan miktar. */
+const stockCountEntrySchema = z.object({
+  id: z.string(),
+  sequence: quantity('Sayım içindeki sıra; girişler bu sırayla uygulanır'),
+  kind: z
+    .enum(STOCK_COUNT_ENTRY_KINDS)
+    .describe('`scan` okutma (eklenen miktar), `set` elle yazılan satır miktarı'),
+  quantity: z
+    .number()
+    .int()
+    .nullable()
+    .describe('Okutmada eklenen miktar; elle girişte yeni miktar, boşsa "sayılmadı"'),
+  ...itemFields,
+  enteredAt: z.string(),
+  enteredByName: z.string().nullable(),
+  undoneAt: z.string().nullable().describe('Okutma geri alındıysa anı'),
+  undoneByName: z.string().nullable(),
+  canUndo: z
+    .boolean()
+    .describe(
+      'Oturumdaki kullanıcı bu okutmayı şimdi geri alabilir: açık sayım, geri alınmamış okutma, sonrasında elle miktar yok',
+    ),
+})
+export const stockCountEntryListResponse = z.object({
+  data: z.array(stockCountEntrySchema),
+  meta: pageMetaSchema,
+})
+export const stockCountEntryListQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  kind: z.enum(STOCK_COUNT_ENTRY_KINDS).optional().describe('Giriş türü'),
+})
+export const stockCountEntryParams = z.object({
+  countId: z.uuid('Sayım geçersiz.'),
+  entryId: z.uuid('Sayım girişi geçersiz.'),
+})
+export const undoStockCountScanBody = z.strictObject({})
 export const completeStockCountBody = z.strictObject({})

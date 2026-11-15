@@ -18,6 +18,7 @@ import {
   relocateFixedAssetCountItemCommand,
   scanFixedAssetCountCommand,
   startFixedAssetCountCommand,
+  undoFixedAssetCountScanCommand,
 } from '../services/finance-fixed-asset-counts.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
@@ -35,6 +36,7 @@ import {
   placeListQuery,
   placeListResponse,
   scanResponse,
+  undoScanResponse,
 } from './finance-fixed-asset-counts.schemas.ts'
 
 /**
@@ -261,6 +263,34 @@ export function registerFinanceFixedAssetCountRoutes(app: FastifyInstance) {
         opts.idempotency,
       )
       return countItemResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${URL}/:countId/items/:itemId/undo-scan`,
+    {
+      preValidation: [...guarded, requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'undoFixedAssetCountScan',
+        tags,
+        summary: 'Okutmayı geri al',
+        description: `Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (\`pending\`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-286). Kapanmış sayım 422 \`fixed_asset_count_closed\`, okunmamış satır 422 \`fixed_asset_count_item_not_scanned\`; sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` satırın sürümüdür (okutma yanıtındaki \`item.version\`). Olmayan ya da başka kurumun satırı 404. ${MANAGER}`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: countItemParams,
+        body: emptyCommandBody,
+        response: { 200: undoScanResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await undoFixedAssetCountScanCommand(
+        contextOf(request),
+        request.params.countId,
+        request.params.itemId,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return undoScanResponse.parse(sendBody(reply, result))
     },
   )
 

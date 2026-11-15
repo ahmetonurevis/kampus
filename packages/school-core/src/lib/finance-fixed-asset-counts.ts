@@ -391,6 +391,28 @@ export function planFixedAssetCountClose(count: { status: FixedAssetCountStatus 
     )
 }
 
+/**
+ * Okutmayı geri alma (K-286): yalnız açık sayımda (422 `fixed_asset_count_closed`) ve okunmuş
+ * satırda (422 `fixed_asset_count_item_not_scanned`). Beklenen listedeki satır okunmamışa
+ * (`pending`) döner; listede olmayan demirbaşın satırı (`inScope: false`) arşivlenir, demirbaş
+ * yeniden okutulabilir. Demirbaş kaydı değişmez.
+ */
+export function planFixedAssetCountScanUndo(
+  count: { status: FixedAssetCountStatus },
+  item: { inScope: boolean; result: FixedAssetCountItemResult },
+): 'reset' | 'remove' {
+  if (count.status !== 'open')
+    throw ruleError(
+      'fixed_asset_count_closed',
+      count.status === 'completed'
+        ? 'Sayım tamamlandı; okutma geri alınamaz.'
+        : 'Sayım iptal edildi; okutma geri alınamaz.',
+    )
+  if (item.result === 'pending')
+    throw ruleError('fixed_asset_count_item_not_scanned', 'Bu demirbaş okutulmadı.')
+  return item.inScope ? 'reset' : 'remove'
+}
+
 export interface FixedAssetCountRelocateChecks {
   count: { status: FixedAssetCountStatus }
   item: {

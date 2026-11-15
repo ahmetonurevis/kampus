@@ -14,14 +14,17 @@ import {
 
 import type { StockMovementType } from '@kampus/school-core/lib/finance-inventory.ts'
 import type {
+  CountedState,
   CountMovement,
+  StockCountEntry,
+  StockCountEntryKind,
   StockCountLine,
   StockCountStatus,
 } from '@kampus/school-core/lib/finance-stock-counts.ts'
 
 import type { Database } from './client.ts'
 import { stockMovements } from './schema/finance-inventory.ts'
-import { stockCountLines, stockCounts } from './schema/finance-stock-counts.ts'
+import { stockCountEntries, stockCountLines, stockCounts } from './schema/finance-stock-counts.ts'
 
 /**
  * Stok sayımı deposu (DOM-FIN-081; ON-231). Kurum kapsamlıdır: ilk parametre `institutionId`. Kural
@@ -425,4 +428,204 @@ export async function loadMovementCounts(
   return new Map(
     rows.flatMap((row) => (row.movementId === null ? [] : [[row.movementId, row.countId]])),
   )
+}
+
+// --- Sayım girişleri (K-285) ---------------------------------------------------------------------
+
+export interface StoredStockCountEntry extends StockCountEntry {
+  undoneByUserId: string | null
+  version: number
+}
+
+const ENTRY_COLUMNS = {
+  id: stockCountEntries.id,
+  itemId: stockCountEntries.itemId,
+  sequence: stockCountEntries.sequence,
+  kind: stockCountEntries.kind,
+  quantity: stockCountEntries.quantity,
+  enteredAt: stockCountEntries.enteredAt,
+  enteredByUserId: stockCountEntries.enteredByUserId,
+  undoneAt: stockCountEntries.undoneAt,
+  undoneByUserId: stockCountEntries.undoneByUserId,
+  version: stockCountEntries.version,
+}
+type EntryRow = Omit<StoredStockCountEntry, 'enteredAt' | 'undoneAt'> & {
+  enteredAt: Date
+  undoneAt: Date | null
+}
+const toEntry = (row: EntryRow): StoredStockCountEntry => ({
+  ...row,
+  enteredAt: row.enteredAt.toISOString(),
+  undoneAt: iso(row.undoneAt),
+})
+const entriesOf = (institutionId: string, countId: string) =>
+  and(
+    eq(stockCountEntries.institutionId, institutionId),
+    isNull(stockCountEntries.archivedAt),
+    eq(stockCountEntries.countId, countId),
+  )
+
+/** Sayımın bir girişi; yoksa ya da başka sayımınsa `null`. */
+export async function findStockCountEntry(
+  db: Database,
+  institutionId: string,
+  countId: string,
+  entryId: string,
+): Promise<StoredStockCountEntry | null> {
+  const [row] = await db
+    .select(ENTRY_COLUMNS)
+    .from(stockCountEntries)
+    .where(and(entriesOf(institutionId, countId), eq(stockCountEntries.id, entryId)))
+    .limit(1)
+  return row === undefined ? null : toEntry(row)
+}
+
+/** Bir kartın bu sayımdaki bütün girişleri (geri alınanlar dahil), sırayla. */
+export async function loadItemCountEntries(
+  db: Database,
+  institutionId: string,
+  countId: string,
+  itemId: string,
+): Promise<StoredStockCountEntry[]> {
+  const rows = await db
+    .select(ENTRY_COLUMNS)
+    .from(stockCountEntries)
+    .where(and(entriesOf(institutionId, countId), eq(stockCountEntries.itemId, itemId)))
+    .orderBy(stockCountEntries.sequence)
+  return rows.map(toEntry)
+}
+
+/** Sayımın girişleri, en yeni önce (sıra numarasına göre). */
+export async function listStockCountEntries(
+  db: Database,
+  institutionId: string,
+  countId: string,
+  query: { page: number; pageSize: number; kind?: StockCountEntryKind | undefined },
+): Promise<{ items: StoredStockCountEntry[]; total: number }> {
+  const where = and(
+    entriesOf(institutionId, countId),
+    query.kind === undefined ? undefined : eq(stockCountEntries.kind, query.kind),
+  )
+  const [totalRow] = await db.select({ total: count() }).from(stockCountEntries).where(where)
+  const rows = await db
+    .select(ENTRY_COLUMNS)
+    .from(stockCountEntries)
+    .where(where)
+    .orderBy(desc(stockCountEntries.sequence))
+    .limit(query.pageSize)
+    .offset((query.page - 1) * query.pageSize)
+  return { items: rows.map(toEntry), total: totalRow?.total ?? 0 }
+}
+
+/** Kart başına son elle girişin sırası (okutmanın geri alınabilirliği, K-285). */
+export async function loadLastManualSequences(
+  db: Database,
+  institutionId: string,
+  countId: string,
+  itemIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (itemIds.length === 0) return new Map()
+  const rows = await db
+    .select({
+      itemId: stockCountEntries.itemId,
+      sequence: sql<number>`max(${stockCountEntries.sequence})::int`,
+    })
+    .from(stockCountEntries)
+    .where(
+      and(
+        entriesOf(institutionId, countId),
+        eq(stockCountEntries.kind, 'set'),
+        inArray(stockCountEntries.itemId, [...new Set(itemIds)]),
+      ),
+    )
+    .groupBy(stockCountEntries.itemId)
+  return new Map(rows.map((row) => [row.itemId, row.sequence]))
+}
+
+/** Sayıma yeni giriş; sıra sayımın en büyük sırasının bir fazlasıdır (kurum kilidi altında). */
+export async function insertStockCountEntry(
+  tx: Database,
+  institutionId: string,
+  input: {
+    id: string
+    countId: string
+    itemId: string
+    kind: StockCountEntryKind
+    quantity: number | null
+    userId: string
+    now: Date
+  },
+): Promise<void> {
+  const [last] = await tx
+    .select({ sequence: sql<number | null>`max(${stockCountEntries.sequence})::int` })
+    .from(stockCountEntries)
+    .where(
+      and(
+        eq(stockCountEntries.institutionId, institutionId),
+        eq(stockCountEntries.countId, input.countId),
+      ),
+    )
+  await tx.insert(stockCountEntries).values({
+    institutionId,
+    id: input.id,
+    countId: input.countId,
+    itemId: input.itemId,
+    sequence: (last?.sequence ?? 0) + 1,
+    kind: input.kind,
+    quantity: input.quantity,
+    enteredAt: input.now,
+    enteredByUserId: input.userId,
+    createdAt: input.now,
+    updatedAt: input.now,
+  })
+}
+
+/** Okutmayı geri alındı işaretler; zaten geri alındıysa `false` (409). */
+export async function markStockCountEntryUndone(
+  tx: Database,
+  institutionId: string,
+  input: { countId: string; id: string; userId: string; now: Date },
+): Promise<boolean> {
+  const rows = await tx
+    .update(stockCountEntries)
+    .set({
+      undoneAt: input.now,
+      undoneByUserId: input.userId,
+      updatedAt: input.now,
+      version: sql`${stockCountEntries.version} + 1`,
+    })
+    .where(
+      and(
+        entriesOf(institutionId, input.countId),
+        eq(stockCountEntries.id, input.id),
+        eq(stockCountEntries.kind, 'scan'),
+        isNull(stockCountEntries.undoneAt),
+      ),
+    )
+    .returning({ id: stockCountEntries.id })
+  return rows.length === 1
+}
+
+/** Satırın sayım durumunu girişlerden hesaplanan değerle yazar (geri alma, K-285). */
+export async function writeStockCountLineState(
+  tx: Database,
+  institutionId: string,
+  input: { countId: string; itemId: string; state: CountedState; now: Date },
+): Promise<void> {
+  await tx
+    .update(stockCountLines)
+    .set({
+      countedQuantity: input.state.countedQuantity,
+      countedAt: input.state.countedAt === null ? null : new Date(input.state.countedAt),
+      countedByUserId: input.state.countedByUserId,
+      updatedAt: input.now,
+      version: sql`${stockCountLines.version} + 1`,
+    })
+    .where(
+      and(
+        linesOf(institutionId),
+        eq(stockCountLines.countId, input.countId),
+        eq(stockCountLines.itemId, input.itemId),
+      ),
+    )
 }

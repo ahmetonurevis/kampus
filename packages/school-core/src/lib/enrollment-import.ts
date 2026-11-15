@@ -225,7 +225,9 @@ type AddIssue = (
 ) => void
 
 /** Kontenjan sayımı (DOM-KAY-010): aktif öğrenciler ve aynı sınıfa planlanmış yenilemeler. */
-function occupancy(state: StudentImportState): Map<string, number> {
+export function classOccupancy(
+  state: Pick<StudentImportState, 'students' | 'renewals'>,
+): Map<string, number> {
   const byClass = new Map<string, Set<string>>()
   const add = (classId: string, studentId: string) => {
     const set = byClass.get(classId) ?? new Set<string>()
@@ -382,7 +384,7 @@ export function planStudentImport(
     (item) => item.isActive && activeBranchIds.has(item.branchId),
   )
   const capacityOf = new Map(classes.map((item) => [item.id, item.capacity]))
-  const occupants = occupancy(state)
+  const occupants = classOccupancy(state)
   const firstLineByIdentity = new Map<string, number>()
   const guardians = new Map<string, GuardianEntry>()
   const preview: StudentImportPreviewRow[] = []

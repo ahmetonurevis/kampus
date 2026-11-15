@@ -1006,6 +1006,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'enrollment-import.test.ts',
     'başka kurumun sınıfı, velisi ve kimliği bu kurumu etkilemez',
   ),
+  // Onur: e-Okul öğrenci listesi aktarımı (ON-062, IST-134; DOM-KAY-042).
+  'POST /api/v1/prospects/eokul-student-imports': govde(
+    'enrollment-eokul-import.test.ts',
+    'başka kurumun öğrencisi, sınıfı ve kimliği bu kurumu etkilemez',
+  ),
   'POST /api/v1/finance/installment-imports': govde(
     'finance-installment-import.test.ts',
     'başka kurumun öğrencisi ve sözleşmesi bu kurumu etkilemez',

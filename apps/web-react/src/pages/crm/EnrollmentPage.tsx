@@ -64,6 +64,7 @@ import { EnrollmentCertificateButton } from './EnrollmentCertificateButton.tsx'
 import { EnrollmentCertificateSection } from './EnrollmentCertificateSection.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
 import { StudentImportSection } from './StudentImportSection.tsx'
+import { EnrollmentEokulImportSection } from './EnrollmentEokulImportSection.tsx'
 import { enrollmentParentId } from './enrollment-guardian-account.ts'
 import {
   enrollmentConsentNote,
@@ -228,6 +229,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
       <EnrollmentCertificateSection />
       <GuardianInvitationsSection />
       <StudentImportSection />
+      <EnrollmentEokulImportSection />
     </>
   )
 }

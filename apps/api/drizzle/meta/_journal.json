@@ -673,6 +673,13 @@
       "when": 1794380188619,
       "tag": "0095_create_maintenance_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794770085867,
+      "tag": "0096_create_budget_drafts",
+      "breakpoints": true
     }
   ]
 }

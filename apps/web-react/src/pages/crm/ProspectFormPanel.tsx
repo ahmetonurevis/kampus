@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import type { z } from 'zod'
 import { useCreateProspect } from '@kampus/react-shared/use-prospect-commands.ts'
+import { useCampaigns, type CampaignRow } from '@kampus/react-shared/use-prospect-campaigns.ts'
 import {
   OPEN_PROSPECT_STAGES,
   PROSPECT_SOURCES,
@@ -24,6 +25,7 @@ import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
 import { FormActions, RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { suggestedSource } from './prospect-campaign-forms.ts'
 import {
   createBody,
   createDefaults,
@@ -46,6 +48,7 @@ const FIELDS = [
   'interest',
   'source',
   'referrerStudentId',
+  'campaignCode',
   'minor',
   'guardianName',
   'siblingOfId',
@@ -55,31 +58,47 @@ const FIELDS = [
 
 /** `?aday-form=` değeri: yeni aday. */
 export const NEW_PROSPECT = 'yeni'
+/** Aday formunun önerdiği kampanyalar: bugün kullanılabilir olanlar (DOM-KAY-041). */
+const USABLE_CAMPAIGNS = { page: 1, pageSize: 100, status: 'usable' } as const
 
 /**
  * Aday ekleme (Vue "Yeni aday ekle", DOM-KAY-009): kısa form sağ panelde açılır. Aday `Yeni aday`
  * aşamasında başlar; mükerrer ret (`prospect_duplicate`, `prospect_contact_shared`) alanın altında
  * görünür ve eşleşen adayı göstermez (DOM-KAY-002, DOM-KAY-031). İletişimi paylaşan farklı adlı aday
  * için kardeş seçimi ancak bu ret görülünce açılır ve ön büro kardeşi kendisi seçer.
+ * Kampanya kodu (DOM-KAY-041) yazılır ya da önerilerden seçilir; `campaignCode` (adresteki
+ * `?kampanya=`) alanı doldurur. Kod bilinen bir kampanyanınsa kaynak kanaldan önerilir (K-289);
+ * geçerlilik sunucudadır.
  */
-export function ProspectFormPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ProspectFormPanel({
+  open,
+  onClose,
+  campaignCode = '',
+}: {
+  open: boolean
+  onClose: () => void
+  campaignCode?: string
+}) {
   return (
     <SidePanel
       open={open}
       onOpenChange={(next) => (next ? undefined : onClose())}
       title="Yeni aday ekle"
     >
-      {open ? <FormLoader onClose={onClose} /> : null}
+      {open ? <FormLoader onClose={onClose} campaignCode={campaignCode} /> : null}
     </SidePanel>
   )
 }
 
-function FormLoader({ onClose }: { onClose: () => void }) {
+function FormLoader({ onClose, campaignCode }: { onClose: () => void; campaignCode: string }) {
   const { session } = useAuth()
   const branches = useCoreAll('branches')
+  const campaigns = useCampaigns(USABLE_CAMPAIGNS)
   if (branches.error)
     return <QueryError error={branches.error} onRetry={() => void branches.refetch()} />
-  if (!branches.data || !session) return <SummaryLoading />
+  if (campaigns.error)
+    return <QueryError error={campaigns.error} onRetry={() => void campaigns.refetch()} />
+  if (!branches.data || !campaigns.data || !session) return <SummaryLoading />
   const active = branches.data.filter((item) => item.record.isActive)
   if (active.length === 0)
     return (
@@ -91,6 +110,8 @@ function FormLoader({ onClose }: { onClose: () => void }) {
     <ProspectForm
       type={session.institution.type}
       branches={active.map((item) => ({ id: item.record.id, name: item.record.name }))}
+      campaigns={campaigns.data.data}
+      campaignCode={campaignCode}
       onClose={onClose}
     />
   )
@@ -133,10 +154,14 @@ function CheckRow({
 function ProspectForm({
   type,
   branches,
+  campaigns,
+  campaignCode,
   onClose,
 }: {
   type: InstitutionType
   branches: readonly { id: string; name: string }[]
+  campaigns: readonly CampaignRow[]
+  campaignCode: string
   onClose: () => void
 }) {
   const create = useCreateProspect()
@@ -144,7 +169,10 @@ function ProspectForm({
   const schema = useMemo(() => createFormSchema(type), [type])
   const form = useForm<CreateFormValues, unknown, Output>({
     resolver: zodResolver(schema),
-    defaultValues: createDefaults(branches[0]?.id ?? ''),
+    defaultValues: createDefaults(branches[0]?.id ?? '', {
+      code: campaignCode,
+      source: suggestedSource(campaignCode, campaigns),
+    }),
   })
   // Kardeş seçimi yalnız iletişimi paylaşan aday reddi görülünce sorulur (DOM-KAY-031).
   const [askSibling, setAskSibling] = useState(false)
@@ -280,6 +308,42 @@ function ProspectForm({
             disabled={busy}
           />
         )}
+      </FormField>
+      <FormField
+        id="aday-kampanya"
+        label="Kampanya kodu (isteğe bağlı)"
+        description="Kod bilinen bir kampanyanınsa kaynak kanalından önerilir."
+        error={errors.campaignCode}
+      >
+        {(control) => {
+          const field = form.register('campaignCode')
+          return (
+            <>
+              <Input
+                {...control}
+                {...field}
+                onChange={(event) => {
+                  void field.onChange(event)
+                  const suggestion = suggestedSource(event.target.value, campaigns)
+                  if (suggestion) form.setValue('source', suggestion)
+                }}
+                list="aday-kampanya-secenekleri"
+                maxLength={20}
+                autoCapitalize="characters"
+                autoComplete="off"
+                className="font-mono uppercase"
+                disabled={busy}
+              />
+              <datalist id="aday-kampanya-secenekleri">
+                {campaigns.map((campaign) => (
+                  <option key={campaign.id} value={campaign.code}>
+                    {campaign.name}
+                  </option>
+                ))}
+              </datalist>
+            </>
+          )
+        }}
       </FormField>
       <FormField id="aday-kaynak" label="Kaynak" error={errors.source}>
         {(control) => (

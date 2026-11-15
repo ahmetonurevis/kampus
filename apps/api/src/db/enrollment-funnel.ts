@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 
-import type { FunnelProspect } from '@kampus/school-core/lib/enrollment-funnel.ts'
+import type { CampaignFunnelProspect } from '@kampus/school-core/lib/enrollment-campaign-funnel.ts'
 
 import type { Database } from './client.ts'
 import { recordFilter, type DayRangeMatch } from './records.ts'
@@ -17,12 +17,15 @@ const isObject = (field: string) =>
   sql<boolean>`coalesce(jsonb_typeof(${records.data} -> ${field}::text), 'null') = 'object'`
 const textField = (field: string) => sql<string | null>`(${records.data} ->> ${field}::text)`
 
-/** Kurumun adayları, isteğe bağlı açılış günü aralığıyla (`createdAt`, Europe/Istanbul). */
+/**
+ * Kurumun adayları, isteğe bağlı açılış günü aralığıyla (`createdAt`, Europe/Istanbul). Kampanya
+ * kırılımı (DOM-KAY-041) için kampanya bağı ve teklif izi de okunur.
+ */
 export async function loadFunnelProspects(
   db: Database,
   institutionId: string,
   range: DayRangeMatch | null,
-): Promise<FunnelProspect[]> {
+): Promise<CampaignFunnelProspect[]> {
   const filters: SQL[] = [
     eq(records.institutionId, institutionId),
     eq(records.collection, 'prospects'),
@@ -38,6 +41,8 @@ export async function loadFunnelProspects(
       hasMeeting: isObject('meeting'),
       hasTrialLesson: isObject('trialLesson'),
       counselorId: sql<string | null>`(${records.data} -> 'createdBy' ->> 'userId')`,
+      campaignId: textField('campaignId'),
+      offeredAt: textField('offeredAt'),
     })
     .from(records)
     .where(and(...filters))
@@ -49,6 +54,8 @@ export async function loadFunnelProspects(
     meeting: row.hasMeeting ? {} : null,
     trialLesson: row.hasTrialLesson ? {} : null,
     createdBy: { userId: row.counselorId },
+    campaignId: row.campaignId,
+    offeredAt: row.offeredAt,
   }))
 }
 

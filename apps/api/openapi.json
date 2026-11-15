@@ -19319,6 +19319,323 @@
           "rows"
         ]
       },
+      "CampaignCodeInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "Büyük harf kod; kurumda tekil, değişmez"
+          },
+          "name": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "social_media",
+              "flyer",
+              "fair",
+              "referral",
+              "website",
+              "other"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+          },
+          "costCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Toplam maliyet, kuruş; girilmediyse `null`"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "usable",
+              "inactive",
+              "not_started",
+              "ended"
+            ],
+            "description": "Bugüne göre durum: `usable` (adaya bağlanabilir), `inactive`, `not_started`, `ended`"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için kayıt sürümü"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "channel",
+          "startDate",
+          "endDate",
+          "costCents",
+          "isActive",
+          "status",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CampaignFunnelCountsInput": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday"
+          },
+          "meetings": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli"
+          },
+          "offers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Teklif aşamasına ulaşan aday, birikimli"
+          },
+          "enrolled": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Kesin kayıt"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          }
+        },
+        "required": [
+          "prospects",
+          "meetings",
+          "offers",
+          "enrolled",
+          "conversionRate"
+        ]
+      },
+      "CampaignFunnelRowInput": {
+        "type": "object",
+        "properties": {
+          "campaign": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string",
+                "enum": [
+                  "social_media",
+                  "flyer",
+                  "fair",
+                  "referral",
+                  "website",
+                  "other"
+                ]
+              },
+              "startDate": {
+                "type": "string",
+                "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+              },
+              "endDate": {
+                "type": "string",
+                "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+              },
+              "costCents": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "isActive": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "code",
+              "name",
+              "channel",
+              "startDate",
+              "endDate",
+              "costCents",
+              "isActive",
+              "archived"
+            ]
+          },
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday"
+          },
+          "meetings": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli"
+          },
+          "offers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Teklif aşamasına ulaşan aday, birikimli"
+          },
+          "enrolled": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Kesin kayıt"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          },
+          "costPerProspectCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aday başı maliyet, kuruş; maliyet ya da aday yoksa ya da aralık kısmiyse `null`"
+          },
+          "costPerEnrollmentCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kayıt başı maliyet, kuruş; aynı koşullarla `null`"
+          },
+          "costPartial": {
+            "type": "boolean",
+            "description": "Rapor aralığı kampanyanın bütün günlerini kapsamıyor (K-290)"
+          }
+        },
+        "required": [
+          "campaign",
+          "prospects",
+          "meetings",
+          "offers",
+          "enrolled",
+          "conversionRate",
+          "costPerProspectCents",
+          "costPerEnrollmentCents",
+          "costPartial"
+        ]
+      },
+      "CampaignFunnelInput": {
+        "type": "object",
+        "properties": {
+          "dateFrom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dateTo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "$ref": "#/components/schemas/CampaignFunnelCountsInput"
+          },
+          "uncoded": {
+            "description": "Kampanya koduyla açılmamış adaylar",
+            "$ref": "#/components/schemas/CampaignFunnelCountsInput"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignFunnelRowInput"
+            }
+          }
+        },
+        "required": [
+          "dateFrom",
+          "dateTo",
+          "total",
+          "uncoded",
+          "rows"
+        ]
+      },
       "SeasonWatchMeetingInput": {
         "type": "object",
         "properties": {
@@ -39420,6 +39737,328 @@
           "linkedCount",
           "totalCents",
           "paidCents",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "CampaignCode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "Büyük harf kod; kurumda tekil, değişmez"
+          },
+          "name": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "social_media",
+              "flyer",
+              "fair",
+              "referral",
+              "website",
+              "other"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+          },
+          "costCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Toplam maliyet, kuruş; girilmediyse `null`"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "usable",
+              "inactive",
+              "not_started",
+              "ended"
+            ],
+            "description": "Bugüne göre durum: `usable` (adaya bağlanabilir), `inactive`, `not_started`, `ended`"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için kayıt sürümü"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "channel",
+          "startDate",
+          "endDate",
+          "costCents",
+          "isActive",
+          "status",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "CampaignFunnelCounts": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday"
+          },
+          "meetings": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli"
+          },
+          "offers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Teklif aşamasına ulaşan aday, birikimli"
+          },
+          "enrolled": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Kesin kayıt"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          }
+        },
+        "required": [
+          "prospects",
+          "meetings",
+          "offers",
+          "enrolled",
+          "conversionRate"
+        ],
+        "additionalProperties": false
+      },
+      "CampaignFunnelRow": {
+        "type": "object",
+        "properties": {
+          "campaign": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string",
+                "enum": [
+                  "social_media",
+                  "flyer",
+                  "fair",
+                  "referral",
+                  "website",
+                  "other"
+                ]
+              },
+              "startDate": {
+                "type": "string",
+                "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+              },
+              "endDate": {
+                "type": "string",
+                "description": "`YYYY-MM-DD`, Europe/Istanbul günü (dahil)"
+              },
+              "costCents": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "isActive": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "code",
+              "name",
+              "channel",
+              "startDate",
+              "endDate",
+              "costCents",
+              "isActive",
+              "archived"
+            ],
+            "additionalProperties": false
+          },
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday"
+          },
+          "meetings": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli"
+          },
+          "offers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Teklif aşamasına ulaşan aday, birikimli"
+          },
+          "enrolled": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Kesin kayıt"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          },
+          "costPerProspectCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aday başı maliyet, kuruş; maliyet ya da aday yoksa ya da aralık kısmiyse `null`"
+          },
+          "costPerEnrollmentCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kayıt başı maliyet, kuruş; aynı koşullarla `null`"
+          },
+          "costPartial": {
+            "type": "boolean",
+            "description": "Rapor aralığı kampanyanın bütün günlerini kapsamıyor (K-290)"
+          }
+        },
+        "required": [
+          "campaign",
+          "prospects",
+          "meetings",
+          "offers",
+          "enrolled",
+          "conversionRate",
+          "costPerProspectCents",
+          "costPerEnrollmentCents",
+          "costPartial"
+        ],
+        "additionalProperties": false
+      },
+      "CampaignFunnel": {
+        "type": "object",
+        "properties": {
+          "dateFrom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dateTo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "$ref": "#/components/schemas/CampaignFunnelCounts"
+          },
+          "uncoded": {
+            "description": "Kampanya koduyla açılmamış adaylar",
+            "$ref": "#/components/schemas/CampaignFunnelCounts"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignFunnelRow"
+            }
+          }
+        },
+        "required": [
+          "dateFrom",
+          "dateTo",
+          "total",
+          "uncoded",
           "rows"
         ],
         "additionalProperties": false
@@ -88075,7 +88714,7 @@
         "tags": [
           "prospects"
         ],
-        "description": "Ön büro yeni aday açar; aday `Yeni aday` aşamasında başlar, akademik veya finansal kayıt üretmez (core `createProspect`, DOM-KAY-001, DOM-KAY-009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, kaynak, aydınlatma metni sürümü, kanal bazında ticari ileti onayı; T.C. kimlik no, doğum tarihi, adres ve bilinmeyen alan 400 `validation_failed`. 18 yaş altı adayda veli adı zorunlu (422 `prospect_guardian_required`); dil okulunda yaş seçimi zorunlu (422 `prospect_age_required`). Pasif kampüs 422 `branch_unavailable`, olmayan referans öğrencisi 422 `referrer_not_found`. Aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`, iletişimi paylaşan farklı adlı aday kardeş seçilmeden 409 `prospect_contact_shared` (DOM-KAY-002, DOM-KAY-031); ret eşleşen adayın kimliğini ve iletişim bilgisini taşımaz. Tekillik kurumun bütün adaylarına kurum kilidi altında bakar; aynı adayı eşzamanlı iki istekten yalnız biri açar. Telefon, e-posta ve veli adı loglanmaz. Modül `crm`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.",
+        "description": "Ön büro yeni aday açar; aday `Yeni aday` aşamasında başlar, akademik veya finansal kayıt üretmez (core `createProspect`, DOM-KAY-001, DOM-KAY-009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, kaynak, aydınlatma metni sürümü, kanal bazında ticari ileti onayı, isteğe bağlı kampanya kodu (`campaignCode`; büyük harfe çevrilir, DOM-KAY-041: kurumda yoksa ya da arşivliyse 422 `campaign_code_not_found`, pasifse 422 `campaign_code_inactive`, bugün kampanya günleri dışındaysa 422 `campaign_code_not_started`/`campaign_code_ended`; kaynak kodla zorlanmaz); T.C. kimlik no, doğum tarihi, adres ve bilinmeyen alan 400 `validation_failed`. 18 yaş altı adayda veli adı zorunlu (422 `prospect_guardian_required`); dil okulunda yaş seçimi zorunlu (422 `prospect_age_required`). Pasif kampüs 422 `branch_unavailable`, olmayan referans öğrencisi 422 `referrer_not_found`. Aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`, iletişimi paylaşan farklı adlı aday kardeş seçilmeden 409 `prospect_contact_shared` (DOM-KAY-002, DOM-KAY-031); ret eşleşen adayın kimliğini ve iletişim bilgisini taşımaz. Tekillik kurumun bütün adaylarına kurum kilidi altında bakar; aynı adayı eşzamanlı iki istekten yalnız biri açar. Telefon, e-posta ve veli adı loglanmaz. Modül `crm`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -88133,6 +88772,9 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200
+                  },
+                  "campaignCode": {
+                    "type": "string"
                   },
                   "minor": {
                     "type": "boolean"
@@ -91473,6 +92115,956 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/ProspectSeasonWatch"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/campaign-codes": {
+      "get": {
+        "operationId": "listCampaignCodes",
+        "summary": "Kampanya kodlarını listele",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Arşivlenmemiş kampanyalar, en yeni başlangıç önce (DOM-KAY-041). `status=usable` aday formunun seçenekleridir: etkin ve bugün (Europe/Istanbul) tarih aralığında olanlar. `q` kod ya da adda arar. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kod ya da adda arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "usable",
+                "active",
+                "inactive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`usable`: etkin ve bugün tarih aralığında (aday formu); `active`/`inactive` bayrak"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "social_media",
+                "flyer",
+                "fair",
+                "referral",
+                "website",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "channel",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CampaignCode"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCampaignCode",
+        "summary": "Kampanya kodu ekle",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Kod (büyük harfe çevrilir; İngilizce harf, rakam ve tire, 3–20 karakter), ad, kanal (`social_media`, `flyer`, `fair`, `referral`, `website`, `other`), başlangıç–bitiş günü (iki uç dahil), isteğe bağlı maliyet (kuruş) ve etkinlik. Kod kurumda arşivliler dahil tekil: 409 `campaign_code_exists` (K-288). Bitiş başlangıçtan önceyse 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "social_media",
+                      "flyer",
+                      "fair",
+                      "referral",
+                      "website",
+                      "other"
+                    ]
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "costCents": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "isActive": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "channel",
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampaignCode"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/campaign-codes/{campaignId}": {
+      "get": {
+        "operationId": "getCampaignCode",
+        "summary": "Kampanya kodu ayrıntısı",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Olmayan, arşivlenmiş ya da başka kurumun kampanyası 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampaignCode"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCampaignCode",
+        "summary": "Kampanya kodunu düzelt ya da pasifleştir",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Kısmi düzeltme: ad, kanal, günler, maliyet (`null` siler) ve `isActive`. Kod değişmez (gövdede `code` 400). Birleşik günlerde bitiş başlangıçtan önceyse 422 `campaign_dates_invalid`. Pasif ya da günleri dışında kalan kampanyanın kodu yeni adaya bağlanmaz; bağlı adaylar değişmez. Sürüm tutmazsa 409 `version_conflict`; `If-Match` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "social_media",
+                      "flyer",
+                      "fair",
+                      "referral",
+                      "website",
+                      "other"
+                    ]
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "costCents": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampaignCode"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveCampaignCode",
+        "summary": "Kampanya kodunu arşivle",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Arşivli kampanya listede görünmez, kodu yeni adaya bağlanmaz ve yeniden kullanılmaz; adayları kayıt hunisi kırılımında kalır. Olmayan ya da başka kurumun kampanyası 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/funnel/campaigns": {
+      "get": {
+        "operationId": "getProspectCampaignFunnel",
+        "summary": "Kayıt hunisinin kampanya kırılımı",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Aralıkta açılan adayların (`dateFrom`/`dateTo`, açılış günü Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar) kampanya başına aday → görüşme → teklif → kesin kayıt sayıları (birikimli) ve dönüşüm oranı (DOM-KAY-041, IST-117). Satırlar: adayı olan her kampanya (arşivli dahil) ve aralıkla kesişen arşivlenmemiş kampanyalar; kodsuz adaylar `uncoded`, hepsi `total`. Maliyet girilmişse aday başı ve kayıt başı maliyet (kuruş); aralık kampanyanın bütün günlerini kapsamıyorsa `costPartial: true` ve birim maliyet `null` (K-290). Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz; küçük grup bastırılmaz (K-291). `Accept: text/csv` ile aynı tablo CSV iner (`;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı). Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampaignFunnel"
                     }
                   },
                   "required": [

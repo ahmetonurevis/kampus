@@ -1752,6 +1752,35 @@ const FINANCE: Readonly<Record<string, Proof>> = {
   'POST /api/v1/finance/severance-estimates': yok(
     'elle girdili kıdem ve ihbar hesabı; kurum kaydı okumaz ve yazmaz, sonuç saklanmaz (K-273)',
   ),
+  // Onur: kampanya kodu ve huni kırılımı (ON-134; DOM-KAY-041). Envanter tablosunda Onur
+  // bloklarının sonuna (ör. tedarikçi bloğunun yanına) eklenir; kanıt `prospect-campaigns.test.ts`.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/prospects/campaign-codes', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/prospects/campaign-codes', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/prospects/campaign-codes/:campaignId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/prospects/campaign-codes/:campaignId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/prospects/campaign-codes/:campaignId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        ['liste', 'GET /api/v1/prospects/funnel/campaigns', 'get(FUNNEL, a.admin)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'prospect-campaigns.test.ts',
+        'başka kurumun kampanyası 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

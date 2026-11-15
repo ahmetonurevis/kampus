@@ -333,7 +333,10 @@ function Detail({
                 <small className="text-xs text-muted-foreground">
                   {dateLabel(prospect.createdAt, { year: 'numeric' })}
                 </small>
-                <p className="text-sm">{prospect.source} üzerinden aday kaydı oluşturuldu.</p>
+                <p className="text-sm">
+                  {prospect.source} üzerinden aday kaydı oluşturuldu
+                  {prospect.campaignCode ? ` (kampanya kodu ${prospect.campaignCode})` : ''}.
+                </p>
               </li>
             </ol>
           </Section>

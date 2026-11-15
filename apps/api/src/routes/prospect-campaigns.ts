@@ -68,7 +68,7 @@ export function registerProspectCampaignRoutes(app: FastifyInstance) {
   const tags = ['prospects']
 
   typed.get(
-    '/api/v1/campaign-codes',
+    '/api/v1/prospects/campaign-codes',
     {
       preValidation: guarded,
       schema: {
@@ -92,7 +92,7 @@ export function registerProspectCampaignRoutes(app: FastifyInstance) {
   )
 
   typed.post(
-    '/api/v1/campaign-codes',
+    '/api/v1/prospects/campaign-codes',
     {
       preValidation: [...guarded, rejectIfMatch(), captureInput()],
       schema: {
@@ -112,13 +112,13 @@ export function registerProspectCampaignRoutes(app: FastifyInstance) {
         options(request, 'optional').idempotency,
       )
       const body = campaignResponse.parse(sendBody(reply, result))
-      reply.header('location', `/api/v1/campaign-codes/${body.data.id}`)
+      reply.header('location', `/api/v1/prospects/campaign-codes/${body.data.id}`)
       return body
     },
   )
 
   typed.get(
-    '/api/v1/campaign-codes/:campaignId',
+    '/api/v1/prospects/campaign-codes/:campaignId',
     {
       preValidation: guarded,
       schema: {
@@ -136,7 +136,7 @@ export function registerProspectCampaignRoutes(app: FastifyInstance) {
   )
 
   typed.patch(
-    '/api/v1/campaign-codes/:campaignId',
+    '/api/v1/prospects/campaign-codes/:campaignId',
     {
       preValidation: [...guarded, requireIfMatch(), captureInput()],
       schema: {
@@ -164,7 +164,7 @@ export function registerProspectCampaignRoutes(app: FastifyInstance) {
   )
 
   typed.delete(
-    '/api/v1/campaign-codes/:campaignId',
+    '/api/v1/prospects/campaign-codes/:campaignId',
     {
       preValidation: [...guarded, requireIfMatch()],
       schema: {

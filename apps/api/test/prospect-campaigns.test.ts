@@ -30,7 +30,7 @@ import {
  * ON-134). Her test kendi kurumunu kurar. FIXED_NOW 2026-10-06 (Europe/Istanbul 12:00).
  */
 
-const CAMPAIGNS = '/api/v1/campaign-codes'
+const CAMPAIGNS = '/api/v1/prospects/campaign-codes'
 const FUNNEL = '/api/v1/prospects/funnel/campaigns'
 const PROSPECTS = '/api/v1/prospects'
 const SEED = createSeed(FIXED_NOW)

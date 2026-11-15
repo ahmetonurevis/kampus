@@ -92188,7 +92188,7 @@
         }
       }
     },
-    "/api/v1/campaign-codes": {
+    "/api/v1/prospects/campaign-codes": {
       "get": {
         "operationId": "listCampaignCodes",
         "summary": "Kampanya kodlarını listele",
@@ -92557,7 +92557,7 @@
         }
       }
     },
-    "/api/v1/campaign-codes/{campaignId}": {
+    "/api/v1/prospects/campaign-codes/{campaignId}": {
       "get": {
         "operationId": "getCampaignCode",
         "summary": "Kampanya kodu ayrıntısı",

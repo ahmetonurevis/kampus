@@ -6,7 +6,7 @@ import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 
-// Kampanya kodu ve kayıt hunisinin kampanya kırılımı kancaları (`/campaign-codes`,
+// Kampanya kodu ve kayıt hunisinin kampanya kırılımı kancaları (`/prospects/campaign-codes`,
 // `/prospects/funnel/campaigns`; DOM-KAY-041, ON-134). Kırılım aday koleksiyonunun anahtarı
 // altındadır: aday komutlarının tazelemesi onu da kapsar. Kampanya yazması listeyi ve kırılımı
 // (kampanya adı, maliyet) tazeler.
@@ -49,7 +49,7 @@ export function useCampaigns(query: CampaignQuery, options: { enabled?: boolean 
     {
       key: [...CAMPAIGN_KEY, 'list', query],
       request: (client, signal) =>
-        client.GET('/api/v1/campaign-codes', { params: { query }, signal }),
+        client.GET('/api/v1/prospects/campaign-codes', { params: { query }, signal }),
     },
     options,
   )
@@ -58,7 +58,10 @@ export function useCampaigns(query: CampaignQuery, options: { enabled?: boolean 
 export function useCreateCampaign() {
   return useApiCommand({
     request: (client, body: CreateCampaignBody, headers: CommandHeaders) =>
-      client.POST('/api/v1/campaign-codes', { params: { header: keyOnly(headers) }, body }),
+      client.POST('/api/v1/prospects/campaign-codes', {
+        params: { header: keyOnly(headers) },
+        body,
+      }),
     invalidates: INVALIDATES,
     exclusive: true,
   })
@@ -71,7 +74,7 @@ export function useUpdateCampaign() {
       input: { campaignId: string; version: number; body: UpdateCampaignBody },
       headers: CommandHeaders,
     ) =>
-      client.PATCH('/api/v1/campaign-codes/{campaignId}', {
+      client.PATCH('/api/v1/prospects/campaign-codes/{campaignId}', {
         params: { path: { campaignId: input.campaignId }, header: versioned(headers) },
         body: input.body,
       }),
@@ -86,7 +89,7 @@ export function useUpdateCampaign() {
 export function useArchiveCampaign() {
   return useApiCommand({
     request: (client, input: { campaignId: string; version: number }, headers: CommandHeaders) =>
-      client.DELETE('/api/v1/campaign-codes/{campaignId}', {
+      client.DELETE('/api/v1/prospects/campaign-codes/{campaignId}', {
         params: { path: { campaignId: input.campaignId }, header: versioned(headers) },
       }),
     invalidates: INVALIDATES,

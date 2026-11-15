@@ -315,7 +315,7 @@ test.describe('kampanya kodu', () => {
     const school = await tenant({ roles: ['onburo'] })
     const client = await api(school.user('onburo'))
     const created = await client.post(
-      '/api/v1/campaign-codes',
+      '/api/v1/prospects/campaign-codes',
       {
         code: 'YAZ26',
         name: 'Yaz okulu ilanı',

@@ -1757,11 +1757,19 @@ const FINANCE: Readonly<Record<string, Proof>> = {
   ...Object.fromEntries(
     (
       [
-        ['liste', 'GET /api/v1/campaign-codes', 'listOf(a.admin)'],
-        ['gövde', 'POST /api/v1/campaign-codes', 'institutionId: b.id'],
-        ['kayıt', 'GET /api/v1/campaign-codes/:campaignId', 'get(bUrl, a.admin)'],
-        ['kayıt', 'PATCH /api/v1/campaign-codes/:campaignId', "call('PATCH', bUrl, a.admin"],
-        ['kayıt', 'DELETE /api/v1/campaign-codes/:campaignId', "call('DELETE', bUrl, a.admin"],
+        ['liste', 'GET /api/v1/prospects/campaign-codes', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/prospects/campaign-codes', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/prospects/campaign-codes/:campaignId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/prospects/campaign-codes/:campaignId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/prospects/campaign-codes/:campaignId',
+          "call('DELETE', bUrl, a.admin",
+        ],
         ['liste', 'GET /api/v1/prospects/funnel/campaigns', 'get(FUNNEL, a.admin)'],
       ] as const
     ).map(([kind, key, marker]) => [

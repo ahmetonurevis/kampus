@@ -3892,7 +3892,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/campaign-codes": {
+    "/api/v1/prospects/campaign-codes": {
         parameters: {
             query?: never;
             header?: never;
@@ -3916,7 +3916,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/campaign-codes/{campaignId}": {
+    "/api/v1/prospects/campaign-codes/{campaignId}": {
         parameters: {
             query?: never;
             header?: never;

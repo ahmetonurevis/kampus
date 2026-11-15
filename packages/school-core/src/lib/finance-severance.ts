@@ -551,20 +551,44 @@ export function servicePeriodLabel(period: Pick<ServicePeriod, 'years' | 'months
   return text === '' ? '0 gün' : text
 }
 
-/** Hesabın uyarıları: tavan ve tarife güncelliği, istifada işçinin ihbar borcu. */
-export function severanceWarnings(estimate: SeveranceEstimate): string[] {
-  const warnings: string[] = []
-  if (estimate.severance.ceiling.stale)
-    warnings.push(
-      `Çıkış günü için kıdem tavanı tabloda yok; son bilinen ${estimate.severance.ceiling.from} dönemi tavanı kullanıldı. Güncel tavanı doğrulayın.`,
-    )
+export const SEVERANCE_WARNING_CODES = [
+  'ceiling_stale',
+  'tax_table_stale',
+  'resignation_notice_owed',
+] as const
+export type SeveranceWarningCode = (typeof SEVERANCE_WARNING_CODES)[number]
+
+type WarningSource = Pick<SeveranceEstimate, 'exitReason' | 'noticeGiven'> & {
+  severance: Pick<SeveranceLine, 'ceiling'>
+  notice: Pick<NoticeLine, 'taxTableStale' | 'incomeTaxMethod' | 'taxYear'>
+}
+
+/**
+ * Hesabın uyarı kodları (API yanıtında): tavan ya da tarife tabloda yok (son bilinen değer
+ * kullanıldı), bildirimsiz istifada ihbar tazminatını çalışan öder (bu hesap kapsamaz).
+ */
+export function severanceWarningCodes(estimate: WarningSource): SeveranceWarningCode[] {
+  const codes: SeveranceWarningCode[] = []
+  if (estimate.severance.ceiling.stale) codes.push('ceiling_stale')
   if (estimate.notice.taxTableStale && estimate.notice.incomeTaxMethod === 'cumulative_base')
-    warnings.push(
-      `Çıkış yılının gelir vergisi tarifesi tabloda yok; ${String(estimate.notice.taxYear)} tarifesi kullanıldı.`,
-    )
+    codes.push('tax_table_stale')
   if (estimate.exitReason === 'resignation' && !estimate.noticeGiven)
-    warnings.push(
-      'Bildirim süresine uyulmadan istifada ihbar tazminatını çalışan işverene öder; bu hesap onu kapsamaz.',
-    )
-  return warnings
+    codes.push('resignation_notice_owed')
+  return codes
+}
+
+/** Uyarı metinleri (ekran ve PDF). */
+export function severanceWarnings(estimate: WarningSource): string[] {
+  return severanceWarningCodes(estimate).map((code) => {
+    switch (code) {
+      case 'ceiling_stale':
+        return `Çıkış günü için kıdem tavanı tabloda yok; son bilinen ${estimate.severance.ceiling.from} dönemi tavanı kullanıldı. Güncel tavanı doğrulayın.`
+      case 'tax_table_stale':
+        return `Çıkış yılının gelir vergisi tarifesi tabloda yok; ${String(estimate.notice.taxYear)} tarifesi kullanıldı.`
+      case 'resignation_notice_owed':
+        return 'Bildirim süresine uyulmadan istifada ihbar tazminatını çalışan işverene öder; bu hesap onu kapsamaz.'
+      default:
+        return code satisfies never
+    }
+  })
 }

@@ -152301,6 +152301,528 @@
         }
       }
     },
+    "/api/v1/finance/severance-estimates": {
+      "post": {
+        "operationId": "estimateFinanceSeverance",
+        "summary": "Kıdem ve ihbar tazminatını tahmin et",
+        "tags": [
+          "finance-severance"
+        ],
+        "description": "Elle girilen işe giriş ve çıkış günü, aylık brüt ücret, düzenli yan ödemeler, çıkış nedeni ve ihbar bilgisinden kıdem ve ihbar tazminatının tahmini dökümünü döner (ON-205; DOM-FIN-094). **Hiçbir şey yazmaz**, hesap saklanmaz (K-273; `Idempotency-Key` gerekmez). Kıdem: bir tam yıl ve kıdem doğuran neden şartıyla esas aylık (giydirilmiş brüt ile çıkış günündeki tavanın küçüğü) × (tam yıl + artık gün / 365); gelir vergisinden istisna, damga vergisi binde 7,59. İhbar: yalnız işveren feshinde ve ihbar verilmediyse 4857 md. 17 süresi (2/4/6/8 hafta) × 7 × giydirilmiş aylık / 30; gelir vergisi `cumulativeTaxBaseCents` yoksa ilk dilim oranı, varsa dilimli (K-274); damga vergisi. Tutarlar kuruş. Tavan ve tarife tablosu dışındaki günde son bilinen değer kullanılır, `warnings` uyarır. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Tahmindir; bordro ya da mali müşavir hesabı yerine geçmez.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "grossWageCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000
+                  },
+                  "regularBenefitsCents": {
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "exitReason": {
+                    "type": "string",
+                    "enum": [
+                      "employer_termination",
+                      "employer_compelling",
+                      "employee_just_cause",
+                      "retirement",
+                      "military_service",
+                      "marriage",
+                      "death",
+                      "fixed_term_end",
+                      "resignation",
+                      "employer_misconduct"
+                    ]
+                  },
+                  "noticeGiven": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "cumulativeTaxBaseCents": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "startDate",
+                  "endDate",
+                  "grossWageCents",
+                  "exitReason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "exitReason": {
+                          "type": "string",
+                          "enum": [
+                            "employer_termination",
+                            "employer_compelling",
+                            "employee_just_cause",
+                            "retirement",
+                            "military_service",
+                            "marriage",
+                            "death",
+                            "fixed_term_end",
+                            "resignation",
+                            "employer_misconduct"
+                          ]
+                        },
+                        "noticeGiven": {
+                          "type": "boolean"
+                        },
+                        "service": {
+                          "type": "object",
+                          "properties": {
+                            "startDate": {
+                              "type": "string",
+                              "description": "`YYYY-MM-DD`"
+                            },
+                            "endDate": {
+                              "type": "string",
+                              "description": "`YYYY-MM-DD`"
+                            },
+                            "totalDays": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Giriş ve çıkış günü dahil takvim günü"
+                            },
+                            "years": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Tam hizmet yılı"
+                            },
+                            "months": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Son yıl dönümünden sonraki tam ay (gösterim)"
+                            },
+                            "days": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Son tam aydan sonraki gün (gösterim)"
+                            },
+                            "remainderDays": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Son yıl dönümünden sonraki gün (kıdemde 365’te bir)"
+                            }
+                          },
+                          "required": [
+                            "startDate",
+                            "endDate",
+                            "totalDays",
+                            "years",
+                            "months",
+                            "days",
+                            "remainderDays"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "wage": {
+                          "type": "object",
+                          "properties": {
+                            "grossWageCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "regularBenefitsCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "dressedWageCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Aylık giydirilmiş brüt: brüt + düzenli yan ödemeler"
+                            },
+                            "dailyDressedWageCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Aylık giydirilmiş brüt / 30"
+                            }
+                          },
+                          "required": [
+                            "grossWageCents",
+                            "regularBenefitsCents",
+                            "dressedWageCents",
+                            "dailyDressedWageCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "severance": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "eligible",
+                                "reason_not_entitled",
+                                "under_one_year"
+                              ]
+                            },
+                            "days": {
+                              "type": "number",
+                              "minimum": 0,
+                              "description": "Tazminata esas gün (iki ondalık)"
+                            },
+                            "fullYears": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "remainderDays": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "ceiling": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "description": "Uygulanan tavan döneminin başlangıcı"
+                                },
+                                "monthlyCents": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "stale": {
+                                  "type": "boolean",
+                                  "description": "Çıkış günü tablonun son döneminden sonra"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "monthlyCents",
+                                "stale"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "ceilingApplied": {
+                              "type": "boolean"
+                            },
+                            "baseMonthlyCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Giydirilmiş aylık ile tavanın küçüğü"
+                            },
+                            "dailyWageCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "incomeTaxCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "stampTaxCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "days",
+                            "fullYears",
+                            "remainderDays",
+                            "ceiling",
+                            "ceilingApplied",
+                            "baseMonthlyCents",
+                            "dailyWageCents",
+                            "grossCents",
+                            "incomeTaxCents",
+                            "stampTaxCents",
+                            "netCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "notice": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "eligible",
+                                "reason_not_entitled",
+                                "notice_given"
+                              ]
+                            },
+                            "weeks": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    4
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    6
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    8
+                                  ]
+                                }
+                              ]
+                            },
+                            "days": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991,
+                              "description": "Ödenen gün: hak varsa hafta × 7, yoksa 0"
+                            },
+                            "dailyWageCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "incomeTaxMethod": {
+                              "type": "string",
+                              "enum": [
+                                "first_bracket",
+                                "cumulative_base",
+                                "none"
+                              ]
+                            },
+                            "taxYear": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "taxTableStale": {
+                              "type": "boolean"
+                            },
+                            "incomeTaxRateBasisPoints": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "incomeTaxCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "stampTaxCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "weeks",
+                            "days",
+                            "dailyWageCents",
+                            "incomeTaxMethod",
+                            "taxYear",
+                            "taxTableStale",
+                            "incomeTaxRateBasisPoints",
+                            "grossCents",
+                            "incomeTaxCents",
+                            "stampTaxCents",
+                            "netCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "incomeTaxCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "stampTaxCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "grossCents",
+                            "incomeTaxCents",
+                            "stampTaxCents",
+                            "netCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "ceiling_stale",
+                              "tax_table_stale",
+                              "resignation_notice_owed"
+                            ]
+                          },
+                          "description": "Uyarı kodları: `ceiling_stale` (tavan tabloda yok, son bilinen kullanıldı), `tax_table_stale` (tarife yılı yok), `resignation_notice_owed` (bildirimsiz istifada ihbarı çalışan öder)"
+                        }
+                      },
+                      "required": [
+                        "exitReason",
+                        "noticeGiven",
+                        "service",
+                        "wage",
+                        "severance",
+                        "notice",
+                        "totals",
+                        "warnings"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

@@ -16,6 +16,7 @@ import {
   severanceRequestSchema,
   servicePeriod,
   servicePeriodLabel,
+  severanceWarningCodes,
   severanceWarnings,
   wageTariffFor,
   WAGE_INCOME_TAX_TARIFFS,
@@ -204,6 +205,7 @@ test('DOM-FIN-094: istifa ve ahlak-iyi niyet feshi kıdem ve ihbar doğurmaz; is
     })
   }
   const resigned = severanceEstimate(input({ exitReason: 'resignation' }))
+  assert.deepEqual(severanceWarningCodes(resigned), ['resignation_notice_owed'])
   assert.match(severanceWarnings(resigned).join(' '), /çalışan işverene öder/)
   assert.deepEqual(
     severanceWarnings(severanceEstimate(input({ exitReason: 'resignation', noticeGiven: true }))),

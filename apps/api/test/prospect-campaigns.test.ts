@@ -457,7 +457,10 @@ describe('DOM-KAY-041: kampanya kodu ve huni kırılımı', () => {
     assert.equal(response.statusCode, 200, response.body)
     assert.match(String(response.headers['content-type']), /text\/csv/)
     assert.match(String(response.headers['content-disposition']), /kampanya-hunisi-/)
-    const lines = response.body.replace(/^\uFEFF/, '').trimEnd().split('\r\n')
+    const lines = response.body
+      .replace(/^\uFEFF/, '')
+      .trimEnd()
+      .split('\r\n')
     assert.equal(
       lines[1],
       '"YAZ26";"Yaz okulu sosyal medya ilanı";"Sosyal medya";"2026-10-01";"2026-10-31";4;3;3;1;25;3000,00;750,00;3000,00',

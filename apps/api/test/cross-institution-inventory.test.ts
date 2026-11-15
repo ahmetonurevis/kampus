@@ -1743,6 +1743,32 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: burs kesme ve geri isteme (ON-283; DOM-FIN-025).
+  ...Object.fromEntries(
+    (
+      [
+        ['kayıt', 'POST /api/v1/finance/scholarship-awards/:awardId/end-quote', 'quote(foreign'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-awards/:awardId/terminate',
+          "end(foreign, 'terminate'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/scholarship-awards/:awardId/revoke',
+          "end(foreign, 'revoke'",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/scholarship-awards/:awardId/ends',
+          '`${AWARDS}/${a.awardId}/ends`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-scholarship-revocation.test.ts', 'başka kurumun ataması 404', marker),
+    ]),
+  ),
 }
 
 /**

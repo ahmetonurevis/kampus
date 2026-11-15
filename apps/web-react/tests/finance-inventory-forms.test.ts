@@ -27,6 +27,7 @@ test('DOM-FIN-077: kart formu boş kritik seviyeyi null, sayıyı tam sayı gön
   }
   assert.deepEqual(stockItemBody(values), {
     code: 'kag-a4',
+    barcode: null,
     name: 'A4 kâğıt',
     category: 'stationery',
     unit: 'pack',
@@ -35,6 +36,19 @@ test('DOM-FIN-077: kart formu boş kritik seviyeyi null, sayıyı tam sayı gön
   assert.equal(stockItemBody({ ...values, minQuantity: '12' }).minQuantity, 12)
   assert.equal(stockItemFormSchema.safeParse({ ...values, minQuantity: '-1' }).success, false)
   assert.equal(stockItemFormSchema.safeParse({ ...values, code: 'ğ' }).success, false)
+})
+
+test('DOM-FIN-077, K-284: barkod boşluksuz büyük harfle gider; EAN sağlaması formda denetlenir', () => {
+  const values = { ...stockItemDefaults(), code: 'KLM', name: 'Kalem' }
+  assert.equal(stockItemBody({ ...values, barcode: ' 8691 2345 67890 ' }).barcode, '8691234567890')
+  assert.equal(stockItemBody({ ...values, barcode: 'kurum-01' }).barcode, 'KURUM-01')
+  assert.equal(stockItemBody({ ...values, barcode: '  ' }).barcode, null)
+  assert.equal(stockItemFormSchema.safeParse({ ...values, barcode: '8691234567890' }).success, true)
+  assert.equal(
+    stockItemFormSchema.safeParse({ ...values, barcode: '8691234567891' }).success,
+    false,
+  )
+  assert.equal(stockItemFormSchema.safeParse({ ...values, barcode: '-X' }).success, false)
 })
 
 test('DOM-FIN-077: depo formu boş notu null gönderir', () => {

@@ -70,6 +70,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations',
   'POST /api/v1/finance/scholarship-funds/{fundId}/donations/{donationId}/cancel',
   'POST /api/v1/finance/scholarship-funds/{fundId}/allocations/{allocationId}/cancel',
+  // Burs kesme taksit yazar, gerçek dışı beyanda iptal geri isteme alacağı açar
+  // (routes/finance-scholarships.ts; DOM-FIN-025, ON-283).
+  'POST /api/v1/finance/scholarship-awards/{awardId}/terminate',
+  'POST /api/v1/finance/scholarship-awards/{awardId}/revoke',
   // Banka ekstresi toplu aktarımı ve eşleşme onayı tahsilat yazar (IST-115, DOM-FIN-069).
   'POST /api/v1/finance/bank-statement-imports',
   'POST /api/v1/finance/bank-transactions/{transactionId}/match',

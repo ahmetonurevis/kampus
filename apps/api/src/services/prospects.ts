@@ -26,6 +26,7 @@ import {
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
+import { campaignCodeSchema } from '@kampus/school-core/lib/prospect-campaigns.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
@@ -37,6 +38,7 @@ import {
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
 import { findReferralReward } from '../db/finance-referrals.ts'
+import { findCampaignByCode } from '../db/prospect-campaigns.ts'
 import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -102,6 +104,8 @@ interface ProspectRun {
   subjectId: string | null
   /** Not yazarının gösterilen adı oturum kullanıcısından okunur (DOM-KAY-032). */
   needsAuthorName?: boolean
+  /** Gövdedeki kampanya kodu (DOM-KAY-041); kampanya kurum kilidi altında okunur. */
+  campaignCode?: string | undefined
   run: (state: State, by: Participant, tools: OperationTools, options: ProspectOptions) => Outcome
 }
 
@@ -148,6 +152,12 @@ function execute(
         const prospectOptions: ProspectOptions = { institutionType }
         if (command.needsAuthorName === true)
           prospectOptions.authorName = await sessionUserName(tx, ctx.actor.userId)
+        if (command.campaignCode !== undefined)
+          prospectOptions.campaign = await findCampaignByCode(
+            tx,
+            ctx.institutionId,
+            command.campaignCode,
+          )
         return {
           scalars,
           run: (state, tools) => command.run(state, by, tools, prospectOptions),
@@ -164,7 +174,17 @@ function execute(
   )
 }
 
-/** Yeni aday açar (DOM-KAY-002, -003, -004, -007, -009). 201. */
+/**
+ * Gövdedeki kampanya kodu, saklanan biçimde; biçimsizse `undefined` (core şeması 400 verir, kampanya
+ * aranmaz).
+ */
+function bodyCampaignCode(input: unknown): string | undefined {
+  if (typeof input !== 'object' || input === null || !('campaignCode' in input)) return undefined
+  const parsed = campaignCodeSchema.safeParse(input.campaignCode)
+  return parsed.success ? parsed.data : undefined
+}
+
+/** Yeni aday açar (DOM-KAY-002, -003, -004, -007, -009); kodla kampanyaya bağlar (DOM-KAY-041). 201. */
 export function createProspectCommand(
   ctx: ServiceContext,
   input: unknown,
@@ -175,6 +195,7 @@ export function createProspectCommand(
     {
       action: 'prospect.create',
       subjectId: null,
+      campaignCode: bodyCampaignCode(input),
       run: (state, by, { now, makeId }, prospectOptions) => {
         const created = createProspect(state, by, input, makeId, now, prospectOptions)
         return { id: created.id, statusCode: 201 }

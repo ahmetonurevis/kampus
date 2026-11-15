@@ -10,6 +10,7 @@ import type {
 import { OPEN_PURCHASE_REQUEST_STATUSES } from '@kampus/school-core/lib/finance-stock-alerts.ts'
 
 import type { Database } from './client.ts'
+import { awaitingApprovalFilter } from './finance-purchase-approvals.ts'
 import { loadOrderBudgetFigures, requestHasLiveOrder } from './finance-purchase-receipts.ts'
 import { memberships, users } from './schema/auth.ts'
 import { budgetItems, budgetLines, budgetPeriods, costCenters } from './schema/finance-budget.ts'
@@ -186,6 +187,8 @@ export interface PurchaseRequestQuery {
   status?: PurchaseRequestStatus | undefined
   costCenterId?: string | undefined
   periodId?: string | undefined
+  /** "Onayımı bekleyenler" (ON-223, K-263): sıranın bu kişide olduğu gönderilmiş talepler. */
+  awaitingApprovalOf?: { userId: string; role: string } | undefined
 }
 
 /** `ST-0012`, `st12` ya da `12` sıra numarasına çevrilir; değilse `null`. */
@@ -216,6 +219,8 @@ export async function listPurchaseRequests(
   if (query.costCenterId !== undefined)
     filters.push(eq(purchaseRequests.costCenterId, query.costCenterId))
   if (query.periodId !== undefined) filters.push(eq(purchaseRequests.periodId, query.periodId))
+  if (query.awaitingApprovalOf !== undefined)
+    filters.push(awaitingApprovalFilter(query.awaitingApprovalOf))
   const where = and(ofInstitution(institutionId), ...filters)
   const [totalRow] = await db
     .select({ total: count() })
@@ -335,8 +340,9 @@ export async function replacePurchaseRequestItems(
 
 export type PurchaseRequestUpdate = Partial<PurchaseRequestWrite> & {
   status?: PurchaseRequestStatus
-  submittedAt?: Date
-  submittedByUserId?: string
+  /** Taslağa geri çekmede boşalır (ON-223, K-261). */
+  submittedAt?: Date | null
+  submittedByUserId?: string | null
   decidedAt?: Date
   decidedByUserId?: string
   decisionNote?: string | null

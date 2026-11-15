@@ -2,6 +2,10 @@ import { z } from 'zod'
 
 import { BUDGET_PERIOD_STATUSES } from '@kampus/school-core/lib/finance-budget.ts'
 import {
+  PURCHASE_APPROVAL_DECISIONS,
+  PURCHASE_APPROVER_ROLES,
+} from '@kampus/school-core/lib/finance-purchase-approvals.ts'
+import {
   PURCHASE_REQUEST_STATUSES,
   PURCHASE_UNITS,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
@@ -101,9 +105,44 @@ const detailSchema = z.object({
       edit: z.boolean(),
       submit: z.boolean(),
       cancel: z.boolean(),
-      decide: z.boolean(),
+      decide: z
+        .boolean()
+        .describe(
+          'Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262)',
+        ),
+      withdraw: z.boolean().describe('Gönderilmiş talebi taslağa geri çekme (K-261)'),
     })
     .describe('Oturumdaki kullanıcının bu talepte yapabileceği işlemler'),
+  approval: z
+    .object({
+      mode: z
+        .enum(['single', 'tiered'])
+        .describe(
+          '`single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)',
+        ),
+      currentPosition: z
+        .number()
+        .int()
+        .nullable()
+        .describe('Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş'),
+      steps: z.array(
+        z.object({
+          position: z.number().int().describe('Kademe sırası, 1’den'),
+          minTotalCents: cents('Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam)'),
+          approverRole: z
+            .enum(PURCHASE_APPROVER_ROLES)
+            .nullable()
+            .describe('Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş'),
+          approverUserId: z.string().nullable().describe('Adlandırılmış onaylayan'),
+          approverName: z.string().nullable(),
+          decision: z.enum(PURCHASE_APPROVAL_DECISIONS).nullable().describe('Kademe kararı'),
+          decidedByName: z.string().nullable(),
+          decidedAt: z.string().nullable(),
+          note: z.string().nullable().describe('Onay notu ya da ret gerekçesi'),
+        }),
+      ),
+    })
+    .describe('Onay zinciri (ON-223, K-260…K-262)'),
   supplyRequest: z
     .object({ id: z.string(), number: z.string().describe('Sarf talebi numarası, ör. `SM-0001`') })
     .nullable()
@@ -154,4 +193,10 @@ export const purchaseRequestListQuery = z.strictObject({
   status: z.enum(PURCHASE_REQUEST_STATUSES).optional().describe('Durum'),
   costCenterId: z.uuid('Birim geçersiz.').optional().describe('Talep eden birim'),
   periodId: z.uuid('Dönem geçersiz.').optional().describe('Bütçe dönemi'),
+  awaitingMyApproval: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      '`true`: "Onayımı bekleyenler" — sıranın oturumdaki kişide olduğu gönderilmiş talepler (K-263)',
+    ),
 })

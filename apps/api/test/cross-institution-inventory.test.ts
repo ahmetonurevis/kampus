@@ -1006,6 +1006,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'enrollment-import.test.ts',
     'başka kurumun sınıfı, velisi ve kimliği bu kurumu etkilemez',
   ),
+  // Onur: e-Okul öğrenci listesi aktarımı (ON-062, IST-134; DOM-KAY-042).
+  'POST /api/v1/prospects/eokul-student-imports': govde(
+    'enrollment-eokul-import.test.ts',
+    'başka kurumun öğrencisi, sınıfı ve kimliği bu kurumu etkilemez',
+  ),
   'POST /api/v1/finance/installment-imports': govde(
     'finance-installment-import.test.ts',
     'başka kurumun öğrencisi ve sözleşmesi bu kurumu etkilemez',
@@ -1739,6 +1744,106 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)(
         'finance-maintenance-requests.test.ts',
         'başka kurumun talebi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kıdem ve ihbar tazminatı tahmini (ON-205; DOM-FIN-094). Elle girdili hesap; kayıt yok.
+  'POST /api/v1/finance/severance-estimates': yok(
+    'elle girdili kıdem ve ihbar hesabı; kurum kaydı okumaz ve yazmaz, sonuç saklanmaz (K-273)',
+  ),
+  // Onur: kampanya kodu ve huni kırılımı (ON-134; DOM-KAY-041). Envanter tablosunda Onur
+  // bloklarının sonuna (ör. tedarikçi bloğunun yanına) eklenir; kanıt `prospect-campaigns.test.ts`.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/prospects/campaign-codes', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/prospects/campaign-codes', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/prospects/campaign-codes/:campaignId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/prospects/campaign-codes/:campaignId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/prospects/campaign-codes/:campaignId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        ['liste', 'GET /api/v1/prospects/funnel/campaigns', 'get(FUNNEL, a.admin)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'prospect-campaigns.test.ts',
+        'başka kurumun kampanyası 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: tedarikçi faturası üçlü eşleştirmesi (ON-277; DOM-FIN-095).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/supplier-invoices/:invoiceId/approve-match',
+          'approve(a.admin, bInvoice)',
+        ],
+        ['liste', 'GET /api/v1/finance/supplier-invoice-matches', 'get(MATCHES, a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/purchase-orders/:orderId/invoice-matching',
+          '`${ORDERS}/${String(b.order.id)}/invoice-matching`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-invoice-matching.test.ts',
+        'başka kurumun faturası ve siparişi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kademeli onay ayarı ve taslağa geri çekme (ON-223; DOM-FIN-071, K-260…K-263).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/purchase-approval-settings',
+          'get(SETTINGS, a.adminA.cookie)',
+        ],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/purchase-approval-settings',
+          'approverUserId: bFounder.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-purchase-approvals.test.ts',
+        'başka kurumun ayarı ve kişisi etkisiz; B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/purchase-requests/:requestId/withdraw',
+          "'withdraw', 'approve', 'reject'",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-purchase-approvals.test.ts',
+        'başka kurumun talebi geri çekilemez (404) ve B değişmez',
         marker,
       ),
     ]),

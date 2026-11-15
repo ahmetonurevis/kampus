@@ -36,6 +36,7 @@ import { PdfDialogButton } from './CorporateParts.tsx'
 import { reasonFormSchema, type ReasonFormValues } from './finance-procurement-forms.ts'
 import { ORDER_STATUS_VIEW } from './finance-purchase-order-forms.ts'
 import { FinancePurchaseReceiptsPanel } from './FinancePurchaseReceiptsPanel.tsx'
+import { PurchaseOrderMatchingPanel } from './PurchaseOrderMatchingPanel.tsx'
 
 const NO_SORT: readonly string[] = []
 const MOBILE = ['number', 'status', 'total']
@@ -296,6 +297,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
         </dl>
       </section>
       {order.status === 'draft' ? null : <FinancePurchaseReceiptsPanel orderId={order.id} />}
+      {order.status === 'draft' ? null : <PurchaseOrderMatchingPanel orderId={order.id} />}
       {cancelling ? <CancelModal order={order} onClose={() => setCancelling(false)} /> : null}
     </div>
   )

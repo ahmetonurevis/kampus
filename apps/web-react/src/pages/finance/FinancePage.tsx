@@ -68,6 +68,9 @@ const FinanceFixedAssetsSection = lazy(async () => ({
 const FinanceMaintenanceSection = lazy(async () => ({
   default: (await import('./FinanceMaintenanceSection.tsx')).FinanceMaintenanceSection,
 }))
+const FinanceBudgetDraftsSection = lazy(async () => ({
+  default: (await import('./FinanceBudgetDraftsSection.tsx')).FinanceBudgetDraftsSection,
+}))
 const FinanceMaterialSetsSection = lazy(async () => ({
   default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
 }))
@@ -90,6 +93,7 @@ const VIEWS = {
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   budget: { label: 'Bütçe', param: 'butce' },
+  budgetDrafts: { label: 'Bütçe taslakları', param: 'butce-taslak' },
   costs: { label: 'Maliyet', param: 'maliyet' },
   suppliers: { label: 'Tedarikçiler', param: 'tedarikci' },
   purchaseRequests: { label: 'Satın alma talepleri', param: 'satin-alma' },
@@ -125,6 +129,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sarf talepleri (DOM-FIN-091) ikisine açıktır; ön büro karşılar ve dönüştürür, onay yöneticide (K-244).
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  * Arıza ve bakım (DOM-FIN-089) ikisine açıktır; ön büro bildirir, iş emrini yönetici yürütür (K-237).
+ * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
+ * onay yöneticide (K-256, K-257).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -272,7 +278,8 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'materialSets' ||
       tab === 'supplyRequests' ||
       tab === 'fixedAssets' ||
-      tab === 'maintenance' ? (
+      tab === 'maintenance' ||
+      tab === 'budgetDrafts' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
@@ -292,6 +299,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           ) : null}
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
           {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
+          {tab === 'budgetDrafts' ? <FinanceBudgetDraftsSection isManager={isManager} /> : null}
         </Suspense>
       ) : null}
       {tab === 'boardReport' ? (

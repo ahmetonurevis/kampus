@@ -1874,6 +1874,44 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)('finance-scholarship-revocation.test.ts', 'başka kurumun ataması 404', marker),
     ]),
   ),
+  // Onur: periyodik bakım planı (ON-240; DOM-FIN-092).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/maintenance-plans', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/maintenance-plans', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/maintenance-plans/:planId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/maintenance-plans/:planId', "call('PATCH', bUrl, a.admin"],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/maintenance-plans/:planId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/maintenance-plans/:planId/inspections',
+          'inspect(a.admin, bPlan',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/maintenance-plans/:planId/inspections/:inspectionId/cancel',
+          'cancel(a.admin, bPlan, bInspection',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/maintenance-plans/:planId/inspections/:inspectionId/maintenance-request',
+          'openRequest(a.admin, bPlan, bInspection)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-maintenance-plans.test.ts',
+        'başka kurumun planı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

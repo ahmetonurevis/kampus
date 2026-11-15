@@ -21,7 +21,6 @@ import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
-import { registerScholarshipRevocationRoutes } from './finance-scholarship-revocation.ts'
 
 /**
  * Burs programı uçları (docs/domain/finans.md DOM-FIN-025; IST-105). Modül `finance`. Okuma
@@ -225,5 +224,4 @@ export function registerFinanceScholarshipRoutes(app: FastifyInstance) {
       return awardResponse.parse(sendBody(reply, result))
     },
   )
-  registerScholarshipRevocationRoutes(app)
 }

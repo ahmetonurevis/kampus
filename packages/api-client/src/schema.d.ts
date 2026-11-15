@@ -6800,6 +6800,118 @@ export interface paths {
         patch: operations["setPurchaseApprovalSettings"];
         trace?: never;
     };
+    "/api/v1/finance/maintenance-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Periyodik bakım planlarını listele
+         * @description Hiç denetlenmemiş planlar önce, sonra sonraki denetim günü en yakın (geciken önce); eşitlikte ad. Son ve sonraki denetim günü ile durum her okumada hesaplanır: sonraki gün bugünden önceyse `overdue`, bugün dahil 30 gün içindeyse `due_soon`, hiç denetim yoksa `never` (K-253). `due=attention` geciken, yaklaşan ve hiç denetlenmemiş planları verir (rozet sayısı `meta.total`). `type`, `assetId` süzer; `q` ad, yer, demirbaş etiketi ve adında arar (DOM-FIN-092). `Accept: text/csv` süzgeçle eşleşen bütün planları CSV verir (`;` ayırıcı, UTF-8 BOM, formül kaçışı); sorumlu personel adı taşıdığı için taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.maintenance_plan_export` (K-255). Rol: `yonetici`, `onburo` (K-255). Modül `finance`.
+         */
+        get: operations["listMaintenancePlans"];
+        put?: never;
+        /**
+         * Bakım planı aç
+         * @description Ad, tür, yer, isteğe bağlı kampüs, demirbaş etiketi, periyot (ay), sistemden önceki son denetim günü, sorumlu (personel ya da tedarikçi) ve yasal işaret (K-252). Periyot ve yasal işaret boşsa türün önerisi yazılır (asansör 12, yangın söndürücü 6, jeneratör 12, oyun alanı 12, kazan 12, elektrik 12 ay; mevzuat varsayımı doğrulanmalı, H-31). Olmayan etiket (başka kurumun etiketi dahil) 422 `maintenance_plan_asset_not_found`, hurdaya ayrılmış demirbaş 422 `maintenance_plan_asset_scrapped`, olmayan kampüs 422 `maintenance_plan_campus_not_found`, gelecek gün 422 `maintenance_plan_date_in_future`; olmayan, personel olmayan ya da pasif personel 422 `maintenance_plan_responsible_not_found` / `_not_staff` / `_inactive`, olmayan ya da pasif tedarikçi 422 `maintenance_plan_supplier_not_found` / `_inactive`. Gövdedeki `institutionId` 400. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        post: operations["createMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bakım planı ayrıntısı ve denetim kayıtları
+         * @description Plan, takvimi ve denetim kayıtları (yeniden eskiye, iptal edilenler dahil; açılan arıza talebinin numarası ve durumu). Olmayan, arşivlenmiş ya da başka kurumun planı 404. Rol: `yonetici`, `onburo` (K-255). Modül `finance`.
+         */
+        get: operations["getMaintenancePlan"];
+        put?: never;
+        post?: never;
+        /**
+         * Bakım planını arşivle
+         * @description Arşivli plan listede ve uyarıda görünmez; denetim kayıtları ve açılan arıza talepleri kalır. Olmayan ya da başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        delete: operations["archiveMaintenancePlan"];
+        options?: never;
+        head?: never;
+        /**
+         * Bakım planını düzelt
+         * @description Verilen alanlar değişir (K-252); yalnız değişen bağlantılar yeniden denetlenir, tür değişikliği periyodu değiştirmez. Değişiklik yoksa 422 `maintenance_plan_unchanged`; diğer hatalar plan açılışındaki gibidir. `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        patch: operations["updateMaintenancePlan"];
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-plans/{planId}/inspections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Denetim kaydet
+         * @description Gün, yapan, sonuç (`pass` uygun, `fail` uygunsuz, `partial` kısmen uygun), isteğe bağlı belge no ve not; uygunsuz ve kısmen uygun sonuçta not zorunlu (400). Son ve sonraki denetim günü bu kayıttan yeniden hesaplanır (K-253, K-254). Gelecek gün 422 `maintenance_inspection_date_in_future`; aynı plana aynı güne iptal edilmemiş ikinci kayıt 409 `maintenance_inspection_exists`. Olmayan ya da başka kurumun planı 404. `Idempotency-Key` alabilir. Yanıt planın ayrıntısıdır. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        post: operations["recordMaintenanceInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-plans/{planId}/inspections/{inspectionId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Denetim kaydını iptal et
+         * @description Yanlış girilen denetim gerekçeyle (5–500) iptal edilir; takvime sayılmaz, aynı güne yeniden kayıt yazılabilir. Açılmış arıza talebi değişmez. İptal edilmiş kayıt 422 `maintenance_inspection_cancelled`. Olmayan ya da başka kurumun planı veya denetimi 404; `If-Match` denetimin sürümüdür, tutmazsa 409. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        post: operations["cancelMaintenanceInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-plans/{planId}/inspections/{inspectionId}/maintenance-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Uygunsuz denetimden arıza talebi aç
+         * @description Uygunsuz ya da kısmen uygun denetimden tek adımda arıza talebi (DOM-FIN-089) açar (K-254): başlık plan adından, açıklama denetimin gününden, yapanından, belge numarasından ve notundan üretilir; uygunsuz sonuç acil, kısmen uygun normal öncelikli; yer, etkin kampüs ve hurdaya ayrılmamış demirbaş plandan gelir. Talep `open` ve `AT-<sıra>` numarasıyla açılır, denetime bağlanır. Uygun sonuç 422 `maintenance_inspection_passed`, iptal edilmiş denetim 422 `maintenance_inspection_cancelled`, talep açılmışsa 409 `maintenance_inspection_request_exists`. Olmayan ya da başka kurumun planı veya denetimi 404; `If-Match` denetimin sürümüdür. Yanıt planın ayrıntısıdır; `location` açılan talebi gösterir. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        post: operations["openMaintenanceRequestFromInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -72358,6 +72470,1392 @@ export interface operations {
                             }[];
                             /** @description `If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1 */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMaintenancePlans: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ad, yer, demirbaş etiketi ve adında arama */
+                q?: string;
+                /** @description Tür */
+                type?: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                /** @description `attention` geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş; ya da tek durum (`overdue`, `due_soon`, `ok`, `never`) */
+                due?: "attention" | "overdue" | "due_soon" | "ok" | "never";
+                /** @description Demirbaşın bakım planları */
+                assetId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /**
+                     * @description `elevator` asansör, `fire_extinguisher` yangın söndürücü, `generator` jeneratör, `playground` oyun alanı, `boiler` kazan ve kalorifer, `electrical` elektrik tesisatı, `other` diğer
+                     * @enum {string}
+                     */
+                    type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                    /**
+                     * @description Kampüs (branches kaydı); tek kampüslü kurumda boş
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /** @description Donanımın yeri, serbest metin */
+                    location: string;
+                    /** @description İsteğe bağlı demirbaş etiketi; kurumun hurdaya ayrılmamış demirbaşı olmalıdır */
+                    assetTagNumber?: string | null;
+                    /**
+                     * @description Periyot (ay, 1–60); boşsa türün önerisi
+                     * @default null
+                     */
+                    periodMonths?: number | null;
+                    /**
+                     * @description Yasal zorunlu denetim mi; boşsa türün önerisi
+                     * @default null
+                     */
+                    isLegal?: boolean | null;
+                    /**
+                     * @description Sistemden önceki son denetim günü; bugünden sonra olamaz, bilinmiyorsa boş
+                     * @default null
+                     */
+                    lastDoneDate?: string | null;
+                    /**
+                     * @description Sorumlu: kurum personeli ya da tedarikçi; boş olabilir
+                     * @default null
+                     */
+                    responsible?: ({
+                        /** @enum {string} */
+                        type: "staff";
+                        /** @description Sorumlu personelin kurum üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "supplier";
+                        /**
+                         * Format: uuid
+                         * @description Denetimi yapan dış tedarikçi (DOM-FIN-070)
+                         */
+                        supplierId: string;
+                    }) | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /**
+                     * @description `elevator` asansör, `fire_extinguisher` yangın söndürücü, `generator` jeneratör, `playground` oyun alanı, `boiler` kazan ve kalorifer, `electrical` elektrik tesisatı, `other` diğer
+                     * @enum {string}
+                     */
+                    type?: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                    /** @description Kampüs (branches kaydı); tek kampüslü kurumda boş */
+                    campusId?: string | null;
+                    /** @description Donanımın yeri, serbest metin */
+                    location?: string;
+                    /** @description Demirbaş etiketi; boş bağı kaldırır */
+                    assetTagNumber?: string | null;
+                    /** @description Periyot (ay, 1–60) */
+                    periodMonths?: number;
+                    isLegal?: boolean;
+                    /** @description Sistemden önceki son denetim günü; bugünden sonra olamaz, bilinmiyorsa boş */
+                    lastDoneDate?: string | null;
+                    /** @description Sorumlu: kurum personeli ya da tedarikçi; boş olabilir */
+                    responsible?: ({
+                        /** @enum {string} */
+                        type: "staff";
+                        /** @description Sorumlu personelin kurum üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "supplier";
+                        /**
+                         * Format: uuid
+                         * @description Denetimi yapan dış tedarikçi (DOM-FIN-070)
+                         */
+                        supplierId: string;
+                    }) | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordMaintenanceInspection: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Denetim günü; bugünden sonra olamaz */
+                    doneDate: string;
+                    /** @description Denetimi yapan kişi ya da kuruluş, serbest metin */
+                    performedBy: string;
+                    /**
+                     * @description `pass` uygun, `fail` uygunsuz, `partial` kısmen uygun
+                     * @enum {string}
+                     */
+                    result: "pass" | "fail" | "partial";
+                    /** @description Muayene raporu ya da belge numarası */
+                    documentNumber?: string | null;
+                    /** @description Not; uygunsuz ve kısmen uygun sonuçta en az 5 karakter zorunlu */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelMaintenanceInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                inspectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openMaintenanceRequestFromInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                inspectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
                         };
                     };
                 };

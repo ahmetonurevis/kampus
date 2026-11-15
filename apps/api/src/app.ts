@@ -50,6 +50,7 @@ import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
+import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
@@ -61,6 +62,7 @@ import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-child
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipFundRoutes } from './routes/finance-scholarship-funds.ts'
+import { registerScholarshipRevocationRoutes } from './routes/finance-scholarship-revocation.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerFinancePurchaseOrderRoutes } from './routes/finance-purchase-orders.ts'
 import { registerFinancePurchaseQuoteRoutes } from './routes/finance-purchase-quotes.ts'
@@ -481,6 +483,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerScholarshipRevocationRoutes(app)
   registerFinanceScholarshipFundRoutes(app)
   registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
@@ -520,6 +523,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceMaintenanceRequestRoutes(app)
   registerFinanceSeveranceRoutes(app)
   registerFinancePurchaseApprovalRoutes(app)
+  registerFinanceMaintenancePlanRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

@@ -294,7 +294,7 @@ test('DOM-FIN-087: yalnız açık sayım tamamlanır ya da iptal edilir (K-234)'
     )
 })
 
-test('DOM-FIN-087, K-286: okutma açık sayımda geri alınır; beklenen satır okunmamışa döner, listede olmayan kalkar', () => {
+test('DOM-FIN-087, K-285: okutma açık sayımda geri alınır; beklenen satır okunmamışa döner, listede olmayan kalkar', () => {
   assert.equal(
     planFixedAssetCountScanUndo({ status: 'open' }, { inScope: true, result: 'found' }),
     'reset',

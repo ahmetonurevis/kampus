@@ -994,4 +994,66 @@ describe('DOM-FIN-074: mal kabul uçları', () => {
     // Sipariş iptal edilince onaylı talep yeniden açık talep olur.
     assert.deepEqual(await critical(), [14, 2])
   })
+
+  test('ON-340, K-286: kritik listede siparişte bekleyen miktar kabulle düşer, iptalle geri gelir; öneri açık talep ve siparişi düşer', async () => {
+    const t = await institution({ linkKeyboard: true })
+    const card = t.keyboardCard as Json
+    const critical = async () => {
+      const rows = ok(await get(`${FINANCE}/stock-items/critical`, t.admin)) as unknown as Json[]
+      const row = rows.find((item) => item.id === card.id) as Json
+      return [row.onOrderQuantity, row.onOrderCount, row.openRequestQuantity, row.suggestedQuantity]
+    }
+    // Kritik seviye 20, stok 0: öneri 40; gönderilmiş siparişte 10 klavye bekliyor.
+    assert.deepEqual(await critical(), [10, 1, 0, 30])
+    const receipt = ok(
+      await receive(
+        t.admin,
+        t,
+        receiptBody([
+          {
+            orderItemId: t.keyboard,
+            acceptedQuantity: 4,
+            rejectedQuantity: 1,
+            rejectReason: 'Kutusu ezik',
+          },
+        ]),
+      ),
+      201,
+    )
+    // Kabul edilen 4 düşer; reddedilen 1 hâlâ bekleniyor sayılır (sipariş eksi kabul).
+    assert.deepEqual(await critical(), [6, 1, 0, 34])
+    ok(await cancel(t.admin, t, (receipt.receipts as Json[])[0] as Json))
+    assert.deepEqual(await critical(), [10, 1, 0, 30])
+    ok(
+      await call('POST', REQUESTS, t.admin, {
+        costCenterId: t.center.id,
+        periodId: t.period.id,
+        budgetItemId: t.expense.id,
+        justification: 'Kritik seviyedeki klavye için ek talep',
+        items: [
+          {
+            name: 'Klavye',
+            quantity: 4,
+            unit: 'piece',
+            estimatedUnitPriceCents: 25_000,
+            stockItemId: card.id,
+          },
+        ],
+      }),
+      201,
+    )
+    assert.deepEqual(await critical(), [10, 1, 4, 26])
+    const current = ok(await get(`${ORDERS}/${String(t.order.id)}`, t.admin))
+    ok(
+      await call(
+        'POST',
+        `${ORDERS}/${String(t.order.id)}/cancel`,
+        t.admin,
+        { reason: 'Tedarikçi stokta yok' },
+        ifMatch(current.version),
+      ),
+    )
+    // İptal edilen sipariş sayılmaz; talebi yeniden açık talep olur.
+    assert.deepEqual(await critical(), [0, 0, 14, 26])
+  })
 })

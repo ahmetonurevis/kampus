@@ -5289,7 +5289,7 @@ export interface paths {
         };
         /**
          * Kritik stok listesi
-         * @description Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201) ve son alış fiyatı (K-202). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep `POST /finance/purchase-requests` ile açılır (K-203). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
+         * @description Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201; açık talepte ve siparişte bekleyen miktarı düşer, K-286), son alış fiyatı (K-202), açık talepteki (K-222) ve açık siparişte teslim alınmamış miktar (K-286). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep `POST /finance/purchase-requests` ile açılır (K-203). Roller: `yonetici`, `onburo` (K-180). Modül `finance`.
          */
         get: operations["listCriticalStockItems"];
         put?: never;
@@ -6163,7 +6163,7 @@ export interface paths {
         put?: never;
         /**
          * Okutmayı geri al
-         * @description Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (`pending`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-286). Kapanmış sayım 422 `fixed_asset_count_closed`, okunmamış satır 422 `fixed_asset_count_item_not_scanned`; sürüm tutmazsa 409 `version_conflict`. `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). Olmayan ya da başka kurumun satırı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
+         * @description Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (`pending`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-285). Kapanmış sayım 422 `fixed_asset_count_closed`, okunmamış satır 422 `fixed_asset_count_item_not_scanned`; sürüm tutmazsa 409 `version_conflict`. `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). Olmayan ya da başka kurumun satırı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-189). Modül `finance`.
          */
         post: operations["undoFixedAssetCountScan"];
         delete?: never;
@@ -57915,7 +57915,7 @@ export interface operations {
                             quantity: number;
                             /** @description Kritik seviye eksi toplam, en az sıfır */
                             shortage: number;
-                            /** @description Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201) */
+                            /** @description Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201); açık talepte ve siparişte bekleyen miktar düşülür, bunlar karşılıyorsa 0 (K-286) */
                             suggestedQuantity: number;
                             /** @description Son alış fiyatı: iptal edilmemiş en son mal kabul girişinin sipariş birim fiyatı, KDV hariç, kuruş (K-202); yoksa boş */
                             lastUnitPriceCents: number | null;
@@ -57927,6 +57927,10 @@ export interface operations {
                             openRequestQuantity: number;
                             /** @description Bu miktarın geçtiği açık talep sayısı */
                             openRequestCount: number;
+                            /** @description Siparişte bekleyen: karta bağlı kalemi olan açık siparişlerde (taslak, gönderildi, kısmen teslim alındı) sipariş eksi kabul edilen miktar (ON-340, K-286) */
+                            onOrderQuantity: number;
+                            /** @description Bu miktarın geçtiği açık sipariş sayısı */
+                            onOrderCount: number;
                             /** @description Depo kırılımı: etkin depolar ve miktarı olan pasif depolar, ada göre */
                             warehouses: {
                                 warehouseId: string;

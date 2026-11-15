@@ -327,7 +327,7 @@ export const cancelFixedAssetCountCommand = (
 ) => closeFixedAssetCountCommand(ctx, countId, 'cancelled', expectedVersion, idempotency)
 
 /**
- * Okutmayı geri alma (K-286): açık sayımda okunmuş satır; beklenen satır okunmamışa döner, listede
+ * Okutmayı geri alma (K-285): açık sayımda okunmuş satır; beklenen satır okunmamışa döner, listede
  * olmayan demirbaşın satırı arşivlenir ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez.
  * Okutmanın izi satırdır; geri alma denetim kaydına alan adlarıyla yazılır. `If-Match` satırın
  * sürümüdür (okutma yanıtındaki `item.version`).

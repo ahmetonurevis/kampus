@@ -5,6 +5,7 @@ import {
   STOCK_UNIT_LABELS,
   type StockUnit,
 } from './finance-inventory.ts'
+import type { PurchaseOrderStatus } from './finance-purchase-orders.ts'
 import {
   PURCHASE_ITEMS_MAX,
   PURCHASE_JUSTIFICATION_MAX,
@@ -52,12 +53,18 @@ export interface CriticalStockRow<TItem extends CriticalStockItem> {
 }
 
 /**
- * Öneri miktarı (K-201): stoku kritik seviyenin iki katına tamamlayan miktar, en az 1. Kartta hedef
- * (azami) seviye alanı yoktur; kritik seviye yeniden sipariş noktası, bir kritik seviye de tampon
- * sayılır. Stok hareketinin üst sınırını aşmaz.
+ * Öneri miktarı (K-201, K-286): stoku kritik seviyenin iki katına tamamlayan miktar, en az 1. Kartta
+ * hedef (azami) seviye alanı yoktur; kritik seviye yeniden sipariş noktası, bir kritik seviye de
+ * tampon sayılır. Stok hareketinin üst sınırını aşmaz. Yolda olan miktar (açık talepte ve
+ * siparişte bekleyen, `pending`) öneriden düşülür; bunlar ihtiyacı karşılıyorsa öneri 0'dır.
  */
-export function suggestedReorderQuantity(quantity: number, minQuantity: number): number {
-  return Math.min(STOCK_QUANTITY_MAX, Math.max(1, 2 * minQuantity - Math.max(0, quantity)))
+export function suggestedReorderQuantity(
+  quantity: number,
+  minQuantity: number,
+  pending = 0,
+): number {
+  const need = Math.min(STOCK_QUANTITY_MAX, Math.max(1, 2 * minQuantity - Math.max(0, quantity)))
+  return pending <= 0 ? need : Math.max(0, need - pending)
 }
 
 /**
@@ -215,11 +222,25 @@ export const OPEN_PURCHASE_REQUEST_STATUSES = [
   'approved',
 ] as const satisfies readonly PurchaseRequestStatus[]
 
-/** Açık talep uyarısının satırı: kritik listeden seçilen kart ve açık talepteki miktarı. */
+/**
+ * Açık sipariş (ON-340, K-286): karta bağlı kalemi olan, iptal edilmemiş ve tamamı teslim
+ * alınmamış sipariş (taslak, gönderildi, kısmen teslim alındı). Siparişte bekleyen miktar kalemin
+ * sipariş miktarı eksi iptal edilmemiş kabullerde kabul edilen miktardır (en az 0). Taslak sipariş
+ * de sayılır: siparişe dönen talep açık talepten çıkar (K-222), miktar arada kaybolmaz.
+ */
+export const OPEN_PURCHASE_ORDER_STATUSES = [
+  'draft',
+  'sent',
+  'partially_received',
+] as const satisfies readonly PurchaseOrderStatus[]
+
+/** Açık talep uyarısının satırı: kritik listeden seçilen kart, açık talepte ve siparişteki miktar. */
 export interface OpenRequestLine {
   code: string
   unit: StockUnit
   openRequestQuantity: number
+  /** Siparişte bekleyen (teslim alınmamış) miktar (K-286); verilmezse 0. */
+  onOrderQuantity?: number
 }
 
 /**
@@ -233,4 +254,17 @@ export function openRequestWarning(lines: readonly OpenRequestLine[]): string | 
     (line) => `${line.code} ${String(line.openRequestQuantity)} ${STOCK_UNIT_LABELS[line.unit]}`,
   )
   return `Seçilen ${String(open.length)} ürünün siparişe dönmemiş açık talebi var (${parts.join(', ')}). Yeni talep mükerrer alıma yol açabilir; yine de açabilirsiniz.`
+}
+
+/**
+ * Siparişte bekleyen miktar uyarısı (K-286): seçilen kartlardan teslim alınmamış siparişi olanlar.
+ * Uyarı engellemez. Siparişte bekleyen yoksa `null`.
+ */
+export function onOrderWarning(lines: readonly OpenRequestLine[]): string | null {
+  const open = lines.filter((line) => (line.onOrderQuantity ?? 0) > 0)
+  if (open.length === 0) return null
+  const parts = open.map(
+    (line) => `${line.code} ${String(line.onOrderQuantity ?? 0)} ${STOCK_UNIT_LABELS[line.unit]}`,
+  )
+  return `Seçilen ${String(open.length)} ürünün teslim alınmamış siparişi var (${parts.join(', ')}). Öneri miktarı bunları düşer; yine de talep açabilirsiniz.`
 }

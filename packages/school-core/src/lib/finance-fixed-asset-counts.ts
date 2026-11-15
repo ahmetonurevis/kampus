@@ -392,7 +392,7 @@ export function planFixedAssetCountClose(count: { status: FixedAssetCountStatus 
 }
 
 /**
- * Okutmayı geri alma (K-286): yalnız açık sayımda (422 `fixed_asset_count_closed`) ve okunmuş
+ * Okutmayı geri alma (K-285): yalnız açık sayımda (422 `fixed_asset_count_closed`) ve okunmuş
  * satırda (422 `fixed_asset_count_item_not_scanned`). Beklenen listedeki satır okunmamışa
  * (`pending`) döner; listede olmayan demirbaşın satırı (`inScope: false`) arşivlenir, demirbaş
  * yeniden okutulabilir. Demirbaş kaydı değişmez.

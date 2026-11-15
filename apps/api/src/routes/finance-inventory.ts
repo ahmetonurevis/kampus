@@ -123,7 +123,7 @@ export function registerFinanceInventoryRoutes(app: FastifyInstance) {
         operationId: 'listCriticalStockItems',
         tags,
         summary: 'Kritik stok listesi',
-        description: `Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201) ve son alış fiyatı (K-202). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep \`POST /finance/purchase-requests\` ile açılır (K-203). ${READERS}`,
+        description: `Kurum toplamı kritik seviyeye eşit ya da altında olan etkin kartlar (DOM-FIN-079, K-200): önce tükenenler, sonra kritik seviyeye oranla en az miktar, eşitlikte kod. Satırda depo kırılımı, öneri miktarı (kritik seviyenin iki katına tamamlar, K-201; açık talepte ve siparişte bekleyen miktarı düşer, K-286), son alış fiyatı (K-202), açık talepteki (K-222) ve açık siparişte teslim alınmamış miktar (K-286). Talep önerisi bu satırlardan taslak satın alma talebi formunu doldurur; talep \`POST /finance/purchase-requests\` ile açılır (K-203). ${READERS}`,
         querystring: criticalStockListQuery,
         response: { 200: criticalStockListResponse, ...commandErrors },
       },

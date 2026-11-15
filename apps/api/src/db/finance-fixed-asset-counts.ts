@@ -450,7 +450,7 @@ export async function insertScannedItem(
 }
 
 /**
- * Okutmayı geri alma (K-286): beklenen satır okunmamışa döner, listede olmayan satır arşivlenir.
+ * Okutmayı geri alma (K-285): beklenen satır okunmamışa döner, listede olmayan satır arşivlenir.
  * Sürüm tutmazsa ya da satır okunmamışsa `false` (409).
  */
 export async function undoItemScan(

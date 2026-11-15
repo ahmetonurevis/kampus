@@ -57,4 +57,4 @@ COMMENT ON COLUMN "stock_count_entries"."created_at" IS 'Kayıt anı.';--> state
 COMMENT ON COLUMN "stock_count_entries"."updated_at" IS 'Son değişiklik anı (geri alma).';--> statement-breakpoint
 COMMENT ON COLUMN "stock_count_entries"."archived_at" IS 'Arşiv anı; giriş arşivlenmez, sütun ortak düzen içindir.';--> statement-breakpoint
 COMMENT ON COLUMN "stock_count_entries"."version" IS 'Kayıt sürümü; geri almada artar.';--> statement-breakpoint
-COMMENT ON INDEX "fixed_asset_count_items_asset_key" IS 'Sayımda bir demirbaşın tek etkin satırı; geri alınan "listede yoktu" okutmasının satırı arşivlenir ve demirbaş yeniden okutulabilir (DOM-FIN-087, K-286).';
+COMMENT ON INDEX "fixed_asset_count_items_asset_key" IS 'Sayımda bir demirbaşın tek etkin satırı; geri alınan "listede yoktu" okutmasının satırı arşivlenir ve demirbaş yeniden okutulabilir (DOM-FIN-087, K-285).';

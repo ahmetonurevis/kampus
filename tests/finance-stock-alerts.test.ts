@@ -10,6 +10,8 @@ import {
 import {
   criticalStockRows,
   OPEN_PURCHASE_REQUEST_STATUSES,
+  onOrderWarning,
+  OPEN_PURCHASE_ORDER_STATUSES,
   openRequestWarning,
   stockPurchaseDraft,
   suggestedReorderQuantity,
@@ -234,5 +236,27 @@ test('ON-339, K-222: açık talep uyarısı yalnız açık talepte miktarı olan
       { code: 'TONER', unit: 'piece', openRequestQuantity: 4 },
     ]),
     'Seçilen 2 ürünün siparişe dönmemiş açık talebi var (KAG-A4 20 paket, TONER 4 adet). Yeni talep mükerrer alıma yol açabilir; yine de açabilirsiniz.',
+  )
+})
+
+test('DOM-FIN-079, K-286: öneri açık talepte ve siparişte bekleyen miktarı düşer; karşılanıyorsa 0', () => {
+  assert.equal(suggestedReorderQuantity(2, 10, 0), 18)
+  assert.equal(suggestedReorderQuantity(2, 10, 5), 13)
+  assert.equal(suggestedReorderQuantity(2, 10, 18), 0)
+  assert.equal(suggestedReorderQuantity(2, 10, 40), 0)
+  // Kritik seviyesi 0 olan tükenmiş kartta öneri 1; siparişte 1 varsa karşılanır.
+  assert.equal(suggestedReorderQuantity(0, 0, 1), 0)
+  assert.deepEqual([...OPEN_PURCHASE_ORDER_STATUSES], ['draft', 'sent', 'partially_received'])
+})
+
+test('DOM-FIN-079, K-286: siparişte bekleyen uyarısı yalnız teslim alınmamış siparişi olan kartları sayar', () => {
+  assert.equal(onOrderWarning([]), null)
+  assert.equal(onOrderWarning([{ code: 'KAG-A4', unit: 'pack', openRequestQuantity: 3 }]), null)
+  assert.equal(
+    onOrderWarning([
+      { code: 'KAG-A4', unit: 'pack', openRequestQuantity: 0, onOrderQuantity: 12 },
+      { code: 'TONER', unit: 'piece', openRequestQuantity: 2, onOrderQuantity: 0 },
+    ]),
+    'Seçilen 1 ürünün teslim alınmamış siparişi var (KAG-A4 12 paket). Öneri miktarı bunları düşer; yine de talep açabilirsiniz.',
   )
 })

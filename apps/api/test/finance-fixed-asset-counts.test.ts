@@ -373,7 +373,7 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
     assert.equal(stored?.version, 1, 'okutma sayım sürümünü artırmaz')
   })
 
-  test('DOM-FIN-087, K-286: okutma geri alınır; beklenen satır okunmamışa döner, listede olmayan kalkar ve yeniden okutulur', async () => {
+  test('DOM-FIN-087, K-285: okutma geri alınır; beklenen satır okunmamışa döner, listede olmayan kalkar ve yeniden okutulur', async () => {
     const t = await institution()
     const { board, shelf } = await stocked(t)
     const count = ok(await start(t.admin, { scopeType: 'campus', campusId: KADIKOY }), 201)

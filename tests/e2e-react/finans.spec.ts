@@ -2359,14 +2359,17 @@ test.describe('Finans: stok', () => {
     await expect(panel.getByText('Toner (TONER)')).toBeVisible()
     await expect(panel.getByText('Stok kartı: TONER · Toner')).toBeVisible()
 
-    // ON-339, K-222: açık talepteki miktar listede; ikinci talep uyarılır, engellenmez.
+    // ON-339, K-222: açık talepteki miktar listede. ON-340, K-286: öneri açık talebi ve siparişte
+    // bekleyeni düşer; ihtiyaç karşılanınca satır "Karşılanıyor" olur ve talebe eklenmez.
     await page.goto(criticalUrl)
     await expect(toner).toContainText('4 adet · 1 talep')
-    await page.getByRole('checkbox', { name: 'TONER · Toner talebe ekle' }).check()
+    await expect(table.getByRole('columnheader', { name: 'Siparişte' })).toBeVisible()
+    await expect(toner).toContainText('Karşılanıyor')
+    await expect(page.getByRole('checkbox', { name: 'TONER · Toner talebe ekle' })).toBeDisabled()
+    await expect(paperRow).toContainText('17 paket · 1 talep')
     await expect(
-      page.getByText(/^Seçilen 1 ürünün siparişe dönmemiş açık talebi var/),
-    ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Talep öner (1)' })).toBeEnabled()
+      page.getByRole('checkbox', { name: 'KAG-A4 · A4 kâğıt talebe ekle' }),
+    ).toBeDisabled()
   })
 })
 
@@ -2545,6 +2548,15 @@ test.describe('Finans: stok sayımı', () => {
     await code.fill('KAG-A4')
     await code.press('Enter')
     await expect(status).toHaveText('A4 kâğıt (KAG-A4): 17 paket sayıldı.')
+    // ON-340, K-285: yanlışlıkla ikinci kez okutulan ürün geri alınır; geçmişte iz kalır.
+    await code.fill('KAG-A4')
+    await code.press('Enter')
+    await expect(status).toHaveText('A4 kâğıt (KAG-A4): 18 paket sayıldı.')
+    await page.getByRole('button', { name: 'Son okutmayı geri al: KAG-A4 +1' }).click()
+    await expect(status).toHaveText('Okutma geri alındı. A4 kâğıt (KAG-A4): 17 paket sayıldı.')
+    const history = page.getByRole('list', { name: 'Okutma geçmişi' })
+    await expect(history.getByRole('listitem').first()).toContainText('Geri alındı')
+    await expect(history.getByRole('listitem')).toHaveCount(3)
     await code.fill('8690000000017')
     await code.press('Enter')
     await expect(status).toHaveText('Tükenmez kalem (8690000000017): 1 adet sayıldı.')

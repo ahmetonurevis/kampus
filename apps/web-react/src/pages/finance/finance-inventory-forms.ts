@@ -365,3 +365,20 @@ export function openRequestText(
   if (row.openRequestQuantity <= 0) return '—'
   return `${String(row.openRequestQuantity)} ${STOCK_UNIT_LABELS[row.unit]} · ${String(row.openRequestCount)} talep`
 }
+
+/**
+ * Siparişte bekleyen miktar (ON-340, K-286): "12 paket · 1 sipariş"; açık siparişte teslim
+ * alınmamış miktar yoksa tire.
+ */
+export function onOrderText(
+  row: Pick<CriticalStockRow, 'onOrderQuantity' | 'onOrderCount' | 'unit'>,
+): string {
+  if (row.onOrderQuantity <= 0) return '—'
+  return `${String(row.onOrderQuantity)} ${STOCK_UNIT_LABELS[row.unit]} · ${String(row.onOrderCount)} sipariş`
+}
+
+/** Öneri metni (K-286): açık talep ve sipariş ihtiyacı karşılıyorsa öneri 0 ve "karşılanıyor". */
+export const suggestionText = (row: Pick<CriticalStockRow, 'suggestedQuantity' | 'unit'>) =>
+  row.suggestedQuantity <= 0
+    ? 'Karşılanıyor'
+    : `${String(row.suggestedQuantity)} ${STOCK_UNIT_LABELS[row.unit]}`

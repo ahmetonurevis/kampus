@@ -166,7 +166,7 @@ export function useRelocateFixedAssetCountItem() {
   })
 }
 
-/** Okutmayı geri alma (K-286); `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). */
+/** Okutmayı geri alma (K-285); `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). */
 export function useUndoFixedAssetCountScan() {
   return useApiCommand({
     request: (

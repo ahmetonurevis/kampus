@@ -156,7 +156,7 @@ function ScanForm({ count }: { count: FixedAssetCount }) {
   const undo = useUndoFixedAssetCountScan()
   const [latest] = recent
   const feedback = latest ? scanFeedback(latest) : null
-  // "Daha önce okunmuş" yanıtı yeni okutma değildir; geri alınacak olan ilk okutmadır (K-286).
+  // "Daha önce okunmuş" yanıtı yeni okutma değildir; geri alınacak olan ilk okutmadır (K-285).
   const undoable = latest && latest.outcome !== 'already_counted' ? latest : null
   const undoLatest = async () => {
     if (undoable === null) return
@@ -479,7 +479,7 @@ function CountItemRow({ count, item }: { count: FixedAssetCount; item: FixedAsse
 }
 
 /**
- * Seçili okutmayı geri alma (K-286): beklenen demirbaş okunmamışa döner, listede olmayan
+ * Seçili okutmayı geri alma (K-285): beklenen demirbaş okunmamışa döner, listede olmayan
  * demirbaşın satırı kalkar. Demirbaş kaydı değişmez.
  */
 function UndoScanAction({ count, item }: { count: FixedAssetCount; item: FixedAssetCountItem }) {

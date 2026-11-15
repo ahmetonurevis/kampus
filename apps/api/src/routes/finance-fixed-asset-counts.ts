@@ -274,7 +274,7 @@ export function registerFinanceFixedAssetCountRoutes(app: FastifyInstance) {
         operationId: 'undoFixedAssetCountScan',
         tags,
         summary: 'Okutmayı geri al',
-        description: `Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (\`pending\`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-286). Kapanmış sayım 422 \`fixed_asset_count_closed\`, okunmamış satır 422 \`fixed_asset_count_item_not_scanned\`; sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` satırın sürümüdür (okutma yanıtındaki \`item.version\`). Olmayan ya da başka kurumun satırı 404. ${MANAGER}`,
+        description: `Süren sayımda okunmuş satırın okutması geri alınır: beklenen listedeki satır okunmamışa (\`pending\`) döner, listede olmayan demirbaşın satırı kaldırılır (arşivlenir) ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez; geri alma denetim kaydına düşer (K-285). Kapanmış sayım 422 \`fixed_asset_count_closed\`, okunmamış satır 422 \`fixed_asset_count_item_not_scanned\`; sürüm tutmazsa 409 \`version_conflict\`. \`If-Match\` satırın sürümüdür (okutma yanıtındaki \`item.version\`). Olmayan ya da başka kurumun satırı 404. ${MANAGER}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: countItemParams,
         body: emptyCommandBody,

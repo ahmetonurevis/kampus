@@ -1743,6 +1743,80 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ücretsiz okutma (ON-284; DOM-FIN-026).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/free-tuition/rounds',
+          "send('GET', `${BASE}/rounds`, a.cookie)",
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/free-tuition/rounds',
+          'createRound(a.cookie, { ...ROUND, institutionId: b.id })',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/free-tuition/rounds/:roundId/confirm-quota',
+          'confirm(a.cookie, b.roundId, 3)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/free-tuition/rounds/:roundId/applications',
+          '`${BASE}/rounds/${b.roundId}/applications`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/free-tuition/rounds/:roundId/applications',
+          'apply(a.cookie, b.roundId)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/free-tuition/applications/:applicationId/documents',
+          '`${BASE}/applications/${b.applicationId}/documents`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/free-tuition/rounds/:roundId/board-meetings',
+          '`${BASE}/rounds/${b.roundId}/board-meetings`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/free-tuition/rounds/:roundId/board-meetings',
+          'board(a.cookie, b.roundId, decision(b.applicationId))',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/free-tuition/board-meetings/:meetingId',
+          '`${BASE}/board-meetings/${b.meetingId}`',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/free-tuition/awards',
+          "send('GET', `${BASE}/awards`, a.cookie)",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/free-tuition/awards/:awardId/mebbis-record',
+          '`${BASE}/awards/${b.award.id}/mebbis-record`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/free-tuition/awards/:awardId/pay-refund',
+          '`${BASE}/awards/${b.award.id}/pay-refund`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-free-tuition.test.ts',
+        'DOM-FIN-026: başka kurumun dönemi, adayı, toplantısı ve hakkı 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

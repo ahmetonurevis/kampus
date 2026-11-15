@@ -478,6 +478,16 @@ test('IST-092: açık ek protokol varken ikincisi açılmaz; iptalden sonra aç�
   assert.equal(second.revision, 2)
 })
 
+test('DOM-FIN-025, K-265: bursu kesilen sözleşmeye ek protokol yapılmaz, kayıt değişmez', () => {
+  const { state } = approved()
+  const before = JSON.stringify(state.contracts)
+  assert.throws(
+    () => amendContract(state, 'contract-1', AMEND, amender({ scholarshipEnded: true })),
+    isDomainError('contract_scholarship_ended', 'conflict'),
+  )
+  assert.equal(JSON.stringify(state.contracts), before)
+})
+
 test('IST-092: kayıt sözleşmesi ve onaylı ek protokol iptal edilemez', () => {
   const { state } = fixture()
   assert.throws(

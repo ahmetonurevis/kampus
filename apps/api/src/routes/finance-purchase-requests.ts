@@ -10,6 +10,7 @@ import {
   rejectPurchaseRequestSchema,
   submitPurchaseRequestSchema,
   updatePurchaseRequestSchema,
+  withdrawPurchaseRequestSchema,
 } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 
 import type { Role } from '../auth.ts'
@@ -39,8 +40,8 @@ import {
 /**
  * Satın alma talebi uçları (docs/domain/finans.md DOM-FIN-071; ON-222). Modül `finance`. Açma,
  * düzeltme, gönderme ve iptal yönetici ile ön büro (ön büro yalnız kendi talebi, 403
- * `purchase_request_not_owner`; K-128); onay ve ret yalnız yönetici (K-129). Kademeli onay
- * ON-223'tedir. Gönderim ve onayda kalanı aşan ya da bütçe satırı olmayan talep 409 uyarı alır,
+ * `purchase_request_not_owner`; K-128); onay ve ret yalnız yönetici (K-129), kurumun kademe eşikleri
+ * varsa sıradaki kademenin onaylayanı (ON-223, K-260…K-263). Gönderim ve onayda kalanı aşan ya da bütçe satırı olmayan talep 409 uyarı alır,
  * `confirmOverBudget: true` ile geçer (ON-245, K-146). Sıra: 401 → 403 modül → 403 rol →
  * `If-Match` → 400 → işlem.
  */
@@ -49,6 +50,8 @@ const STAFF =
   'Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.'
 const MANAGER = 'Rol: `yonetici` (K-129). Modül `finance`.'
 const IF_MATCH = '`If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`.'
+const TIERED =
+  'Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129).'
 const STOCK_LINK =
   'Kalem `stockItemId` ile kurumun stok kartına bağlanabilir (ON-339, K-221): bilinmeyen ya da başka kurumun kartı 400 (`items.<n>.stockItemId`), pasif kart 422 `purchase_request_stock_item_inactive`, kalemle kartın birimi farklıysa 422 `purchase_request_stock_unit_mismatch`. Bağ siparişe kopyalanır.'
 const BUDGET_WARNING =
@@ -69,7 +72,7 @@ const TRANSITIONS = {
   submit: {
     operationId: 'submitPurchaseRequest',
     summary: 'Satın alma talebini gönder',
-    description: `Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 \`purchase_request_period_closed\`, taslak dönem 422 \`purchase_request_period_not_open\`; merkez, kalem ya da tedarikçi pasifleşmişse 422. ${BUDGET_WARNING}`,
+    description: `Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Kurumun kademe eşikleri varsa tutarın (KDV dahil tahmini toplam) eriştiği kademeler talebe dondurulur; sonradan ayar değişse de bu talep etkilenmez (ON-223, K-261). Bütçe dönemi açık olmalıdır: kapalı dönem 422 \`purchase_request_period_closed\`, taslak dönem 422 \`purchase_request_period_not_open\`; merkez, kalem ya da tedarikçi pasifleşmişse 422. ${BUDGET_WARNING}`,
     roles: PURCHASE_REQUEST_ROLES,
     body: submitPurchaseRequestSchema.nullish(),
     who: STAFF,
@@ -77,7 +80,7 @@ const TRANSITIONS = {
   approve: {
     operationId: 'approvePurchaseRequest',
     summary: 'Satın alma talebini onayla',
-    description: `Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 \`purchase_request_not_submitted\`, dönem açık değilse 422 \`purchase_request_period_not_open\`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. ${BUDGET_WARNING}`,
+    description: `Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 \`purchase_request_not_submitted\`, dönem açık değilse 422 \`purchase_request_period_not_open\`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. ${TIERED} Bütçe uyarısı her kademede yeniden denetlenir. ${BUDGET_WARNING}`,
     roles: PURCHASE_REQUEST_DECISION_ROLES,
     body: approvePurchaseRequestSchema,
     who: MANAGER,
@@ -85,8 +88,7 @@ const TRANSITIONS = {
   reject: {
     operationId: 'rejectPurchaseRequest',
     summary: 'Satın alma talebini reddet',
-    description:
-      'Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`.',
+    description: `Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 \`purchase_request_not_submitted\`. ${TIERED}`,
     roles: PURCHASE_REQUEST_DECISION_ROLES,
     body: rejectPurchaseRequestSchema,
     who: MANAGER,
@@ -98,6 +100,15 @@ const TRANSITIONS = {
       'Taslak ya da gönderilmiş talebi gerekçeyle iptal eder; onaylanmış ya da reddedilmiş talep 422 `purchase_request_not_cancellable` (K-132).',
     roles: PURCHASE_REQUEST_ROLES,
     body: cancelPurchaseRequestSchema,
+    who: STAFF,
+  },
+  withdraw: {
+    operationId: 'withdrawPurchaseRequest',
+    summary: 'Satın alma talebini taslağa geri çek',
+    description:
+      'Gönderilmiş, kararı verilmemiş talebi taslağa döndürür; gövde boş ya da `{}`. Dondurulmuş onay kademeleri ve verilmiş kademe onayları düşer (arşivlenir); talep düzeltilip yeniden gönderilince kademeler güncel ayar ve tutarla yeniden hesaplanır (ON-223, K-261). Gönderilmemiş ya da kararı verilmiş talep 422 `purchase_request_not_submitted`.',
+    roles: PURCHASE_REQUEST_ROLES,
+    body: withdrawPurchaseRequestSchema.nullish(),
     who: STAFF,
   },
 } as const
@@ -120,17 +131,18 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
         operationId: 'listPurchaseRequests',
         tags,
         summary: 'Satın alma taleplerini listele',
-        description: `Yeni açılan önce; durum, birim ve dönemle süzülür, \`q\` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. ${STAFF}`,
+        description: `Yeni açılan önce; durum, birim ve dönemle süzülür, \`awaitingMyApproval=true\` sıranın oturumdaki kişide olduğu gönderilmiş talepleri verir (K-263), \`q\` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. ${STAFF}`,
         querystring: purchaseRequestListQuery,
         response: { 200: purchaseRequestListResponse, ...commandErrors },
       },
     },
     async (request) => {
-      const { page, pageSize, ...filters } = request.query
+      const { page, pageSize, awaitingMyApproval, ...filters } = request.query
       const { items, total } = await listPurchaseRequestsFor(contextOf(request), {
         page,
         pageSize,
         ...filters,
+        ...(awaitingMyApproval === 'true' ? { awaitingMyApproval: true } : {}),
       })
       return { data: items, meta: { page, pageSize, total } }
     },
@@ -203,7 +215,7 @@ export function registerFinancePurchaseRequestRoutes(app: FastifyInstance) {
         operationId: 'getPurchaseRequest',
         tags,
         summary: 'Satın alma talebi ayrıntısı',
-        description: `Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. ${STAFF}`,
+        description: `Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), onay zinciri (kademe, onaylayan, karar ve zamanı; ON-223), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. ${STAFF}`,
         params: purchaseRequestParams,
         response: { 200: purchaseRequestResponse, ...commandErrors },
       },

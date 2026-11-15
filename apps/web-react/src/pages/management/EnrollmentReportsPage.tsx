@@ -9,6 +9,8 @@ import { useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { exportCsv } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { ProspectCampaignFunnelSection } from '../crm/ProspectCampaignFunnelSection.tsx'
+import { ProspectCampaignsSection } from '../crm/ProspectCampaignsSection.tsx'
 import { combineStates, ListCard, ShareBar } from '../dashboard/DashboardParts.tsx'
 import { EnrollmentFunnelSection } from './EnrollmentFunnelSection.tsx'
 import { EnrollmentLossBreakdown } from './EnrollmentLossBreakdown.tsx'
@@ -33,7 +35,8 @@ const CSV_COLUMNS = COLUMNS.map(({ key, label }) => ({ key, label }))
 /**
  * Kayıt Raporları (yönetici, Vue `Management.vue` `kayit-raporlari`): adaydan öğrenciye huni ve
  * kanal bazlı dönüşüm. Aşama ve kanal sayıları sunucu sayımından (`groupBy=stage|source`, satır
- * çekilmez) hesaplanır; oranlar saklanmaz. Yalnız okuma.
+ * çekilmez) hesaplanır; oranlar saklanmaz. Kampanya kırılımı ve kampanya kodlarının yönetimi
+ * (DOM-KAY-041, ON-134) ön büronun Aday Öğrenciler sayfasındakiyle aynı bölümlerdir.
  */
 export function EnrollmentReportsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -103,6 +106,7 @@ export function EnrollmentReportsPage({ page }: { page: NavPage }) {
         </ol>
       </ListCard>
       <EnrollmentFunnelSection />
+      <ProspectCampaignFunnelSection />
       <section
         aria-labelledby="kanal-donusumu"
         className="panel overflow-hidden rounded-card border bg-surface"
@@ -143,6 +147,9 @@ export function EnrollmentReportsPage({ page }: { page: NavPage }) {
         )}
       </section>
       <EnrollmentLossBreakdown />
+      <div className="mt-6">
+        <ProspectCampaignsSection search={false} />
+      </div>
     </>
   )
 }

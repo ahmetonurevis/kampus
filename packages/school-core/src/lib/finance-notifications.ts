@@ -127,6 +127,25 @@ export const REFERRAL_NOTIFICATION_TYPES = {
 } as const
 
 /**
+ * Burs kararı bildirimi (ON-283; DOM-FIN-025). Kesme ya da gerçek dışı beyanla iptal yazılınca
+ * ödeyiciye gider; ödeme hatırlatması değil karar bildirimidir, bu yüzden finans türlerinden ayrı
+ * nesnedir. Veri yalnız atama kimliğidir; başlıkta neden, tutar ve faiz yoktur (DOM-ILT-023).
+ * Ayrıntı kurumun verdiği bilgi metni ve geri isteme yazısındadır.
+ */
+export const SCHOLARSHIP_NOTIFICATION_TYPES = {
+  scholarship_ended: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'scholarship_awards',
+    data: z.strictObject({ awardId: notificationId }),
+    subjectId: (data) => data.awardId,
+    titles: {
+      student: 'Bursunla ilgili bir karar alındı; ayrıntı için kurumla görüş.',
+      parent: '{öğrenci} için burs kararı alındı; ayrıntı için kurumla görüşün.',
+    },
+  }),
+} as const
+
+/**
  * Paket saat bildirimleri (IST-078; DOM-DIL-051, DOM-FIN-058; K-248, K-249). Ödeme değil kullanım
  * bildirimidir: finans türlerinden ayrı nesnedir, ödeyici bağının açtığı listeye girmez. 18 yaş
  * altında veliye, yetişkin kursiyerde kendisine gider. Veri yalnız satış kimliğidir; başlıkta saat,

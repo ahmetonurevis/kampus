@@ -3085,7 +3085,7 @@ export interface paths {
         };
         /**
          * Burs atamalarını listele
-         * @description Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. Roller: `yonetici`, `onburo`.
+         * @description Kesin kayıtta yapılan burs atamaları, yeni önce (DOM-FIN-025). `programId` süzer. `endStatus` kesme ya da iptal durumudur (ON-283). Roller: `yonetici`, `onburo`.
          */
         get: operations["listScholarshipAwards"];
         put?: never;
@@ -3110,6 +3110,86 @@ export interface paths {
          * @description Atamanın MEBBİS'e işlendiği günü bir kez kaydeder (DOM-FIN-025); MEBBİS'e bağlantı yoktur. İkinci kez 409 `scholarship_mebbis_recorded`, gelecek gün 422 `scholarship_date_future`. `If-Match` zorunlu. Roller: `yonetici`.
          */
         post: operations["recordScholarshipMebbis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/end-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Burs kesme ya da iptal hesabını önizle
+         * @description Yazmadan hesaplar (DOM-FIN-025, K-264…K-266). `terminate`: kesme gününden sonra vadesi gelen burs payı yeni taksit olur; gün bugünden önce 422 `scholarship_end_date_past`, eğitim yılı dışı 422 `scholarship_end_date_out_of_year`. `revoke`: bugüne kadar uygulanan pay vade gününden bugüne kanuni faiziyle geri istenir. Etkisiz işlem 422 `scholarship_end_no_change`; ayrılan öğrenci 409 `scholarship_student_inactive`, açık ek protokol 409 `scholarship_contract_amendment_open`, kesilmiş burs 409 `scholarship_already_terminated`, iptal edilmiş 409 `scholarship_already_revoked`. Roller: `yonetici`.
+         */
+        post: operations["quoteScholarshipEnd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/ends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Burs kesme ve iptal kayıtları
+         * @description Atamanın kesme ve iptal kayıtları, yazma anındaki hesabıyla (geri isteme yazısı buradan üretilir). Gerekçe açıklaması yalnız burada döner. Roller: `yonetici`.
+         */
+        get: operations["listScholarshipEnds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bursu kes
+         * @description Bursu gerekçeyle ileriye etkili keser (DOM-FIN-025, K-265): kesme gününden sonra vadesi gelen burs payı sözleşmeye bağlı ayrı öğrenim taksiti olur, önceki taksitler değişmez; fon payı kalan bursa iner, ödeyiciye `scholarship_ended` bildirimi gider. `confirmedCents` önizlemedeki `totalCents`tir; değiştiyse 409 `scholarship_end_changed`. Önizlemenin hataları geçerlidir. `Idempotency-Key` ve `If-Match` (atama sürümü) zorunlu, taze oturum ister. Roller: `yonetici`.
+         */
+        post: operations["terminateScholarship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/scholarship-awards/{awardId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bursu gerçek dışı beyan nedeniyle iptal et ve geri iste
+         * @description Bursu geriye etkili iptal eder (DOM-FIN-025, K-266): bugüne kadar uygulanan pay ve 3095 sayılı Kanun kanuni faizi sözleşme dışı iki alacak (son ödeme 30 gün) olarak yazılır, sonraki taksitlerde burs kalkar; fon payı bırakılır, ödeyiciye bildirim gider. `confirmedCents` önizlemedeki `totalCents`tir; değiştiyse 409 `scholarship_end_changed`. `Idempotency-Key` ve `If-Match` zorunlu, taze oturum ister. Roller: `yonetici`.
+         */
+        post: operations["revokeScholarship"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3543,7 +3623,7 @@ export interface paths {
         put?: never;
         /**
          * Aday ekle
-         * @description Ön büro yeni aday açar; aday `Yeni aday` aşamasında başlar, akademik veya finansal kayıt üretmez (core `createProspect`, DOM-KAY-001, DOM-KAY-009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, kaynak, aydınlatma metni sürümü, kanal bazında ticari ileti onayı; T.C. kimlik no, doğum tarihi, adres ve bilinmeyen alan 400 `validation_failed`. 18 yaş altı adayda veli adı zorunlu (422 `prospect_guardian_required`); dil okulunda yaş seçimi zorunlu (422 `prospect_age_required`). Pasif kampüs 422 `branch_unavailable`, olmayan referans öğrencisi 422 `referrer_not_found`. Aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`, iletişimi paylaşan farklı adlı aday kardeş seçilmeden 409 `prospect_contact_shared` (DOM-KAY-002, DOM-KAY-031); ret eşleşen adayın kimliğini ve iletişim bilgisini taşımaz. Tekillik kurumun bütün adaylarına kurum kilidi altında bakar; aynı adayı eşzamanlı iki istekten yalnız biri açar. Telefon, e-posta ve veli adı loglanmaz. Modül `crm`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Ön büro yeni aday açar; aday `Yeni aday` aşamasında başlar, akademik veya finansal kayıt üretmez (core `createProspect`, DOM-KAY-001, DOM-KAY-009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, kaynak, aydınlatma metni sürümü, kanal bazında ticari ileti onayı, isteğe bağlı kampanya kodu (`campaignCode`; büyük harfe çevrilir, DOM-KAY-041: kurumda yoksa ya da arşivliyse 422 `campaign_code_not_found`, pasifse 422 `campaign_code_inactive`, bugün kampanya günleri dışındaysa 422 `campaign_code_not_started`/`campaign_code_ended`; kaynak kodla zorlanmaz); T.C. kimlik no, doğum tarihi, adres ve bilinmeyen alan 400 `validation_failed`. 18 yaş altı adayda veli adı zorunlu (422 `prospect_guardian_required`); dil okulunda yaş seçimi zorunlu (422 `prospect_age_required`). Pasif kampüs 422 `branch_unavailable`, olmayan referans öğrencisi 422 `referrer_not_found`. Aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`, iletişimi paylaşan farklı adlı aday kardeş seçilmeden 409 `prospect_contact_shared` (DOM-KAY-002, DOM-KAY-031); ret eşleşen adayın kimliğini ve iletişim bilgisini taşımaz. Tekillik kurumun bütün adaylarına kurum kilidi altında bakar; aynı adayı eşzamanlı iki istekten yalnız biri açar. Telefon, e-posta ve veli adı loglanmaz. Modül `crm`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["createProspect"];
         delete?: never;
@@ -3812,6 +3892,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/eokul-student-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * e-Okul öğrenci listesini aktar
+         * @description Okul e-Okul'dan indirdiği öğrenci listesini CSV ya da Excel (.xlsx, ilk sayfa) olarak yükler (IST-134, DOM-KAY-042). Yalnız `school` türündeki kurumda vardır; öteki türlerde 404. `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır, eski ikili .xls okunmaz (`import_file_legacy_excel`). Başlık satırı ilk 20 satırda aranır; en çok 3.000 veri satırı. `mapping` verilmezse sütunlar başlık adlarından önerilir (`suggestedMapping`); kullanıcı düzeltip yeniden önizler. `branchId` aramayı bir kampüsle sınırlar, `fallbackClassId` sınıf sütunu olmayan dosyada bütün satırların sınıfıdır. Satır kurumdaki öğrenciyle T.C. kimlik no, yoksa okul no ile eşleşir ve `new`, `update`, `unchanged` ya da `invalid` olur. Mevcut öğrencide yalnız ad soyad, okul no, aynı düzeyde şube ve eksik kimlik yazılır; düzey farkı ve doğum tarihi farkı bilgidir. Bilinmeyen sınıf hatadır, sınıf açılmaz. Yeni öğrenci pilot aktarımının kuralıyla açılır: kimlik, doğum tarihi, veli adı ve telefonu zorunlu, aynı veli kardeşleri bağlar (DOM-KAY-012, DOM-KAY-013, DOM-KAY-036). `dryRun: true` önizlemedir: 200, satır bazında sorun, bilgi ve değişiklik; kimlik ve telefon maskeli; eşleme sorunu `mappingIssues`'ta döner ve satır işlenmez. Onay (`dryRun: false`) yalnız `lines` ile seçilen satırları kurum kilidi altında yeniden doğrular: eşleme sorunu 422 `eokul_mapping_invalid` (`issues` yolu `['mapping', alan]`), seçilen satır sorunu 422 `eokul_import_invalid` (`['rows', satır, alan]`), başarı 201 ve satırsız özet. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yönetici ve ön büro (öteki roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir. Dosya saklanmaz, içerik ve kimlik numarası loglanmaz; denetim kaydına (`student.eokul_import`) yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importEokulStudents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/installment-imports": {
         parameters: {
             query?: never;
@@ -3864,6 +3964,78 @@ export interface paths {
          * @description Açık adayların bugün ve yakın günlerde ilgilenilmesi gerekenleri (DOM-KAY-037). Pencere bugünden başlar, bugün dahil `days` gün (1–14, varsayılan 7; Europe/Istanbul). `meetings`: penceredeki tanışma görüşmeleri, saat sırasıyla (bitişi geçen `held`). `trials`: yalnız dil okulunda penceredeki deneme dersleri; gün dersin güncel kaydından, iptal edilen ya da programdan kalkan derse bağlı deneme yok. `followUps`: şu andan sonra başlayan görüşmesi ya da denemesi olmayan açık aday, ilk tutan nedenle bir kez (`first_contact`: açılışın ertesi gününe giren `Yeni aday`; `meeting_outcome`/`trial_outcome`: önceki bir gün yapılmış, aşaması hâlâ `Görüşme planlandı` ve sonrasında not yok; `stale`: son işlem 7 gün ya da daha eski); en çok gecikenler önce. Her bölüm toplamla birlikte en çok 50 satır döner. Satır aday kimliği, adı, aşaması ve kampüsünü taşır; telefon, e-posta, veli, not, ilgi ve kaynak dönmez. Arşivlenen aday sayılmaz. Bilinmeyen parametre ya da aralık dışı `days` 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
          */
         get: operations["getProspectSeasonWatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/campaign-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kampanya kodlarını listele
+         * @description Arşivlenmemiş kampanyalar, en yeni başlangıç önce (DOM-KAY-041). `status=usable` aday formunun seçenekleridir: etkin ve bugün (Europe/Istanbul) tarih aralığında olanlar. `q` kod ya da adda arar. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listCampaignCodes"];
+        put?: never;
+        /**
+         * Kampanya kodu ekle
+         * @description Kod (büyük harfe çevrilir; İngilizce harf, rakam ve tire, 3–20 karakter), ad, kanal (`social_media`, `flyer`, `fair`, `referral`, `website`, `other`), başlangıç–bitiş günü (iki uç dahil), isteğe bağlı maliyet (kuruş) ve etkinlik. Kod kurumda arşivliler dahil tekil: 409 `campaign_code_exists` (K-288). Bitiş başlangıçtan önceyse 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createCampaignCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/campaign-codes/{campaignId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kampanya kodu ayrıntısı
+         * @description Olmayan, arşivlenmiş ya da başka kurumun kampanyası 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getCampaignCode"];
+        put?: never;
+        post?: never;
+        /**
+         * Kampanya kodunu arşivle
+         * @description Arşivli kampanya listede görünmez, kodu yeni adaya bağlanmaz ve yeniden kullanılmaz; adayları kayıt hunisi kırılımında kalır. Olmayan ya da başka kurumun kampanyası 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        delete: operations["archiveCampaignCode"];
+        options?: never;
+        head?: never;
+        /**
+         * Kampanya kodunu düzelt ya da pasifleştir
+         * @description Kısmi düzeltme: ad, kanal, günler, maliyet (`null` siler) ve `isActive`. Kod değişmez (gövdede `code` 400). Birleşik günlerde bitiş başlangıçtan önceyse 422 `campaign_dates_invalid`. Pasif ya da günleri dışında kalan kampanyanın kodu yeni adaya bağlanmaz; bağlı adaylar değişmez. Sürüm tutmazsa 409 `version_conflict`; `If-Match` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        patch: operations["updateCampaignCode"];
+        trace?: never;
+    };
+    "/api/v1/prospects/funnel/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt hunisinin kampanya kırılımı
+         * @description Aralıkta açılan adayların (`dateFrom`/`dateTo`, açılış günü Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar) kampanya başına aday → görüşme → teklif → kesin kayıt sayıları (birikimli) ve dönüşüm oranı (DOM-KAY-041, IST-117). Satırlar: adayı olan her kampanya (arşivli dahil) ve aralıkla kesişen arşivlenmemiş kampanyalar; kodsuz adaylar `uncoded`, hepsi `total`. Maliyet girilmişse aday başı ve kayıt başı maliyet (kuruş); aralık kampanyanın bütün günlerini kapsamıyorsa `costPartial: true` ve birim maliyet `null` (K-290). Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz; küçük grup bastırılmaz (K-291). `Accept: text/csv` ile aynı tablo CSV iner (`;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı). Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectCampaignFunnel"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4693,7 +4865,7 @@ export interface paths {
         };
         /**
          * Satın alma taleplerini listele
-         * @description Yeni açılan önce; durum, birim ve dönemle süzülür, `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Yeni açılan önce; durum, birim ve dönemle süzülür, `awaitingMyApproval=true` sıranın oturumdaki kişide olduğu gönderilmiş talepleri verir (K-263), `q` numarada, gerekçede ya da birim adında arar. Toplam kalemlerden hesaplanır (DOM-FIN-071). Ön büro kurumun bütün taleplerini görür. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         get: operations["listPurchaseRequests"];
         put?: never;
@@ -4757,7 +4929,7 @@ export interface paths {
         };
         /**
          * Satın alma talebi ayrıntısı
-         * @description Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Kalemler, bütçe kalanı ve aşım bilgisi (plan, onaylanmış ve bekleyen talepler, taahhüt, kalan, aşım tutarı; K-145), onay zinciri (kademe, onaylayan, karar ve zamanı; ON-223), karar ve iptal izi, kullanıcının yapabileceği işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         get: operations["getPurchaseRequest"];
         put?: never;
@@ -4783,7 +4955,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini gönder
-         * @description Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         * @description Taslak talebi onaya gönderir; gövde isteğe bağlıdır. Kurumun kademe eşikleri varsa tutarın (KDV dahil tahmini toplam) eriştiği kademeler talebe dondurulur; sonradan ayar değişse de bu talep etkilenmez (ON-223, K-261). Bütçe dönemi açık olmalıdır: kapalı dönem 422 `purchase_request_period_closed`, taslak dönem 422 `purchase_request_period_not_open`; merkez, kalem ya da tedarikçi pasifleşmişse 422. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["submitPurchaseRequest"];
         delete?: never;
@@ -4803,7 +4975,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini onayla
-         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         * @description Gönderilmiş talebi onaylar; isteğe bağlı not. Gönderilmemiş talep 422 `purchase_request_not_submitted`, dönem açık değilse 422 `purchase_request_period_not_open`. Onaylı talep bugün sipariş ya da gider gerçekleşeni üretmez. Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129). Bütçe uyarısı her kademede yeniden denetlenir. Bütçe denetimi (ON-245): kalan, aynı dönem × birim × gider kalemi satırının planı eksi gönderilmiş ve onaylanmış taleplerdir (bu talep hariç; K-145) ve kurum kilidi altında hesaplanır. Talep kalanı aşarsa 409 `budget_exceeded_warning` (mesajda aşım tutarı), satır yoksa 409 `budget_line_missing_warning`; yetkili `confirmOverBudget: true` ile yeniden gönderince geçer ve denetim kaydına `confirmOverBudget` düşer (K-146). Uyarı 422 kurallarından sonra gelir. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
          */
         post: operations["approvePurchaseRequest"];
         delete?: never;
@@ -4823,7 +4995,7 @@ export interface paths {
         put?: never;
         /**
          * Satın alma talebini reddet
-         * @description Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
+         * @description Gönderilmiş talebi gerekçeyle reddeder. Gönderilmemiş talep 422 `purchase_request_not_submitted`. Kademeli onay (ON-223): kurumun eşik ayarı varsa gönderimde tutarın eriştiği kademeler talebe dondurulur (K-261); onay ve ret yalnız sıradaki kademenin onaylayanınındır. Talep eden hiçbir kademeye karar veremez (403 `purchase_approval_requester`), aynı kişi iki kademeye karar veremez (403 `purchase_approval_same_approver`), sırası ya da ataması olmayan yönetici 403 `purchase_approval_not_your_turn` alır (K-262). Ara kademe onayı talebi gönderilmiş bırakır, son kademenin onayı talebi onaylar; herhangi bir kademedeki ret talebi reddeder. Ayar yoksa tek adımlı yönetici onayıdır (K-129). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-129). Modül `finance`.
          */
         post: operations["rejectPurchaseRequest"];
         delete?: never;
@@ -4846,6 +5018,26 @@ export interface paths {
          * @description Taslak ya da gönderilmiş talebi gerekçeyle iptal eder; onaylanmış ya da reddedilmiş talep 422 `purchase_request_not_cancellable` (K-132). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
          */
         post: operations["cancelPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-requests/{requestId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Satın alma talebini taslağa geri çek
+         * @description Gönderilmiş, kararı verilmemiş talebi taslağa döndürür; gövde boş ya da `{}`. Dondurulmuş onay kademeleri ve verilmiş kademe onayları düşer (arşivlenir); talep düzeltilip yeniden gönderilince kademeler güncel ayar ve tutarla yeniden hesaplanır (ON-223, K-261). Gönderilmemiş ya da kararı verilmiş talep 422 `purchase_request_not_submitted`. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`; ön büro yalnız kendi açtığı talebi değiştirir (K-128). Modül `finance`.
+         */
+        post: operations["withdrawPurchaseRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5083,7 +5275,7 @@ export interface paths {
         put?: never;
         /**
          * Tedarikçi faturası ve ödeme planı kaydet
-         * @description Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 `supplier_invoice_number_exists` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (`dueDate`) ya da toplamı fatura tutarına eşit plan (`installments`; 422 `supplier_invoice_plan_total_mismatch`). Fatura tarihi bugünden sonra 422 `supplier_invoice_date_in_future`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 `supplier_invoice_order_not_found`, `supplier_invoice_order_supplier_mismatch`, `supplier_invoice_order_not_open`); etkin faturaların toplamı sipariş tutarını aşarsa 409 `supplier_invoice_exceeds_order_warning`, `confirmOverOrder: true` ile geçilir (K-162). Siparişe bağlı faturada `lines` zorunlu, siparişsizde yasak (400): sipariş kalemine bağlı (`orderItemId`, faturada bir kez) ya da siparişte olmayan (`description`) kalem, miktar ve KDV hariç birim fiyat; siparişin kalemi olmayan `orderItemId` 422 `supplier_invoice_line_item_not_in_order`, kalemlerin KDV hariç toplamı fatura netinden 1 TL'den çok saparsa 422 `supplier_invoice_lines_total_mismatch` (DOM-FIN-095, K-280). Miktar ya da fiyat farkı girişte reddedilmez, eşleştirmede görünür. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
          */
         post: operations["createSupplierInvoice"];
         delete?: never;
@@ -5101,7 +5293,7 @@ export interface paths {
         };
         /**
          * Tedarikçi faturası ayrıntısı
-         * @description Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş, üçlü eşleştirme (`matching`: kalem başına sipariş, kabul edilen, önceki faturalar, faturalanan miktar ve fiyat, sapma; siparişsiz faturada boş; DOM-FIN-095) ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. Rol: `yonetici` (K-160). Modül `finance`.
          */
         get: operations["getSupplierInvoice"];
         put?: never;
@@ -5152,6 +5344,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/supplier-invoices/{invoiceId}/approve-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fatura eşleştirme farkını onayla
+         * @description Üçlü eşleştirmenin bugünkü sapmasını (miktar farkı, fiyat farkı, siparişte olmayan kalem) gerekçeyle (5–500 karakter) onaylar; sapma aynı kaldıkça faturanın ödemesi uyarısız girilir, sapma değişirse yeniden onay ister (DOM-FIN-095, K-282). Siparişsiz fatura 422 `supplier_invoice_match_not_applicable`, eşleşen fatura 422 `supplier_invoice_match_already_matched`, aynı sapma zaten onaylıysa 422 `supplier_invoice_match_already_approved`, iptal edilmiş fatura 422 `supplier_invoice_cancelled`. Denetim `supplier_invoice.approve_match` (gerekçe metni yazılmaz). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        post: operations["approveSupplierInvoiceMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/supplier-invoice-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eşleşmeyen tedarikçi faturaları
+         * @description Siparişe bağlı iptal edilmemiş faturalar üçlü eşleştirme durumuyla (DOM-FIN-095): varsayılan `status=mismatched` eşleşmeyenler; `approval` onay bekleyen ya da onaylanmış. Kalemde faturalanan, önceki etkin faturalarla birlikte kabul edileni aşarsa miktar farkı; birim fiyat farkının kalem etkisi 1 TL'yi aşarsa fiyat farkı; siparişte olmayan kalem ya da kalemsiz fatura eşleşmez (K-281). Yeni fatura tarihi önce. `Accept: text/csv` ile aynı süzgeçle bütün satırlar CSV iner (`;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı); taze oturum ister (403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.invoice_matching_export`. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["listSupplierInvoiceMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/purchase-orders/{orderId}/invoice-matching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Siparişin fatura ve mal kabul özeti
+         * @description Sipariş kalemi başına sipariş, kabul edilen (iptal edilmemiş kabuller) ve etkin faturalarda faturalanan miktar; siparişe bağlı faturalar eşleştirme durumu ve fark onayıyla (DOM-FIN-095). Olmayan ya da başka kurumun siparişi 404. Rol: `yonetici` (K-160). Modül `finance`.
+         */
+        get: operations["getPurchaseOrderInvoiceMatching"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/supplier-payments": {
         parameters: {
             query?: never;
@@ -5167,7 +5419,7 @@ export interface paths {
         put?: never;
         /**
          * Taksite tedarikçi ödemesi kaydet
-         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
+         * @description Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 `supplier_payment_exceeds_installment`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 `supplier_payment_bank_account_not_found`), nakitte hesap seçilmez. Gün bugünden sonra 422 `supplier_payment_date_in_future`, fatura tarihinden önce 422 `supplier_payment_before_invoice`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 `finance_day_closed` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 `supplier_invoice_cancelled`. Fatura sipariş ve mal kabulle eşleşmiyorsa ve fark onaylanmamışsa 409 `supplier_payment_invoice_mismatch_warning`: önce `POST /supplier-invoices/:invoiceId/approve-match` (DOM-FIN-095, K-282). `Idempotency-Key` zorunlu. Rol: `yonetici` (K-160). Modül `finance`.
          */
         post: operations["createSupplierPayment"];
         delete?: never;
@@ -6504,27 +6756,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance/budget-draft-options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Bütçe taslağı formunun seçenekleri
-         * @description Kapalı olmayan bütçe dönemleri, görülen etkin maliyet merkezleri (sorumlusu ve hazırlama hakkıyla) ve etkin bütçe kalemleri. Ön büro ve öğretmen yalnız sorumlusu olduğu merkezleri görür. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
-         */
-        get: operations["getBudgetDraftOptions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/cost-centers/{costCenterId}/budget-owner": {
+    "/api/v1/finance/severance-estimates": {
         parameters: {
             query?: never;
             header?: never;
@@ -6534,17 +6766,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Maliyet merkezinin bütçe sorumlusunu ata
-         * @description Merkezin bütçe sorumlusu kurumun etkin yönetici, öğretmen ya da ön büro üyeliğidir; `membershipId: null` sorumluyu kaldırır (K-257). Olmayan üyelik (başka kurumunki dahil) 422 `budget_owner_not_found`, öğrenci ya da veli 422 `budget_owner_not_staff`, pasif üyelik 422 `budget_owner_inactive`; başka kurumun merkezi 404. Rol: `yonetici` (K-256). Modül `finance`.
+         * Kıdem ve ihbar tazminatını tahmin et
+         * @description Elle girilen işe giriş ve çıkış günü, aylık brüt ücret, düzenli yan ödemeler, çıkış nedeni ve ihbar bilgisinden kıdem ve ihbar tazminatının tahmini dökümünü döner (ON-205; DOM-FIN-094). **Hiçbir şey yazmaz**, hesap saklanmaz (K-273; `Idempotency-Key` gerekmez). Kıdem: bir tam yıl ve kıdem doğuran neden şartıyla esas aylık (giydirilmiş brüt ile çıkış günündeki tavanın küçüğü) × (tam yıl + artık gün / 365); gelir vergisinden istisna, damga vergisi binde 7,59. İhbar: yalnız işveren feshinde ve ihbar verilmediyse 4857 md. 17 süresi (2/4/6/8 hafta) × 7 × giydirilmiş aylık / 30; gelir vergisi `cumulativeTaxBaseCents` yoksa ilk dilim oranı, varsa dilimli (K-274); damga vergisi. Tutarlar kuruş. Tavan ve tarife tablosu dışındaki günde son bilinen değer kullanılır, `warnings` uyarır. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Tahmindir; bordro ya da mali müşavir hesabı yerine geçmez.
          */
-        post: operations["setBudgetOwner"];
+        post: operations["estimateFinanceSeverance"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance/budget-drafts": {
+    "/api/v1/finance/purchase-approval-settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -6552,47 +6784,23 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Bütçe taslaklarını listele
-         * @description Yeni başlayan dönem önce, dönem içinde merkez koduna göre; `periodId`, `costCenterId` ve `status` süzer. Toplamlar satırlardan hesaplanır. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         * Satın alma onay kademeleri
+         * @description Kurumun satın alma talebi onay kademeleri (alt sınır ve onaylayan), adlandırılabilecek etkin yöneticiler ve ayar sürümü. Kademe yoksa talepleri her yönetici tek adımda onaylar (K-129). Rol: `yonetici`. Modül `finance`.
          */
-        get: operations["listBudgetDrafts"];
-        put?: never;
-        /**
-         * Bütçe taslağı aç
-         * @description Dönem ve maliyet merkezi için taslak açar; satırlar merkezin dönemdeki onaylı bütçesinden doldurulur. Sorumlusu olmadığı merkez 403 `budget_draft_not_owner`, olmayan merkez 422 `cost_center_not_found`, pasif merkez 422 `cost_center_inactive`, olmayan dönem 422 `budget_period_not_found`, kapalı dönem 422 `budget_period_closed`, reddedilmemiş taslak varsa 409 `budget_draft_exists`. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
-         */
-        post: operations["createBudgetDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/budget-drafts/{draftId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Bütçe taslağı ayrıntısı ve revizyon geçmişi
-         * @description Taslak, satırlar ve revizyon geçmişi (sürüm, kim, ne zaman, değişen kalemler). Olmayan, başka kurumun ya da sorumlu için başka merkezin taslağı 404. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
-         */
-        get: operations["getBudgetDraft"];
+        get: operations["getPurchaseApprovalSettings"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /**
-         * Taslağın satırlarını yaz
-         * @description Satırların tamamı (kalem, tutar kuruş, gerekçe) yerine yazılır; bir kalem bir kez. Yalnız taslak ya da revizyonu istenen taslakta (422 `budget_draft_status_invalid`); olmayan kalem 422 `budget_item_not_found`, yeni eklenen pasif kalem 422 `budget_item_inactive`. `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         * Satın alma onay kademelerini kaydet
+         * @description Kademe listesini bütün olarak yazar (ON-223, K-260): en çok 5 kademe, ilk kademe 0 alt sınırla başlar, alt sınırlar kesin artar; her kademe ya `approverRole: "yonetici"` (herhangi bir yönetici) ya da `approverUserId` (adlandırılmış kişi) taşır, aynı kişi iki kademede olamaz (400). Adlandırılmış kişi kurumun etkin yöneticisi değilse 422 `purchase_approval_approver_invalid` (başka kurumun kişisi de aynı yanıtı alır). Boş liste kademeli onayı kapatır. Ayar açık talepleri değiştirmez: kademeler gönderimde dondurulur (K-261). `If-Match` zorunlu (`GET` yanıtındaki sürüm; ayar hiç kaydedilmediyse 1); sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici`. Modül `finance`.
          */
-        patch: operations["updateBudgetDraftLines"];
+        patch: operations["setPurchaseApprovalSettings"];
         trace?: never;
     };
-    "/api/v1/finance/budget-drafts/{draftId}/comparison": {
+    "/api/v1/finance/maintenance-plans": {
         parameters: {
             query?: never;
             header?: never;
@@ -6600,19 +6808,51 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Taslağı onaylı bütçe ve önceki dönemle karşılaştır
-         * @description Kalem bazında taslak, bu dönemin onaylı bütçesi, önceki dönemin planı ve tahakkuk esaslı gerçekleşeni (DOM-FIN-066; önceki dönem K-259). Salt okur; CSV tarayıcıda bu yanıttan üretilir. Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`.
+         * Periyodik bakım planlarını listele
+         * @description Hiç denetlenmemiş planlar önce, sonra sonraki denetim günü en yakın (geciken önce); eşitlikte ad. Son ve sonraki denetim günü ile durum her okumada hesaplanır: sonraki gün bugünden önceyse `overdue`, bugün dahil 30 gün içindeyse `due_soon`, hiç denetim yoksa `never` (K-253). `due=attention` geciken, yaklaşan ve hiç denetlenmemiş planları verir (rozet sayısı `meta.total`). `type`, `assetId` süzer; `q` ad, yer, demirbaş etiketi ve adında arar (DOM-FIN-092). `Accept: text/csv` süzgeçle eşleşen bütün planları CSV verir (`;` ayırıcı, UTF-8 BOM, formül kaçışı); sorumlu personel adı taşıdığı için taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.maintenance_plan_export` (K-255). Rol: `yonetici`, `onburo` (K-255). Modül `finance`.
          */
-        get: operations["getBudgetDraftComparison"];
+        get: operations["listMaintenancePlans"];
+        put?: never;
+        /**
+         * Bakım planı aç
+         * @description Ad, tür, yer, isteğe bağlı kampüs, demirbaş etiketi, periyot (ay), sistemden önceki son denetim günü, sorumlu (personel ya da tedarikçi) ve yasal işaret (K-252). Periyot ve yasal işaret boşsa türün önerisi yazılır (asansör 12, yangın söndürücü 6, jeneratör 12, oyun alanı 12, kazan 12, elektrik 12 ay; mevzuat varsayımı doğrulanmalı, H-31). Olmayan etiket (başka kurumun etiketi dahil) 422 `maintenance_plan_asset_not_found`, hurdaya ayrılmış demirbaş 422 `maintenance_plan_asset_scrapped`, olmayan kampüs 422 `maintenance_plan_campus_not_found`, gelecek gün 422 `maintenance_plan_date_in_future`; olmayan, personel olmayan ya da pasif personel 422 `maintenance_plan_responsible_not_found` / `_not_staff` / `_inactive`, olmayan ya da pasif tedarikçi 422 `maintenance_plan_supplier_not_found` / `_inactive`. Gövdedeki `institutionId` 400. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        post: operations["createMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/maintenance-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bakım planı ayrıntısı ve denetim kayıtları
+         * @description Plan, takvimi ve denetim kayıtları (yeniden eskiye, iptal edilenler dahil; açılan arıza talebinin numarası ve durumu). Olmayan, arşivlenmiş ya da başka kurumun planı 404. Rol: `yonetici`, `onburo` (K-255). Modül `finance`.
+         */
+        get: operations["getMaintenancePlan"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Bakım planını arşivle
+         * @description Arşivli plan listede ve uyarıda görünmez; denetim kayıtları ve açılan arıza talepleri kalır. Olmayan ya da başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        delete: operations["archiveMaintenancePlan"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Bakım planını düzelt
+         * @description Verilen alanlar değişir (K-252); yalnız değişen bağlantılar yeniden denetlenir, tür değişikliği periyodu değiştirmez. Değişiklik yoksa 422 `maintenance_plan_unchanged`; diğer hatalar plan açılışındaki gibidir. `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (K-255). Modül `finance`.
+         */
+        patch: operations["updateMaintenancePlan"];
         trace?: never;
     };
-    "/api/v1/finance/budget-drafts/{draftId}/submit": {
+    "/api/v1/finance/maintenance-plans/{planId}/inspections": {
         parameters: {
             query?: never;
             header?: never;
@@ -6622,17 +6862,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Taslağı onaya gönder
-         * @description Taslak ya da revizyonu istenen taslak `submitted` olur, sürüm bir artar; geçmişe sürümün satırları ve değişen kalemler yazılır. Satırsız taslak 422 `budget_draft_empty`; yeni ya da onaylı tutarı değişen kalemde gerekçe yoksa 422 `budget_draft_justification_required` (K-257). Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         * Denetim kaydet
+         * @description Gün, yapan, sonuç (`pass` uygun, `fail` uygunsuz, `partial` kısmen uygun), isteğe bağlı belge no ve not; uygunsuz ve kısmen uygun sonuçta not zorunlu (400). Son ve sonraki denetim günü bu kayıttan yeniden hesaplanır (K-253, K-254). Gelecek gün 422 `maintenance_inspection_date_in_future`; aynı plana aynı güne iptal edilmemiş ikinci kayıt 409 `maintenance_inspection_exists`. Olmayan ya da başka kurumun planı 404. `Idempotency-Key` alabilir. Yanıt planın ayrıntısıdır. Rol: `yonetici` (K-255). Modül `finance`.
          */
-        post: operations["submitBudgetDraft"];
+        post: operations["recordMaintenanceInspection"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance/budget-drafts/{draftId}/approve": {
+    "/api/v1/finance/maintenance-plans/{planId}/inspections/{inspectionId}/cancel": {
         parameters: {
             query?: never;
             header?: never;
@@ -6642,17 +6882,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Taslağı onayla
-         * @description Onay bekleyen taslak `approved` olur; merkezin dönemdeki bütçe satırları aynı işlemde taslağa eşitlenir (yeni satır, tutar düzeltmesi, taslakta olmayan satırın kaldırılması; tutarı değişen satırın aylık dağılımı kalkar, K-258). Yeni satırda pasif merkez 422 `cost_center_inactive`, pasif kalem 422 `budget_item_inactive`. Rol: `yonetici` (K-256). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         * Denetim kaydını iptal et
+         * @description Yanlış girilen denetim gerekçeyle (5–500) iptal edilir; takvime sayılmaz, aynı güne yeniden kayıt yazılabilir. Açılmış arıza talebi değişmez. İptal edilmiş kayıt 422 `maintenance_inspection_cancelled`. Olmayan ya da başka kurumun planı veya denetimi 404; `If-Match` denetimin sürümüdür, tutmazsa 409. Rol: `yonetici` (K-255). Modül `finance`.
          */
-        post: operations["approveBudgetDraft"];
+        post: operations["cancelMaintenanceInspection"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance/budget-drafts/{draftId}/request-revision": {
+    "/api/v1/finance/maintenance-plans/{planId}/inspections/{inspectionId}/maintenance-request": {
         parameters: {
             query?: never;
             header?: never;
@@ -6662,50 +6902,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Taslak için revizyon iste
-         * @description Onay bekleyen taslak gerekçeyle `revision_requested` olur; sorumlu düzeltip yeniden gönderir (K-256). Rol: `yonetici` (K-256). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         * Uygunsuz denetimden arıza talebi aç
+         * @description Uygunsuz ya da kısmen uygun denetimden tek adımda arıza talebi (DOM-FIN-089) açar (K-254): başlık plan adından, açıklama denetimin gününden, yapanından, belge numarasından ve notundan üretilir; uygunsuz sonuç acil, kısmen uygun normal öncelikli; yer, etkin kampüs ve hurdaya ayrılmamış demirbaş plandan gelir. Talep `open` ve `AT-<sıra>` numarasıyla açılır, denetime bağlanır. Uygun sonuç 422 `maintenance_inspection_passed`, iptal edilmiş denetim 422 `maintenance_inspection_cancelled`, talep açılmışsa 409 `maintenance_inspection_request_exists`. Olmayan ya da başka kurumun planı veya denetimi 404; `If-Match` denetimin sürümüdür. Yanıt planın ayrıntısıdır; `location` açılan talebi gösterir. Rol: `yonetici` (K-255). Modül `finance`.
          */
-        post: operations["requestBudgetDraftRevision"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/budget-drafts/{draftId}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Taslağı reddet
-         * @description Onay bekleyen taslak gerekçeyle `rejected` olur ve kapanır; birim aynı dönem için yeni taslak açabilir (K-256). Rol: `yonetici` (K-256). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
-         */
-        post: operations["rejectBudgetDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/budget-drafts/{draftId}/reopen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Onaylı bütçe için yeni revizyon aç
-         * @description Onaylı taslak yeniden `draft` olur; onaylı bütçe satırları yeni sürüm onaylanana kadar değişmez (K-258). Rol: `yonetici`; `onburo` ve `ogretmen` yalnız bütçe sorumlusu oldukları merkezlerde (K-257). Modül `finance`. Geçersiz geçiş 422 `budget_draft_status_invalid`, kapalı dönem 422 `budget_period_closed`; başka kurumun taslağı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
-         */
-        post: operations["reopenBudgetDraft"];
+        post: operations["openMaintenanceRequestFromInspection"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10750,7 +10950,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -13725,6 +13925,87 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRowInput"][];
         };
+        /** @description Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null` */
+        EokulMappingInput: {
+            schoolNumber: number | null;
+            identityNumber: number | null;
+            fullName: number | null;
+            firstName: number | null;
+            lastName: number | null;
+            className: number | null;
+            grade: number | null;
+            section: number | null;
+            birthDate: number | null;
+            guardianName: number | null;
+            guardianPhone: number | null;
+            relationship: number | null;
+        };
+        EokulChangeInput: {
+            /** @enum {string} */
+            field: "name" | "schoolNumber" | "class" | "identity";
+            before: string | null;
+            /** @description Kimlik değişikliğinde iki değer de `null` (yalnız eklenir) */
+            after: string | null;
+        };
+        EokulImportRowInput: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı
+             * @enum {string}
+             */
+            status: "new" | "update" | "unchanged" | "invalid";
+            schoolNumber: string;
+            name: string;
+            /** @description Dosyadaki sınıf hücresi */
+            className: string;
+            /** @description Eşleşen Kampüs sınıfı; bulunamadıysa boş */
+            classLabel: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            /** @description Yalnız yeni öğrencide dolu */
+            guardianName: string;
+            /** @description Veli telefonu maskeli; yalnız yeni öğrencide dolu */
+            guardianPhoneMasked: string;
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            changes: components["schemas"]["EokulChangeInput"][];
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        EokulMappingIssueInput: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        EokulImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Başlık satırının dosyadaki yeri */
+            headerLine: number;
+            /** @description Başlık hücreleri (sütun eşleme seçenekleri) */
+            headers: {
+                index: number;
+                label: string;
+            }[];
+            suggestedMapping: components["schemas"]["EokulMappingInput"];
+            mapping: components["schemas"]["EokulMappingInput"];
+            /** @description Doluysa satırlar işlenmedi */
+            mappingIssues: components["schemas"]["EokulMappingIssueInput"][];
+            /** @description Başlıktan sonraki boş olmayan satır sayısı */
+            fileRowCount: number;
+            /** @description İşlenen öğrenci satırı (onayda seçilen satırlar) */
+            rowCount: number;
+            newCount: number;
+            updateCount: number;
+            unchangedCount: number;
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["EokulImportRowInput"][];
+        };
         EnrollmentFunnelStepInput: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -13979,6 +14260,82 @@ export interface components {
             paidCents: number;
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRowInput"][];
+        };
+        CampaignCodeInput: {
+            id: string;
+            /** @description Büyük harf kod; kurumda tekil, değişmez */
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            startDate: string;
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            endDate: string;
+            /** @description Toplam maliyet, kuruş; girilmediyse `null` */
+            costCents: number | null;
+            isActive: boolean;
+            /**
+             * @description Bugüne göre durum: `usable` (adaya bağlanabilir), `inactive`, `not_started`, `ended`
+             * @enum {string}
+             */
+            status: "usable" | "inactive" | "not_started" | "ended";
+            /** @description `If-Match` için kayıt sürümü */
+            version: number;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CampaignFunnelCountsInput: {
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        CampaignFunnelRowInput: {
+            campaign: {
+                id: string;
+                code: string;
+                name: string;
+                /** @enum {string} */
+                channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                startDate: string;
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                endDate: string;
+                costCents: number | null;
+                isActive: boolean;
+                archived: boolean;
+            };
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday başı maliyet, kuruş; maliyet ya da aday yoksa ya da aralık kısmiyse `null` */
+            costPerProspectCents: number | null;
+            /** @description Kesin kayıt başı maliyet, kuruş; aynı koşullarla `null` */
+            costPerEnrollmentCents: number | null;
+            /** @description Rapor aralığı kampanyanın bütün günlerini kapsamıyor (K-290) */
+            costPartial: boolean;
+        };
+        CampaignFunnelInput: {
+            dateFrom: string | null;
+            dateTo: string | null;
+            total: components["schemas"]["CampaignFunnelCountsInput"];
+            /** @description Kampanya koduyla açılmamış adaylar */
+            uncoded: components["schemas"]["CampaignFunnelCountsInput"];
+            rows: components["schemas"]["CampaignFunnelRowInput"][];
         };
         SeasonWatchMeetingInput: {
             prospectId: string;
@@ -15369,7 +15726,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -18342,6 +18699,87 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["StudentImportRow"][];
         };
+        /** @description Alan → başlıktaki sütun sırası (0'dan); eşlenmemiş alan `null` */
+        EokulMapping: {
+            schoolNumber: number | null;
+            identityNumber: number | null;
+            fullName: number | null;
+            firstName: number | null;
+            lastName: number | null;
+            className: number | null;
+            grade: number | null;
+            section: number | null;
+            birthDate: number | null;
+            guardianName: number | null;
+            guardianPhone: number | null;
+            relationship: number | null;
+        };
+        EokulChange: {
+            /** @enum {string} */
+            field: "name" | "schoolNumber" | "class" | "identity";
+            before: string | null;
+            /** @description Kimlik değişikliğinde iki değer de `null` (yalnız eklenir) */
+            after: string | null;
+        };
+        EokulImportRow: {
+            /** @description Dosyadaki satır */
+            line: number;
+            /**
+             * @description `new` yeni öğrenci, `update` güncellenecek, `unchanged` değişiklik yok, `invalid` hatalı
+             * @enum {string}
+             */
+            status: "new" | "update" | "unchanged" | "invalid";
+            schoolNumber: string;
+            name: string;
+            /** @description Dosyadaki sınıf hücresi */
+            className: string;
+            /** @description Eşleşen Kampüs sınıfı; bulunamadıysa boş */
+            classLabel: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            /** @description Yalnız yeni öğrencide dolu */
+            guardianName: string;
+            /** @description Veli telefonu maskeli; yalnız yeni öğrencide dolu */
+            guardianPhoneMasked: string;
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            changes: components["schemas"]["EokulChange"][];
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        EokulMappingIssue: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        EokulImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Başlık satırının dosyadaki yeri */
+            headerLine: number;
+            /** @description Başlık hücreleri (sütun eşleme seçenekleri) */
+            headers: {
+                index: number;
+                label: string;
+            }[];
+            suggestedMapping: components["schemas"]["EokulMapping"];
+            mapping: components["schemas"]["EokulMapping"];
+            /** @description Doluysa satırlar işlenmedi */
+            mappingIssues: components["schemas"]["EokulMappingIssue"][];
+            /** @description Başlıktan sonraki boş olmayan satır sayısı */
+            fileRowCount: number;
+            /** @description İşlenen öğrenci satırı (onayda seçilen satırlar) */
+            rowCount: number;
+            newCount: number;
+            updateCount: number;
+            unchangedCount: number;
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["EokulImportRow"][];
+        };
         EnrollmentFunnelStep: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -18596,6 +19034,82 @@ export interface components {
             paidCents: number;
             /** @description Yalnız önizlemede dolu; kimlik maskeli */
             rows: components["schemas"]["InstallmentImportRow"][];
+        };
+        CampaignCode: {
+            id: string;
+            /** @description Büyük harf kod; kurumda tekil, değişmez */
+            code: string;
+            name: string;
+            /** @enum {string} */
+            channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            startDate: string;
+            /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+            endDate: string;
+            /** @description Toplam maliyet, kuruş; girilmediyse `null` */
+            costCents: number | null;
+            isActive: boolean;
+            /**
+             * @description Bugüne göre durum: `usable` (adaya bağlanabilir), `inactive`, `not_started`, `ended`
+             * @enum {string}
+             */
+            status: "usable" | "inactive" | "not_started" | "ended";
+            /** @description `If-Match` için kayıt sürümü */
+            version: number;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CampaignFunnelCounts: {
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        CampaignFunnelRow: {
+            campaign: {
+                id: string;
+                code: string;
+                name: string;
+                /** @enum {string} */
+                channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                startDate: string;
+                /** @description `YYYY-MM-DD`, Europe/Istanbul günü (dahil) */
+                endDate: string;
+                costCents: number | null;
+                isActive: boolean;
+                archived: boolean;
+            };
+            /** @description Aralıkta açılan aday */
+            prospects: number;
+            /** @description Görüşmeye (dil okulunda deneme dersine de) ulaşan aday, birikimli */
+            meetings: number;
+            /** @description Teklif aşamasına ulaşan aday, birikimli */
+            offers: number;
+            /** @description Kesin kayıt */
+            enrolled: number;
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday başı maliyet, kuruş; maliyet ya da aday yoksa ya da aralık kısmiyse `null` */
+            costPerProspectCents: number | null;
+            /** @description Kesin kayıt başı maliyet, kuruş; aynı koşullarla `null` */
+            costPerEnrollmentCents: number | null;
+            /** @description Rapor aralığı kampanyanın bütün günlerini kapsamıyor (K-290) */
+            costPartial: boolean;
+        };
+        CampaignFunnel: {
+            dateFrom: string | null;
+            dateTo: string | null;
+            total: components["schemas"]["CampaignFunnelCounts"];
+            /** @description Kampanya koduyla açılmamış adaylar */
+            uncoded: components["schemas"]["CampaignFunnelCounts"];
+            rows: components["schemas"]["CampaignFunnelRow"][];
         };
         SeasonWatchMeeting: {
             prospectId: string;
@@ -38751,6 +39265,13 @@ export interface operations {
                             mebbisRecordedDate: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                            /**
+                             * @description Burs sürüyor, kesildi ya da gerçek dışı beyanla iptal edildi (ON-283)
+                             * @enum {string}
+                             */
+                            endStatus: "active" | "terminated" | "revoked";
+                            /** @description Son kesme ya da iptal günü (YYYY-MM-DD) */
+                            endedOn: string | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
                     };
@@ -38870,6 +39391,628 @@ export interface operations {
                             mebbisRecordedDate: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quoteScholarshipEnd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "terminate";
+                    effectiveDate: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "revoke";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            kind: "terminate" | "revoke";
+                            awardId: string;
+                            contractId: string;
+                            scholarshipCents: number;
+                            /** @description Taksitsiz tam burs; pay ayları sanaldır */
+                            fullScholarship: boolean;
+                            /** @description Yeni alacak toplamı; komutta `confirmedCents` */
+                            totalCents: number;
+                            reinstated: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                amountCents: number;
+                            }[];
+                            /** @description Kesme günü ya da geri isteme günü */
+                            effectiveDate: string;
+                            /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                            keptCents: number;
+                            /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                            reinstatedCents: number;
+                            /** @description Geri istenen burs anaparası */
+                            principalCents: number;
+                            /** @description Kanuni faiz */
+                            interestCents: number;
+                            /** @description Geri isteme alacağının son ödeme günü */
+                            clawbackDueDate: string | null;
+                            lines: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                /** @description Bu vadenin burs payı, kuruş */
+                                shareCents: number;
+                                /**
+                                 * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                 * @enum {string}
+                                 */
+                                status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                interestCents: number;
+                                interestDays: number;
+                                segments: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    from: string;
+                                    /** @description Aralığın sonu (hariç) */
+                                    to: string;
+                                    days: number;
+                                    /** @description Yıllık kanuni faiz, on binde birlik */
+                                    basisPoints: number;
+                                    /** @description Oranın dayanağı */
+                                    source: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listScholarshipEnds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            awardId: string;
+                            studentId: string;
+                            academicYear: number;
+                            programName: string;
+                            ends: {
+                                id: string;
+                                awardId: string;
+                                contractId: string;
+                                /** @enum {string} */
+                                kind: "terminate" | "revoke";
+                                /** @description Neden anahtarı; iptalde `false_declaration` */
+                                reason: string;
+                                /** @description Yazılan taksitler */
+                                invoiceIds: string[];
+                                createdAt: string;
+                                /** @description Kesme günü ya da geri isteme günü */
+                                effectiveDate: string;
+                                /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                                keptCents: number;
+                                /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                                reinstatedCents: number;
+                                /** @description Geri istenen burs anaparası */
+                                principalCents: number;
+                                /** @description Kanuni faiz */
+                                interestCents: number;
+                                /** @description Geri isteme alacağının son ödeme günü */
+                                clawbackDueDate: string | null;
+                                lines: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    dueDate: string;
+                                    /** @description Bu vadenin burs payı, kuruş */
+                                    shareCents: number;
+                                    /**
+                                     * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                     * @enum {string}
+                                     */
+                                    status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                    interestCents: number;
+                                    interestDays: number;
+                                    segments: {
+                                        /** @description Gün (YYYY-MM-DD) */
+                                        from: string;
+                                        /** @description Aralığın sonu (hariç) */
+                                        to: string;
+                                        days: number;
+                                        /** @description Yıllık kanuni faiz, on binde birlik */
+                                        basisPoints: number;
+                                        /** @description Oranın dayanağı */
+                                        source: string;
+                                    }[];
+                                }[];
+                                /** @description Gerekçe açıklaması */
+                                note: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    terminateScholarship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    reason: "discipline" | "academic" | "attendance" | "institution_decision" | "other";
+                    note: string;
+                    effectiveDate: string;
+                    confirmedCents: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            awardId: string;
+                            contractId: string;
+                            /** @enum {string} */
+                            kind: "terminate" | "revoke";
+                            /** @description Neden anahtarı; iptalde `false_declaration` */
+                            reason: string;
+                            /** @description Yazılan taksitler */
+                            invoiceIds: string[];
+                            createdAt: string;
+                            /** @description Kesme günü ya da geri isteme günü */
+                            effectiveDate: string;
+                            /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                            keptCents: number;
+                            /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                            reinstatedCents: number;
+                            /** @description Geri istenen burs anaparası */
+                            principalCents: number;
+                            /** @description Kanuni faiz */
+                            interestCents: number;
+                            /** @description Geri isteme alacağının son ödeme günü */
+                            clawbackDueDate: string | null;
+                            lines: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                /** @description Bu vadenin burs payı, kuruş */
+                                shareCents: number;
+                                /**
+                                 * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                 * @enum {string}
+                                 */
+                                status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                interestCents: number;
+                                interestDays: number;
+                                segments: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    from: string;
+                                    /** @description Aralığın sonu (hariç) */
+                                    to: string;
+                                    days: number;
+                                    /** @description Yıllık kanuni faiz, on binde birlik */
+                                    basisPoints: number;
+                                    /** @description Oranın dayanağı */
+                                    source: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revokeScholarship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                awardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    note: string;
+                    confirmedCents: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            awardId: string;
+                            contractId: string;
+                            /** @enum {string} */
+                            kind: "terminate" | "revoke";
+                            /** @description Neden anahtarı; iptalde `false_declaration` */
+                            reason: string;
+                            /** @description Yazılan taksitler */
+                            invoiceIds: string[];
+                            createdAt: string;
+                            /** @description Kesme günü ya da geri isteme günü */
+                            effectiveDate: string;
+                            /** @description Kesmede önceki dönemde kalan burs; fon payı buna iner */
+                            keptCents: number;
+                            /** @description İleriye kalkan burs: yeni taksitlerin toplamı */
+                            reinstatedCents: number;
+                            /** @description Geri istenen burs anaparası */
+                            principalCents: number;
+                            /** @description Kanuni faiz */
+                            interestCents: number;
+                            /** @description Geri isteme alacağının son ödeme günü */
+                            clawbackDueDate: string | null;
+                            lines: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                dueDate: string;
+                                /** @description Bu vadenin burs payı, kuruş */
+                                shareCents: number;
+                                /**
+                                 * @description `kept` önceki dönemde kalan, `reinstated` ileriye kalkan, `clawback` geri istenen, `already_reinstated` önceki kesmenin kaldırdığı pay
+                                 * @enum {string}
+                                 */
+                                status: "kept" | "reinstated" | "clawback" | "already_reinstated";
+                                interestCents: number;
+                                interestDays: number;
+                                segments: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    from: string;
+                                    /** @description Aralığın sonu (hariç) */
+                                    to: string;
+                                    days: number;
+                                    /** @description Yıllık kanuni faiz, on binde birlik */
+                                    basisPoints: number;
+                                    /** @description Oranın dayanağı */
+                                    source: string;
+                                }[];
+                            }[];
                         };
                     };
                 };
@@ -42644,6 +43787,7 @@ export interface operations {
                     /** @enum {string} */
                     source: "Web sitesi" | "Veli referansı" | "Kampüs ziyareti" | "Telefon" | "Bursluluk sınavı" | "Sosyal medya" | "Kurumsal anlaşma";
                     referrerStudentId?: string;
+                    campaignCode?: string;
                     minor?: boolean;
                     guardianName?: string;
                     siblingOfId?: string;
@@ -44227,6 +45371,139 @@ export interface operations {
             };
         };
     };
+    importEokulStudents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                    mapping?: {
+                        schoolNumber?: number | null;
+                        identityNumber?: number | null;
+                        fullName?: number | null;
+                        firstName?: number | null;
+                        lastName?: number | null;
+                        className?: number | null;
+                        grade?: number | null;
+                        section?: number | null;
+                        birthDate?: number | null;
+                        guardianName?: number | null;
+                        guardianPhone?: number | null;
+                        relationship?: number | null;
+                    };
+                    branchId?: string;
+                    fallbackClassId?: string;
+                    lines?: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EokulImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EokulImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     importInstallments: {
         parameters: {
             query?: never;
@@ -44444,6 +45721,615 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ProspectSeasonWatch"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCampaignCodes: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kod ya da adda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `usable`: etkin ve bugün tarih aralığında (aday formu); `active`/`inactive` bayrak */
+                status?: "usable" | "active" | "inactive";
+                channel?: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCampaignCode: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    channel: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                    startDate: string;
+                    endDate: string;
+                    costCents?: number | null;
+                    /** @default true */
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCampaignCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveCampaignCode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCampaignCode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    channel?: "social_media" | "flyer" | "fair" | "referral" | "website" | "other";
+                    startDate?: string;
+                    endDate?: string;
+                    costCents?: number | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignCode"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectCampaignFunnel: {
+        parameters: {
+            query?: {
+                /** @description Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampaignFunnel"];
                     };
                 };
             };
@@ -51406,6 +53292,8 @@ export interface operations {
                 costCenterId?: string;
                 /** @description Bütçe dönemi */
                 periodId?: string;
+                /** @description `true`: "Onayımı bekleyenler" — sıranın oturumdaki kişide olduğu gönderilmiş talepler (K-263) */
+                awaitingMyApproval?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -51669,7 +53557,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -52097,7 +54015,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -52316,7 +54264,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -52519,7 +54497,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -52724,7 +54732,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -52927,7 +54965,37 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -53130,7 +55198,268 @@ export interface operations {
                                 edit: boolean;
                                 submit: boolean;
                                 cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
                                 decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
+                            };
+                            /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
+                            supplyRequest: {
+                                id: string;
+                                /** @description Sarf talebi numarası, ör. `SM-0001` */
+                                number: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never> | null;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Kurum içi talep numarası, ör. `ST-0001` */
+                            number: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "cancelled";
+                            /** @description Talep eden birim (maliyet merkezi) */
+                            costCenter: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Bütçe dönemi */
+                            period: {
+                                id: string;
+                                name: string;
+                            };
+                            /** @description Gider kalemi */
+                            budgetItem: {
+                                id: string;
+                                code: string;
+                                name: string;
+                            };
+                            /** @description Önerilen tedarikçi */
+                            supplier: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            justification: string;
+                            itemCount: number;
+                            /** @description Tahmini toplam: kalemlerin miktar × birim fiyat toplamı, kuruş */
+                            totalCents: number;
+                            requestedByUserId: string;
+                            requestedByName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            cancelledAt: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            items: {
+                                id: string;
+                                position: number;
+                                name: string;
+                                quantity: number;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Tahmini birim fiyat, kuruş */
+                                estimatedUnitPriceCents: number;
+                                /** @description Miktar × birim fiyat, kuruş */
+                                totalCents: number;
+                                /** @description Kalemin bağlı olduğu stok kartı (ON-339, K-221); bağ yoksa boş */
+                                stockItem: {
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                } | null;
+                            }[];
+                            /** @description Bütçe kalanı ve aşım bilgisi (K-145) */
+                            budget: {
+                                plannedCents: number | null;
+                                /** @description Aynı satırdaki, etkin siparişi olmayan onaylanmış talepler (bu talep hariç) */
+                                approvedCents: number;
+                                /** @description Aynı satırdaki kararı bekleyen talepler (bu talep hariç) */
+                                pendingCents: number;
+                                /** @description Aynı satırdaki etkin siparişlerin henüz kabul edilmemiş kısmı, KDV hariç (K-154) */
+                                orderedCents: number;
+                                /** @description Gerçekleşen: etkin siparişlerde kabul edilen miktar × birim fiyat, KDV hariç (K-151, K-154) */
+                                receivedCents: number;
+                                /** @description Taahhüt: kararı bekleyen ve onaylanmış talepler ile siparişlerin açık kısmı (K-145, K-154) */
+                                committedCents: number;
+                                remainingCents: number | null;
+                                /** @description Talep kalanı aşıyor mu; gönderim ve onay açık onay ister (K-146) */
+                                exceedsRemaining: boolean;
+                                /** @description Talebin kalanı aştığı tutar; aşım ya da plan yoksa 0 */
+                                overrunCents: number;
+                            };
+                            submittedByName: string | null;
+                            decidedByName: string | null;
+                            /** @description Onay notu ya da ret gerekçesi */
+                            decisionNote: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Oturumdaki kullanıcının bu talepte yapabileceği işlemler */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                cancel: boolean;
+                                /** @description Onay ve ret: tek adımlıda yönetici, kademelide yalnız sıradaki onaylayan (K-262) */
+                                decide: boolean;
+                                /** @description Gönderilmiş talebi taslağa geri çekme (K-261) */
+                                withdraw: boolean;
+                            };
+                            /** @description Onay zinciri (ON-223, K-260…K-262) */
+                            approval: {
+                                /**
+                                 * @description `single`: kademe yok, tek adımlı yönetici onayı (K-129); `tiered`: gönderimde dondurulmuş kademeler (K-261)
+                                 * @enum {string}
+                                 */
+                                mode: "single" | "tiered";
+                                /** @description Karar bekleyen kademenin sırası; kademe yoksa ya da hepsi kararlıysa boş */
+                                currentPosition: number | null;
+                                steps: {
+                                    /** @description Kademe sırası, 1’den */
+                                    position: number;
+                                    /** @description Gönderimdeki ayardan kopyalanan alt sınır (KDV dahil toplam) */
+                                    minTotalCents: number;
+                                    /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                    approverRole: "yonetici" | null;
+                                    /** @description Adlandırılmış onaylayan */
+                                    approverUserId: string | null;
+                                    approverName: string | null;
+                                    /** @description Kademe kararı */
+                                    decision: ("approved" | "rejected") | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    /** @description Onay notu ya da ret gerekçesi */
+                                    note: string | null;
+                                }[];
                             };
                             /** @description Talep bir sarf talebinin kalanından açıldıysa o talep (DOM-FIN-091, K-246) */
                             supplyRequest: {
@@ -56101,6 +58430,15 @@ export interface operations {
                     vatCents: number;
                     /** @default null */
                     purchaseOrderId?: string | null;
+                    /** @description Fatura kalemleri (DOM-FIN-095): sipariş kalemine bağlı ya da siparişte olmayan; miktar ve KDV hariç birim fiyat. Siparişe bağlı faturada zorunlu */
+                    lines?: {
+                        /** @default null */
+                        orderItemId?: string | null;
+                        /** @default null */
+                        description?: string | null;
+                        quantity: number;
+                        unitPriceCents: number;
+                    }[];
                     /** @default null */
                     note?: string | null;
                     confirmOverOrder?: boolean;
@@ -56211,6 +58549,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56409,6 +58798,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56622,6 +59062,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56831,6 +59322,57 @@ export interface operations {
                             createdByName: string | null;
                             cancelledByName: string | null;
                             cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
                             /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
                             actions: {
                                 pay: boolean;
@@ -56888,6 +59430,526 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveSupplierInvoiceMatch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Fatura numarası; boşluksuz, büyük harf (K-161) */
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            /** @description Son taksitin vadesi `YYYY-MM-DD` */
+                            dueDate: string;
+                            nextDueDate: string | null;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrderId: string | null;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description KDV dahil tutar, kuruş; ödeme planının toplamı */
+                            grossCents: number;
+                            /** @description Etkin ödemelerin toplamı */
+                            paidCents: number;
+                            /** @description Kalan; iptal edilen faturada 0 */
+                            remainingCents: number;
+                            /** @description Vadesi geçmiş taksitlerin kalanı (vade günü dahil vadesi gelmemiş) */
+                            overdueCents: number;
+                            /** @enum {string} */
+                            status: "open" | "partially_paid" | "overdue" | "paid" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Tutar girişte KDV dahil mi yazıldı */
+                            amountIncludesVat: boolean;
+                            note: string | null;
+                            /** @description Bağlı satın alma siparişi (DOM-FIN-073) */
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            } | null;
+                            /** @description Ödeme planı, vade sırasıyla */
+                            installments: {
+                                id: string;
+                                position: number;
+                                /** @description Vade `YYYY-MM-DD` */
+                                dueDate: string;
+                                /** @description Taksit tutarı */
+                                amountCents: number;
+                                /** @description Taksite yazılmış etkin ödemeler */
+                                paidCents: number;
+                                /** @description Taksit kalanı */
+                                remainingCents: number;
+                                /** @description Vadesi geçti ve kalanı var */
+                                overdue: boolean;
+                            }[];
+                            /** @description Faturanın ödemeleri (iptal edilenler dahil) */
+                            payments: {
+                                id: string;
+                                supplier: {
+                                    id: string;
+                                    name: string;
+                                };
+                                invoice: {
+                                    id: string;
+                                    invoiceNumber: string;
+                                };
+                                installmentId: string;
+                                /** @description Ödeme günü `YYYY-MM-DD` */
+                                paidDate: string;
+                                /** @description Ödenen tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "transfer" | "eft" | "cash" | "cheque";
+                                /** @description Ödemenin çıktığı kurum hesabı; nakitte boş */
+                                bankAccount: {
+                                    id: string;
+                                    /** @description Banka adı ve IBAN’ın son dört hanesi */
+                                    label: string;
+                                } | null;
+                                /** @description Banka açıklaması; girilmediyse `Fatura <no> ödemesi` */
+                                description: string;
+                                createdAt: string;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Talimat dosyasına ilk alındığı an; doluysa yeniden alma onay ister (K-165) */
+                                instructionExportedAt: string | null;
+                                instructionExportCount: number;
+                                actions: {
+                                    cancel: boolean;
+                                };
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            createdAt: string;
+                            createdByName: string | null;
+                            cancelledByName: string | null;
+                            cancelReason: string | null;
+                            /** @description Üçlü eşleştirme (DOM-FIN-095); siparişe bağlı olmayan faturada boş */
+                            matching: {
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                lines: {
+                                    /** @description Sipariş kalemi; siparişte olmayan kalemde boş */
+                                    orderItemId: string | null;
+                                    /** @description Sipariş kaleminin adı ya da siparişte olmayan kalemin adı */
+                                    name: string;
+                                    unit: ("piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service") | null;
+                                    orderedQuantity: number | null;
+                                    orderUnitPriceCents: number | null;
+                                    acceptedQuantity: number | null;
+                                    previouslyInvoicedQuantity: number | null;
+                                    /** @description Bu faturada faturalanan */
+                                    invoicedQuantity: number;
+                                    /** @description Faturadaki KDV hariç birim fiyat */
+                                    invoiceUnitPriceCents: number;
+                                    /** @description Önceki ve bu faturada faturalanan toplamın kabul edileni aştığı miktar */
+                                    quantityExcess: number;
+                                    /** @description Birim fiyat farkı (fatura − sipariş) */
+                                    unitPriceDifferenceCents: number;
+                                    /** @description Fiyat farkının kalem tutarına etkisi */
+                                    lineDifferenceCents: number;
+                                    /**
+                                     * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                     * @enum {string}
+                                     */
+                                    status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                }[];
+                                /** @description Bugünkü sapma gerekçeyle onaylanmış */
+                                approved: boolean;
+                                /** @description Ödeme fark onayı istiyor (K-282) */
+                                approvalRequired: boolean;
+                                /** @description Fiyat toleransı: kalem etkisi bu tutarı aşmazsa eşleşir (K-281) */
+                                toleranceCents: number;
+                                /** @description Son fark onayı; onaylanan sapma bugünküyle aynı değilse geçersizdir */
+                                approval: {
+                                    /**
+                                     * @description Onaylanan sapma
+                                     * @enum {string}
+                                     */
+                                    status: "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                    approvedAt: string;
+                                    approvedByName: string | null;
+                                    reason: string;
+                                } | null;
+                            } | null;
+                            /** @description Ödeme girişi, plan değişikliği ve iptal yapılabilir mi */
+                            actions: {
+                                pay: boolean;
+                                replan: boolean;
+                                cancel: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSupplierInvoiceMatches: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Eşleştirme durumu; `mismatched` (varsayılan) eşleşme dışındaki bütün durumlar */
+                status?: "mismatched" | "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                /** @description `pending` onay bekleyen, `approved` farkı onaylanmış */
+                approval?: "pending" | "approved";
+                supplierId?: string;
+                /** @description Fatura numarası, tedarikçi adı ya da sipariş numarasında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            invoiceNumber: string;
+                            /** @description Fatura tarihi `YYYY-MM-DD` */
+                            invoiceDate: string;
+                            supplier: {
+                                id: string;
+                                name: string;
+                            };
+                            purchaseOrder: {
+                                id: string;
+                                number: string;
+                            };
+                            /** @description KDV dahil tutar */
+                            grossCents: number;
+                            /** @description Ödenmemiş kalan (KDV dahil) */
+                            remainingCents: number;
+                            /**
+                             * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                             * @enum {string}
+                             */
+                            status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                            approved: boolean;
+                            approvalRequired: boolean;
+                            /** @description Geçerli fark onayının anı */
+                            approvedAt: string | null;
+                            /** @description Miktar farkı olan kalem sayısı */
+                            quantityLines: number;
+                            /** @description Fiyat farkı olan kalem sayısı */
+                            priceLines: number;
+                            /** @description Siparişte olmayan kalem sayısı */
+                            unmatchedLines: number;
+                            /** @description Fiyat farkı olan kalemlerin fark toplamı (KDV hariç) */
+                            priceDifferenceCents: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseOrderInvoiceMatching: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            order: {
+                                id: string;
+                                number: string;
+                                /** @enum {string} */
+                                status: "draft" | "sent" | "partially_received" | "completed" | "cancelled";
+                            };
+                            /** @description Etkin faturaların en ağır durumu; fatura yoksa boş */
+                            status: ("matched" | "quantity_mismatch" | "price_mismatch" | "unmatched") | null;
+                            items: {
+                                orderItemId: string;
+                                name: string;
+                                /** @enum {string} */
+                                unit: "piece" | "pack" | "box" | "kilogram" | "liter" | "meter" | "hour" | "day" | "month" | "service";
+                                /** @description Sipariş miktarı */
+                                orderedQuantity: number;
+                                /** @description Kabul edilen */
+                                acceptedQuantity: number;
+                                /** @description Etkin faturalarda faturalanan */
+                                invoicedQuantity: number;
+                                /** @description Siparişteki KDV hariç birim fiyat */
+                                unitPriceCents: number;
+                                /** @description Faturalanan − kabul edilen; eksi faturası beklenen kabuldür */
+                                differenceQuantity: number;
+                            }[];
+                            /** @description Siparişe bağlı faturalar (iptal edilenler dahil), fatura tarihi sırasıyla */
+                            invoices: {
+                                id: string;
+                                invoiceNumber: string;
+                                invoiceDate: string;
+                                /** @description KDV dahil tutar */
+                                grossCents: number;
+                                cancelled: boolean;
+                                /**
+                                 * @description `matched` eşleşti, `quantity_mismatch` faturalanan kabul edileni aşıyor, `price_mismatch` birim fiyat farkı toleransı aşıyor, `unmatched` siparişte olmayan kalem ya da kalemsiz fatura
+                                 * @enum {string}
+                                 */
+                                status: "matched" | "quantity_mismatch" | "price_mismatch" | "unmatched";
+                                approved: boolean;
+                                approvalRequired: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -69076,7 +72138,166 @@ export interface operations {
             };
         };
     };
-    getBudgetDraftOptions: {
+    estimateFinanceSeverance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    startDate: string;
+                    endDate: string;
+                    grossWageCents: number;
+                    /** @default 0 */
+                    regularBenefitsCents?: number;
+                    /** @enum {string} */
+                    exitReason: "employer_termination" | "employer_compelling" | "employee_just_cause" | "retirement" | "military_service" | "marriage" | "death" | "fixed_term_end" | "resignation" | "employer_misconduct";
+                    /** @default false */
+                    noticeGiven?: boolean;
+                    /** @default null */
+                    cumulativeTaxBaseCents?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            exitReason: "employer_termination" | "employer_compelling" | "employee_just_cause" | "retirement" | "military_service" | "marriage" | "death" | "fixed_term_end" | "resignation" | "employer_misconduct";
+                            noticeGiven: boolean;
+                            service: {
+                                /** @description `YYYY-MM-DD` */
+                                startDate: string;
+                                /** @description `YYYY-MM-DD` */
+                                endDate: string;
+                                /** @description Giriş ve çıkış günü dahil takvim günü */
+                                totalDays: number;
+                                /** @description Tam hizmet yılı */
+                                years: number;
+                                /** @description Son yıl dönümünden sonraki tam ay (gösterim) */
+                                months: number;
+                                /** @description Son tam aydan sonraki gün (gösterim) */
+                                days: number;
+                                /** @description Son yıl dönümünden sonraki gün (kıdemde 365’te bir) */
+                                remainderDays: number;
+                            };
+                            wage: {
+                                grossWageCents: number;
+                                regularBenefitsCents: number;
+                                /** @description Aylık giydirilmiş brüt: brüt + düzenli yan ödemeler */
+                                dressedWageCents: number;
+                                /** @description Aylık giydirilmiş brüt / 30 */
+                                dailyDressedWageCents: number;
+                            };
+                            severance: {
+                                /** @enum {string} */
+                                status: "eligible" | "reason_not_entitled" | "under_one_year";
+                                /** @description Tazminata esas gün (iki ondalık) */
+                                days: number;
+                                fullYears: number;
+                                remainderDays: number;
+                                ceiling: {
+                                    /** @description Uygulanan tavan döneminin başlangıcı */
+                                    from: string;
+                                    monthlyCents: number;
+                                    /** @description Çıkış günü tablonun son döneminden sonra */
+                                    stale: boolean;
+                                };
+                                ceilingApplied: boolean;
+                                /** @description Giydirilmiş aylık ile tavanın küçüğü */
+                                baseMonthlyCents: number;
+                                dailyWageCents: number;
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            notice: {
+                                /** @enum {string} */
+                                status: "eligible" | "reason_not_entitled" | "notice_given";
+                                weeks: 2 | 4 | 6 | 8;
+                                /** @description Ödenen gün: hak varsa hafta × 7, yoksa 0 */
+                                days: number;
+                                dailyWageCents: number;
+                                /** @enum {string} */
+                                incomeTaxMethod: "first_bracket" | "cumulative_base" | "none";
+                                taxYear: number;
+                                taxTableStale: boolean;
+                                incomeTaxRateBasisPoints: number;
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            totals: {
+                                grossCents: number;
+                                incomeTaxCents: number;
+                                stampTaxCents: number;
+                                netCents: number;
+                            };
+                            /** @description Uyarı kodları: `ceiling_stale` (tavan tabloda yok, son bilinen kullanıldı), `tax_table_stale` (tarife yılı yok), `resignation_notice_owed` (bildirimsiz istifada ihbarı çalışan öder) */
+                            warnings: ("ceiling_stale" | "tax_table_stale" | "resignation_notice_owed")[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPurchaseApprovalSettings: {
         parameters: {
             query?: never;
             header?: never;
@@ -69092,37 +72313,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description Satın alma talebi kademeli onay ayarı */
                         data: {
-                            periods: {
-                                id: string;
-                                name: string;
-                                /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
+                            /** @description Kademeler; boşsa talepleri her yönetici tek adımda onaylar (K-129) */
+                            tiers: {
+                                /** @description Kademe sırası, 1’den */
+                                position: number;
+                                /** @description Alt sınır: talebin KDV dahil tahmini toplamı bu tutara eşit ya da büyükse kademe gerekir, kuruş */
+                                minTotalCents: number;
+                                /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                approverRole: "yonetici" | null;
+                                /** @description Adlandırılmış onaylayan */
+                                approverUserId: string | null;
+                                approverName: string | null;
+                                /** @description Adlandırılmış kişi hâlâ kurumun etkin yöneticisi mi; değilse ayar yeniden kaydedilemez */
+                                approverEligible: boolean;
                             }[];
-                            centers: {
-                                id: string;
-                                code: string;
+                            /** @description Adlandırılabilecek kişiler: kurumun etkin yöneticileri */
+                            approvers: {
+                                userId: string;
                                 name: string;
-                                path: string;
-                                /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                                owner: {
-                                    /** @description Sorumlunun kurum üyeliği */
-                                    membershipId: string;
-                                    /** @description Sorumlunun adı */
-                                    name: string | null;
-                                } | null;
-                                /** @description Oturumdaki kullanıcı bu merkezin taslağını hazırlar */
-                                canPrepare: boolean;
                             }[];
-                            items: {
-                                id: string;
-                                code: string;
-                                name: string;
-                                /** @enum {string} */
-                                kind: "income" | "expense";
-                            }[];
+                            /** @description `If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1 */
+                            version: number;
                         };
                     };
                 };
@@ -69201,23 +72414,28 @@ export interface operations {
             };
         };
     };
-    setBudgetOwner: {
+    setPurchaseApprovalSettings: {
         parameters: {
             query?: never;
-            header?: {
+            header: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
             };
-            path: {
-                costCenterId: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Bütçe sorumlusunun kurum üyeliği; `null` sorumluyu kaldırır */
-                    membershipId: string | null;
+                    tiers: {
+                        minTotalCents: number;
+                        /** @default null */
+                        approverRole?: "yonetici" | null;
+                        /** @default null */
+                        approverUserId?: string | null;
+                    }[];
                 };
             };
         };
@@ -69229,15 +72447,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description Satın alma talebi kademeli onay ayarı */
                         data: {
-                            costCenterId: string;
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
-                                name: string | null;
-                            } | null;
+                            /** @description Kademeler; boşsa talepleri her yönetici tek adımda onaylar (K-129) */
+                            tiers: {
+                                /** @description Kademe sırası, 1’den */
+                                position: number;
+                                /** @description Alt sınır: talebin KDV dahil tahmini toplamı bu tutara eşit ya da büyükse kademe gerekir, kuruş */
+                                minTotalCents: number;
+                                /** @description Onaylayan rol (herhangi bir yönetici); adlandırılmış kişi varsa boş */
+                                approverRole: "yonetici" | null;
+                                /** @description Adlandırılmış onaylayan */
+                                approverUserId: string | null;
+                                approverName: string | null;
+                                /** @description Adlandırılmış kişi hâlâ kurumun etkin yöneticisi mi; değilse ayar yeniden kaydedilemez */
+                                approverEligible: boolean;
+                            }[];
+                            /** @description Adlandırılabilecek kişiler: kurumun etkin yöneticileri */
+                            approvers: {
+                                userId: string;
+                                name: string;
+                            }[];
+                            /** @description `If-Match` için ayar sürümü; ayar hiç kaydedilmediyse 1 */
+                            version: number;
                         };
                     };
                 };
@@ -69316,19 +72548,21 @@ export interface operations {
             };
         };
     };
-    listBudgetDrafts: {
+    listMaintenancePlans: {
         parameters: {
             query?: {
                 /** @description Sayfa numarası */
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description Bütçe dönemi */
-                periodId?: string;
-                /** @description Maliyet merkezi (birim) */
-                costCenterId?: string;
-                /** @description Durum */
-                status?: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+                /** @description Ad, yer, demirbaş etiketi ve adında arama */
+                q?: string;
+                /** @description Tür */
+                type?: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                /** @description `attention` geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş; ya da tek durum (`overdue`, `due_soon`, `ok`, `never`) */
+                due?: "attention" | "overdue" | "due_soon" | "ok" | "never";
+                /** @description Demirbaşın bakım planları */
+                assetId?: string;
             };
             header?: never;
             path?: never;
@@ -69345,58 +72579,45 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            period: {
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
                                 id: string;
+                                tagNumber: string;
                                 name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
                                 /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
                                 id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
                                 name: string | null;
                             } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         }[];
@@ -69478,7 +72699,7 @@ export interface operations {
             };
         };
     };
-    createBudgetDraft: {
+    createMaintenancePlan: {
         parameters: {
             query?: never;
             header?: {
@@ -69491,10 +72712,54 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** Format: uuid */
-                    periodId: string;
-                    /** Format: uuid */
-                    costCenterId: string;
+                    name: string;
+                    /**
+                     * @description `elevator` asansör, `fire_extinguisher` yangın söndürücü, `generator` jeneratör, `playground` oyun alanı, `boiler` kazan ve kalorifer, `electrical` elektrik tesisatı, `other` diğer
+                     * @enum {string}
+                     */
+                    type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                    /**
+                     * @description Kampüs (branches kaydı); tek kampüslü kurumda boş
+                     * @default null
+                     */
+                    campusId?: string | null;
+                    /** @description Donanımın yeri, serbest metin */
+                    location: string;
+                    /** @description İsteğe bağlı demirbaş etiketi; kurumun hurdaya ayrılmamış demirbaşı olmalıdır */
+                    assetTagNumber?: string | null;
+                    /**
+                     * @description Periyot (ay, 1–60); boşsa türün önerisi
+                     * @default null
+                     */
+                    periodMonths?: number | null;
+                    /**
+                     * @description Yasal zorunlu denetim mi; boşsa türün önerisi
+                     * @default null
+                     */
+                    isLegal?: boolean | null;
+                    /**
+                     * @description Sistemden önceki son denetim günü; bugünden sonra olamaz, bilinmiyorsa boş
+                     * @default null
+                     */
+                    lastDoneDate?: string | null;
+                    /**
+                     * @description Sorumlu: kurum personeli ya da tedarikçi; boş olabilir
+                     * @default null
+                     */
+                    responsible?: ({
+                        /** @enum {string} */
+                        type: "staff";
+                        /** @description Sorumlu personelin kurum üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "supplier";
+                        /**
+                         * Format: uuid
+                         * @description Denetimi yapan dış tedarikçi (DOM-FIN-070)
+                         */
+                        supplierId: string;
+                    }) | null;
                 };
             };
         };
@@ -69508,637 +72773,74 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            period: {
-                                id: string;
-                                name: string;
-                                /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
-                                id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
-                                name: string | null;
-                            } | null;
+                            name: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
-                            /** @description `If-Match` için kayıt sürümü */
-                            version: number;
-                            lines: {
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
                                 id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
-                                /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
-                                note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
-                            }[];
-                        };
-                    };
-                };
-            };
-            /** @description Default Response */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getBudgetDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                draftId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Default Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            id: string;
-                            period: {
-                                id: string;
+                                tagNumber: string;
                                 name: string;
-                                /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
-                                id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
-                                name: string | null;
                             } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
-                            /** @description `If-Match` için kayıt sürümü */
-                            version: number;
-                            lines: {
-                                id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
-                                /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
-                                note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
-                            }[];
-                        };
-                    };
-                };
-            };
-            /** @description Default Response */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    updateBudgetDraftLines: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
-                "idempotency-key"?: string;
-                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
-                "if-match": string;
-            };
-            path: {
-                draftId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    lines: {
-                        /** Format: uuid */
-                        itemId: string;
-                        amountCents: number;
-                        /**
-                         * @description Gerekçe; onaylı tutardan farklı ya da yeni kalemde gönderimde zorunlu (K-257)
-                         * @default null
-                         */
-                        justification?: string | null;
-                    }[];
-                };
-            };
-        };
-        responses: {
-            /** @description Default Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            id: string;
-                            period: {
-                                id: string;
-                                name: string;
-                                /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
-                                id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
-                                name: string | null;
-                            } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
-                            /** @description `If-Match` için kayıt sürümü */
-                            version: number;
-                            lines: {
-                                id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
-                                /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
-                                note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
-                            }[];
-                        };
-                    };
-                };
-            };
-            /** @description Default Response */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getBudgetDraftComparison: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                draftId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Default Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            draftId: string;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
                             /**
-                             * @description Önceki dönem gerçekleşeni tahakkuk esaslıdır
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
                              * @enum {string}
                              */
-                            basis: "accrual";
-                            /** @description Bu dönemden önce biten son açık ya da kapalı dönem (K-259); yoksa boş */
-                            previousPeriod: {
-                                id: string;
-                                name: string;
-                                startDate: string;
-                                endDate: string;
-                            } | null;
-                            rows: {
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
                                 /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Taslaktaki tutar; kalem taslakta yoksa boş */
-                                draftCents: number | null;
-                                justification: string | null;
-                                /** @description Bu dönemin onaylı bütçesi; satır yoksa boş */
-                                approvedCents: number | null;
-                                /** @description Önceki dönemin planı */
-                                previousPlanCents: number | null;
-                                /** @description Önceki dönemin gerçekleşeni; hesaplanmıyorsa boş */
-                                previousActualCents: number | null;
-                                /** @description Taslak − önceki dönem gerçekleşeni */
-                                changeFromPreviousCents: number | null;
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
                             }[];
-                            totals: {
-                                income: {
-                                    draftCents: number;
-                                    approvedCents: number;
-                                    previousPlanCents: number;
-                                    previousActualCents: number | null;
-                                };
-                                expense: {
-                                    draftCents: number;
-                                    approvedCents: number;
-                                    previousPlanCents: number;
-                                    previousActualCents: number | null;
-                                };
-                            };
                         };
                     };
                 };
@@ -70217,7 +72919,173 @@ export interface operations {
             };
         };
     };
-    submitBudgetDraft: {
+    getMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
+                                id: string;
+                                tagNumber: string;
+                                name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
+                                /** @enum {string} */
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
+                                id: string;
+                                name: string | null;
+                            } | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
+                                id: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
+                                /** @enum {string} */
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
+                                note: string | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveMaintenancePlan: {
         parameters: {
             query?: never;
             header: {
@@ -70227,15 +73095,149 @@ export interface operations {
                 "if-match": string;
             };
             path: {
-                draftId: string;
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    /** @default null */
-                    note?: string | null;
+                    name?: string;
+                    /**
+                     * @description `elevator` asansör, `fire_extinguisher` yangın söndürücü, `generator` jeneratör, `playground` oyun alanı, `boiler` kazan ve kalorifer, `electrical` elektrik tesisatı, `other` diğer
+                     * @enum {string}
+                     */
+                    type?: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                    /** @description Kampüs (branches kaydı); tek kampüslü kurumda boş */
+                    campusId?: string | null;
+                    /** @description Donanımın yeri, serbest metin */
+                    location?: string;
+                    /** @description Demirbaş etiketi; boş bağı kaldırır */
+                    assetTagNumber?: string | null;
+                    /** @description Periyot (ay, 1–60) */
+                    periodMonths?: number;
+                    isLegal?: boolean;
+                    /** @description Sistemden önceki son denetim günü; bugünden sonra olamaz, bilinmiyorsa boş */
+                    lastDoneDate?: string | null;
+                    /** @description Sorumlu: kurum personeli ya da tedarikçi; boş olabilir */
+                    responsible?: ({
+                        /** @enum {string} */
+                        type: "staff";
+                        /** @description Sorumlu personelin kurum üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "supplier";
+                        /**
+                         * Format: uuid
+                         * @description Denetimi yapan dış tedarikçi (DOM-FIN-070)
+                         */
+                        supplierId: string;
+                    }) | null;
                 };
             };
         };
@@ -70249,96 +73251,73 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            period: {
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
                                 id: string;
+                                tagNumber: string;
                                 name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
                                 /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
                                 id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
                                 name: string | null;
                             } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
-                            lines: {
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
                                 id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
                                 /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
                                 note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
                             }[];
                         };
                     };
@@ -70418,31 +73397,40 @@ export interface operations {
             };
         };
     };
-    approveBudgetDraft: {
+    recordMaintenanceInspection: {
         parameters: {
             query?: never;
-            header: {
+            header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
-                "if-match": string;
             };
             path: {
-                draftId: string;
+                planId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    /** @default null */
+                    /** @description Denetim günü; bugünden sonra olamaz */
+                    doneDate: string;
+                    /** @description Denetimi yapan kişi ya da kuruluş, serbest metin */
+                    performedBy: string;
+                    /**
+                     * @description `pass` uygun, `fail` uygunsuz, `partial` kısmen uygun
+                     * @enum {string}
+                     */
+                    result: "pass" | "fail" | "partial";
+                    /** @description Muayene raporu ya da belge numarası */
+                    documentNumber?: string | null;
+                    /** @description Not; uygunsuz ve kısmen uygun sonuçta en az 5 karakter zorunlu */
                     note?: string | null;
                 };
             };
         };
         responses: {
             /** @description Default Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -70450,96 +73438,73 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            period: {
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
                                 id: string;
+                                tagNumber: string;
                                 name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
                                 /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
                                 id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
                                 name: string | null;
                             } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
-                            lines: {
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
                                 id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
                                 /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
                                 note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
                             }[];
                         };
                     };
@@ -70619,7 +73584,7 @@ export interface operations {
             };
         };
     };
-    requestBudgetDraftRevision: {
+    cancelMaintenanceInspection: {
         parameters: {
             query?: never;
             header: {
@@ -70629,7 +73594,8 @@ export interface operations {
                 "if-match": string;
             };
             path: {
-                draftId: string;
+                planId: string;
+                inspectionId: string;
             };
             cookie?: never;
         };
@@ -70650,96 +73616,73 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            period: {
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
                                 id: string;
+                                tagNumber: string;
                                 name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
                                 /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
                                 id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
                                 name: string | null;
                             } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
-                            lines: {
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
                                 id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
                                 /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
                                 note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
                             }[];
                         };
                     };
@@ -70819,7 +73762,7 @@ export interface operations {
             };
         };
     };
-    rejectBudgetDraft: {
+    openMaintenanceRequestFromInspection: {
         parameters: {
             query?: never;
             header: {
@@ -70829,20 +73772,15 @@ export interface operations {
                 "if-match": string;
             };
             path: {
-                draftId: string;
+                planId: string;
+                inspectionId: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": {
-                    reason: string;
-                };
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Default Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -70850,297 +73788,73 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            period: {
+                            name: string;
+                            /** @enum {string} */
+                            type: "elevator" | "fire_extinguisher" | "generator" | "playground" | "boiler" | "electrical" | "other";
+                            campusId: string | null;
+                            /** @description Kampüs adı; kampüs yoksa ya da arşivlendiyse boş */
+                            campusName: string | null;
+                            /** @description Donanımın yeri */
+                            location: string;
+                            /** @description Bağlı demirbaş (DOM-FIN-085) */
+                            asset: {
                                 id: string;
+                                tagNumber: string;
                                 name: string;
+                            } | null;
+                            /** @description Denetim periyodu (ay) */
+                            periodMonths: number;
+                            /** @description Yasal zorunlu denetim */
+                            isLegal: boolean;
+                            /** @description Plan açılırken girilen, sistemden önceki son denetim günü */
+                            previousDoneDate: string | null;
+                            /** @description Son denetim: önceki gün ile iptal edilmemiş denetimlerin en geç günü */
+                            lastDoneDate: string | null;
+                            /** @description Sonraki denetim günü; hiç denetim yoksa boş */
+                            nextDueDate: string | null;
+                            /**
+                             * @description `overdue` gecikti, `due_soon` 30 gün içinde, `ok` zamanında, `never` denetim kaydı yok
+                             * @enum {string}
+                             */
+                            dueStatus: "overdue" | "due_soon" | "ok" | "never";
+                            /** @description Sonraki denetime kalan gün; geçtiyse eksi */
+                            daysLeft: number | null;
+                            /** @description Sorumlu personel ya da tedarikçi */
+                            responsible: {
                                 /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
+                                type: "staff" | "supplier";
+                                /** @description Personel üyeliği ya da tedarikçi kimliği */
                                 id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
                                 name: string | null;
                             } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
-                            lines: {
+                            /** @description Denetim kayıtları, yeniden eskiye (iptal edilenler dahil) */
+                            inspections: {
                                 id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
+                                /** @description Denetim günü (YYYY-MM-DD) */
+                                doneDate: string;
+                                /** @description Denetimi yapan kişi ya da kuruluş */
+                                performedBy: string;
                                 /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
+                                result: "pass" | "fail" | "partial";
+                                documentNumber: string | null;
                                 note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
-                            }[];
-                        };
-                    };
-                };
-            };
-            /** @description Default Response */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Default Response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    reopenBudgetDraft: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
-                "idempotency-key"?: string;
-                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
-                "if-match": string;
-            };
-            path: {
-                draftId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @default null */
-                    note?: string | null;
-                };
-            };
-        };
-        responses: {
-            /** @description Default Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            id: string;
-                            period: {
-                                id: string;
-                                name: string;
-                                /** @enum {string} */
-                                status: "draft" | "open" | "closed";
-                                startDate: string;
-                                endDate: string;
-                            };
-                            costCenter: {
-                                id: string;
-                                code: string;
-                                name: string;
-                                /** @description Kökten merkeze kod yolu */
-                                path: string;
-                                isActive: boolean;
-                            };
-                            /** @description Merkezin bütçe sorumlusu; yoksa taslağı yalnız yönetici hazırlar (K-257) */
-                            owner: {
-                                /** @description Sorumlunun kurum üyeliği */
-                                membershipId: string;
-                                /** @description Sorumlunun adı */
-                                name: string | null;
-                            } | null;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                            /** @description Son gönderimin sürüm numarası; gönderilmemişse 0 */
-                            revision: number;
-                            /** @description Son onaylanan sürüm */
-                            approvedRevision: number | null;
-                            approvedAt: string | null;
-                            approvedByName: string | null;
-                            createdByName: string | null;
-                            submittedAt: string | null;
-                            submittedByName: string | null;
-                            /** @description Son kararın notu: revizyon isteği ya da ret gerekçesi, onay notu */
-                            decisionNote: string | null;
-                            /** @description Taslağın gelir kalemleri toplamı */
-                            incomeCents: number;
-                            /** @description Taslağın gider kalemleri toplamı */
-                            expenseCents: number;
-                            lineCount: number;
-                            /** @description Oturumdaki kullanıcının bu taslakta yapabileceği işlemler (ekran düğmeleri) */
-                            actions: {
-                                edit: boolean;
-                                submit: boolean;
-                                approve: boolean;
-                                requestRevision: boolean;
-                                reject: boolean;
-                                reopen: boolean;
-                            };
-                            createdAt: string;
-                            updatedAt: string;
-                            /** @description `If-Match` için kayıt sürümü */
-                            version: number;
-                            lines: {
-                                id: string;
-                                itemId: string;
-                                itemCode: string;
-                                itemName: string;
-                                /** @enum {string} */
-                                itemKind: "income" | "expense";
-                                /** @description Kalem pasifleştiyse `false`; taslakta kalabilir */
-                                itemActive: boolean;
-                                /** @description Planlanan tutar */
-                                amountCents: number;
-                                justification: string | null;
-                            }[];
-                            /** @description Revizyon geçmişi, eskiden yeniye */
-                            events: {
-                                id: string;
-                                /** @enum {string} */
-                                event: "created" | "submitted" | "approved" | "revision_requested" | "rejected" | "reopened";
-                                fromStatus: ("draft" | "submitted" | "approved" | "revision_requested" | "rejected") | null;
-                                /** @enum {string} */
-                                toStatus: "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
-                                /** @description Adımın sürüm numarası */
-                                revision: number;
-                                note: string | null;
-                                actorName: string | null;
-                                occurredAt: string;
-                                /** @description Yalnız gönderimde: önceki sürüme (ilk gönderimde onaylı bütçeye) göre değişenler */
-                                changes: {
-                                    itemId: string;
-                                    itemCode: string;
-                                    itemName: string;
-                                    /** @description Önceki sürümdeki tutar; yeni kalemde boş */
-                                    beforeCents: number | null;
-                                    /** @description Bu sürümdeki tutar; çıkarılan kalemde boş */
-                                    afterCents: number | null;
-                                }[] | null;
+                                /** @description Kaydeden kişi */
+                                recordedByName: string | null;
+                                recordedAt: string;
+                                /** @description Bu denetimden açılan arıza talebi (DOM-FIN-089) */
+                                maintenanceRequest: {
+                                    id: string;
+                                    /** @description Talep numarası (`AT-0007`) */
+                                    number: string;
+                                    status: ("open" | "assigned" | "in_progress" | "resolved" | "closed" | "cancelled") | null;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                cancelledByName: string | null;
+                                /** @description `If-Match` için denetim sürümü */
+                                version: number;
                             }[];
                         };
                     };

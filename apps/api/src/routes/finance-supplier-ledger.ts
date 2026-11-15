@@ -8,6 +8,10 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import {
+  approveInvoiceMatchSchema,
+  INVOICE_MATCH_PRICE_TOLERANCE_CENTS,
+} from '@kampus/school-core/lib/finance-invoice-matching.ts'
+import {
   cancelSupplierInvoiceSchema,
   cancelSupplierPaymentSchema,
   paymentInstructionSchema,
@@ -17,8 +21,15 @@ import {
   supplierPaymentSchema,
 } from '@kampus/school-core/lib/finance-supplier-ledger.ts'
 
+import { errorResponseSchema } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
+  invoiceMatchCsvFor,
+  listInvoiceMatchesFor,
+  purchaseOrderMatchingFor,
+} from '../services/finance-invoice-matching.ts'
+import {
+  approveInvoiceMatchCommand,
   cancelSupplierPaymentCommand,
   createSupplierInvoiceCommand,
   createSupplierPaymentCommand,
@@ -33,6 +44,13 @@ import {
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { authenticatedErrors } from './common.schemas.ts'
+import {
+  invoiceMatchListQuery,
+  invoiceMatchListResponse,
+  purchaseOrderMatchingParams,
+  purchaseOrderMatchingResponse,
+} from './finance-invoice-matching.schemas.ts'
 import {
   supplierInvoiceListQuery,
   supplierInvoiceListResponse,
@@ -71,6 +89,8 @@ function expected(version: number | null): number {
 
 /** Talimat dosyası sayacı doğrulanmış kullanıcıyadır. */
 const instructionRateKey = (request: FastifyRequest) => request.auth?.userId ?? request.ip
+const wantsCsv = (request: FastifyRequest) => (request.headers.accept ?? '').includes('text/csv')
+const TOLERANCE = `${String(INVOICE_MATCH_PRICE_TOLERANCE_CENTS / 100)} TL`
 
 export function registerFinanceSupplierLedgerRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
@@ -114,7 +134,7 @@ export function registerFinanceSupplierLedgerRoutes(app: FastifyInstance) {
         operationId: 'createSupplierInvoice',
         tags,
         summary: 'Tedarikçi faturası ve ödeme planı kaydet',
-        description: `Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 \`supplier_invoice_number_exists\` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (\`dueDate\`) ya da toplamı fatura tutarına eşit plan (\`installments\`; 422 \`supplier_invoice_plan_total_mismatch\`). Fatura tarihi bugünden sonra 422 \`supplier_invoice_date_in_future\`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 \`supplier_invoice_order_not_found\`, \`supplier_invoice_order_supplier_mismatch\`, \`supplier_invoice_order_not_open\`); etkin faturaların toplamı sipariş tutarını aşarsa 409 \`supplier_invoice_exceeds_order_warning\`, \`confirmOverOrder: true\` ile geçilir (K-162). \`Idempotency-Key\` zorunlu. ${WHO}`,
+        description: `Fatura numarası boşluksuz büyük harfle saklanır; aynı tedarikçide iptal edilmemiş aynı numara 409 \`supplier_invoice_number_exists\` (K-161). Tutar KDV dahil ya da hariç girilir, KDV ayrıca yazılır. Vade tek gün (\`dueDate\`) ya da toplamı fatura tutarına eşit plan (\`installments\`; 422 \`supplier_invoice_plan_total_mismatch\`). Fatura tarihi bugünden sonra 422 \`supplier_invoice_date_in_future\`. Siparişe bağlıysa aynı tedarikçinin gönderilmiş siparişi olmalı (422 \`supplier_invoice_order_not_found\`, \`supplier_invoice_order_supplier_mismatch\`, \`supplier_invoice_order_not_open\`); etkin faturaların toplamı sipariş tutarını aşarsa 409 \`supplier_invoice_exceeds_order_warning\`, \`confirmOverOrder: true\` ile geçilir (K-162). Siparişe bağlı faturada \`lines\` zorunlu, siparişsizde yasak (400): sipariş kalemine bağlı (\`orderItemId\`, faturada bir kez) ya da siparişte olmayan (\`description\`) kalem, miktar ve KDV hariç birim fiyat; siparişin kalemi olmayan \`orderItemId\` 422 \`supplier_invoice_line_item_not_in_order\`, kalemlerin KDV hariç toplamı fatura netinden ${TOLERANCE}'den çok saparsa 422 \`supplier_invoice_lines_total_mismatch\` (DOM-FIN-095, K-280). Miktar ya da fiyat farkı girişte reddedilmez, eşleştirmede görünür. \`Idempotency-Key\` zorunlu. ${WHO}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: supplierInvoiceSchema,
         response: { 201: supplierInvoiceResponse, ...commandErrors },
@@ -140,7 +160,7 @@ export function registerFinanceSupplierLedgerRoutes(app: FastifyInstance) {
         operationId: 'getSupplierInvoice',
         tags,
         summary: 'Tedarikçi faturası ayrıntısı',
-        description: `Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. ${WHO}`,
+        description: `Tutarlar, ödeme planı (taksit başına ödenen, kalan ve vadesi geçti işareti), ödemeler (iptaller dahil), bağlı sipariş, üçlü eşleştirme (\`matching\`: kalem başına sipariş, kabul edilen, önceki faturalar, faturalanan miktar ve fiyat, sapma; siparişsiz faturada boş; DOM-FIN-095) ve yapılabilecek işlemler. Olmayan ya da başka kurumun faturası 404. ${WHO}`,
         params: supplierInvoiceParams,
         response: { 200: supplierInvoiceResponse, ...commandErrors },
       },
@@ -201,6 +221,101 @@ export function registerFinanceSupplierLedgerRoutes(app: FastifyInstance) {
     )
   }
 
+  typed.post(
+    '/api/v1/finance/supplier-invoices/:invoiceId/approve-match',
+    {
+      preValidation: [...guarded, requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'approveSupplierInvoiceMatch',
+        tags,
+        summary: 'Fatura eşleştirme farkını onayla',
+        description: `Üçlü eşleştirmenin bugünkü sapmasını (miktar farkı, fiyat farkı, siparişte olmayan kalem) gerekçeyle (5–500 karakter) onaylar; sapma aynı kaldıkça faturanın ödemesi uyarısız girilir, sapma değişirse yeniden onay ister (DOM-FIN-095, K-282). Siparişsiz fatura 422 \`supplier_invoice_match_not_applicable\`, eşleşen fatura 422 \`supplier_invoice_match_already_matched\`, aynı sapma zaten onaylıysa 422 \`supplier_invoice_match_already_approved\`, iptal edilmiş fatura 422 \`supplier_invoice_cancelled\`. Denetim \`supplier_invoice.approve_match\` (gerekçe metni yazılmaz). ${IF_MATCH} ${WHO}`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: supplierInvoiceParams,
+        body: approveInvoiceMatchSchema,
+        response: { 200: supplierInvoiceResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await approveInvoiceMatchCommand(
+        contextOf(request),
+        request.params.invoiceId,
+        request.commandInput,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return supplierInvoiceResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  const freshForCsv: preValidationAsyncHookHandler = async function (request, reply) {
+    if (wantsCsv(request)) await app.requireFreshSession.call(app, request, reply)
+  }
+
+  typed.get(
+    '/api/v1/finance/supplier-invoice-matches',
+    {
+      config: {
+        rateLimit: {
+          max: (request: FastifyRequest) => (wantsCsv(request) ? 10 : 300),
+          timeWindow: '1 minute',
+          hook: 'preHandler' as const,
+          keyGenerator: (request: FastifyRequest) =>
+            wantsCsv(request)
+              ? `invoice-matching-csv:${request.auth?.userId ?? request.ip}`
+              : request.ip,
+        },
+      },
+      preValidation: [...guarded, freshForCsv],
+      schema: {
+        operationId: 'listSupplierInvoiceMatches',
+        tags,
+        summary: 'Eşleşmeyen tedarikçi faturaları',
+        description: `Siparişe bağlı iptal edilmemiş faturalar üçlü eşleştirme durumuyla (DOM-FIN-095): varsayılan \`status=mismatched\` eşleşmeyenler; \`approval\` onay bekleyen ya da onaylanmış. Kalemde faturalanan, önceki etkin faturalarla birlikte kabul edileni aşarsa miktar farkı; birim fiyat farkının kalem etkisi ${TOLERANCE}'yi aşarsa fiyat farkı; siparişte olmayan kalem ya da kalemsiz fatura eşleşmez (K-281). Yeni fatura tarihi önce. \`Accept: text/csv\` ile aynı süzgeçle bütün satırlar CSV iner (\`;\` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı); taze oturum ister (403 \`reauthentication_required\`), kullanıcı başına 10/dk, denetim \`finance.invoice_matching_export\`. ${WHO}`,
+        querystring: invoiceMatchListQuery,
+        // CSV gövdesi `reply.serializer` ile gider; şemada yalnız JSON durur.
+        response: { 200: invoiceMatchListResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const ctx = contextOf(request)
+      const { page, pageSize, ...filters } = request.query
+      if (wantsCsv(request)) {
+        const { csv, filename } = await invoiceMatchCsvFor(ctx, filters)
+        return (reply as FastifyReply)
+          .type('text/csv; charset=utf-8')
+          .header('content-disposition', `attachment; filename="${filename}"`)
+          .serializer((payload: unknown) => String(payload))
+          .send(`\uFEFF${csv}`)
+      }
+      const { items, total } = await listInvoiceMatchesFor(ctx, { page, pageSize, ...filters })
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/purchase-orders/:orderId/invoice-matching',
+    {
+      preValidation: guarded,
+      schema: {
+        operationId: 'getPurchaseOrderInvoiceMatching',
+        tags,
+        summary: 'Siparişin fatura ve mal kabul özeti',
+        description: `Sipariş kalemi başına sipariş, kabul edilen (iptal edilmemiş kabuller) ve etkin faturalarda faturalanan miktar; siparişe bağlı faturalar eşleştirme durumu ve fark onayıyla (DOM-FIN-095). Olmayan ya da başka kurumun siparişi 404. ${WHO}`,
+        params: purchaseOrderMatchingParams,
+        response: {
+          200: purchaseOrderMatchingResponse,
+          ...authenticatedErrors,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => ({
+      data: await purchaseOrderMatchingFor(contextOf(request), request.params.orderId),
+    }),
+  )
+
   typed.get(
     '/api/v1/finance/supplier-payments',
     {
@@ -233,7 +348,7 @@ export function registerFinanceSupplierLedgerRoutes(app: FastifyInstance) {
         operationId: 'createSupplierPayment',
         tags,
         summary: 'Taksite tedarikçi ödemesi kaydet',
-        description: `Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 \`supplier_payment_exceeds_installment\`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 \`supplier_payment_bank_account_not_found\`), nakitte hesap seçilmez. Gün bugünden sonra 422 \`supplier_payment_date_in_future\`, fatura tarihinden önce 422 \`supplier_payment_before_invoice\`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 \`finance_day_closed\` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 \`supplier_invoice_cancelled\`. \`Idempotency-Key\` zorunlu. ${WHO}`,
+        description: `Ödeme bir taksite yazılır, kısmi olabilir; taksitin kalanı kurum kilidi altında yeniden hesaplanır, aşan ödeme 422 \`supplier_payment_exceeds_installment\`. Nakit dışı yöntemde kurumun banka hesabı zorunlu (422 \`supplier_payment_bank_account_not_found\`), nakitte hesap seçilmez. Gün bugünden sonra 422 \`supplier_payment_date_in_future\`, fatura tarihinden önce 422 \`supplier_payment_before_invoice\`. Nakit ödeme ödeme gününün gün sonuna nakit yönteminde "tedarikçi ödemesi" olarak girer, kasa beklenenini düşürür; kapatılmış güne nakit ödeme 422 \`finance_day_closed\` (DOM-FIN-036, K-166). İptal edilmiş fatura 422 \`supplier_invoice_cancelled\`. Fatura sipariş ve mal kabulle eşleşmiyorsa ve fark onaylanmamışsa 409 \`supplier_payment_invoice_mismatch_warning\`: önce \`POST /supplier-invoices/:invoiceId/approve-match\` (DOM-FIN-095, K-282). \`Idempotency-Key\` zorunlu. ${WHO}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: supplierPaymentSchema,
         response: { 201: supplierPaymentResponse, ...commandErrors },

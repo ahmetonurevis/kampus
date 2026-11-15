@@ -1,5 +1,6 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
+import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
@@ -17,6 +18,15 @@ type JsonBody<TOperation extends keyof operations> =
 export type CreateScholarshipProgramBody = JsonBody<'createScholarshipProgram'>
 export type NotifyScholarshipProgramBody = JsonBody<'notifyScholarshipProgram'>
 export type RecordScholarshipMebbisBody = JsonBody<'recordScholarshipMebbis'>
+export type ScholarshipEndQuoteBody = JsonBody<'quoteScholarshipEnd'>
+export type TerminateScholarshipBody = JsonBody<'terminateScholarship'>
+export type RevokeScholarshipBody = JsonBody<'revokeScholarship'>
+export type ScholarshipEndQuote = NonNullable<
+  operations['quoteScholarshipEnd']['responses'][200]['content']['application/json']['data']
+>
+export type ScholarshipEnds =
+  operations['listScholarshipEnds']['responses'][200]['content']['application/json']['data']
+export type ScholarshipEndRecord = ScholarshipEnds['ends'][number]
 
 const INVALIDATES = [['scholarships']]
 const versioned = (headers: CommandHeaders) => ({
@@ -90,6 +100,49 @@ export function useRecordScholarshipMebbis() {
       }),
     version: (input) => input.version,
     invalidates: INVALIDATES,
+    exclusive: true,
+  })
+}
+
+// Burs kesme ve gerçek dışı beyanla iptal (ON-283; DOM-FIN-025). Komut taze oturum ister.
+
+/** Hesabı yazmadan gösterir; yazma değildir, sorgu tazelenmez. */
+export function useQuoteScholarshipEnd() {
+  return useApiCommand({
+    request: (client, input: { awardId: string; body: ScholarshipEndQuoteBody }) =>
+      client.POST('/api/v1/finance/scholarship-awards/{awardId}/end-quote', {
+        params: { path: { awardId: input.awardId } },
+        body: input.body,
+      }),
+    invalidates: [],
+    exclusive: true,
+  })
+}
+
+type EndInput =
+  | { kind: 'terminate'; awardId: string; version: number; body: TerminateScholarshipBody }
+  | { kind: 'revoke'; awardId: string; version: number; body: RevokeScholarshipBody }
+
+/** Bursu keser ya da iptal edip geri ister; taksitler ve fon raporu da tazelenir. */
+export function useEndScholarship() {
+  return useApiCommand({
+    request: (client, input: EndInput, headers: CommandHeaders) =>
+      input.kind === 'terminate'
+        ? client.POST('/api/v1/finance/scholarship-awards/{awardId}/terminate', {
+            params: { path: { awardId: input.awardId }, header: versioned(headers) },
+            body: input.body,
+          })
+        : client.POST('/api/v1/finance/scholarship-awards/{awardId}/revoke', {
+            params: { path: { awardId: input.awardId }, header: versioned(headers) },
+            body: input.body,
+          }),
+    version: (input) => input.version,
+    invalidates: [
+      ['scholarships'],
+      ['finance-scholarship-funds'],
+      collectionKeyPrefix('invoices'),
+      collectionKeyPrefix('contracts'),
+    ],
     exclusive: true,
   })
 }

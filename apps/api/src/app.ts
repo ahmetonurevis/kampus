@@ -29,6 +29,7 @@ import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/pla
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
+import { registerEnrollmentEokulImportRoutes } from './routes/enrollment-eokul-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
@@ -49,7 +50,9 @@ import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
+import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
+import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
@@ -60,11 +63,13 @@ import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-child
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipFundRoutes } from './routes/finance-scholarship-funds.ts'
+import { registerScholarshipRevocationRoutes } from './routes/finance-scholarship-revocation.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerFinancePurchaseOrderRoutes } from './routes/finance-purchase-orders.ts'
 import { registerFinancePurchaseQuoteRoutes } from './routes/finance-purchase-quotes.ts'
 import { registerFinancePurchaseReceiptRoutes } from './routes/finance-purchase-receipts.ts'
 import { registerFinancePurchaseReportRoutes } from './routes/finance-purchase-report.ts'
+import { registerFinancePurchaseApprovalRoutes } from './routes/finance-purchase-approvals.ts'
 import { registerFinancePurchaseRequestRoutes } from './routes/finance-purchase-requests.ts'
 import { registerFinanceSupplierLedgerRoutes } from './routes/finance-supplier-ledger.ts'
 import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
@@ -72,6 +77,7 @@ import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requ
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
+import { registerProspectCampaignRoutes } from './routes/prospect-campaigns.ts'
 import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -139,7 +145,8 @@ export const REDACTED_PATHS = [
   '*.nationalId',
   'birthDate',
   '*.birthDate',
-  // kvkk: Ç — pilot aktarım dosyası (IST-007): içerik hiçbir koşulda loglanmaz.
+  // kvkk: Ç — pilot aktarım ve e-Okul listesi dosyası (IST-007, IST-134): içerik hiçbir koşulda
+  // loglanmaz.
   'fileBase64',
   '*.fileBase64',
   // Finans: dekont/havale referansı, iade IBAN'ı ve hesap sahibi, nakil okulu, iptal gerekçesi.
@@ -477,15 +484,18 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceReminderRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerScholarshipRevocationRoutes(app)
   registerFinanceScholarshipFundRoutes(app)
   registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   registerEnrollmentImportRoutes(app)
+  registerEnrollmentEokulImportRoutes(app)
   registerFinanceInstallmentImportRoutes(app)
   registerEnrollmentFunnelRoutes(app)
   registerProspectSeasonWatchRoutes(app)
+  registerProspectCampaignRoutes(app)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)
@@ -512,6 +522,9 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceChemicalRoutes(app)
   registerFinanceSupplyRequestRoutes(app)
   registerFinanceMaintenanceRequestRoutes(app)
+  registerFinanceSeveranceRoutes(app)
+  registerFinancePurchaseApprovalRoutes(app)
+  registerFinanceMaintenancePlanRoutes(app)
   registerFinanceBudgetDraftRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

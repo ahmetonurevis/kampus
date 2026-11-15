@@ -235,6 +235,9 @@ export function planScholarshipFundAllocationCancel(
 export const SCHOLARSHIP_FUND_RELEASE_REASONS = {
   renewal_cancelled:
     'Burs ataması arşivlendi: öğrenci ayrıldı, burslu yenileme iptal edildi (sistem).',
+  scholarship_terminated:
+    'Burs kesildi: fon payı kesme gününe kadar uygulanan bursa indi (sistem).',
+  scholarship_revoked: 'Burs gerçek dışı beyan nedeniyle iptal edildi, geri istendi (sistem).',
 } as const
 export type ScholarshipFundReleaseCause = keyof typeof SCHOLARSHIP_FUND_RELEASE_REASONS
 

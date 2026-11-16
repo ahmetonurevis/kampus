@@ -104,6 +104,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/supply-requests',
   'POST /api/v1/finance/supply-requests/{requestId}/fulfill',
   'POST /api/v1/finance/supply-requests/{requestId}/convert',
+  // İade faturası ve iptal isteği taslağı; çift tıklama aynı iadeye iki belge açmaz
+  // (routes/finance-refund-invoices.ts; DOM-FIN-096).
+  'POST /api/v1/finance/refund-invoices',
   // Bağış kaydı makbuz numarası açar, iptali makbuzu geçersiz kılar; çift gönderim ikinci makbuzu
   // kesmez (routes/finance-donations.ts; DOM-FIN-097).
   'POST /api/v1/finance/donation-campaigns/{campaignId}/donations',

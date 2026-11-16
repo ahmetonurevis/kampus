@@ -55,11 +55,13 @@ import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
+import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
+import { registerFinanceRefundInvoiceRoutes } from './routes/finance-refund-invoices.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
 import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-children.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
@@ -535,6 +537,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePurchaseApprovalRoutes(app)
   registerFinanceMaintenancePlanRoutes(app)
   registerFinanceBudgetDraftRoutes(app)
+  registerFinanceRefundInvoiceRoutes(app)
+  registerFinancePayrollParameterRoutes(app)
   registerFinanceDonationRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

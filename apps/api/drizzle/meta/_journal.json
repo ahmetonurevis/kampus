@@ -733,8 +733,22 @@
     {
       "idx": 104,
       "version": "7",
-      "when": 1794825561506,
-      "tag": "0104_create_donations",
+      "when": 1794825546275,
+      "tag": "0104_refund_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1794831455951,
+      "tag": "0105_create_payroll_parameters",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1794832760835,
+      "tag": "0106_create_donations",
       "breakpoints": true
     }
   ]

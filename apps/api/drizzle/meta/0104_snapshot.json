@@ -1,5 +1,5 @@
 {
-  "id": "95bc9d00-5982-462d-b986-555793684f4e",
+  "id": "5cee05ff-9255-464b-a3df-e4370d3cd07f",
   "prevId": "4f1e7ab1-36ce-4a09-bc98-c837962b3531",
   "version": "7",
   "dialect": "postgresql",
@@ -9214,872 +9214,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.donation_campaigns": {
-      "name": "donation_campaigns",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_cents": {
-          "name": "target_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "starts_on": {
-          "name": "starts_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ends_on": {
-          "name": "ends_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bank_account_id": {
-          "name": "bank_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "opened_at": {
-          "name": "opened_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "opened_by_user_id": {
-          "name": "opened_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "donation_campaigns_name_key": {
-          "name": "donation_campaigns_name_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"donation_campaigns\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "donation_campaigns_bank_account_idx": {
-          "name": "donation_campaigns_bank_account_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bank_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "donation_campaigns_institution_id_institutions_id_fk": {
-          "name": "donation_campaigns_institution_id_institutions_id_fk",
-          "tableFrom": "donation_campaigns",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "donation_campaigns_bank_account_fkey": {
-          "name": "donation_campaigns_bank_account_fkey",
-          "tableFrom": "donation_campaigns",
-          "tableTo": "bank_accounts",
-          "columnsFrom": [
-            "institution_id",
-            "bank_account_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "donation_campaigns_pkey": {
-          "name": "donation_campaigns_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "donation_campaigns_target_check": {
-          "name": "donation_campaigns_target_check",
-          "value": "\"donation_campaigns\".\"target_cents\" > 0"
-        },
-        "donation_campaigns_currency_check": {
-          "name": "donation_campaigns_currency_check",
-          "value": "\"donation_campaigns\".\"currency\" = 'TRY'"
-        },
-        "donation_campaigns_dates_check": {
-          "name": "donation_campaigns_dates_check",
-          "value": "\"donation_campaigns\".\"ends_on\" >= \"donation_campaigns\".\"starts_on\""
-        },
-        "donation_campaigns_status_check": {
-          "name": "donation_campaigns_status_check",
-          "value": "\"donation_campaigns\".\"status\" in ('draft', 'open', 'closed')"
-        },
-        "donation_campaigns_opened_check": {
-          "name": "donation_campaigns_opened_check",
-          "value": "(\"donation_campaigns\".\"status\" = 'draft') = (\"donation_campaigns\".\"opened_at\" is null) and (\"donation_campaigns\".\"opened_at\" is null) = (\"donation_campaigns\".\"opened_by_user_id\" is null)"
-        },
-        "donation_campaigns_closed_check": {
-          "name": "donation_campaigns_closed_check",
-          "value": "(\"donation_campaigns\".\"status\" = 'closed') = (\"donation_campaigns\".\"closed_at\" is not null) and (\"donation_campaigns\".\"closed_at\" is null) = (\"donation_campaigns\".\"closed_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.donation_settings": {
-      "name": "donation_settings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "tax_notice_enabled": {
-          "name": "tax_notice_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "tax_notice_text": {
-          "name": "tax_notice_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "donation_settings_institution_id_institutions_id_fk": {
-          "name": "donation_settings_institution_id_institutions_id_fk",
-          "tableFrom": "donation_settings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "donation_settings_tax_notice_check": {
-          "name": "donation_settings_tax_notice_check",
-          "value": "not \"donation_settings\".\"tax_notice_enabled\" or \"donation_settings\".\"tax_notice_text\" is not null"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.donations": {
-      "name": "donations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "campaign_id": {
-          "name": "campaign_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "donor_id": {
-          "name": "donor_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "donor_kind": {
-          "name": "donor_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "donor_name": {
-          "name": "donor_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "donor_identity_number": {
-          "name": "donor_identity_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "method": {
-          "name": "method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bank_account_id": {
-          "name": "bank_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reference": {
-          "name": "reference",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "declared_value_cents": {
-          "name": "declared_value_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "donated_on": {
-          "name": "donated_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "receipt_year": {
-          "name": "receipt_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "receipt_number": {
-          "name": "receipt_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tax_notice": {
-          "name": "tax_notice",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "donations_receipt_key": {
-          "name": "donations_receipt_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "receipt_year",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "receipt_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "donations_campaign_idx": {
-          "name": "donations_campaign_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "campaign_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "donated_on",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "donations_donor_idx": {
-          "name": "donations_donor_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "donor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "donations_bank_account_idx": {
-          "name": "donations_bank_account_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bank_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "donations_institution_id_institutions_id_fk": {
-          "name": "donations_institution_id_institutions_id_fk",
-          "tableFrom": "donations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "donations_campaign_fkey": {
-          "name": "donations_campaign_fkey",
-          "tableFrom": "donations",
-          "tableTo": "donation_campaigns",
-          "columnsFrom": [
-            "institution_id",
-            "campaign_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "donations_donor_fkey": {
-          "name": "donations_donor_fkey",
-          "tableFrom": "donations",
-          "tableTo": "donors",
-          "columnsFrom": [
-            "institution_id",
-            "donor_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "donations_bank_account_fkey": {
-          "name": "donations_bank_account_fkey",
-          "tableFrom": "donations",
-          "tableTo": "bank_accounts",
-          "columnsFrom": [
-            "institution_id",
-            "bank_account_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "donations_pkey": {
-          "name": "donations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "donations_kind_check": {
-          "name": "donations_kind_check",
-          "value": "\"donations\".\"kind\" in ('cash', 'in_kind')"
-        },
-        "donations_currency_check": {
-          "name": "donations_currency_check",
-          "value": "\"donations\".\"currency\" = 'TRY'"
-        },
-        "donations_method_check": {
-          "name": "donations_method_check",
-          "value": "\"donations\".\"method\" is null or \"donations\".\"method\" in ('cash', 'bank_transfer', 'card_slip')"
-        },
-        "donations_cash_check": {
-          "name": "donations_cash_check",
-          "value": "(\"donations\".\"kind\" = 'cash') = (\"donations\".\"amount_cents\" is not null and \"donations\".\"method\" is not null) and (\"donations\".\"kind\" = 'in_kind') = (\"donations\".\"description\" is not null)"
-        },
-        "donations_amount_check": {
-          "name": "donations_amount_check",
-          "value": "\"donations\".\"amount_cents\" is null or \"donations\".\"amount_cents\" > 0"
-        },
-        "donations_declared_value_check": {
-          "name": "donations_declared_value_check",
-          "value": "\"donations\".\"declared_value_cents\" is null or (\"donations\".\"kind\" = 'in_kind' and \"donations\".\"declared_value_cents\" > 0)"
-        },
-        "donations_bank_account_check": {
-          "name": "donations_bank_account_check",
-          "value": "(\"donations\".\"bank_account_id\" is not null) = (\"donations\".\"method\" is not null and \"donations\".\"method\" = 'bank_transfer')"
-        },
-        "donations_donor_check": {
-          "name": "donations_donor_check",
-          "value": "(\"donations\".\"donor_id\" is null) = (\"donations\".\"donor_name\" is null) and (\"donations\".\"donor_id\" is null) = (\"donations\".\"donor_kind\" is null) and (\"donations\".\"donor_id\" is not null or (\"donations\".\"donor_identity_number\" is null and \"donations\".\"tax_notice\" is null))"
-        },
-        "donations_cancel_check": {
-          "name": "donations_cancel_check",
-          "value": "(\"donations\".\"cancelled_at\" is null) = (\"donations\".\"cancelled_by_user_id\" is null) and (\"donations\".\"cancelled_at\" is null) = (\"donations\".\"cancel_reason\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.donors": {
-      "name": "donors",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "identity_number": {
-          "name": "identity_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "relation": {
-          "name": "relation",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "donors_identity_number_key": {
-          "name": "donors_identity_number_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "identity_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"donors\".\"identity_number\" is not null and \"donors\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "donors_institution_id_institutions_id_fk": {
-          "name": "donors_institution_id_institutions_id_fk",
-          "tableFrom": "donors",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "donors_pkey": {
-          "name": "donors_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "donors_kind_check": {
-          "name": "donors_kind_check",
-          "value": "\"donors\".\"kind\" in ('person', 'organization')"
-        },
-        "donors_identity_number_check": {
-          "name": "donors_identity_number_check",
-          "value": "\"donors\".\"identity_number\" is null or \"donors\".\"identity_number\" ~ '^[0-9]{10,11}$'"
-        },
-        "donors_relation_check": {
-          "name": "donors_relation_check",
-          "value": "(\"donors\".\"student_id\" is null) = (\"donors\".\"relation\" is null) and (\"donors\".\"relation\" is null or \"donors\".\"relation\" in ('parent', 'alumnus'))"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.e_ozel_records": {
       "name": "e_ozel_records",
       "schema": "",
@@ -19020,6 +18154,357 @@
         "referral_rewards_cancelled_check": {
           "name": "referral_rewards_cancelled_check",
           "value": "(\"referral_rewards\".\"status\" = 'cancelled') = (\"referral_rewards\".\"cancel_reason\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.refund_invoices": {
+      "name": "refund_invoices",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "withdrawal_id": {
+          "name": "withdrawal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "original_invoice_number": {
+          "name": "original_invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_date": {
+          "name": "original_invoice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_type": {
+          "name": "original_invoice_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_total_cents": {
+          "name": "original_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_rate_basis_points": {
+          "name": "vat_rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_cents": {
+          "name": "vat_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ready_by_user_id": {
+          "name": "ready_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_by_user_id": {
+          "name": "completed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discard_reason": {
+          "name": "discard_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_by_user_id": {
+          "name": "discarded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "refund_invoices_withdrawal_key": {
+          "name": "refund_invoices_withdrawal_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_document_number_key": {
+          "name": "refund_invoices_document_number_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"document_number\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_withdrawal_idx": {
+          "name": "refund_invoices_withdrawal_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_status_idx": {
+          "name": "refund_invoices_status_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "refund_invoices_institution_id_institutions_id_fk": {
+          "name": "refund_invoices_institution_id_institutions_id_fk",
+          "tableFrom": "refund_invoices",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refund_invoices_withdrawal_fkey": {
+          "name": "refund_invoices_withdrawal_fkey",
+          "tableFrom": "refund_invoices",
+          "tableTo": "student_withdrawals",
+          "columnsFrom": [
+            "institution_id",
+            "withdrawal_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "refund_invoices_pkey": {
+          "name": "refund_invoices_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "refund_invoices_kind_check": {
+          "name": "refund_invoices_kind_check",
+          "value": "\"refund_invoices\".\"kind\" in ('cancellation', 'return_invoice')"
+        },
+        "refund_invoices_status_check": {
+          "name": "refund_invoices_status_check",
+          "value": "\"refund_invoices\".\"status\" in ('draft', 'ready', 'sent', 'cancelled')"
+        },
+        "refund_invoices_original_type_check": {
+          "name": "refund_invoices_original_type_check",
+          "value": "\"refund_invoices\".\"original_invoice_type\" in ('e_archive', 'e_invoice')"
+        },
+        "refund_invoices_vat_rate_check": {
+          "name": "refund_invoices_vat_rate_check",
+          "value": "\"refund_invoices\".\"vat_rate_basis_points\" in (0, 100, 1000, 2000)"
+        },
+        "refund_invoices_currency_check": {
+          "name": "refund_invoices_currency_check",
+          "value": "\"refund_invoices\".\"currency\" = 'TRY'"
+        },
+        "refund_invoices_amounts_check": {
+          "name": "refund_invoices_amounts_check",
+          "value": "\"refund_invoices\".\"original_total_cents\" > 0 and \"refund_invoices\".\"amount_cents\" > 0 and \"refund_invoices\".\"amount_cents\" <= \"refund_invoices\".\"original_total_cents\" and \"refund_invoices\".\"net_cents\" >= 0 and \"refund_invoices\".\"vat_cents\" >= 0 and \"refund_invoices\".\"net_cents\" + \"refund_invoices\".\"vat_cents\" = \"refund_invoices\".\"amount_cents\""
+        },
+        "refund_invoices_kind_status_check": {
+          "name": "refund_invoices_kind_status_check",
+          "value": "(\"refund_invoices\".\"kind\" = 'return_invoice' and \"refund_invoices\".\"status\" <> 'cancelled') or (\"refund_invoices\".\"kind\" = 'cancellation' and \"refund_invoices\".\"status\" <> 'sent')"
+        },
+        "refund_invoices_completed_check": {
+          "name": "refund_invoices_completed_check",
+          "value": "(\"refund_invoices\".\"status\" in ('sent', 'cancelled')) = (\"refund_invoices\".\"completed_date\" is not null)"
+        },
+        "refund_invoices_document_number_check": {
+          "name": "refund_invoices_document_number_check",
+          "value": "(\"refund_invoices\".\"document_number\" is not null) = (\"refund_invoices\".\"status\" = 'sent')"
+        },
+        "refund_invoices_discard_check": {
+          "name": "refund_invoices_discard_check",
+          "value": "(\"refund_invoices\".\"discard_reason\" is null) = (\"refund_invoices\".\"archived_at\" is null) and (\"refund_invoices\".\"archived_at\" is null or \"refund_invoices\".\"status\" in ('draft', 'ready'))"
         }
       },
       "isRLSEnabled": false

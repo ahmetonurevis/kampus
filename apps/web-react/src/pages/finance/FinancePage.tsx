@@ -140,6 +140,9 @@ const FinancePayRatesSection = lazy(async () => ({
 const FinancePaidActivitiesSection = lazy(async () => ({
   default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
 }))
+const FinanceStaffCertificatesSection = lazy(async () => ({
+  default: (await import('./FinanceStaffCertificatesSection.tsx')).FinanceStaffCertificatesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -186,6 +189,7 @@ const VIEWS = {
   stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
+  staffCertificates: { label: 'Personel belgeleri', param: 'personel-belgesi' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -220,6 +224,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
+ * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -235,6 +240,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'severance' ||
       value === 'freeTuition' ||
       value === 'payRates' ||
+      value === 'staffCertificates' ||
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices'
@@ -426,6 +432,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
+        {tab === 'staffCertificates' ? <FinanceStaffCertificatesSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

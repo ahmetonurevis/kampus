@@ -2039,6 +2039,182 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: iade faturası ve iptal isteği (ON-266; DOM-FIN-096).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/refund-invoices', "call('GET', URL, a.admin)"],
+        [
+          'gövde',
+          'POST /api/v1/finance/refund-invoices',
+          'create({ ...a, withdrawalId: b.withdrawalId })',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/refund-invoices/:refundInvoiceId',
+          '`${URL}/${String(bDoc.id)}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/ready',
+          "step(a.admin, bDoc, 'ready')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/complete',
+          "step(a.admin, bDoc, 'complete'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/discard',
+          "step(a.admin, bDoc, 'discard'",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-refund-invoices.test.ts',
+        'DOM-FIN-096: başka kurumun ayrılışı ve belgesi 404; B değişmez, A listesinde B yok',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: bordro parametreleri (ON-197; DOM-FIN-100).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/payroll-parameters', 'yearOf(a.admin, 2026)'],
+        [
+          'liste',
+          'GET /api/v1/finance/payroll-parameters/effective',
+          "effectiveOn(a.admin, '2026-05-01')",
+        ],
+        ['gövde', 'POST /api/v1/finance/payroll-parameters', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/payroll-parameters/:setId', "call('PATCH', bUrl, a.admin"],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/payroll-parameters/:setId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-parameters.test.ts',
+        'başka kurumun seti 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: bağış kampanyası, bağışçı ve makbuz (ON-258; DOM-FIN-097).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/donation-campaigns', 'get(CAMPAIGNS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/donation-campaigns', 'bankAccountId: b.bankAccountId'],
+        ['kayıt', 'GET /api/v1/finance/donation-campaigns/:campaignId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/donation-campaigns/:campaignId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        ['kayıt', 'POST /api/v1/finance/donation-campaigns/:campaignId/open', '`${bUrl}/open`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/donation-campaigns/:campaignId/close',
+          "transition(a.admin, bCampaign, 'close')",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/donation-campaigns/:campaignId/donations',
+          '`${bUrl}/donations`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/donation-campaigns/:campaignId/donations',
+          'donate(a.admin, bCampaign.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/donations/:donationId/cancel',
+          'cancel(a.admin, bDonation)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/donations/:donationId/receipt', '/receipt`, a.admin)'],
+        ['liste', 'GET /api/v1/finance/donors', 'get(DONORS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/donors', "call('POST', DONORS, a.admin"],
+        ['kayıt', 'PATCH /api/v1/finance/donors/:donorId', '`${DONORS}/${String(bDonor.id)}`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-donations.test.ts',
+        'başka kurumun kampanyası, bağışı ve bağışçısı 404',
+        marker,
+      ),
+    ]),
+  ),
+  'GET /api/v1/finance/donation-settings': liste(
+    'finance-donations.test.ts',
+    'başka kurumun kampanyası, bağışı ve bağışçısı 404',
+    'get(SETTINGS, a.admin)',
+  ),
+  'PATCH /api/v1/finance/donation-settings': govde(
+    'finance-donations.test.ts',
+    'başka kurumun kampanyası, bağışı ve bağışçısı 404',
+  ),
+  // Onur: paydaş ve sponsor kaydı (ON-262; DOM-FIN-102).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/stakeholders', 'listOf(a.admin, STAKEHOLDERS)'],
+        ['gövde', 'POST /api/v1/finance/stakeholders', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/stakeholders/:stakeholderId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stakeholders/:stakeholderId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stakeholders/:stakeholderId/agreements',
+          'open(a.admin, bStakeholder)',
+        ],
+        ['liste', 'GET /api/v1/finance/stakeholder-agreements', 'listOf(a.admin, AGREEMENTS)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/stakeholder-agreements/:agreementId',
+          'get(bAgreementUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stakeholder-agreements/:agreementId',
+          "call('PATCH', bAgreementUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/stakeholder-agreements/:agreementId',
+          "call('DELETE', bAgreementUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stakeholder-agreements/:agreementId/activate',
+          'activate(a.admin, bAgreement)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stakeholder-agreements/:agreementId/terminate',
+          'terminate(a.admin, bAgreement',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-stakeholders.test.ts',
+        'başka kurumun paydaşı ve anlaşması 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

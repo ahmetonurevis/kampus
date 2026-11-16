@@ -1,5 +1,5 @@
 {
-  "id": "bf87699d-04ff-4271-93ba-f862b5eb0a51",
+  "id": "5cee05ff-9255-464b-a3df-e4370d3cd07f",
   "prevId": "4f1e7ab1-36ce-4a09-bc98-c837962b3531",
   "version": "7",
   "dialect": "postgresql",
@@ -18158,6 +18158,357 @@
       },
       "isRLSEnabled": false
     },
+    "public.refund_invoices": {
+      "name": "refund_invoices",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "withdrawal_id": {
+          "name": "withdrawal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "original_invoice_number": {
+          "name": "original_invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_date": {
+          "name": "original_invoice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_type": {
+          "name": "original_invoice_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_total_cents": {
+          "name": "original_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_rate_basis_points": {
+          "name": "vat_rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_cents": {
+          "name": "vat_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ready_by_user_id": {
+          "name": "ready_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_by_user_id": {
+          "name": "completed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discard_reason": {
+          "name": "discard_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_by_user_id": {
+          "name": "discarded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "refund_invoices_withdrawal_key": {
+          "name": "refund_invoices_withdrawal_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_document_number_key": {
+          "name": "refund_invoices_document_number_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"document_number\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_withdrawal_idx": {
+          "name": "refund_invoices_withdrawal_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_status_idx": {
+          "name": "refund_invoices_status_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "refund_invoices_institution_id_institutions_id_fk": {
+          "name": "refund_invoices_institution_id_institutions_id_fk",
+          "tableFrom": "refund_invoices",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refund_invoices_withdrawal_fkey": {
+          "name": "refund_invoices_withdrawal_fkey",
+          "tableFrom": "refund_invoices",
+          "tableTo": "student_withdrawals",
+          "columnsFrom": [
+            "institution_id",
+            "withdrawal_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "refund_invoices_pkey": {
+          "name": "refund_invoices_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "refund_invoices_kind_check": {
+          "name": "refund_invoices_kind_check",
+          "value": "\"refund_invoices\".\"kind\" in ('cancellation', 'return_invoice')"
+        },
+        "refund_invoices_status_check": {
+          "name": "refund_invoices_status_check",
+          "value": "\"refund_invoices\".\"status\" in ('draft', 'ready', 'sent', 'cancelled')"
+        },
+        "refund_invoices_original_type_check": {
+          "name": "refund_invoices_original_type_check",
+          "value": "\"refund_invoices\".\"original_invoice_type\" in ('e_archive', 'e_invoice')"
+        },
+        "refund_invoices_vat_rate_check": {
+          "name": "refund_invoices_vat_rate_check",
+          "value": "\"refund_invoices\".\"vat_rate_basis_points\" in (0, 100, 1000, 2000)"
+        },
+        "refund_invoices_currency_check": {
+          "name": "refund_invoices_currency_check",
+          "value": "\"refund_invoices\".\"currency\" = 'TRY'"
+        },
+        "refund_invoices_amounts_check": {
+          "name": "refund_invoices_amounts_check",
+          "value": "\"refund_invoices\".\"original_total_cents\" > 0 and \"refund_invoices\".\"amount_cents\" > 0 and \"refund_invoices\".\"amount_cents\" <= \"refund_invoices\".\"original_total_cents\" and \"refund_invoices\".\"net_cents\" >= 0 and \"refund_invoices\".\"vat_cents\" >= 0 and \"refund_invoices\".\"net_cents\" + \"refund_invoices\".\"vat_cents\" = \"refund_invoices\".\"amount_cents\""
+        },
+        "refund_invoices_kind_status_check": {
+          "name": "refund_invoices_kind_status_check",
+          "value": "(\"refund_invoices\".\"kind\" = 'return_invoice' and \"refund_invoices\".\"status\" <> 'cancelled') or (\"refund_invoices\".\"kind\" = 'cancellation' and \"refund_invoices\".\"status\" <> 'sent')"
+        },
+        "refund_invoices_completed_check": {
+          "name": "refund_invoices_completed_check",
+          "value": "(\"refund_invoices\".\"status\" in ('sent', 'cancelled')) = (\"refund_invoices\".\"completed_date\" is not null)"
+        },
+        "refund_invoices_document_number_check": {
+          "name": "refund_invoices_document_number_check",
+          "value": "(\"refund_invoices\".\"document_number\" is not null) = (\"refund_invoices\".\"status\" = 'sent')"
+        },
+        "refund_invoices_discard_check": {
+          "name": "refund_invoices_discard_check",
+          "value": "(\"refund_invoices\".\"discard_reason\" is null) = (\"refund_invoices\".\"archived_at\" is null) and (\"refund_invoices\".\"archived_at\" is null or \"refund_invoices\".\"status\" in ('draft', 'ready'))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.scholarship_fund_allocations": {
       "name": "scholarship_fund_allocations",
       "schema": "",
@@ -19344,511 +19695,6 @@
         "scholarship_terminations_clawback_check": {
           "name": "scholarship_terminations_clawback_check",
           "value": "(\"scholarship_terminations\".\"kind\" = 'revoke') or (\"scholarship_terminations\".\"principal_cents\" = 0 and \"scholarship_terminations\".\"interest_cents\" = 0 and \"scholarship_terminations\".\"clawback_due_date\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stakeholder_agreements": {
-      "name": "stakeholder_agreements",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "stakeholder_id": {
-          "name": "stakeholder_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "renewal_notice_days": {
-          "name": "renewal_notice_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contribution_type": {
-          "name": "contribution_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contribution_amount_cents": {
-          "name": "contribution_amount_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "contribution_description": {
-          "name": "contribution_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "benefits": {
-          "name": "benefits",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "benefit_note": {
-          "name": "benefit_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contract_file_id": {
-          "name": "contract_file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "activated_at": {
-          "name": "activated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "termination_date": {
-          "name": "termination_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "termination_reason": {
-          "name": "termination_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "terminated_at": {
-          "name": "terminated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stakeholder_agreements_stakeholder_idx": {
-          "name": "stakeholder_agreements_stakeholder_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "stakeholder_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stakeholder_agreements_end_idx": {
-          "name": "stakeholder_agreements_end_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "end_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stakeholder_agreements_contract_file_idx": {
-          "name": "stakeholder_agreements_contract_file_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "contract_file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stakeholder_agreements_institution_id_institutions_id_fk": {
-          "name": "stakeholder_agreements_institution_id_institutions_id_fk",
-          "tableFrom": "stakeholder_agreements",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "stakeholder_agreements_stakeholder_fkey": {
-          "name": "stakeholder_agreements_stakeholder_fkey",
-          "tableFrom": "stakeholder_agreements",
-          "tableTo": "stakeholders",
-          "columnsFrom": [
-            "institution_id",
-            "stakeholder_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "stakeholder_agreements_contract_file_fkey": {
-          "name": "stakeholder_agreements_contract_file_fkey",
-          "tableFrom": "stakeholder_agreements",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "contract_file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stakeholder_agreements_pkey": {
-          "name": "stakeholder_agreements_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stakeholder_agreements_status_check": {
-          "name": "stakeholder_agreements_status_check",
-          "value": "\"stakeholder_agreements\".\"status\" in ('draft', 'active', 'terminated')"
-        },
-        "stakeholder_agreements_contribution_type_check": {
-          "name": "stakeholder_agreements_contribution_type_check",
-          "value": "\"stakeholder_agreements\".\"contribution_type\" in ('cash', 'in_kind', 'service')"
-        },
-        "stakeholder_agreements_text_check": {
-          "name": "stakeholder_agreements_text_check",
-          "value": "char_length(\"stakeholder_agreements\".\"subject\") between 3 and 200\n        and (\"stakeholder_agreements\".\"contribution_description\" is null\n          or char_length(\"stakeholder_agreements\".\"contribution_description\") between 1 and 500)\n        and (\"stakeholder_agreements\".\"benefit_note\" is null or char_length(\"stakeholder_agreements\".\"benefit_note\") between 1 and 300)"
-        },
-        "stakeholder_agreements_terms_check": {
-          "name": "stakeholder_agreements_terms_check",
-          "value": "\"stakeholder_agreements\".\"end_date\" >= \"stakeholder_agreements\".\"start_date\"\n        and \"stakeholder_agreements\".\"renewal_notice_days\" between 0 and 365\n        and \"stakeholder_agreements\".\"currency\" = 'TRY'\n        and (\"stakeholder_agreements\".\"contribution_amount_cents\" is null\n          or \"stakeholder_agreements\".\"contribution_amount_cents\" between 1 and 100000000000)\n        and (\"stakeholder_agreements\".\"contribution_type\" <> 'cash' or \"stakeholder_agreements\".\"contribution_amount_cents\" is not null)\n        and (\"stakeholder_agreements\".\"contribution_type\" = 'cash'\n          or char_length(coalesce(\"stakeholder_agreements\".\"contribution_description\", '')) >= 3)\n        and \"stakeholder_agreements\".\"benefits\" <@ array['logo', 'event_naming', 'announcement', 'other']::text[]"
-        },
-        "stakeholder_agreements_status_fields_check": {
-          "name": "stakeholder_agreements_status_fields_check",
-          "value": "((\"stakeholder_agreements\".\"status\" = 'terminated') = (\"stakeholder_agreements\".\"termination_date\" is not null))\n        and ((\"stakeholder_agreements\".\"status\" = 'terminated') = (\"stakeholder_agreements\".\"terminated_at\" is not null))\n        and ((\"stakeholder_agreements\".\"status\" = 'terminated') = (\"stakeholder_agreements\".\"termination_reason\" is not null))\n        and ((\"stakeholder_agreements\".\"status\" = 'draft') = (\"stakeholder_agreements\".\"activated_at\" is null))\n        and (\"stakeholder_agreements\".\"termination_reason\" is null\n          or char_length(\"stakeholder_agreements\".\"termination_reason\") between 5 and 500)\n        and (\"stakeholder_agreements\".\"termination_date\" is null\n          or \"stakeholder_agreements\".\"termination_date\" between \"stakeholder_agreements\".\"start_date\" and \"stakeholder_agreements\".\"end_date\")"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.stakeholders": {
-      "name": "stakeholders",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tax_number": {
-          "name": "tax_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contact_name": {
-          "name": "contact_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contact_email": {
-          "name": "contact_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contact_phone": {
-          "name": "contact_phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tags": {
-          "name": "tags",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "stakeholders_tax_number_key": {
-          "name": "stakeholders_tax_number_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tax_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"stakeholders\".\"archived_at\" is null and \"stakeholders\".\"tax_number\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "stakeholders_active_name_idx": {
-          "name": "stakeholders_active_name_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "is_active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "stakeholders_institution_id_institutions_id_fk": {
-          "name": "stakeholders_institution_id_institutions_id_fk",
-          "tableFrom": "stakeholders",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "stakeholders_pkey": {
-          "name": "stakeholders_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "stakeholders_type_check": {
-          "name": "stakeholders_type_check",
-          "value": "\"stakeholders\".\"type\" in ('sponsor', 'partner', 'corporate', 'university', 'municipality_ngo', 'parent_association')"
-        },
-        "stakeholders_text_check": {
-          "name": "stakeholders_text_check",
-          "value": "char_length(\"stakeholders\".\"name\") between 2 and 200\n        and (\"stakeholders\".\"tax_number\" is null or \"stakeholders\".\"tax_number\" ~ '^[0-9]{10}$')\n        and (\"stakeholders\".\"contact_name\" is null or char_length(\"stakeholders\".\"contact_name\") between 2 and 120)\n        and (\"stakeholders\".\"contact_email\" is null or char_length(\"stakeholders\".\"contact_email\") <= 254)\n        and (\"stakeholders\".\"contact_phone\" is null or \"stakeholders\".\"contact_phone\" ~ '^0[0-9]{10}$')"
-        },
-        "stakeholders_tags_check": {
-          "name": "stakeholders_tags_check",
-          "value": "cardinality(\"stakeholders\".\"tags\") <= 10"
         }
       },
       "isRLSEnabled": false

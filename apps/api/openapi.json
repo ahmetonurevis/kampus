@@ -192327,6 +192327,1721 @@
         }
       }
     },
+    "/api/v1/finance/staff-costs": {
+      "get": {
+        "operationId": "getFinanceStaffCosts",
+        "summary": "Tahmini personel maliyeti (maliyet merkezine göre)",
+        "tags": [
+          "finance-staff-costs"
+        ],
+        "description": "`from`–`to` ayları (en çok 12; varsayılan bu ay, Europe/Istanbul) için personelin tahmini işveren maliyeti maliyet merkezlerine dağıtılır (DOM-FIN-104). Bordro değildir: brüt (aylık brüt ana ücret, saatli ücret × atamadaki tahmini saat, ek ders ve nöbet × tahmini saat; yürürlükteki gün oranıyla), SGK işveren payı (prim indirimi düşülmüş) ve işsizlik işveren payı (matrah SGK tavanına kadar, ayın ilk günü geçerli bordro parametresiyle), yan haklar (olduğu gibi) ve toplam (K-333). Net tanımlı ana ücret ve saati girilmemiş saatli ücret dahil edilmez, `warnings` ve kişi satırındaki `flags` ile bildirilir. Ataması olmayan personel \"Atanmamış\" satırındadır. Personeli 5'ten az olan merkezin tutarları gizlenir (`suppressed`, K-77 deseni); `people=true` kişi satırlarını verir ve bastırmayı kaldırır. Her okuma `finance.staff_cost.read` denetimi yazar (tutar değil, alan adları; K-334). `Accept: text/csv` ile aynı rapor dosya iner (`;`, UTF-8 BOM, ondalık virgül, formül kaçışı): taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.staff_cost.export`. İlk bordro parametre setinden önceki ay 422 `payroll_parameters_missing`; `to` `from`'dan önce ya da dönem 12 aydan uzunsa 400. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Başlangıç ayı (YYYY-MM); varsayılan `to` ya da bu ay"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Bitiş ayı (YYYY-MM, dahil); varsayılan `from`"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "people",
+            "required": false,
+            "description": "`true` kişi satırlarını verir ve küçük grup bastırmasını kaldırır (K-334)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "people": {
+                          "type": "boolean"
+                        },
+                        "minGroupSize": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tutarların gösterildiği en küçük personel grubu"
+                        },
+                        "centers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "description": "Atanmamış satırında boş",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "code": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "campus",
+                                      "unit",
+                                      "program"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "path": {
+                                "description": "Kökten merkeze kod yolu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "staffCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönemde merkeze payı düşen farklı personel"
+                              },
+                              "grossCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Brüt; küçük grupta boş"
+                              },
+                              "employerSgkCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "SGK işveren payı; küçük grupta boş"
+                              },
+                              "unemploymentCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "İşsizlik işveren payı; küçük grupta boş"
+                              },
+                              "benefitsCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Yan haklar; küçük grupta boş"
+                              },
+                              "totalCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Toplam; küçük grupta boş"
+                              },
+                              "suppressed": {
+                                "type": "boolean",
+                                "description": "Küçük grup: tutarlar gizlendi"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "type",
+                              "path",
+                              "isActive",
+                              "staffCount",
+                              "grossCents",
+                              "employerSgkCents",
+                              "unemploymentCents",
+                              "benefitsCents",
+                              "totalCents",
+                              "suppressed"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "persons": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "membershipId": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "type": "string"
+                                  },
+                                  "centerId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "centerName": {
+                                    "type": "string"
+                                  },
+                                  "shareBasisPoints": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem boyunca aynı pay; değiştiyse boş"
+                                  },
+                                  "monthCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "flags": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "net_wage",
+                                        "missing_wage_hours",
+                                        "missing_lesson_hours"
+                                      ]
+                                    }
+                                  },
+                                  "grossCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tahmini brüt ücret (ana ücret ve ek ders), kuruş"
+                                  },
+                                  "employerSgkCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "SGK işveren payı (prim indirimi düşülmüş, tavanlı)"
+                                  },
+                                  "unemploymentCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İşsizlik sigortası işveren payı (tavanlı)"
+                                  },
+                                  "benefitsCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yan haklar"
+                                  },
+                                  "totalCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tahmini toplam işveren maliyeti"
+                                  }
+                                },
+                                "required": [
+                                  "membershipId",
+                                  "name",
+                                  "role",
+                                  "centerId",
+                                  "centerName",
+                                  "shareBasisPoints",
+                                  "monthCount",
+                                  "flags",
+                                  "grossCents",
+                                  "employerSgkCents",
+                                  "unemploymentCents",
+                                  "benefitsCents",
+                                  "totalCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kişi satırları; yalnız `people=true` iken"
+                        },
+                        "months": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "month": {
+                                "type": "string"
+                              },
+                              "staffCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tahmini brüt ücret (ana ücret ve ek ders), kuruş"
+                              },
+                              "employerSgkCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işveren payı (prim indirimi düşülmüş, tavanlı)"
+                              },
+                              "unemploymentCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işveren payı (tavanlı)"
+                              },
+                              "benefitsCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yan haklar"
+                              },
+                              "totalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tahmini toplam işveren maliyeti"
+                              },
+                              "parameterSetId": {
+                                "type": "string"
+                              },
+                              "parameterOrigin": {
+                                "type": "string",
+                                "enum": [
+                                  "platform",
+                                  "institution"
+                                ]
+                              },
+                              "stale": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "month",
+                              "staffCount",
+                              "grossCents",
+                              "employerSgkCents",
+                              "unemploymentCents",
+                              "benefitsCents",
+                              "totalCents",
+                              "parameterSetId",
+                              "parameterOrigin",
+                              "stale"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tahmini brüt ücret (ana ücret ve ek ders), kuruş"
+                            },
+                            "employerSgkCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "SGK işveren payı (prim indirimi düşülmüş, tavanlı)"
+                            },
+                            "unemploymentCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İşsizlik sigortası işveren payı (tavanlı)"
+                            },
+                            "benefitsCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yan haklar"
+                            },
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tahmini toplam işveren maliyeti"
+                            },
+                            "staffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "grossCents",
+                            "employerSgkCents",
+                            "unemploymentCents",
+                            "benefitsCents",
+                            "totalCents",
+                            "staffCount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "warnings": {
+                          "type": "object",
+                          "properties": {
+                            "netWageStaffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "missingHoursStaffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "assignedWithoutRateCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "unassignedStaffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "staleMonths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "unverifiedParameters": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "netWageStaffCount",
+                            "missingHoursStaffCount",
+                            "assignedWithoutRateCount",
+                            "unassignedStaffCount",
+                            "staleMonths",
+                            "unverifiedParameters"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "people",
+                        "minGroupSize",
+                        "centers",
+                        "persons",
+                        "months",
+                        "totals",
+                        "warnings"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-cost-staff": {
+      "get": {
+        "operationId": "listStaffCostStaff",
+        "summary": "Personel ve maliyet merkezi ataması",
+        "tags": [
+          "finance-staff-costs"
+        ],
+        "description": "Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda `month` ayında (varsayılan bu ay) yürürlükteki atama (merkezler, paylar, tahmini saatler) ve iptal edilmemiş atama sayısı (K-332). Ücret tutarı taşımaz; okuma denetime düşmez. Pasif (ayrılan) personel de listelenir. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "description": "Atamanın gösterileceği ay (YYYY-MM); varsayılan bu ay (Europe/Istanbul)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                          },
+                          "allocation": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "membershipId": {
+                                    "type": "string"
+                                  },
+                                  "startMonth": {
+                                    "type": "string",
+                                    "description": "Yürürlük başlangıç ayı (YYYY-MM)"
+                                  },
+                                  "endMonth": {
+                                    "description": "Son ay (YYYY-MM): sonraki atamanın başlangıcından bir önceki ay; yoksa süresiz",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "shares": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "costCenterId": {
+                                          "type": "string"
+                                        },
+                                        "code": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "isActive": {
+                                          "type": "boolean",
+                                          "description": "Merkez bugün etkin mi"
+                                        },
+                                        "shareBasisPoints": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Pay, on binde bir"
+                                        }
+                                      },
+                                      "required": [
+                                        "costCenterId",
+                                        "code",
+                                        "name",
+                                        "isActive",
+                                        "shareBasisPoints"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "wageHours": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Saatli ana ücretin tahmini aylık saati"
+                                  },
+                                  "extraLessonHours": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Tahmini aylık ek ders saati"
+                                  },
+                                  "dutyHours": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Tahmini aylık nöbet saati"
+                                  },
+                                  "createdAt": {
+                                    "type": "string"
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "`If-Match` için kayıt sürümü (iptal)"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "membershipId",
+                                  "startMonth",
+                                  "endMonth",
+                                  "shares",
+                                  "wageHours",
+                                  "extraLessonHours",
+                                  "dutyHours",
+                                  "createdAt",
+                                  "version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "`month` ayındaki atama; yoksa boş"
+                          },
+                          "allocationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İptal edilmemiş atama sayısı"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "allocation",
+                          "allocationCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-cost-staff/{membershipId}": {
+      "get": {
+        "operationId": "getStaffCostAllocations",
+        "summary": "Personelin maliyet merkezi atamaları",
+        "tags": [
+          "finance-staff-costs"
+        ],
+        "description": "İptal edilmemiş bütün atamalar başlangıç ayına göre; her atamanın son ayı sonraki atamadan hesaplanır, `currentId` bu ay yürürlükteki atamadır. Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "month": {
+                          "type": "string",
+                          "description": "Bugünün ayı (YYYY-MM)"
+                        },
+                        "currentId": {
+                          "description": "Bu ay yürürlükteki atama",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "allocations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "startMonth": {
+                                "type": "string",
+                                "description": "Yürürlük başlangıç ayı (YYYY-MM)"
+                              },
+                              "endMonth": {
+                                "description": "Son ay (YYYY-MM): sonraki atamanın başlangıcından bir önceki ay; yoksa süresiz",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "shares": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "costCenterId": {
+                                      "type": "string"
+                                    },
+                                    "code": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "isActive": {
+                                      "type": "boolean",
+                                      "description": "Merkez bugün etkin mi"
+                                    },
+                                    "shareBasisPoints": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Pay, on binde bir"
+                                    }
+                                  },
+                                  "required": [
+                                    "costCenterId",
+                                    "code",
+                                    "name",
+                                    "isActive",
+                                    "shareBasisPoints"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "wageHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Saatli ana ücretin tahmini aylık saati"
+                              },
+                              "extraLessonHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Tahmini aylık ek ders saati"
+                              },
+                              "dutyHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Tahmini aylık nöbet saati"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "startMonth",
+                              "endMonth",
+                              "shares",
+                              "wageHours",
+                              "extraLessonHours",
+                              "dutyHours",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İptal edilmemiş atamalar, başlangıca göre"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "name",
+                        "role",
+                        "active",
+                        "month",
+                        "currentId",
+                        "allocations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-cost-allocations": {
+      "post": {
+        "operationId": "createStaffCostAllocation",
+        "summary": "Personeli maliyet merkezlerine ata",
+        "tags": [
+          "finance-staff-costs"
+        ],
+        "description": "Personelin `startMonth` ayından yürürlüğe giren ataması (K-332): 1–10 maliyet merkezi ve on binde bir pay (toplamı 10.000 = %100; aynı merkez iki kez 400), saatlik ya da ders saati ücretinin, ek dersin ve nöbetin tahmini aylık saati (0–300, isteğe bağlı). Atama personelin sonraki atamasının başlangıcına kadar sürer. Aynı ayda iptal edilmemiş atama varsa 409 `staff_cost_allocation_exists` (önce iptal edin). Olmayan üyelik 422 `staff_cost_staff_not_found`, öğrenci ya da veli 422 `staff_cost_not_staff`; pasif personele de yazılır (geçmiş aylar). Olmayan ya da başka kurumun merkezi 422 `staff_cost_center_not_found`, pasif merkez 422 `staff_cost_center_inactive`. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Atanan personelin kurum üyeliği"
+                  },
+                  "startMonth": {
+                    "type": "string",
+                    "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+                    "description": "Yürürlük başlangıç ayı (YYYY-MM)"
+                  },
+                  "shares": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "costCenterId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "Maliyet merkezi"
+                        },
+                        "shareBasisPoints": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10000,
+                          "description": "Pay, on binde bir (10.000 = %100)"
+                        }
+                      },
+                      "required": [
+                        "costCenterId",
+                        "shareBasisPoints"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Merkez payları; toplam 10.000 (%100), merkez tekrarlanmaz"
+                  },
+                  "wageHours": {
+                    "default": null,
+                    "description": "Saatlik ya da ders saati ücretli personelin tahmini aylık saati; boşsa ana ücret rapora girmez",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "extraLessonHours": {
+                    "default": null,
+                    "description": "Tahmini aylık ek ders saati; boşsa ek ders ücreti rapora girmez",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "dutyHours": {
+                    "default": null,
+                    "description": "Tahmini aylık nöbet saati; boşsa nöbet ücreti rapora girmez",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "startMonth",
+                  "shares"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "startMonth": {
+                          "type": "string",
+                          "description": "Yürürlük başlangıç ayı (YYYY-MM)"
+                        },
+                        "endMonth": {
+                          "description": "Son ay (YYYY-MM): sonraki atamanın başlangıcından bir önceki ay; yoksa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "shares": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "costCenterId": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isActive": {
+                                "type": "boolean",
+                                "description": "Merkez bugün etkin mi"
+                              },
+                              "shareBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Pay, on binde bir"
+                              }
+                            },
+                            "required": [
+                              "costCenterId",
+                              "code",
+                              "name",
+                              "isActive",
+                              "shareBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "wageHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Saatli ana ücretin tahmini aylık saati"
+                        },
+                        "extraLessonHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Tahmini aylık ek ders saati"
+                        },
+                        "dutyHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Tahmini aylık nöbet saati"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "startMonth",
+                        "endMonth",
+                        "shares",
+                        "wageHours",
+                        "extraLessonHours",
+                        "dutyHours",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-cost-allocations/{allocationId}/cancel": {
+      "post": {
+        "operationId": "cancelStaffCostAllocation",
+        "summary": "Atamayı iptal et",
+        "tags": [
+          "finance-staff-costs"
+        ],
+        "description": "Yanlış atama gerekçeyle (5–500 karakter) iptal edilir; atama düzeltilmez (K-332). Önceki atama iptal edilenin aylarını da kapsar hâle gelir; sonraki atamalar yerinde kalır. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş atama 404. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi; denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "allocationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

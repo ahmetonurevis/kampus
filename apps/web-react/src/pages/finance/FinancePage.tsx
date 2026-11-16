@@ -410,16 +410,8 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payrollParameters' ? (
           <FinancePayrollParametersSection canManage={isManager} />
         ) : null}
-        {tab === 'donations' ? (
-          <Suspense fallback={<SummaryLoading />}>
-            <DonationsSection />
-            {tab === 'stakeholders' ? (
-              <Suspense fallback={<SummaryLoading />}>
-                <FinanceStakeholdersSection />
-              </Suspense>
-            ) : null}
-          </Suspense>
-        ) : null}
+        {tab === 'donations' ? <DonationsSection /> : null}
+        {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

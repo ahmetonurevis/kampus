@@ -2039,6 +2039,73 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: iade faturası ve iptal isteği (ON-266; DOM-FIN-096).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/refund-invoices', "call('GET', URL, a.admin)"],
+        [
+          'gövde',
+          'POST /api/v1/finance/refund-invoices',
+          'create({ ...a, withdrawalId: b.withdrawalId })',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/refund-invoices/:refundInvoiceId',
+          '`${URL}/${String(bDoc.id)}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/ready',
+          "step(a.admin, bDoc, 'ready')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/complete',
+          "step(a.admin, bDoc, 'complete'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/discard',
+          "step(a.admin, bDoc, 'discard'",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-refund-invoices.test.ts',
+        'DOM-FIN-096: başka kurumun ayrılışı ve belgesi 404; B değişmez, A listesinde B yok',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: bordro parametreleri (ON-197; DOM-FIN-100).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/payroll-parameters', 'yearOf(a.admin, 2026)'],
+        [
+          'liste',
+          'GET /api/v1/finance/payroll-parameters/effective',
+          "effectiveOn(a.admin, '2026-05-01')",
+        ],
+        ['gövde', 'POST /api/v1/finance/payroll-parameters', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/payroll-parameters/:setId', "call('PATCH', bUrl, a.admin"],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/payroll-parameters/:setId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-parameters.test.ts',
+        'başka kurumun seti 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

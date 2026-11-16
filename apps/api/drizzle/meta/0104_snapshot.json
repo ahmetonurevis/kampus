@@ -1,5 +1,5 @@
 {
-  "id": "8e590f9c-13e6-493d-b649-8c3888d7c193",
+  "id": "5cee05ff-9255-464b-a3df-e4370d3cd07f",
   "prevId": "4f1e7ab1-36ce-4a09-bc98-c837962b3531",
   "version": "7",
   "dialect": "postgresql",
@@ -15181,231 +15181,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.payroll_parameter_sets": {
-      "name": "payroll_parameter_sets",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effective_from": {
-          "name": "effective_from",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "minimum_wage_gross_cents": {
-          "name": "minimum_wage_gross_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "income_tax_brackets": {
-          "name": "income_tax_brackets",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sgk_employee_rate_basis_points": {
-          "name": "sgk_employee_rate_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sgk_employer_rate_basis_points": {
-          "name": "sgk_employer_rate_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sgk_employer_incentive_basis_points": {
-          "name": "sgk_employer_incentive_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unemployment_employee_rate_basis_points": {
-          "name": "unemployment_employee_rate_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unemployment_employer_rate_basis_points": {
-          "name": "unemployment_employer_rate_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sgk_floor_multiplier_basis_points": {
-          "name": "sgk_floor_multiplier_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sgk_ceiling_multiplier_basis_points": {
-          "name": "sgk_ceiling_multiplier_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "stamp_tax_rate_per_100k": {
-          "name": "stamp_tax_rate_per_100k",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "minimum_wage_income_tax_exempt": {
-          "name": "minimum_wage_income_tax_exempt",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "minimum_wage_stamp_tax_exempt": {
-          "name": "minimum_wage_stamp_tax_exempt",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "severance_ceiling_cents": {
-          "name": "severance_ceiling_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "payroll_parameter_sets_effective_from_key": {
-          "name": "payroll_parameter_sets_effective_from_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "effective_from",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"payroll_parameter_sets\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "payroll_parameter_sets_institution_id_institutions_id_fk": {
-          "name": "payroll_parameter_sets_institution_id_institutions_id_fk",
-          "tableFrom": "payroll_parameter_sets",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "payroll_parameter_sets_pkey": {
-          "name": "payroll_parameter_sets_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "payroll_parameter_sets_effective_from_check": {
-          "name": "payroll_parameter_sets_effective_from_check",
-          "value": "extract(day from \"payroll_parameter_sets\".\"effective_from\") = 1\n        and \"payroll_parameter_sets\".\"effective_from\" between date '2020-01-01' and date '2099-12-01'"
-        },
-        "payroll_parameter_sets_amounts_check": {
-          "name": "payroll_parameter_sets_amounts_check",
-          "value": "\"payroll_parameter_sets\".\"minimum_wage_gross_cents\" > 0 and \"payroll_parameter_sets\".\"severance_ceiling_cents\" > 0"
-        },
-        "payroll_parameter_sets_currency_check": {
-          "name": "payroll_parameter_sets_currency_check",
-          "value": "\"payroll_parameter_sets\".\"currency\" = 'TRY'"
-        },
-        "payroll_parameter_sets_brackets_check": {
-          "name": "payroll_parameter_sets_brackets_check",
-          "value": "jsonb_typeof(\"payroll_parameter_sets\".\"income_tax_brackets\") = 'array'\n        and jsonb_array_length(\"payroll_parameter_sets\".\"income_tax_brackets\") between 1 and 10"
-        },
-        "payroll_parameter_sets_rates_check": {
-          "name": "payroll_parameter_sets_rates_check",
-          "value": "\"payroll_parameter_sets\".\"sgk_employee_rate_basis_points\" between 0 and 10000\n        and \"payroll_parameter_sets\".\"sgk_employer_rate_basis_points\" between 0 and 10000\n        and \"payroll_parameter_sets\".\"sgk_employer_incentive_basis_points\" between 0 and \"payroll_parameter_sets\".\"sgk_employer_rate_basis_points\"\n        and \"payroll_parameter_sets\".\"unemployment_employee_rate_basis_points\" between 0 and 10000\n        and \"payroll_parameter_sets\".\"unemployment_employer_rate_basis_points\" between 0 and 10000\n        and \"payroll_parameter_sets\".\"stamp_tax_rate_per_100k\" between 0 and 10000"
-        },
-        "payroll_parameter_sets_multipliers_check": {
-          "name": "payroll_parameter_sets_multipliers_check",
-          "value": "\"payroll_parameter_sets\".\"sgk_floor_multiplier_basis_points\" > 0\n        and \"payroll_parameter_sets\".\"sgk_ceiling_multiplier_basis_points\" > \"payroll_parameter_sets\".\"sgk_floor_multiplier_basis_points\"\n        and \"payroll_parameter_sets\".\"sgk_ceiling_multiplier_basis_points\" <= 200000"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.purchase_approval_settings": {
       "name": "purchase_approval_settings",
       "schema": "",
@@ -18379,6 +18154,357 @@
         "referral_rewards_cancelled_check": {
           "name": "referral_rewards_cancelled_check",
           "value": "(\"referral_rewards\".\"status\" = 'cancelled') = (\"referral_rewards\".\"cancel_reason\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.refund_invoices": {
+      "name": "refund_invoices",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "withdrawal_id": {
+          "name": "withdrawal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "original_invoice_number": {
+          "name": "original_invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_date": {
+          "name": "original_invoice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_type": {
+          "name": "original_invoice_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_total_cents": {
+          "name": "original_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_rate_basis_points": {
+          "name": "vat_rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_cents": {
+          "name": "vat_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ready_by_user_id": {
+          "name": "ready_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_by_user_id": {
+          "name": "completed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discard_reason": {
+          "name": "discard_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_by_user_id": {
+          "name": "discarded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "refund_invoices_withdrawal_key": {
+          "name": "refund_invoices_withdrawal_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_document_number_key": {
+          "name": "refund_invoices_document_number_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"document_number\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_withdrawal_idx": {
+          "name": "refund_invoices_withdrawal_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_status_idx": {
+          "name": "refund_invoices_status_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "refund_invoices_institution_id_institutions_id_fk": {
+          "name": "refund_invoices_institution_id_institutions_id_fk",
+          "tableFrom": "refund_invoices",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refund_invoices_withdrawal_fkey": {
+          "name": "refund_invoices_withdrawal_fkey",
+          "tableFrom": "refund_invoices",
+          "tableTo": "student_withdrawals",
+          "columnsFrom": [
+            "institution_id",
+            "withdrawal_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "refund_invoices_pkey": {
+          "name": "refund_invoices_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "refund_invoices_kind_check": {
+          "name": "refund_invoices_kind_check",
+          "value": "\"refund_invoices\".\"kind\" in ('cancellation', 'return_invoice')"
+        },
+        "refund_invoices_status_check": {
+          "name": "refund_invoices_status_check",
+          "value": "\"refund_invoices\".\"status\" in ('draft', 'ready', 'sent', 'cancelled')"
+        },
+        "refund_invoices_original_type_check": {
+          "name": "refund_invoices_original_type_check",
+          "value": "\"refund_invoices\".\"original_invoice_type\" in ('e_archive', 'e_invoice')"
+        },
+        "refund_invoices_vat_rate_check": {
+          "name": "refund_invoices_vat_rate_check",
+          "value": "\"refund_invoices\".\"vat_rate_basis_points\" in (0, 100, 1000, 2000)"
+        },
+        "refund_invoices_currency_check": {
+          "name": "refund_invoices_currency_check",
+          "value": "\"refund_invoices\".\"currency\" = 'TRY'"
+        },
+        "refund_invoices_amounts_check": {
+          "name": "refund_invoices_amounts_check",
+          "value": "\"refund_invoices\".\"original_total_cents\" > 0 and \"refund_invoices\".\"amount_cents\" > 0 and \"refund_invoices\".\"amount_cents\" <= \"refund_invoices\".\"original_total_cents\" and \"refund_invoices\".\"net_cents\" >= 0 and \"refund_invoices\".\"vat_cents\" >= 0 and \"refund_invoices\".\"net_cents\" + \"refund_invoices\".\"vat_cents\" = \"refund_invoices\".\"amount_cents\""
+        },
+        "refund_invoices_kind_status_check": {
+          "name": "refund_invoices_kind_status_check",
+          "value": "(\"refund_invoices\".\"kind\" = 'return_invoice' and \"refund_invoices\".\"status\" <> 'cancelled') or (\"refund_invoices\".\"kind\" = 'cancellation' and \"refund_invoices\".\"status\" <> 'sent')"
+        },
+        "refund_invoices_completed_check": {
+          "name": "refund_invoices_completed_check",
+          "value": "(\"refund_invoices\".\"status\" in ('sent', 'cancelled')) = (\"refund_invoices\".\"completed_date\" is not null)"
+        },
+        "refund_invoices_document_number_check": {
+          "name": "refund_invoices_document_number_check",
+          "value": "(\"refund_invoices\".\"document_number\" is not null) = (\"refund_invoices\".\"status\" = 'sent')"
+        },
+        "refund_invoices_discard_check": {
+          "name": "refund_invoices_discard_check",
+          "value": "(\"refund_invoices\".\"discard_reason\" is null) = (\"refund_invoices\".\"archived_at\" is null) and (\"refund_invoices\".\"archived_at\" is null or \"refund_invoices\".\"status\" in ('draft', 'ready'))"
         }
       },
       "isRLSEnabled": false

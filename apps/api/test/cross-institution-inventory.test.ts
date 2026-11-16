@@ -1528,6 +1528,11 @@ const FINANCE: Readonly<Record<string, Proof>> = {
           'POST /api/v1/finance/fixed-asset-counts/:countId/items/:itemId/relocate',
           'relocate(a.admin, bCount, bItem)',
         ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/fixed-asset-counts/:countId/items/:itemId/undo-scan',
+          'undoScan(a.admin, bCount, bItem)',
+        ],
         ['liste', 'GET /api/v1/finance/fixed-asset-places', 'get(PLACES, a.admin)'],
       ] as const
     ).map(([kind, key, marker]) => [
@@ -1647,6 +1652,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
           'complete(a.admin, bCount)',
         ],
         ['kayıt', 'POST /api/v1/finance/stock-counts/:countId/cancel', 'cancel(a.admin, bCount)'],
+        ['kayıt', 'GET /api/v1/finance/stock-counts/:countId/entries', '`${bCountUrl}/entries`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stock-counts/:countId/entries/:entryId/undo',
+          'undo(a.admin, bCount',
+        ],
       ] as const
     ).map(([kind, key, marker]) => [
       key,

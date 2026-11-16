@@ -165,3 +165,27 @@ export function useRelocateFixedAssetCountItem() {
     exclusive: true,
   })
 }
+
+/** Okutmayı geri alma (K-285); `If-Match` satırın sürümüdür (okutma yanıtındaki `item.version`). */
+export function useUndoFixedAssetCountScan() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { countId: string; itemId: string; version: number },
+      headers: CommandHeaders,
+    ) =>
+      client.POST('/api/v1/finance/fixed-asset-counts/{countId}/items/{itemId}/undo-scan', {
+        params: {
+          path: { countId: input.countId, itemId: input.itemId },
+          header: versioned(headers),
+        },
+        body: {},
+      }),
+    invalidates: [FIXED_ASSETS_KEY],
+    version: (input) => input.version,
+    messages: {
+      version_conflict: 'Sayım satırı başka biri tarafından değiştirildi. Liste güncellendi.',
+    },
+    exclusive: true,
+  })
+}

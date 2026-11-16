@@ -1,5 +1,5 @@
 // Stok formları (DOM-FIN-077, DOM-FIN-078; ON-228, ON-229). Alan kuralları core şemalarından:
-// kartta kod, ad, kategori, birim ve kritik seviye; depoda ad, kampüs ve not; harekette kart, depo,
+// kartta kod, barkod, ad, kategori, birim ve kritik seviye; depoda ad, kampüs ve not; harekette kart, depo,
 // miktar, gün, neden ve not. Formda sayılar metindir; gövdeye tam sayı gider. Miktarın depodaki
 // miktarı aşmaması sunucuda kurum kilidi altında denetlenir (K-181).
 import { z } from 'zod'
@@ -16,6 +16,10 @@ import type {
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import { FINANCE_CODE_MAX } from '@kampus/school-core/lib/finance-cost-centers.ts'
 import {
+  isEanShaped,
+  isValidEanCheckDigit,
+  STOCK_BARCODE_MAX,
+  STOCK_BARCODE_PATTERN,
   STOCK_CATEGORIES,
   STOCK_ENTRY_REASONS,
   STOCK_ISSUE_REASONS,
@@ -37,6 +41,9 @@ const optionalCount = /^\d{0,7}$/
 
 // --- Stok kartı ----------------------------------------------------------------------------------
 
+/** Barkod gövdeye boşluksuz ve büyük harfle gider; boşsa `null` (K-284). */
+export const normalizeBarcode = (value: string) => value.replace(/\s/g, '').toUpperCase()
+
 export const stockItemFormSchema = z.object({
   code: z
     .string()
@@ -46,6 +53,22 @@ export const stockItemFormSchema = z.object({
     .regex(
       /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
       'Kod harf ya da rakamla başlar; yalnız harf, rakam, nokta, alt çizgi ve tire içerir.',
+    ),
+  barcode: z
+    .string()
+    .transform(normalizeBarcode)
+    .pipe(
+      z
+        .string()
+        .max(STOCK_BARCODE_MAX, `Barkod en fazla ${String(STOCK_BARCODE_MAX)} karakter olabilir.`)
+        .refine(
+          (value) => value === '' || STOCK_BARCODE_PATTERN.test(value),
+          'Barkod harf ya da rakamla başlar; yalnız harf, rakam, nokta, alt çizgi, eğik çizgi, artı ve tire içerir.',
+        )
+        .refine(
+          (value) => !isEanShaped(value) || isValidEanCheckDigit(value),
+          'EAN barkodunun son (sağlama) basamağı tutmuyor; barkodu yeniden okutun ya da kontrol edin.',
+        ),
     ),
   name: z
     .string()
@@ -61,6 +84,7 @@ export type StockItemFormValues = z.input<typeof stockItemFormSchema>
 export function stockItemDefaults(item?: StockItemDetail): StockItemFormValues {
   return {
     code: item?.code ?? '',
+    barcode: item?.barcode ?? '',
     name: item?.name ?? '',
     category: item?.category ?? 'stationery',
     unit: item?.unit ?? 'piece',
@@ -72,6 +96,7 @@ export function stockItemBody(values: StockItemFormValues): CreateStockItemBody 
   const min = values.minQuantity.trim()
   return {
     code: values.code.trim(),
+    barcode: normalizeBarcode(values.barcode) || null,
     name: values.name.trim(),
     category: values.category,
     unit: values.unit,
@@ -79,7 +104,7 @@ export function stockItemBody(values: StockItemFormValues): CreateStockItemBody 
   }
 }
 
-const ITEM_FIELDS = ['code', 'name', 'category', 'unit', 'minQuantity'] as const
+const ITEM_FIELDS = ['code', 'barcode', 'name', 'category', 'unit', 'minQuantity'] as const
 export const stockItemFormField = (name: string) => ITEM_FIELDS.find((field) => field === name)
 
 // --- Depo ----------------------------------------------------------------------------------------
@@ -340,3 +365,20 @@ export function openRequestText(
   if (row.openRequestQuantity <= 0) return '—'
   return `${String(row.openRequestQuantity)} ${STOCK_UNIT_LABELS[row.unit]} · ${String(row.openRequestCount)} talep`
 }
+
+/**
+ * Siparişte bekleyen miktar (ON-340, K-286): "12 paket · 1 sipariş"; açık siparişte teslim
+ * alınmamış miktar yoksa tire.
+ */
+export function onOrderText(
+  row: Pick<CriticalStockRow, 'onOrderQuantity' | 'onOrderCount' | 'unit'>,
+): string {
+  if (row.onOrderQuantity <= 0) return '—'
+  return `${String(row.onOrderQuantity)} ${STOCK_UNIT_LABELS[row.unit]} · ${String(row.onOrderCount)} sipariş`
+}
+
+/** Öneri metni (K-286): açık talep ve sipariş ihtiyacı karşılıyorsa öneri 0 ve "karşılanıyor". */
+export const suggestionText = (row: Pick<CriticalStockRow, 'suggestedQuantity' | 'unit'>) =>
+  row.suggestedQuantity <= 0
+    ? 'Karşılanıyor'
+    : `${String(row.suggestedQuantity)} ${STOCK_UNIT_LABELS[row.unit]}`

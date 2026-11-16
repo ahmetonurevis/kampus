@@ -197,10 +197,11 @@ describe('DOM-FIN-088: amortisman ön hesabı uçları', () => {
     ])
       assertError(await call('POST', ASSETS, t.admin, body), 400, 'validation_failed')
     assert.equal((await rowsOf(t.id)).length, 0)
-    const laptop = await create(t, LAPTOP)
-    const url = `${ASSETS}/${String(laptop.id)}`
+    // Alım yılında (ilk amortisman yılı) ömür ve yöntem serbestçe değişir (K-287).
+    const bus = await create(t, BUS)
+    const url = `${ASSETS}/${String(bus.id)}`
     assertError(
-      await call('PATCH', url, t.admin, { usefulLifeYears: null }, ifMatch(laptop.version)),
+      await call('PATCH', url, t.admin, { usefulLifeYears: null }, ifMatch(bus.version)),
       400,
     )
     const changed = ok(
@@ -209,14 +210,14 @@ describe('DOM-FIN-088: amortisman ön hesabı uçları', () => {
         url,
         t.admin,
         { usefulLifeYears: 2, depreciationMethod: 'declining' },
-        ifMatch(laptop.version),
+        ifMatch(bus.version),
       ),
     )
     assert.equal(changed.usefulLifeYears, 2)
     assert.equal(changed.depreciationMethod, 'declining')
     assert.deepEqual(
       (changed.depreciation as { rows: Row[] }).rows.map((row) => row.depreciationCents),
-      [2_000_000, 2_000_000],
+      [75_000_000, 75_000_000],
     )
     const recategorized = ok(
       await call('PATCH', url, t.admin, { category: 'kitchen' }, ifMatch(changed.version)),
@@ -227,6 +228,69 @@ describe('DOM-FIN-088: amortisman ön hesabı uçları', () => {
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, t.id), eq(auditLog.action, 'fixed_asset.update')))
     assert.ok(JSON.stringify(audits).includes('usefulLifeYears'))
+  })
+
+  test('DOM-FIN-088, K-287: ilk amortisman yılından sonra ömür değişmez ve normalden azalana geçilmez; azalandan normale geçilir', async () => {
+    const t = await institution()
+    const laptop = await create(t, LAPTOP)
+    const desk = await create(t, DESK)
+    const laptopUrl = `${ASSETS}/${String(laptop.id)}`
+    const before = await rowsOf(t.id)
+    assertError(
+      await call('PATCH', laptopUrl, t.admin, { usefulLifeYears: 6 }, ifMatch(laptop.version)),
+      422,
+      'fixed_asset_useful_life_locked',
+    )
+    assertError(
+      await call(
+        'PATCH',
+        laptopUrl,
+        t.admin,
+        { depreciationMethod: 'declining' },
+        ifMatch(laptop.version),
+      ),
+      422,
+      'fixed_asset_depreciation_method_locked',
+    )
+    // Alım günü ileri alınarak kısıt aşılmaz.
+    assertError(
+      await call(
+        'PATCH',
+        laptopUrl,
+        t.admin,
+        { acquisitionDate: '2026-01-05', usefulLifeYears: 6 },
+        ifMatch(laptop.version),
+      ),
+      422,
+      'fixed_asset_useful_life_locked',
+    )
+    assert.deepEqual(await rowsOf(t.id), before)
+    // Azalan bakiyelerden normale geçiş serbest (VUK md. 318); öteki alanlar düzeltilir.
+    const normal = ok(
+      await call(
+        'PATCH',
+        `${ASSETS}/${String(desk.id)}`,
+        t.admin,
+        { depreciationMethod: 'normal' },
+        ifMatch(desk.version),
+      ),
+    )
+    assert.equal(normal.depreciationMethod, 'normal')
+    assertError(
+      await call(
+        'PATCH',
+        `${ASSETS}/${String(desk.id)}`,
+        t.admin,
+        { depreciationMethod: 'declining' },
+        ifMatch(normal.version),
+      ),
+      422,
+      'fixed_asset_depreciation_method_locked',
+    )
+    const renamed = ok(
+      await call('PATCH', laptopUrl, t.admin, { name: 'Dizüstü (yedek)' }, ifMatch(laptop.version)),
+    )
+    assert.equal(renamed.usefulLifeYears, 4)
   })
 
   test('DOM-FIN-088: hurdaya ayrılan demirbaşta ayrılma yılından sonra satır yok, kalan değer düşer (K-226)', async () => {

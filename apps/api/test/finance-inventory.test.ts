@@ -246,6 +246,89 @@ describe('DOM-FIN-077, DOM-FIN-078: stok uçları', () => {
     )
   })
 
+  test('DOM-FIN-077, K-284: barkod boşluksuz büyük harfe çevrilir, EAN sağlaması denetlenir, kurumda tekildir; aramada bulunur', async () => {
+    const t = await institution()
+    const pen = ok(
+      await call('POST', ITEMS, t.admin, {
+        code: 'KLM',
+        name: 'Tükenmez kalem',
+        category: 'stationery',
+        unit: 'piece',
+        barcode: ' 8691 2345 67890 ',
+      }),
+      201,
+    )
+    assert.equal(pen.barcode, '8691234567890')
+    assert.equal(t.paper.barcode, null)
+    const before = await rows(t.id)
+    const base = { name: 'Kopya', category: 'stationery', unit: 'piece' }
+    // Sağlama basamağı tutmayan EAN-13 alan hatasıdır.
+    const invalid = await call('POST', ITEMS, t.admin, {
+      ...base,
+      code: 'X1',
+      barcode: '8691234567891',
+    })
+    assertError(invalid, 400, 'validation_failed')
+    assert.deepEqual(
+      (invalid.json().issues as Json[]).map((issue) => issue.path),
+      [['barcode']],
+    )
+    // Başka kartın barkodu ya da kodu barkod olamaz; kod başka kartın barkodu olamaz.
+    assertError(
+      await call('POST', ITEMS, t.admin, { ...base, code: 'X1', barcode: '8691234567890' }),
+      409,
+      'stock_item_barcode_exists',
+    )
+    assertError(
+      await call('POST', ITEMS, t.admin, { ...base, code: 'X1', barcode: 'kag-a4' }),
+      409,
+      'stock_item_barcode_exists',
+    )
+    assertError(
+      await call('POST', ITEMS, t.admin, { ...base, code: '8691234567890' }),
+      409,
+      'stock_item_code_exists',
+    )
+    assertError(
+      await call(
+        'PATCH',
+        `${ITEMS}/${String(t.paper.id)}`,
+        t.admin,
+        { barcode: '8691234567890' },
+        ifMatch(t.paper.version),
+      ),
+      409,
+      'stock_item_barcode_exists',
+    )
+    assert.deepEqual(await rows(t.id), before)
+    // Serbest kod (UPC-A, kurum kodu) kabul edilir; barkod kaldırılabilir; aramada bulunur.
+    const paper = ok(
+      await call(
+        'PATCH',
+        `${ITEMS}/${String(t.paper.id)}`,
+        t.admin,
+        { barcode: '036000291452' },
+        ifMatch(t.paper.version),
+      ),
+    )
+    assert.equal(paper.barcode, '036000291452')
+    const found = await get(`${ITEMS}?q=0360002914`, t.admin)
+    assert.deepEqual(
+      (found.json().data as Json[]).map((row) => row.code),
+      ['KAG-A4'],
+    )
+    const cleared = ok(
+      await call(
+        'PATCH',
+        `${ITEMS}/${String(t.paper.id)}`,
+        t.admin,
+        { barcode: '' },
+        ifMatch(paper.version),
+      ),
+    )
+    assert.equal(cleared.barcode, null)
+  })
+
   test('DOM-FIN-078: giriş ve çıkış miktarı değiştirir; kritik seviye ve depo başına miktar görünür', async () => {
     const t = await institution()
     const entered = ok(await entry(t.admin, t), 201)

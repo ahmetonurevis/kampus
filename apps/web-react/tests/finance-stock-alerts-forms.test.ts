@@ -4,8 +4,10 @@ import type { CriticalStockRow } from '@kampus/react-shared/use-finance-inventor
 import { stockPurchaseDraft } from '@kampus/school-core/lib/finance-stock-alerts.ts'
 import {
   criticalQuantityText,
+  onOrderText,
   openRequestText,
   suggestionLine,
+  suggestionText,
   warehouseBreakdown,
 } from '../src/pages/finance/finance-inventory-forms.ts'
 import {
@@ -38,6 +40,8 @@ const row = (overrides: Partial<CriticalStockRow> = {}): CriticalStockRow => ({
   lastOrderNumber: 'SP-0001',
   openRequestQuantity: 0,
   openRequestCount: 0,
+  onOrderQuantity: 0,
+  onOrderCount: 0,
   warehouses: [
     {
       warehouseId: 'w1',
@@ -115,4 +119,11 @@ test('ON-339, K-222: açık talepteki miktar metni; açık talep yoksa tire', ()
     openRequestText(row({ openRequestQuantity: 20, openRequestCount: 2 })),
     '20 paket · 2 talep',
   )
+})
+
+test('DOM-FIN-079, K-286: siparişte bekleyen miktar ve karşılanan öneri metni', () => {
+  assert.equal(onOrderText(row()), '—')
+  assert.equal(onOrderText(row({ onOrderQuantity: 12, onOrderCount: 2 })), '12 paket · 2 sipariş')
+  assert.equal(suggestionText(row()), '18 paket')
+  assert.equal(suggestionText(row({ suggestedQuantity: 0 })), 'Karşılanıyor')
 })

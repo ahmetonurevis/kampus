@@ -10,6 +10,7 @@ import {
   useFixedAssetPlaces,
   useRelocateFixedAssetCountItem,
   useScanFixedAssetCount,
+  useUndoFixedAssetCountScan,
   type FixedAssetCount,
   type FixedAssetCountItem,
   type FixedAssetScan,
@@ -152,8 +153,24 @@ function ScanForm({ count }: { count: FixedAssetCount }) {
     // Okuyucu bir sonraki kodu yine bu alana yazar; hata olsa da kod seçili kalır.
     form.setFocus('code', { shouldSelect: true })
   })
+  const undo = useUndoFixedAssetCountScan()
   const [latest] = recent
   const feedback = latest ? scanFeedback(latest) : null
+  // "Daha önce okunmuş" yanıtı yeni okutma değildir; geri alınacak olan ilk okutmadır (K-285).
+  const undoable = latest && latest.outcome !== 'already_counted' ? latest : null
+  const undoLatest = async () => {
+    if (undoable === null) return
+    const outcome = await undo.submit({
+      countId: count.id,
+      itemId: undoable.item.id,
+      version: undoable.item.version,
+    })
+    if (outcome.status === 'success') {
+      notify.success(`${undoable.item.tagNumber} okutması geri alındı.`)
+      setRecent((previous) => previous.filter((entry) => entry.item.id !== undoable.item.id))
+    }
+    form.setFocus('code', { shouldSelect: true })
+  }
   return (
     <section aria-labelledby="sayim-okut" className="grid gap-3 border-t pt-4">
       <h3 id="sayim-okut" className="text-base font-semibold">
@@ -235,11 +252,26 @@ function ScanForm({ count }: { count: FixedAssetCount }) {
           </Button>
         </div>
       </form>
-      <p role="status" aria-live="polite" className="text-sm empty:hidden">
-        {feedback ? (
-          <StatusBadge text={feedback.text} tone={feedback.tone} className="whitespace-normal" />
+      <div className="flex flex-wrap items-center gap-3 empty:hidden">
+        <p role="status" aria-live="polite" className="text-sm empty:hidden">
+          {feedback ? (
+            <StatusBadge text={feedback.text} tone={feedback.tone} className="whitespace-normal" />
+          ) : null}
+        </p>
+        {undoable ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={undo.isPending}
+            aria-busy={undo.isPending || undefined}
+            aria-label={`Son okutmayı geri al: ${undoable.item.tagNumber}`}
+            onClick={() => void undoLatest()}
+          >
+            Son okutmayı geri al
+          </Button>
         ) : null}
-      </p>
+      </div>
       {recent.length > 1 ? (
         <div className="grid gap-1">
           <h4 className="text-sm font-semibold">Son okutmalar</h4>
@@ -439,7 +471,40 @@ function CountItemRow({ count, item }: { count: FixedAssetCount; item: FixedAsse
       {item.result === 'misplaced' && count.status === 'completed' ? (
         <RelocateAction count={count} item={item} />
       ) : null}
+      {item.result !== 'pending' && count.status === 'open' ? (
+        <UndoScanAction count={count} item={item} />
+      ) : null}
     </li>
+  )
+}
+
+/**
+ * Seçili okutmayı geri alma (K-285): beklenen demirbaş okunmamışa döner, listede olmayan
+ * demirbaşın satırı kalkar. Demirbaş kaydı değişmez.
+ */
+function UndoScanAction({ count, item }: { count: FixedAssetCount; item: FixedAssetCountItem }) {
+  const undo = useUndoFixedAssetCountScan()
+  return (
+    <div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={undo.isPending}
+        aria-busy={undo.isPending || undefined}
+        aria-label={`${item.tagNumber} okutmasını geri al`}
+        onClick={() =>
+          void undo
+            .submit({ countId: count.id, itemId: item.id, version: item.version })
+            .then((outcome) => {
+              if (outcome.status === 'success')
+                notify.success(`${item.tagNumber} okutması geri alındı.`)
+            })
+        }
+      >
+        Okutmayı geri al
+      </Button>
+    </div>
   )
 }
 

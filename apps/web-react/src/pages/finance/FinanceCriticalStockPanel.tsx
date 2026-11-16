@@ -5,9 +5,10 @@ import {
 } from '@kampus/react-shared/use-finance-inventory.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
-import { STOCK_CATEGORIES, STOCK_UNIT_LABELS } from '@kampus/school-core/lib/finance-inventory.ts'
+import { STOCK_CATEGORIES } from '@kampus/school-core/lib/finance-inventory.ts'
 import { PURCHASE_ITEMS_MAX } from '@kampus/school-core/lib/finance-purchase-requests.ts'
 import {
+  onOrderWarning,
   openRequestWarning,
   stockPurchaseDraft,
 } from '@kampus/school-core/lib/finance-stock-alerts.ts'
@@ -24,8 +25,10 @@ import { notify } from '@/lib/notify.ts'
 import { PurchaseRequestFormModal } from './FinancePurchaseRequestForms.tsx'
 import {
   criticalQuantityText,
+  onOrderText,
   openRequestText,
   suggestionLine,
+  suggestionText,
   warehouseBreakdown,
 } from './finance-inventory-forms.ts'
 import { requestDefaultsFromDraft, type RequestFormValues } from './finance-procurement-forms.ts'
@@ -51,6 +54,7 @@ type Row = {
   warehouses: string
   suggested: string
   openRequests: string
+  onOrder: string
   lastPrice: string
   row: CriticalStockRow
 }
@@ -62,6 +66,8 @@ type Row = {
  * talep bugünkü talep kurallarıyla açılır (K-203). Seçim sayfalar arasında korunur, en çok 50 kalem.
  * Önerinin kalemleri stok kartına bağlıdır; "Açık talepte" sütunu siparişe dönmemiş taleplerdeki
  * miktarı gösterir, seçilen üründe açık talep varsa uyarı çıkar ama talep engellenmez (ON-339, K-222).
+ * "Siparişte" sütunu açık siparişlerde teslim alınmamış miktarı gösterir; öneri açık talep ve
+ * siparişi düşer, bunlar karşılıyorsa öneri 0'dır ve satır talebe eklenmez (ON-340, K-286).
  */
 export function FinanceCriticalStockPanel({
   canRequest,
@@ -83,7 +89,11 @@ export function FinanceCriticalStockPanel({
   const [selected, setSelected] = useState<ReadonlyMap<string, CriticalStockRow>>(() => new Map())
   const [draft, setDraft] = useState<RequestFormValues | null>(null)
   // Aynı ürün için ikinci talep uyarısı (ON-339, K-222); seçimden türetilir, engellemez.
-  const duplicateWarning = openRequestWarning([...selected.values()])
+  const selectedRows = [...selected.values()]
+  const duplicateWarning =
+    [openRequestWarning(selectedRows), onOrderWarning(selectedRows)]
+      .filter((warning) => warning !== null)
+      .join(' ') || null
   const full = selected.size >= PURCHASE_ITEMS_MAX
   const toggle = (row: CriticalStockRow, checked: boolean) =>
     setSelected((current) => {
@@ -110,8 +120,9 @@ export function FinanceCriticalStockPanel({
         item: `${item.code} · ${item.name}`,
         quantity: criticalQuantityText(item),
         warehouses: warehouseBreakdown(item),
-        suggested: `${String(item.suggestedQuantity)} ${STOCK_UNIT_LABELS[item.unit]}`,
+        suggested: suggestionText(item),
         openRequests: openRequestText(item),
+        onOrder: onOrderText(item),
         lastPrice: item.lastUnitPriceCents === null ? '—' : money(item.lastUnitPriceCents),
         row: item,
       })),
@@ -128,7 +139,8 @@ export function FinanceCriticalStockPanel({
               <Checkbox
                 aria-label={`${row.item} talebe ekle`}
                 checked={selected.has(row.id)}
-                disabled={full && !selected.has(row.id)}
+                // Öneri 0: açık talep ve sipariş ihtiyacı karşılıyor (K-286).
+                disabled={(full || row.row.suggestedQuantity <= 0) && !selected.has(row.id)}
                 onCheckedChange={(next) => toggle(row.row, next === true)}
               />
             ),
@@ -149,6 +161,7 @@ export function FinanceCriticalStockPanel({
     { key: 'warehouses', label: 'Depolar' },
     { key: 'suggested', label: 'Öneri' },
     { key: 'openRequests', label: 'Açık talepte' },
+    { key: 'onOrder', label: 'Siparişte' },
     { key: 'lastPrice', label: 'Son alış (KDV hariç)' },
   ]
   return (
@@ -156,7 +169,8 @@ export function FinanceCriticalStockPanel({
       <div className="grid gap-2 px-6">
         <p className="text-sm text-muted-foreground">
           Toplam miktarı kritik seviyeye inen ürünler, en acil olan önce. Öneri stoku kritik
-          seviyenin iki katına tamamlar; son alış fiyatı en son mal kabulün sipariş fiyatıdır.
+          seviyenin iki katına tamamlar, açık talepte ve siparişte bekleyen miktarı düşer; son alış
+          fiyatı en son mal kabulün sipariş fiyatıdır.
         </p>
         {canRequest ? (
           <div className="flex flex-wrap items-center gap-2">

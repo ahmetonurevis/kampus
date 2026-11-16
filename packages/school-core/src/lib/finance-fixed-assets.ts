@@ -278,12 +278,78 @@ export function fixedAssetDraft(fields: FixedAssetFields, tagNumber: string): Fi
 export interface FixedAssetChecks {
   today: string
   tagTaken: boolean
+  /** Düzeltmede kaydın şimdiki ömrü, yöntemi ve alım günü (yöntem ve ömür kısıtı, K-287). */
+  currentDepreciation?: DepreciationTerms
   /** Düzeltmede kaydın şimdiki durumu; hurdaya ayrılmışsa gövdedeki durum bunu değiştiremez. */
   currentStatus?: FixedAssetStatus
   campusFound?: boolean
   supplierFound?: boolean
   /** `null`: kalem kurumda yok. `link`: kalem yeni bağlanıyor (iptal ve miktar denetlenir). */
   receipt?: { ref: FixedAssetReceiptRef | null; link: boolean }
+}
+
+/** Amortisman kısıtına giren alanlar (K-287). */
+export interface DepreciationTerms {
+  usefulLifeYears: number
+  depreciationMethod: DepreciationMethod
+  acquisitionDate: string
+}
+
+/**
+ * Amortisman ayrılmaya başladı mı (K-287): ilk amortisman yılı alım yılıdır (alım yılı tam yıl,
+ * K-225); o yıl kapanınca (bugünün yılı alım yılından büyükse) ömür ve yöntem kısıtlanır.
+ */
+export const depreciationStarted = (acquisitionDate: string, today: string) =>
+  Number(today.slice(0, 4)) > Number(acquisitionDate.slice(0, 4))
+
+/**
+ * Ekranın kilitleri (K-287): amortisman ayrılmaya başlamışsa faydalı ömür değişmez; normal yöntemden
+ * azalan bakiyelere geçilmez. Azalan bakiyelerden normale geçiş serbesttir (VUK md. 318).
+ */
+export function depreciationChangeLocks(
+  current: DepreciationTerms,
+  today: string,
+): { usefulLifeLocked: boolean; decliningLocked: boolean } {
+  const started = depreciationStarted(current.acquisitionDate, today)
+  return {
+    usefulLifeLocked: started,
+    decliningLocked: started && current.depreciationMethod === 'normal',
+  }
+}
+
+/**
+ * Yöntem ve ömür değişikliği kısıtı (DOM-FIN-088, K-287; VUK md. 318 varsayımı, **doğrulanmalı**
+ * M-31): ilk amortisman yılından (alım yılı) sonra faydalı ömür değişmez (422
+ * `fixed_asset_useful_life_locked`) ve normal yöntemden azalan bakiyelere geçilmez (422
+ * `fixed_asset_depreciation_method_locked`); azalan bakiyelerden normale geçiş serbesttir. Alım
+ * günü aynı düzeltmede değişiyorsa iki yılın küçüğü esastır: alım günü ileri alınarak kısıt
+ * aşılmaz.
+ */
+export function assertDepreciationChange(
+  current: DepreciationTerms,
+  next: DepreciationTerms,
+  today: string,
+): void {
+  const firstDay =
+    next.acquisitionDate < current.acquisitionDate ? next.acquisitionDate : current.acquisitionDate
+  const locks = depreciationChangeLocks({ ...current, acquisitionDate: firstDay }, today)
+  const firstYear = firstDay.slice(0, 4)
+  if (locks.usefulLifeLocked && next.usefulLifeYears !== current.usefulLifeYears)
+    throw ruleError(
+      'fixed_asset_useful_life_locked',
+      `Faydalı ömür yalnız ilk amortisman yılında (${firstYear}) değiştirilebilir; amortisman ayrılmaya başladı.`,
+      'usefulLifeYears',
+    )
+  if (
+    locks.decliningLocked &&
+    current.depreciationMethod === 'normal' &&
+    next.depreciationMethod === 'declining'
+  )
+    throw ruleError(
+      'fixed_asset_depreciation_method_locked',
+      'Amortisman ayrılmaya başlamış demirbaş normal yöntemden azalan bakiyelere geçirilemez (VUK md. 318); azalan bakiyelerden normale geçilebilir.',
+      'depreciationMethod',
+    )
 }
 
 /**
@@ -305,6 +371,8 @@ export function planFixedAsset(draft: FixedAssetDraft, checks: FixedAssetChecks)
       'Alım günü bugünden sonra olamaz.',
       'acquisitionDate',
     )
+  if (checks.currentDepreciation !== undefined)
+    assertDepreciationChange(checks.currentDepreciation, draft, checks.today)
   if (checks.campusFound === false)
     throw ruleError('fixed_asset_campus_not_found', 'Kampüs bulunamadı.', 'campusId')
   if (checks.supplierFound === false)

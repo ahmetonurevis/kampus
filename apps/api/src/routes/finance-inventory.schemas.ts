@@ -26,11 +26,15 @@ const search = z
   .min(2)
   .max(100)
   .optional()
-  .describe('Kodda ve adda arama, Türkçe harf duyarsız')
+  .describe('Kodda, adda ve (kart listesinde) barkodda arama, Türkçe harf duyarsız')
 
 const stockItemRowSchema = z.object({
   id: z.string(),
   code: z.string(),
+  barcode: z
+    .string()
+    .nullable()
+    .describe('Barkod (EAN-8, EAN-13 ya da serbest kod); sayımda önce barkod aranır (K-284)'),
   name: z.string(),
   category: z.enum(STOCK_CATEGORIES),
   unit: z.enum(STOCK_UNITS),
@@ -82,7 +86,9 @@ const criticalStockRowSchema = z.object({
   minQuantity: quantity('Kritik seviye'),
   quantity: quantity('Kurum toplamı: etkin ve pasif bütün depolar (K-200)'),
   shortage: quantity('Kritik seviye eksi toplam, en az sıfır'),
-  suggestedQuantity: quantity('Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201)'),
+  suggestedQuantity: quantity(
+    'Öneri: stoku kritik seviyenin iki katına tamamlar, en az 1 (K-201); açık talepte ve siparişte bekleyen miktar düşülür, bunlar karşılıyorsa 0 (K-286)',
+  ),
   lastUnitPriceCents: z
     .number()
     .int()
@@ -96,6 +102,10 @@ const criticalStockRowSchema = z.object({
     'Açık talepte: karta bağlı kalemi olan taslak, gönderilmiş ya da siparişe dönmemiş onaylı taleplerdeki miktar (ON-339, K-222)',
   ),
   openRequestCount: quantity('Bu miktarın geçtiği açık talep sayısı'),
+  onOrderQuantity: quantity(
+    'Siparişte bekleyen: karta bağlı kalemi olan açık siparişlerde (taslak, gönderildi, kısmen teslim alındı) sipariş eksi kabul edilen miktar (ON-340, K-286)',
+  ),
+  onOrderCount: quantity('Bu miktarın geçtiği açık sipariş sayısı'),
   warehouses: z
     .array(
       z.object({

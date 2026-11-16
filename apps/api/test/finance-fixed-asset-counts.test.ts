@@ -153,6 +153,14 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
       {},
       ifMatch(item.version),
     )
+  const undoScan = (cookie: string | null, count: Json, item: Json, version = item.version) =>
+    call(
+      'POST',
+      `${COUNTS}/${String(count.id)}/items/${String(item.id)}/undo-scan`,
+      cookie,
+      {},
+      ifMatch(version),
+    )
   const itemsOf = async (cookie: string, count: Json, query = '') => {
     const response = await get(`${COUNTS}/${String(count.id)}/items${query}`, cookie)
     assert.equal(response.statusCode, 200, response.body)
@@ -187,6 +195,10 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
       await call('POST', `${url}/items/${randomUUID()}/relocate`, null, {}, ifMatch(1)),
       401,
     )
+    assertError(
+      await call('POST', `${url}/items/${randomUUID()}/undo-scan`, null, {}, ifMatch(1)),
+      401,
+    )
   })
 
   test('DOM-FIN-087: ön büro, öğretmen, veli ve öğrenci 403; sayım değişmez (K-189)', async () => {
@@ -203,6 +215,7 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
       assertError(await scan(cookie, count, { code: 'DB-2026-0001' }), 403)
       assertError(await finish(cookie, count, 'complete'), 403)
       assertError(await finish(cookie, count, 'cancel'), 403)
+      assertError(await undoScan(cookie, count, { id: randomUUID(), version: 1 }), 403)
     }
     const [row] = await countRows(t.id)
     assert.equal(row?.status, 'open')
@@ -218,6 +231,11 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
     assertError(await get(COUNTS, closed.admin), 403, 'module_disabled')
     assertError(await get(PLACES, closed.admin), 403, 'module_disabled')
     assertError(await start(closed.admin, { scopeType: 'institution' }), 403, 'module_disabled')
+    assertError(
+      await undoScan(closed.admin, { id: randomUUID() }, { id: randomUUID(), version: 1 }),
+      403,
+      'module_disabled',
+    )
     assert.equal((await countRows(closed.id)).length, 0)
   })
 
@@ -353,6 +371,72 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
     assert.equal((await itemsOf(t.admin, count, '?q=mikro')).meta.total, 1)
     const [stored] = await countRows(t.id)
     assert.equal(stored?.version, 1, 'okutma sayım sürümünü artırmaz')
+  })
+
+  test('DOM-FIN-087, K-285: okutma geri alınır; beklenen satır okunmamışa döner, listede olmayan kalkar ve yeniden okutulur', async () => {
+    const t = await institution()
+    const { board, shelf } = await stocked(t)
+    const count = ok(await start(t.admin, { scopeType: 'campus', campusId: KADIKOY }), 201)
+    const found = ok(await scan(t.admin, count, { code: board.tagNumber, location: 'Depo' }))
+    const extra = ok(await scan(t.admin, count, { code: shelf.tagNumber, location: LAB }))
+    const foundItem = found.item as Json
+    const extraItem = extra.item as Json
+
+    // Sürüm tutmazsa 409, kayıt değişmez.
+    const before = await itemRows(t.id)
+    assertError(await undoScan(t.admin, count, foundItem, 99), 409, 'version_conflict')
+    assertError(await undoScan(t.admin, count, { id: randomUUID(), version: 1 }), 404, 'not_found')
+    assert.deepEqual(await itemRows(t.id), before)
+
+    const reset = ok(await undoScan(t.admin, count, foundItem))
+    assert.deepEqual(reset, {
+      itemId: foundItem.id,
+      removed: false,
+      summary: { expected: 3, found: 0, misplaced: 1, pending: 3, extra: 1 },
+    })
+    const row = (await itemRows(t.id)).find((item) => item.id === foundItem.id)
+    assert.equal(row?.result, 'pending')
+    assert.equal(row?.scannedAt, null)
+    assert.equal(row?.observedLocation, null)
+    // Okunmamış satırın okutması geri alınamaz.
+    const pendingItem = (await itemsOf(t.admin, count, '?result=pending')).data.find(
+      (item) => item.id === foundItem.id,
+    ) as Json
+    assertError(
+      await undoScan(t.admin, count, pendingItem),
+      422,
+      'fixed_asset_count_item_not_scanned',
+    )
+
+    const removed = ok(await undoScan(t.admin, count, extraItem))
+    assert.equal(removed.removed, true)
+    assert.equal((removed.summary as Json).extra, 0)
+    assert.equal((await itemsOf(t.admin, count, '?inScope=false')).meta.total, 0)
+    // Demirbaş yeniden okutulur; doğru yerde bulunur.
+    const again = ok(await scan(t.admin, count, { code: board.tagNumber, location: LAB }))
+    assert.equal(again.outcome, 'found')
+    const rescanned = ok(
+      await scan(t.admin, count, { code: shelf.tagNumber, location: 'Kütüphane' }),
+    )
+    assert.equal(rescanned.outcome, 'misplaced')
+    assert.equal((rescanned.item as Json).inScope, false)
+
+    // Demirbaş kaydı değişmez; geri alma denetime düşer.
+    const asset = ok(await get(`${ASSETS}/${String(board.id)}`, t.admin))
+    assert.equal(asset.location, board.location)
+    assert.equal(asset.version, board.version)
+    const audit = await db
+      .select({ action: auditLog.action })
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, t.id))
+    assert.equal(audit.filter((a) => a.action === 'fixed_asset_count.scan_undo').length, 2)
+
+    // Kapanmış sayımda geri alma yok.
+    const current = ok(await get(`${COUNTS}/${String(count.id)}`, t.admin))
+    ok(await finish(t.admin, count, 'complete', current.version))
+    const closed = await itemRows(t.id)
+    assertError(await undoScan(t.admin, count, again.item as Json), 422, 'fixed_asset_count_closed')
+    assert.deepEqual(await itemRows(t.id), closed)
   })
 
   test('DOM-FIN-087: okutma reddi: bilinmeyen kod, başka kurumun etiketi, hurda, eksik konum, kapalı sayım; satır değişmez (K-233)', async () => {
@@ -546,6 +630,7 @@ describe('DOM-FIN-087: demirbaş sayımı uçları', () => {
     assertError(await finish(a.admin, bCount, 'complete'), 404)
     assertError(await finish(a.admin, bCount, 'cancel'), 404)
     assertError(await relocate(a.admin, bCount, bItem), 404)
+    assertError(await undoScan(a.admin, bCount, bItem), 404)
     assert.equal((await listOf(a.admin)).meta.total, 0)
     const places = (await get(PLACES, a.admin)).json() as { meta: { total: number } }
     assert.equal(places.meta.total, 4)

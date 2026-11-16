@@ -21,7 +21,10 @@ import {
   type StockMovementType,
   type StockWarehouseRef,
 } from '@kampus/school-core/lib/finance-inventory.ts'
-import { criticalStockRows } from '@kampus/school-core/lib/finance-stock-alerts.ts'
+import {
+  criticalStockRows,
+  suggestedReorderQuantity,
+} from '@kampus/school-core/lib/finance-stock-alerts.ts'
 
 import type { Database } from '../db/client.ts'
 import {
@@ -38,6 +41,7 @@ import {
   insertStockWarehouse,
   listStockMovements,
   loadLastReceiptPrices,
+  loadOnOrderQuantities,
   loadPairMovements,
   loadReceiptOrders,
   loadReceiptStockMovements,
@@ -165,7 +169,7 @@ export async function listStockItemsFor(ctx: ServiceContext, query: StockItemLis
     .map((item) => itemRow(item, totals.get(item.id) ?? 0, chemicals.has(item.id)))
     .filter(
       (row) =>
-        matches(search, row.code, row.name) &&
+        matches(search, row.code, row.name, row.barcode ?? '') &&
         (query.category === undefined || row.category === query.category) &&
         (query.status === undefined || row.isActive === (query.status === 'active')) &&
         (query.critical !== true || (row.isActive && row.isBelowMinimum)) &&
@@ -182,7 +186,8 @@ export interface CriticalStockQuery extends Page {
 /**
  * Kritik stok listesi (DOM-FIN-079, K-200): etkin kartlardan kurum toplamı kritik seviyeye eşit ya
  * da altında olanlar, aciliyet sırasında; depo kırılımı, öneri miktarı (K-201) ve son alış fiyatı
- * (K-202); siparişe dönmemiş açık taleplerdeki miktar (ON-339, K-222). Arama kod ve adda, kategori
+ * (K-202); siparişe dönmemiş açık taleplerdeki miktar (ON-339, K-222) ve açık siparişte bekleyen
+ * miktar (ON-340, K-286); öneri bu ikisini düşer. Arama kod ve adda, kategori
  * süzgeci kartta.
  */
 export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalStockQuery) {
@@ -204,7 +209,7 @@ export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalS
   const shownWarehouses = new Set(page.flatMap((row) => row.warehouses.map((w) => w.warehouseId)))
   const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]))
   const pageIds = page.map((row) => row.item.id)
-  const [campuses, prices, openRequests] = await Promise.all([
+  const [campuses, prices, openRequests, onOrder] = await Promise.all([
     campusRecords(
       ctx.db,
       ctx.institutionId,
@@ -212,11 +217,14 @@ export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalS
     ),
     loadLastReceiptPrices(ctx.db, ctx.institutionId, pageIds),
     loadOpenRequestQuantities(ctx.db, ctx.institutionId, pageIds),
+    loadOnOrderQuantities(ctx.db, ctx.institutionId, pageIds),
   ])
   return {
     items: page.map((row) => {
       const price = prices.get(row.item.id)
       const open = openRequests.get(row.item.id)
+      const ordered = onOrder.get(row.item.id)
+      const pending = (open?.quantity ?? 0) + (ordered?.quantity ?? 0)
       return {
         id: row.item.id,
         code: row.item.code,
@@ -226,12 +234,14 @@ export async function listCriticalStockFor(ctx: ServiceContext, query: CriticalS
         minQuantity: row.minQuantity,
         quantity: row.quantity,
         shortage: row.shortage,
-        suggestedQuantity: row.suggestedQuantity,
+        suggestedQuantity: suggestedReorderQuantity(row.quantity, row.minQuantity, pending),
         lastUnitPriceCents: price?.unitPriceCents ?? null,
         lastReceiptDate: price?.receiptDate ?? null,
         lastOrderNumber: price?.orderNumber ?? null,
         openRequestQuantity: open?.quantity ?? 0,
         openRequestCount: open?.requestCount ?? 0,
+        onOrderQuantity: ordered?.quantity ?? 0,
+        onOrderCount: ordered?.orderCount ?? 0,
         warehouses: row.warehouses.map((balance) => {
           const warehouse = warehouseById.get(balance.warehouseId)
           return {

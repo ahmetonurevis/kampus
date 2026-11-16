@@ -231,6 +231,15 @@ test.describe('DOM-FIN-085: demirbaş ekranı', () => {
     await code.fill(printer.tagNumber)
     await code.press('Enter')
     await expect(status).toContainText('yanlış konumda. Kayıtlı yer: Müdür odası.')
+    // ON-340, K-285: yanlış okutulan terazi geri alınır; tamamlamada bulunamadı sayılır.
+    await code.fill(scale.tagNumber)
+    await code.press('Enter')
+    await expect(status).toContainText(`${scale.tagNumber} · Hassas terazi: bulundu.`)
+    await panel.getByRole('button', { name: `Son okutmayı geri al: ${scale.tagNumber}` }).click()
+    await expect(page.getByText(`${scale.tagNumber} okutması geri alındı.`)).toBeVisible()
+    await expect(
+      panel.getByRole('button', { name: `Son okutmayı geri al: ${scale.tagNumber}` }),
+    ).toHaveCount(0)
     await code.fill('YOK-0001')
     await code.press('Enter')
     await expect(

@@ -8,6 +8,7 @@ import {
   planFixedAssetCountClose,
   planFixedAssetCountRelocate,
   planFixedAssetCountScan,
+  planFixedAssetCountScanUndo,
   planFixedAssetCountStart,
   type FixedAssetCountScanChecks,
   type FixedAssetCountStartChecks,
@@ -28,6 +29,7 @@ import {
   loadCountableAssets,
   markItemRelocated,
   markItemScanned,
+  undoItemScan,
   type CountItemQuery,
   type CountQuery,
   type StoredCount,
@@ -323,6 +325,58 @@ export const cancelFixedAssetCountCommand = (
   expectedVersion: number,
   idempotency: IdempotencyRequest | null,
 ) => closeFixedAssetCountCommand(ctx, countId, 'cancelled', expectedVersion, idempotency)
+
+/**
+ * Okutmayı geri alma (K-285): açık sayımda okunmuş satır; beklenen satır okunmamışa döner, listede
+ * olmayan demirbaşın satırı arşivlenir ve demirbaş yeniden okutulabilir. Demirbaş kaydı değişmez.
+ * Okutmanın izi satırdır; geri alma denetim kaydına alan adlarıyla yazılır. `If-Match` satırın
+ * sürümüdür (okutma yanıtındaki `item.version`).
+ */
+export function undoFixedAssetCountScanCommand(
+  ctx: ServiceContext,
+  countId: string,
+  itemId: string,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: ITEM_ENTITY, id: itemId }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'fixed_asset_count.scan_undo',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const count = await countOf(tx, ctx, countId)
+        const item = await findCountItem(tx, ctx.institutionId, countId, { id: itemId })
+        if (item === null) throw new NotFoundError()
+        if (item.version !== expectedVersion) throw new ConflictError()
+        return { run: () => planFixedAssetCountScanUndo(count, item) }
+      },
+      after: async (tx, action) => {
+        const undone = await undoItemScan(tx, ctx.institutionId, {
+          id: itemId,
+          expectedVersion,
+          action,
+          now: ctx.now,
+        })
+        if (!undone) throw new ConflictError()
+        await auditWork(
+          tx,
+          ctx,
+          'fixed_asset_count.scan_undo',
+          entity,
+          action === 'reset' ? ['result', 'observedLocation', 'scannedAt'] : ['archivedAt'],
+        )
+        const count = await countOf(tx, ctx, countId)
+        body = { data: { itemId, removed: action === 'remove', summary: count.summary } }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
 
 /**
  * Konum düzeltmesi (K-235): tamamlanmış sayımda yanlış konumdaki demirbaşın kampüsü ve konumu

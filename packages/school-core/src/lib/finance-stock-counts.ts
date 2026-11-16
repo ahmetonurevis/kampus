@@ -21,8 +21,8 @@ import {
 /**
  * Stok sayımı ve fark raporu (docs/domain/finans.md DOM-FIN-081; ON-231). Yönetici bir depoda sayım
  * başlatır; o anki sistem miktarları (iptal edilmemiş hareketlerin toplamı, `DOM-FIN-078`) sayımın
- * satırlarına **anlık görüntü** olarak yazılır. Sayım sürerken kart kodu (barkod okuyucu klavye gibi
- * yazar, K-229) okutulur ya da miktar elle girilir. Fark raporu kart başına sistem, sayım sırasındaki
+ * satırlarına **anlık görüntü** olarak yazılır. Sayım sürerken kartın barkodu ya da kodu (barkod
+ * okuyucu klavye gibi yazar, K-229, K-284) okutulur ya da miktar elle girilir. Fark raporu kart başına sistem, sayım sırasındaki
  * hareket, beklenen, sayılan ve fark miktarını, son alış fiyatı varsa fark tutarını verir; sayılmayan
  * kalemler ayrı listelenir ve değişmez (K-230). Tamamlama farkları tek işlemde `adjustment_in` /
  * `adjustment_out` düzeltme hareketleriyle yazar; iptal edilen sayım hareket yazmaz. Tamamlanan ya da
@@ -53,6 +53,17 @@ export const STOCK_COUNT_STATUS_LABELS = {
 
 export const STOCK_COUNT_CODE_MAX = 64
 
+/**
+ * Sayım girişi türü (K-285): `scan` okutmayla eklenen miktar, `set` elle yazılan satır miktarı
+ * (boşsa "sayılmadı"). Yalnız okutma geri alınır.
+ */
+export const STOCK_COUNT_ENTRY_KINDS = ['scan', 'set'] as const
+export type StockCountEntryKind = (typeof STOCK_COUNT_ENTRY_KINDS)[number]
+export const STOCK_COUNT_ENTRY_KIND_LABELS = {
+  scan: 'Okutma',
+  set: 'Elle miktar',
+} as const satisfies Record<StockCountEntryKind, string>
+
 // --- Şemalar -------------------------------------------------------------------------------------
 
 export const startStockCountSchema = z.strictObject({
@@ -72,12 +83,12 @@ const countQuantity = z
   .int('Miktar tam sayı olmalıdır.')
   .max(STOCK_QUANTITY_MAX, 'Miktar çok büyük.')
 
-/** Okutma: kart kodu (büyük harfe çevrilir) ve eklenecek miktar (varsayılan 1). */
+/** Okutma: kartın barkodu ya da kodu (büyük harfe çevrilir) ve eklenecek miktar (varsayılan 1). */
 export const stockCountScanSchema = z.strictObject({
   code: z
-    .string('Kart kodunu okutun ya da yazın.')
+    .string('Barkodu okutun ya da kart kodunu yazın.')
     .trim()
-    .min(1, 'Kart kodunu okutun ya da yazın.')
+    .min(1, 'Barkodu okutun ya da kart kodunu yazın.')
     .max(STOCK_COUNT_CODE_MAX, `Kod en fazla ${String(STOCK_COUNT_CODE_MAX)} karakter olabilir.`)
     .toUpperCase(),
   quantity: countQuantity.min(1, 'Eklenecek miktar en az 1 olmalıdır.').default(1),
@@ -307,37 +318,55 @@ export interface CountedLine {
   isNew: boolean
 }
 
-const itemByCode = (items: Iterable<StockItemRef>, code: string) => {
-  for (const item of items) if (item.code === code) return item
-  return undefined
+/** Okutmada aranan kart: barkodu (K-284) varsa onunla da bulunur. */
+export type ScannableStockItem = StockItemRef & { barcode?: string | null }
+
+/**
+ * Okunan kodun kartı (K-229, K-284): önce barkod, sonra kart kodu. Barkod ve kod kurumda
+ * çakışamadığı için (`planStockItem`) sıra yalnız eski verideki çakışmada belirleyicidir.
+ */
+export function findStockItemByScan<T extends ScannableStockItem>(
+  items: Iterable<T>,
+  code: string,
+): T | undefined {
+  const list = [...items]
+  return list.find((item) => item.barcode === code) ?? list.find((item) => item.code === code)
 }
 
 /**
- * Okutma (K-229): kart kodu (barkod okuyucu kodu klavye gibi yazar; ayrı barkod alanı yok) kartı
- * bulur ve satırın sayılan miktarına `quantity` (varsayılan 1) eklenir. Kod bulunmazsa 422
+ * Okutma (K-229, K-284): okunan kod önce kartın barkoduyla, sonra kart koduyla eşleşir; satırın
+ * sayılan miktarına `quantity` (varsayılan 1) eklenir. Kod bulunmazsa 422
  * `stock_count_item_not_found`; pasif kart sayılmaz. Toplam 1.000.000'u aşamaz.
  */
 export function planStockCountScan(
   count: Pick<StockCountRef, 'status'>,
   input: unknown,
   context: {
-    items: Iterable<StockItemRef>
+    items: Iterable<ScannableStockItem>
     lines: ReadonlyMap<string, Pick<StockCountLine, 'countedQuantity'>>
   },
-): CountedLine & { countedQuantity: number; item: StockItemRef } {
+): CountedLine & { countedQuantity: number; scannedQuantity: number; item: StockItemRef } {
   const data = stockCountScanSchema.parse(input)
   assertOpen(count)
-  const found = itemByCode(context.items, data.code)
+  const found = findStockItemByScan(context.items, data.code)
   if (found === undefined)
-    throw ruleError('stock_count_item_not_found', `${data.code} koduyla stok kartı bulunamadı.`, [
-      'code',
-    ])
+    throw ruleError(
+      'stock_count_item_not_found',
+      `${data.code} barkodu ya da koduyla stok kartı bulunamadı.`,
+      ['code'],
+    )
   const item = assertItem(found, ['code'])
   const line = context.lines.get(item.id)
   const countedQuantity = (line?.countedQuantity ?? 0) + data.quantity
   if (countedQuantity > STOCK_QUANTITY_MAX)
     throw ruleError('stock_count_quantity_too_large', 'Sayılan miktar çok büyük.', ['quantity'])
-  return { itemId: item.id, countedQuantity, isNew: line === undefined, item }
+  return {
+    itemId: item.id,
+    countedQuantity,
+    scannedQuantity: data.quantity,
+    isNew: line === undefined,
+    item,
+  }
 }
 
 /**
@@ -362,6 +391,81 @@ export function planStockCountLineSet(
     if (data.countedQuantity !== null) assertItem(item, ['itemId'])
   }
   return { itemId: data.itemId, countedQuantity: data.countedQuantity, isNew: line === undefined }
+}
+
+/** Sayım girişi (K-285): satırın sayılan miktarını sırayla değiştiren okutma ya da elle miktar. */
+export interface StockCountEntry {
+  id: string
+  itemId: string
+  /** Sayım içinde artan sıra; girişler bu sırayla uygulanır. */
+  sequence: number
+  kind: StockCountEntryKind
+  /** Okutmada eklenen miktar (≥ 1); elle girişte yeni miktar, `null` "sayılmadı". */
+  quantity: number | null
+  enteredAt: string
+  enteredByUserId: string
+  undoneAt: string | null
+}
+
+/** Satırın girişlerden hesaplanan sayım durumu; `countedQuantity` boşsa kalem sayılmamıştır. */
+export interface CountedState {
+  countedQuantity: number | null
+  countedAt: string | null
+  countedByUserId: string | null
+}
+
+/**
+ * Satırın sayılan miktarı (K-285): geri alınmamış girişler sırayla uygulanır; okutma miktarı ekler,
+ * elle giriş miktarı yazar. Son sayım anı ve sayan son geçerli giriştir; miktar boşsa sayım anı da
+ * boştur (K-231 beklenen miktarı bu ana göre hesaplanır).
+ */
+export function countedStateFromEntries(entries: readonly StockCountEntry[]): CountedState {
+  let state: CountedState = { countedQuantity: null, countedAt: null, countedByUserId: null }
+  for (const entry of [...entries].sort((a, b) => a.sequence - b.sequence)) {
+    if (entry.undoneAt !== null) continue
+    const countedQuantity =
+      entry.kind === 'scan' ? (state.countedQuantity ?? 0) + (entry.quantity ?? 0) : entry.quantity
+    state =
+      countedQuantity === null
+        ? { countedQuantity: null, countedAt: null, countedByUserId: null }
+        : { countedQuantity, countedAt: entry.enteredAt, countedByUserId: entry.enteredByUserId }
+  }
+  return state
+}
+
+/**
+ * Okutmayı geri alma (K-285): yalnız açık sayımda ve yalnız okutma (elle yazılan miktar satırdan
+ * düzeltilir, 422 `stock_count_entry_not_scan`); geri alınmış okutma 422
+ * `stock_count_scan_already_undone`. Okutmadan sonra aynı kartın miktarı elle yazıldıysa okutma o
+ * miktarın içinde kalmamıştır, geri alınmaz (422 `stock_count_scan_superseded`). Satırın yeni
+ * durumu kalan girişlerden hesaplanır; okutma silinmez, geri alındı izi taşır.
+ */
+export function planStockCountScanUndo(
+  count: Pick<StockCountRef, 'status'>,
+  entry: StockCountEntry,
+  /** Aynı kartın bu sayımdaki bütün girişleri (geri alınanlar dahil). */
+  itemEntries: readonly StockCountEntry[],
+): CountedState {
+  assertOpen(count)
+  if (entry.kind !== 'scan')
+    throw ruleError(
+      'stock_count_entry_not_scan',
+      'Yalnız okutma geri alınır; elle yazılan miktarı satırdan düzeltin.',
+    )
+  if (entry.undoneAt !== null)
+    throw ruleError('stock_count_scan_already_undone', 'Bu okutma zaten geri alındı.')
+  if (
+    itemEntries.some(
+      (other) => other.kind === 'set' && other.undoneAt === null && other.sequence > entry.sequence,
+    )
+  )
+    throw ruleError(
+      'stock_count_scan_superseded',
+      'Bu okutmadan sonra kartın miktarı elle yazıldı; okutma geri alınamaz, miktarı satırdan düzeltin.',
+    )
+  return countedStateFromEntries(
+    itemEntries.filter((other) => other.id !== entry.id && other.itemId === entry.itemId),
+  )
 }
 
 export interface StockCountAdjustment {
@@ -424,6 +528,20 @@ export function planStockCountCancel(count: Pick<StockCountRef, 'status'>, input
   const { reason } = cancelStockCountSchema.parse(input)
   assertOpen(count)
   return { reason }
+}
+
+/** Girişin geri alınabilir olup olmadığı (ekran düğmesi; sunucu `planStockCountScanUndo` ile denetler). */
+export function canUndoStockCountEntry(
+  count: Pick<StockCountRef, 'status'>,
+  entry: Pick<StockCountEntry, 'kind' | 'undoneAt' | 'sequence' | 'itemId'>,
+  lastManualSequence: number | null,
+): boolean {
+  return (
+    count.status === 'open' &&
+    entry.kind === 'scan' &&
+    entry.undoneAt === null &&
+    (lastManualSequence === null || lastManualSequence < entry.sequence)
+  )
 }
 
 /** Rolün sayımda yapabileceği işlemler (ekran düğmeleri; sunucu aynı kuralları denetler). */

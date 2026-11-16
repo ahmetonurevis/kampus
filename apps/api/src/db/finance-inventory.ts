@@ -25,6 +25,8 @@ import {
   type StockWarehouseFields,
 } from '@kampus/school-core/lib/finance-inventory.ts'
 
+import { OPEN_PURCHASE_ORDER_STATUSES } from '@kampus/school-core/lib/finance-stock-alerts.ts'
+
 import type { Database } from './client.ts'
 import { stockItems, stockMovements, stockWarehouses } from './schema/finance-inventory.ts'
 import { purchaseOrderItems, purchaseOrders } from './schema/finance-purchase-orders.ts'
@@ -39,6 +41,7 @@ import { purchaseReceiptItems, purchaseReceipts } from './schema/finance-purchas
 export interface StoredStockItem {
   id: string
   code: string
+  barcode: string | null
   name: string
   category: StockCategory
   unit: StockUnit
@@ -70,6 +73,7 @@ export interface StoredStockMovement extends CancellableMovement {
 const ITEM_COLUMNS = {
   id: stockItems.id,
   code: stockItems.code,
+  barcode: stockItems.barcode,
   name: stockItems.name,
   category: stockItems.category,
   unit: stockItems.unit,
@@ -577,4 +581,82 @@ export async function loadLastReceiptPrices(
   const prices = new Map<string, LastReceiptPrice>()
   for (const { itemId, ...price } of rows) if (!prices.has(itemId)) prices.set(itemId, price)
   return prices
+}
+
+/**
+ * Stok kartlarının siparişte bekleyen miktarı (ON-340, K-286): karta bağlı kalemi olan açık
+ * siparişlerde (taslak, gönderildi, kısmen teslim alındı) sipariş miktarı eksi iptal edilmemiş
+ * kabullerde kabul edilen miktar (kalem başına en az 0) ve bu kalemlerin sipariş sayısı. Sipariş
+ * kalemi talepten kart birimiyle gelir (ON-339), miktar kart biriminde toplanır.
+ */
+export async function loadOnOrderQuantities(
+  db: Database,
+  institutionId: string,
+  stockItemIds: readonly string[],
+): Promise<Map<string, { quantity: number; orderCount: number }>> {
+  if (stockItemIds.length === 0) return new Map()
+  const accepted = db
+    .select({
+      orderItemId: purchaseReceiptItems.orderItemId,
+      quantity: sql<number>`sum(${purchaseReceiptItems.acceptedQuantity})::int`.as('accepted'),
+    })
+    .from(purchaseReceiptItems)
+    .innerJoin(
+      purchaseReceipts,
+      and(
+        eq(purchaseReceipts.institutionId, purchaseReceiptItems.institutionId),
+        eq(purchaseReceipts.id, purchaseReceiptItems.receiptId),
+      ),
+    )
+    .where(
+      and(
+        eq(purchaseReceiptItems.institutionId, institutionId),
+        isNull(purchaseReceiptItems.archivedAt),
+        isNull(purchaseReceipts.archivedAt),
+        isNull(purchaseReceipts.cancelledAt),
+      ),
+    )
+    .groupBy(purchaseReceiptItems.orderItemId)
+    .as('accepted_items')
+  const rows = await db
+    .select({
+      stockItemId: purchaseOrderItems.stockItemId,
+      orderId: purchaseOrderItems.orderId,
+      ordered: purchaseOrderItems.quantity,
+      accepted: sql<number | null>`${accepted.quantity}`,
+    })
+    .from(purchaseOrderItems)
+    .innerJoin(
+      purchaseOrders,
+      and(
+        eq(purchaseOrders.institutionId, purchaseOrderItems.institutionId),
+        eq(purchaseOrders.id, purchaseOrderItems.orderId),
+      ),
+    )
+    .leftJoin(accepted, eq(accepted.orderItemId, purchaseOrderItems.id))
+    .where(
+      and(
+        eq(purchaseOrderItems.institutionId, institutionId),
+        inArray(purchaseOrderItems.stockItemId, [...new Set(stockItemIds)]),
+        isNull(purchaseOrderItems.archivedAt),
+        isNull(purchaseOrders.archivedAt),
+        inArray(purchaseOrders.status, [...OPEN_PURCHASE_ORDER_STATUSES]),
+      ),
+    )
+  const totals = new Map<string, { quantity: number; orders: Set<string> }>()
+  for (const row of rows) {
+    if (row.stockItemId === null) continue
+    const pending = Math.max(0, row.ordered - Number(row.accepted ?? 0))
+    if (pending === 0) continue
+    const entry = totals.get(row.stockItemId) ?? { quantity: 0, orders: new Set<string>() }
+    entry.quantity += pending
+    entry.orders.add(row.orderId)
+    totals.set(row.stockItemId, entry)
+  }
+  return new Map(
+    [...totals].map(([itemId, entry]) => [
+      itemId,
+      { quantity: entry.quantity, orderCount: entry.orders.size },
+    ]),
+  )
 }

@@ -15,12 +15,17 @@ import {
   type DepreciationRow,
 } from '../packages/school-core/src/lib/finance-fixed-asset-depreciation.ts'
 import {
+  assertDepreciationChange,
   DEFAULT_USEFUL_LIFE,
+  depreciationChangeLocks,
   FIXED_ASSET_CATEGORIES,
   fixedAssetDraft,
+  planFixedAsset,
   fixedAssetSchema,
   updateFixedAssetSchema,
 } from '../packages/school-core/src/lib/finance-fixed-assets.ts'
+
+import { isDomainError } from './support/domain-error.ts'
 
 // Amortisman ön hesabı (DOM-FIN-088; ON-238, IST-142). Yönetim raporudur; defter kaydı yok.
 
@@ -340,4 +345,102 @@ test('DOM-FIN-088: demirbaş kaydı ömrü ve yöntemi alır; ömür boşsa kate
   }
   assert.equal(DEFAULT_USEFUL_LIFE.it, 4)
   assert.equal(DEFAULT_USEFUL_LIFE.vehicle, 5)
+})
+
+const TERMS = {
+  usefulLifeYears: 5,
+  depreciationMethod: 'normal' as const,
+  acquisitionDate: '2025-03-10',
+}
+
+test('DOM-FIN-088, K-287: alım yılında ömür ve yöntem serbest; sonra ömür değişmez, normalden azalana geçilmez', () => {
+  // Alım yılı (ilk amortisman yılı) içinde her değişiklik serbest.
+  const sameYear = { ...TERMS, acquisitionDate: '2026-02-01' }
+  assert.doesNotThrow(() =>
+    assertDepreciationChange(
+      sameYear,
+      { ...sameYear, usefulLifeYears: 8, depreciationMethod: 'declining' },
+      '2026-12-31',
+    ),
+  )
+  assert.deepEqual(depreciationChangeLocks(sameYear, '2026-12-31'), {
+    usefulLifeLocked: false,
+    decliningLocked: false,
+  })
+  // Ertesi yıl: ömür ve normalden azalana geçiş kilitli.
+  assert.deepEqual(depreciationChangeLocks(TERMS, '2026-01-01'), {
+    usefulLifeLocked: true,
+    decliningLocked: true,
+  })
+  assert.throws(
+    () => assertDepreciationChange(TERMS, { ...TERMS, usefulLifeYears: 4 }, '2026-01-01'),
+    isDomainError('fixed_asset_useful_life_locked', 'rule'),
+  )
+  assert.throws(
+    () =>
+      assertDepreciationChange(TERMS, { ...TERMS, depreciationMethod: 'declining' }, '2026-01-01'),
+    isDomainError('fixed_asset_depreciation_method_locked', 'rule'),
+  )
+  // Azalan bakiyelerden normale geçiş serbest (VUK md. 318); değişmeyen değer denetlenmez.
+  const declining = { ...TERMS, depreciationMethod: 'declining' as const }
+  assert.deepEqual(depreciationChangeLocks(declining, '2026-10-06').decliningLocked, false)
+  assert.doesNotThrow(() =>
+    assertDepreciationChange(declining, { ...TERMS, depreciationMethod: 'normal' }, '2026-10-06'),
+  )
+  assert.doesNotThrow(() => assertDepreciationChange(TERMS, TERMS, '2030-01-01'))
+  // Alım günü ileri alınarak kısıt aşılmaz; geriye alınan alım günü kısıtı başlatır.
+  assert.throws(
+    () =>
+      assertDepreciationChange(
+        TERMS,
+        { ...TERMS, acquisitionDate: '2026-05-01', usefulLifeYears: 3 },
+        '2026-10-06',
+      ),
+    isDomainError('fixed_asset_useful_life_locked', 'rule'),
+  )
+  assert.throws(
+    () =>
+      assertDepreciationChange(
+        sameYear,
+        { ...sameYear, acquisitionDate: '2025-12-31', usefulLifeYears: 3 },
+        '2026-10-06',
+      ),
+    isDomainError('fixed_asset_useful_life_locked', 'rule'),
+  )
+})
+
+test('DOM-FIN-088, K-287: düzeltme kuralı mevcut ömür ve yöntemle denetler; yeni kayıtta kısıt yok', () => {
+  const fields = fixedAssetSchema.parse({
+    name: 'Projeksiyon',
+    category: 'audiovisual',
+    location: 'Konferans salonu',
+    acquisitionValueCents: 1_000_000,
+    acquisitionDate: '2024-09-01',
+  })
+  const draft = fixedAssetDraft(fields, 'DB-2024-0001')
+  const checks = { today: '2026-10-06', tagTaken: false }
+  assert.equal(
+    planFixedAsset({ ...draft, depreciationMethod: 'declining' }, checks).depreciationMethod,
+    'declining',
+  )
+  const current = {
+    usefulLifeYears: draft.usefulLifeYears,
+    depreciationMethod: draft.depreciationMethod,
+    acquisitionDate: draft.acquisitionDate,
+  }
+  assert.throws(
+    () =>
+      planFixedAsset(
+        { ...draft, depreciationMethod: 'declining' },
+        { ...checks, currentDepreciation: current },
+      ),
+    isDomainError('fixed_asset_depreciation_method_locked', 'rule'),
+  )
+  assert.equal(
+    planFixedAsset(
+      { ...draft, name: 'Projeksiyon cihazı' },
+      { ...checks, currentDepreciation: current },
+    ).name,
+    'Projeksiyon cihazı',
+  )
 })

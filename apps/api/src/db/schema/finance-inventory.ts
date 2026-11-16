@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import {
+  STOCK_BARCODE_MAX,
   STOCK_CANCEL_REASON_MAX,
   STOCK_CATEGORIES,
   STOCK_ENTRY_REASONS,
@@ -37,8 +38,9 @@ import { purchaseReceiptItems, purchaseReceipts } from './finance-purchase-recei
 const n = (value: number) => sql.raw(String(value))
 
 /**
- * Stok kartı (DOM-FIN-077; ON-228): ürünün kodu, adı, kategorisi, birimi ve kritik seviyesi. Miktar
- * saklanmaz, hareketlerden türetilir. Kod kurumda tekil; kart silinmez, `is_active` ile pasifleşir.
+ * Stok kartı (DOM-FIN-077; ON-228): ürünün kodu, isteğe bağlı barkodu (K-284), adı, kategorisi,
+ * birimi ve kritik seviyesi. Miktar saklanmaz, hareketlerden türetilir. Kod ve barkod kurumda
+ * tekil; kart silinmez, `is_active` ile pasifleşir.
  */
 export const stockItems = pgTable(
   'stock_items',
@@ -48,6 +50,7 @@ export const stockItems = pgTable(
       .references(() => institutions.id),
     id: uuid('id').notNull(),
     code: text('code').notNull(),
+    barcode: text('barcode'),
     name: text('name').notNull(),
     category: text('category').$type<StockCategory>().notNull(),
     unit: text('unit').$type<StockUnit>().notNull(),
@@ -62,6 +65,10 @@ export const stockItems = pgTable(
       sql`${table.code} ~ '^[A-Z0-9][A-Z0-9._-]{0,19}$'
         and char_length(${table.name}) between 2 and ${n(STOCK_ITEM_NAME_MAX)}`,
     ),
+    check(
+      'stock_items_barcode_check',
+      sql`${table.barcode} is null or ${table.barcode} ~ '^[A-Z0-9][A-Z0-9._/+-]{0,${n(STOCK_BARCODE_MAX - 1)}}$'`,
+    ),
     check('stock_items_category_check', oneOf(table.category, STOCK_CATEGORIES)),
     check('stock_items_unit_check', oneOf(table.unit, STOCK_UNITS)),
     check(
@@ -71,6 +78,9 @@ export const stockItems = pgTable(
     uniqueIndex('stock_items_code_key')
       .on(table.institutionId, table.code)
       .where(sql`${table.archivedAt} is null`),
+    uniqueIndex('stock_items_barcode_key')
+      .on(table.institutionId, table.barcode)
+      .where(sql`${table.barcode} is not null and ${table.archivedAt} is null`),
   ],
 )
 

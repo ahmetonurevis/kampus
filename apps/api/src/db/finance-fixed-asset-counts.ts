@@ -449,6 +449,40 @@ export async function insertScannedItem(
   })
 }
 
+/**
+ * Okutmayı geri alma (K-285): beklenen satır okunmamışa döner, listede olmayan satır arşivlenir.
+ * Sürüm tutmazsa ya da satır okunmamışsa `false` (409).
+ */
+export async function undoItemScan(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; expectedVersion: number; action: 'reset' | 'remove'; now: Date },
+): Promise<boolean> {
+  const changes =
+    input.action === 'reset'
+      ? {
+          result: 'pending' as const,
+          observedCampusId: null,
+          observedLocation: null,
+          scannedAt: null,
+          scannedByUserId: null,
+        }
+      : { archivedAt: input.now }
+  const rows = await tx
+    .update(fixedAssetCountItems)
+    .set({ ...changes, updatedAt: input.now, version: input.expectedVersion + 1 })
+    .where(
+      and(
+        itemsOf(institutionId),
+        eq(fixedAssetCountItems.id, input.id),
+        eq(fixedAssetCountItems.version, input.expectedVersion),
+        ne(fixedAssetCountItems.result, 'pending'),
+      ),
+    )
+    .returning({ id: fixedAssetCountItems.id })
+  return rows.length === 1
+}
+
 /** Tamamlama ya da iptal; sürüm tutmazsa ya da sayım açık değilse `false` (409). */
 export async function closeCount(
   tx: Database,

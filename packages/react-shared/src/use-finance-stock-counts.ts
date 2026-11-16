@@ -24,6 +24,9 @@ export type StockCountDetail =
   operations['getStockCount']['responses'][200]['content']['application/json']['data']
 export type StockCountLine =
   operations['scanStockCount']['responses'][200]['content']['application/json']['data']
+export type StockCountEntry =
+  operations['listStockCountEntries']['responses'][200]['content']['application/json']['data'][number]
+export type StockCountEntryQuery = Query<'listStockCountEntries'>
 
 export const STOCK_COUNT_CHANGED_MESSAGE =
   'Sayım başka biri tarafından değiştirildi. Sayım güncellendi.'
@@ -50,6 +53,18 @@ export function useStockCount(countId: string) {
     request: (client, signal) =>
       client.GET('/api/v1/finance/stock-counts/{countId}', {
         params: { path: { countId } },
+        signal,
+      }),
+  })
+}
+
+/** Sayım girişleri (okutma geçmişi, K-285), en yeni önce. */
+export function useStockCountEntries(countId: string, query: StockCountEntryQuery) {
+  return useFinanceListQuery({
+    key: [...COUNTS_KEY, 'entries', countId, query],
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/stock-counts/{countId}/entries', {
+        params: { path: { countId }, query },
         signal,
       }),
   })
@@ -131,6 +146,22 @@ export function useCancelStockCount() {
     invalidates: [INVENTORY_KEY],
     version: (input) => input.version,
     messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+/** Okutmayı geri alma (K-285): girişin eklediği miktar satırdan düşülür. */
+export function useUndoStockCountScan() {
+  return useApiCommand({
+    request: (client, input: { countId: string; entryId: string }, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/stock-counts/{countId}/entries/{entryId}/undo', {
+        params: {
+          path: { countId: input.countId, entryId: input.entryId },
+          header: keyOnly(headers),
+        },
+        body: {},
+      }),
+    invalidates: [COUNTS_KEY],
     exclusive: true,
   })
 }

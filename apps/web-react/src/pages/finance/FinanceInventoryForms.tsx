@@ -172,6 +172,27 @@ export function StockItemFormModal({
         <FormField id="stok-kod" label="Kod" error={errors.code}>
           {(control) => <Input {...control} {...form.register('code')} disabled={busy} />}
         </FormField>
+        <FormField
+          id="stok-barkod"
+          label="Barkod (isteğe bağlı)"
+          error={errors.barcode}
+          description="Ürünün barkodunu okutun ya da yazın; sayımda önce barkod aranır."
+        >
+          {(control) => (
+            <Input
+              {...control}
+              {...form.register('barcode')}
+              autoComplete="off"
+              spellCheck={false}
+              inputMode="text"
+              disabled={busy}
+              // Okuyucu kodun sonunda Enter gönderir; form bu alandan gönderilmez.
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.preventDefault()
+              }}
+            />
+          )}
+        </FormField>
         <FormField id="stok-ad" label="Ürün adı" error={errors.name}>
           {(control) => <Input {...control} {...form.register('name')} disabled={busy} />}
         </FormField>

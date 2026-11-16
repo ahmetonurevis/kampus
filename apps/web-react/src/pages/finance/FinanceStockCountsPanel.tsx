@@ -10,12 +10,16 @@ import {
   useSetStockCountQuantity,
   useStartStockCount,
   useStockCount,
+  useStockCountEntries,
   useStockCounts,
+  useUndoStockCountScan,
   type StockCountDetail,
+  type StockCountEntry,
   type StockCountRow,
 } from '@kampus/react-shared/use-finance-stock-counts.ts'
 import { STOCK_UNIT_LABELS, type StockUnit } from '@kampus/school-core/lib/finance-inventory.ts'
 import {
+  STOCK_COUNT_ENTRY_KIND_LABELS,
   STOCK_COUNT_STATUS_LABELS,
   STOCK_COUNT_STATUSES,
   stockCountActions,
@@ -27,6 +31,7 @@ import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
+import { Pagination } from '@/components/Pagination.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -416,6 +421,7 @@ function CountScreen({ countId, onBack }: { countId: string; onBack: () => void 
         </div>
       </section>
       {count.actions.count ? <ScanForm countId={count.id} /> : null}
+      <ScanHistory countId={count.id} />
       <Totals count={count} />
       {hasMovementsDuringCount(count) ? (
         <p role="note" className="rounded-lg border px-4 py-3 text-sm">
@@ -582,9 +588,27 @@ function Totals({ count }: { count: StockCountDetail }) {
  * Okutma formu (K-229): kod alanı açılışta ve her okutmadan sonra odaktadır. Gönderim sürerken
  * Enter yok sayılır ve yazılan kod alanda kalır; böylece hızlı okutmada kod kaybolmaz.
  */
+/** Son okutma: geri alma düğmesi bu girişi geri alır (K-285). */
+interface LastScan {
+  entryId: string
+  label: string
+}
+
+const lineText = (line: {
+  itemName: string
+  itemCode: string
+  countedQuantity: number | null
+  unit: StockUnit
+}) =>
+  line.countedQuantity === null
+    ? `${line.itemName} (${line.itemCode}) sayılmadı.`
+    : `${line.itemName} (${line.itemCode}): ${String(line.countedQuantity)} ${STOCK_UNIT_LABELS[line.unit]} sayıldı.`
+
 function ScanForm({ countId }: { countId: string }) {
   const scan = useScanStockCount()
+  const undo = useUndoStockCountScan()
   const [last, setLast] = useState('')
+  const [lastScan, setLastScan] = useState<LastScan | null>(null)
   const form = useForm<ScanFormValues>({
     resolver: zodResolver(scanFormSchema),
     defaultValues: scanDefaults(),
@@ -593,16 +617,32 @@ function ScanForm({ countId }: { countId: string }) {
   const onSubmit = form.handleSubmit(async (values) => {
     if (scan.isPending) return
     form.setValue('code', '')
-    const outcome = await scan.submit({ countId, ...scanBody(values) })
+    const body = scanBody(values)
+    const outcome = await scan.submit({ countId, ...body })
     if (outcome.status === 'success') {
       const line = outcome.data.data
-      setLast(
-        `${line.itemName} (${line.itemCode}): ${String(line.countedQuantity ?? 0)} ${STOCK_UNIT_LABELS[line.unit]} sayıldı.`,
+      setLast(lineText(line))
+      setLastScan(
+        line.entryId === null
+          ? null
+          : {
+              entryId: line.entryId,
+              label: `${line.itemCode} +${String(body.quantity)}`,
+            },
       )
       form.setValue('quantity', '1')
     } else if (outcome.status === 'failed') setLast(outcome.error.message)
     form.setFocus('code')
   })
+  const undoLast = async () => {
+    if (lastScan === null) return
+    const outcome = await undo.submit({ countId, entryId: lastScan.entryId })
+    if (outcome.status === 'success') {
+      setLast(`Okutma geri alındı. ${lineText(outcome.data.data)}`)
+      setLastScan(null)
+    } else if (outcome.status === 'failed') setLast(outcome.error.message)
+    form.setFocus('code')
+  }
   return (
     <section aria-labelledby="sayim-okut" className="grid gap-2 rounded-lg border px-4 py-3">
       <h3 id="sayim-okut" className="text-base font-semibold">
@@ -618,7 +658,7 @@ function ScanForm({ countId }: { countId: string }) {
           id="sayim-kod"
           label="Kart kodu ya da barkod"
           error={errors.code}
-          description="Barkod okuyucuyla okutun ya da kodu yazıp Enter'a basın."
+          description="Barkod okuyucuyla okutun ya da kodu yazıp Enter'a basın; önce kartın barkodu aranır."
         >
           {(control) => (
             <Input
@@ -637,11 +677,111 @@ function ScanForm({ countId }: { countId: string }) {
           Ekle
         </Button>
       </form>
-      <p role="status" aria-live="polite" className="min-h-6 text-sm">
-        {last}
-      </p>
+      <div className="flex min-h-6 flex-wrap items-center gap-3">
+        <p role="status" aria-live="polite" className="text-sm">
+          {last}
+        </p>
+        {lastScan === null ? null : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={undo.isPending}
+            aria-busy={undo.isPending || undefined}
+            aria-label={`Son okutmayı geri al: ${lastScan.label}`}
+            onClick={() => void undoLast()}
+          >
+            Son okutmayı geri al
+          </Button>
+        )}
+      </div>
     </section>
   )
+}
+
+const ENTRY_PAGE_SIZES = [10, 25, 50] as const
+
+/**
+ * Okutma geçmişi (K-285): okutmalar ve elle yazılan miktarlar, en yeni önce. Açık sayımda
+ * geri alınabilen okutmanın satırında "Geri al" düğmesi vardır; elle yazılan miktar satırdan
+ * düzeltilir.
+ */
+function ScanHistory({ countId }: { countId: string }) {
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(ENTRY_PAGE_SIZES[0])
+  const entries = useStockCountEntries(countId, { page, pageSize })
+  const undo = useUndoStockCountScan()
+  const total = entries.data?.meta.total ?? 0
+  const run = async (entry: StockCountEntry) => {
+    const outcome = await undo.submit({ countId, entryId: entry.id })
+    if (outcome.status === 'success')
+      notify.success(`Okutma geri alındı. ${lineText(outcome.data.data)}`)
+  }
+  return (
+    <section aria-labelledby="sayim-gecmisi" className="grid gap-2">
+      <h3 id="sayim-gecmisi" className="text-base font-semibold">
+        Okutma geçmişi
+      </h3>
+      {entries.error ? (
+        <QueryError error={entries.error} onRetry={() => void entries.refetch()} />
+      ) : !entries.data ? (
+        <SummaryLoading />
+      ) : entries.data.data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Henüz okutma ya da miktar girişi yok.</p>
+      ) : (
+        <ul aria-label="Okutma geçmişi" className="grid gap-1 text-sm">
+          {entries.data.data.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
+            >
+              <span className="flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
+                <span className={entry.undoneAt === null ? '' : 'line-through'}>
+                  {`${timeText(entry.enteredAt)} · ${entry.itemCode} · ${entry.itemName} · ${entryQuantity(entry)}`}
+                </span>
+                <span className="text-muted-foreground">
+                  {`${STOCK_COUNT_ENTRY_KIND_LABELS[entry.kind]}, ${entry.enteredByName ?? '—'}`}
+                </span>
+                {entry.undoneAt === null ? null : <StatusBadge text="Geri alındı" tone="gray" />}
+              </span>
+              {entry.canUndo ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={undo.isPending}
+                  aria-busy={undo.isPending || undefined}
+                  aria-label={`${entry.itemCode} okutmasını geri al (${timeText(entry.enteredAt)})`}
+                  onClick={() => void run(entry)}
+                >
+                  Geri al
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {total > ENTRY_PAGE_SIZES[0] ? (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          sizes={ENTRY_PAGE_SIZES}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
+        />
+      ) : null}
+    </section>
+  )
+}
+
+const entryQuantity = (entry: StockCountEntry) => {
+  const unit = STOCK_UNIT_LABELS[entry.unit]
+  if (entry.kind === 'scan') return `+${String(entry.quantity ?? 0)} ${unit}`
+  return entry.quantity === null ? 'sayılmadı' : `= ${String(entry.quantity)} ${unit}`
 }
 
 function QuantityModal({

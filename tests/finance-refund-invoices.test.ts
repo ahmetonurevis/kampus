@@ -55,8 +55,11 @@ test('DOM-FIN-096, K-292: iptal penceresi e-Arşivde 7, e-Faturada 8 takvim gün
   assert.equal(cancelWindowEndsOn({ date: '2026-10-01', type: 'e_invoice' }), '2026-10-09')
   assert.equal(cancelWindowEndsOn({ date: '2026-12-28', type: 'e_archive' }), '2027-01-04')
   assert.equal(daysBetween('2026-10-01', '2026-10-08'), 7)
-  const suggest = (today: string, amountCents = ORIGINAL.totalCents, type = ORIGINAL.type) =>
-    suggestRefundDocumentKind({ original: { ...ORIGINAL, type }, amountCents, today })
+  const suggest = (
+    today: string,
+    amountCents: number = ORIGINAL.totalCents,
+    type: 'e_archive' | 'e_invoice' = ORIGINAL.type,
+  ) => suggestRefundDocumentKind({ original: { ...ORIGINAL, type }, amountCents, today })
   assert.equal(suggest('2026-10-08'), 'cancellation')
   assert.equal(suggest('2026-10-09'), 'return_invoice')
   assert.equal(suggest('2026-10-09', ORIGINAL.totalCents, 'e_invoice'), 'cancellation')

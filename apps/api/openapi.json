@@ -177659,6 +177659,1704 @@
         }
       }
     },
+    "/api/v1/finance/payroll-parameters": {
+      "get": {
+        "operationId": "getPayrollParameterYear",
+        "summary": "Bordro parametrelerinin yıllık tablosu",
+        "tags": [
+          "finance-payroll"
+        ],
+        "description": "Yılın dönemleri (DOM-FIN-100): yıl içinde başlayan setler ve 1 Ocak'ta önceki yıldan süren set (`carriedOver`). Her dönem platform varsayılanı (`origin: platform`, değerler doğrulanmalı, M-40) ya da kurumun kopyasıdır (`institution`); aynı başlangıçta kurum kopyası platformun yerini alır (K-309). Net asgari ücret ve SGK taban/tavan tutarı `derived` içinde hesaplanır, saklanmaz (K-310). Tablo kısa ve yıl başına sınırlı olduğundan sayfalanmaz. Roller: `yonetici`, `onburo` (K-309). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2020,
+              "maximum": 2099
+            },
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "description": "Tablo yılı"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "year": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "availableYears": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Set bulunan yıllar, artan"
+                        },
+                        "periods": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Kurum setinde kayıt kimliği; platform setinde `platform-<başlangıç>`"
+                              },
+                              "origin": {
+                                "type": "string",
+                                "enum": [
+                                  "platform",
+                                  "institution"
+                                ],
+                                "description": "`platform` varsayılan, `institution` kurumun kopyası"
+                              },
+                              "overridesPlatform": {
+                                "type": "boolean",
+                                "description": "Kurum kopyası aynı başlangıçlı platform setinin yerini aldı mı"
+                              },
+                              "version": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Kurum setinde `If-Match` sürümü; platformda boş"
+                              },
+                              "effectiveFrom": {
+                                "type": "string",
+                                "description": "Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`)"
+                              },
+                              "minimumWageGrossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Aylık brüt asgari ücret, kuruş"
+                              },
+                              "incomeTaxBrackets": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "lowerBoundCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dilim alt sınırı: yıllık kümülatif matrah, kuruş"
+                                    },
+                                    "rateBasisPoints": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dilim oranı, on binde bir"
+                                    }
+                                  },
+                                  "required": [
+                                    "lowerBoundCents",
+                                    "rateBasisPoints"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız"
+                              },
+                              "sgkEmployeeRateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işçi payı, on binde bir"
+                              },
+                              "sgkEmployerRateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işveren payı (indirimsiz), on binde bir"
+                              },
+                              "sgkEmployerIncentiveBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşveren prim indirimi (5510 md. 81/ı), on binde bir"
+                              },
+                              "unemploymentEmployeeRateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işçi payı, on binde bir"
+                              },
+                              "unemploymentEmployerRateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işveren payı, on binde bir"
+                              },
+                              "sgkFloorMultiplierBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK taban çarpanı, on binde bir (10.000 = 1 kat)"
+                              },
+                              "sgkCeilingMultiplierBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK tavan çarpanı, on binde bir (90.000 = 9 kat)"
+                              },
+                              "stampTaxRatePer100k": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Damga vergisi oranı, yüz binde bir (759 = binde 7,59)"
+                              },
+                              "minimumWageIncomeTaxExempt": {
+                                "type": "boolean",
+                                "description": "Asgari ücret gelir vergisi istisnası"
+                              },
+                              "minimumWageStampTaxExempt": {
+                                "type": "boolean",
+                                "description": "Asgari ücret damga vergisi istisnası"
+                              },
+                              "severanceCeilingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Aylık kıdem tazminatı tavanı, kuruş"
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "Değerlerin kaynağı"
+                              },
+                              "unverifiedFields": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "effectiveFrom",
+                                    "minimumWageGrossCents",
+                                    "incomeTaxBrackets",
+                                    "sgkEmployeeRateBasisPoints",
+                                    "sgkEmployerRateBasisPoints",
+                                    "sgkEmployerIncentiveBasisPoints",
+                                    "unemploymentEmployeeRateBasisPoints",
+                                    "unemploymentEmployerRateBasisPoints",
+                                    "sgkFloorMultiplierBasisPoints",
+                                    "sgkCeilingMultiplierBasisPoints",
+                                    "stampTaxRatePer100k",
+                                    "minimumWageIncomeTaxExempt",
+                                    "minimumWageStampTaxExempt",
+                                    "severanceCeilingCents",
+                                    "source"
+                                  ]
+                                },
+                                "description": "Platform setinde ayrıca doğrulanması gereken alanlar (M-40)"
+                              },
+                              "derived": {
+                                "type": "object",
+                                "properties": {
+                                  "minimumWageEmployeeSgkCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "minimumWageEmployeeUnemploymentCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "minimumWageIncomeTaxCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İstisna açıksa 0"
+                                  },
+                                  "minimumWageStampTaxCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İstisna açıksa 0"
+                                  },
+                                  "minimumWageNetCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Net asgari ücret (saklanmaz, K-310)"
+                                  },
+                                  "sgkFloorCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Prime esas kazanç tabanı, kuruş"
+                                  },
+                                  "sgkCeilingCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Prime esas kazanç tavanı, kuruş"
+                                  },
+                                  "sgkEmployerNetRateBasisPoints": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İndirimli işveren payı"
+                                  }
+                                },
+                                "required": [
+                                  "minimumWageEmployeeSgkCents",
+                                  "minimumWageEmployeeUnemploymentCents",
+                                  "minimumWageIncomeTaxCents",
+                                  "minimumWageStampTaxCents",
+                                  "minimumWageNetCents",
+                                  "sgkFloorCents",
+                                  "sgkCeilingCents",
+                                  "sgkEmployerNetRateBasisPoints"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Setten hesaplanan değerler; saklanmaz"
+                              },
+                              "periodStart": {
+                                "type": "string",
+                                "description": "Dönemin yıl içindeki ilk günü"
+                              },
+                              "periodEnd": {
+                                "type": "string",
+                                "description": "Dönemin yıl içindeki son günü"
+                              },
+                              "carriedOver": {
+                                "type": "boolean",
+                                "description": "Set önceki yıldan sürüyor (yılın başında yeni set yok)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "origin",
+                              "overridesPlatform",
+                              "version",
+                              "effectiveFrom",
+                              "minimumWageGrossCents",
+                              "incomeTaxBrackets",
+                              "sgkEmployeeRateBasisPoints",
+                              "sgkEmployerRateBasisPoints",
+                              "sgkEmployerIncentiveBasisPoints",
+                              "unemploymentEmployeeRateBasisPoints",
+                              "unemploymentEmployerRateBasisPoints",
+                              "sgkFloorMultiplierBasisPoints",
+                              "sgkCeilingMultiplierBasisPoints",
+                              "stampTaxRatePer100k",
+                              "minimumWageIncomeTaxExempt",
+                              "minimumWageStampTaxExempt",
+                              "severanceCeilingCents",
+                              "source",
+                              "unverifiedFields",
+                              "derived",
+                              "periodStart",
+                              "periodEnd",
+                              "carriedOver"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "year",
+                        "availableYears",
+                        "periods"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPayrollParameterSet",
+        "summary": "Kurum bordro parametre setini ekle",
+        "tags": [
+          "finance-payroll"
+        ],
+        "description": "Kurumun kendi setini yazar (platform setinin kopyası ya da yeni dönem, ör. yıl ortası asgari ücret artışı). Bütün alanlar zorunludur (K-310). Yürürlük başlangıcı ayın ilk günü, 2020–2099 (K-311); dilimler 0'dan başlar, alt sınırlar ve oranlar kesin artan, oran 0–10.000 (400). İşveren indirimi işveren payını, taban çarpanı tavanı aşamaz (400). Aynı başlangıçta kurumun etkin seti varsa 409 `payroll_parameters_exist`. `Idempotency-Key` alabilir. Rol: `yonetici` (K-309). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "effectiveFrom": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "minimumWageGrossCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000
+                  },
+                  "incomeTaxBrackets": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "lowerBoundCents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000000000
+                        },
+                        "rateBasisPoints": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        }
+                      },
+                      "required": [
+                        "lowerBoundCents",
+                        "rateBasisPoints"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "sgkEmployeeRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "sgkEmployerRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "sgkEmployerIncentiveBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "unemploymentEmployeeRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "unemploymentEmployerRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "sgkFloorMultiplierBasisPoints": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200000
+                  },
+                  "sgkCeilingMultiplierBasisPoints": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200000
+                  },
+                  "stampTaxRatePer100k": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "minimumWageIncomeTaxExempt": {
+                    "type": "boolean"
+                  },
+                  "minimumWageStampTaxExempt": {
+                    "type": "boolean"
+                  },
+                  "severanceCeilingCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "effectiveFrom",
+                  "minimumWageGrossCents",
+                  "incomeTaxBrackets",
+                  "sgkEmployeeRateBasisPoints",
+                  "sgkEmployerRateBasisPoints",
+                  "sgkEmployerIncentiveBasisPoints",
+                  "unemploymentEmployeeRateBasisPoints",
+                  "unemploymentEmployerRateBasisPoints",
+                  "sgkFloorMultiplierBasisPoints",
+                  "sgkCeilingMultiplierBasisPoints",
+                  "stampTaxRatePer100k",
+                  "minimumWageIncomeTaxExempt",
+                  "minimumWageStampTaxExempt",
+                  "severanceCeilingCents",
+                  "source"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "description": "Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`)"
+                        },
+                        "minimumWageGrossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aylık brüt asgari ücret, kuruş"
+                        },
+                        "incomeTaxBrackets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "lowerBoundCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dilim alt sınırı: yıllık kümülatif matrah, kuruş"
+                              },
+                              "rateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dilim oranı, on binde bir"
+                              }
+                            },
+                            "required": [
+                              "lowerBoundCents",
+                              "rateBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız"
+                        },
+                        "sgkEmployeeRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK işçi payı, on binde bir"
+                        },
+                        "sgkEmployerRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK işveren payı (indirimsiz), on binde bir"
+                        },
+                        "sgkEmployerIncentiveBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşveren prim indirimi (5510 md. 81/ı), on binde bir"
+                        },
+                        "unemploymentEmployeeRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşsizlik sigortası işçi payı, on binde bir"
+                        },
+                        "unemploymentEmployerRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşsizlik sigortası işveren payı, on binde bir"
+                        },
+                        "sgkFloorMultiplierBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK taban çarpanı, on binde bir (10.000 = 1 kat)"
+                        },
+                        "sgkCeilingMultiplierBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK tavan çarpanı, on binde bir (90.000 = 9 kat)"
+                        },
+                        "stampTaxRatePer100k": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Damga vergisi oranı, yüz binde bir (759 = binde 7,59)"
+                        },
+                        "minimumWageIncomeTaxExempt": {
+                          "type": "boolean",
+                          "description": "Asgari ücret gelir vergisi istisnası"
+                        },
+                        "minimumWageStampTaxExempt": {
+                          "type": "boolean",
+                          "description": "Asgari ücret damga vergisi istisnası"
+                        },
+                        "severanceCeilingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aylık kıdem tazminatı tavanı, kuruş"
+                        },
+                        "source": {
+                          "type": "string",
+                          "description": "Değerlerin kaynağı"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "effectiveFrom",
+                        "minimumWageGrossCents",
+                        "incomeTaxBrackets",
+                        "sgkEmployeeRateBasisPoints",
+                        "sgkEmployerRateBasisPoints",
+                        "sgkEmployerIncentiveBasisPoints",
+                        "unemploymentEmployeeRateBasisPoints",
+                        "unemploymentEmployerRateBasisPoints",
+                        "sgkFloorMultiplierBasisPoints",
+                        "sgkCeilingMultiplierBasisPoints",
+                        "stampTaxRatePer100k",
+                        "minimumWageIncomeTaxExempt",
+                        "minimumWageStampTaxExempt",
+                        "severanceCeilingCents",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/payroll-parameters/effective": {
+      "get": {
+        "operationId": "getEffectivePayrollParameters",
+        "summary": "Günde geçerli bordro parametreleri",
+        "tags": [
+          "finance-payroll"
+        ],
+        "description": "Yürürlük başlangıcı güne eşit ya da önce olan en geç set (DOM-FIN-100). Günün yılı için set yoksa son bilinen set döner ve `stale: true` olur. Tablonun ilk setinden önceki gün 422 `payroll_parameters_missing`. Roller: `yonetici`, `onburo` (K-309). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "description": "Geçerli setin sorulduğu gün (`YYYY-MM-DD`)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "stale": {
+                          "type": "boolean",
+                          "description": "Günün yılı için set yok; son bilinen set kullanıldı, güncelliğini doğrulayın"
+                        },
+                        "id": {
+                          "type": "string",
+                          "description": "Kurum setinde kayıt kimliği; platform setinde `platform-<başlangıç>`"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "platform",
+                            "institution"
+                          ],
+                          "description": "`platform` varsayılan, `institution` kurumun kopyası"
+                        },
+                        "overridesPlatform": {
+                          "type": "boolean",
+                          "description": "Kurum kopyası aynı başlangıçlı platform setinin yerini aldı mı"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kurum setinde `If-Match` sürümü; platformda boş"
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "description": "Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`)"
+                        },
+                        "minimumWageGrossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aylık brüt asgari ücret, kuruş"
+                        },
+                        "incomeTaxBrackets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "lowerBoundCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dilim alt sınırı: yıllık kümülatif matrah, kuruş"
+                              },
+                              "rateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dilim oranı, on binde bir"
+                              }
+                            },
+                            "required": [
+                              "lowerBoundCents",
+                              "rateBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız"
+                        },
+                        "sgkEmployeeRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK işçi payı, on binde bir"
+                        },
+                        "sgkEmployerRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK işveren payı (indirimsiz), on binde bir"
+                        },
+                        "sgkEmployerIncentiveBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşveren prim indirimi (5510 md. 81/ı), on binde bir"
+                        },
+                        "unemploymentEmployeeRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşsizlik sigortası işçi payı, on binde bir"
+                        },
+                        "unemploymentEmployerRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşsizlik sigortası işveren payı, on binde bir"
+                        },
+                        "sgkFloorMultiplierBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK taban çarpanı, on binde bir (10.000 = 1 kat)"
+                        },
+                        "sgkCeilingMultiplierBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK tavan çarpanı, on binde bir (90.000 = 9 kat)"
+                        },
+                        "stampTaxRatePer100k": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Damga vergisi oranı, yüz binde bir (759 = binde 7,59)"
+                        },
+                        "minimumWageIncomeTaxExempt": {
+                          "type": "boolean",
+                          "description": "Asgari ücret gelir vergisi istisnası"
+                        },
+                        "minimumWageStampTaxExempt": {
+                          "type": "boolean",
+                          "description": "Asgari ücret damga vergisi istisnası"
+                        },
+                        "severanceCeilingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aylık kıdem tazminatı tavanı, kuruş"
+                        },
+                        "source": {
+                          "type": "string",
+                          "description": "Değerlerin kaynağı"
+                        },
+                        "unverifiedFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "effectiveFrom",
+                              "minimumWageGrossCents",
+                              "incomeTaxBrackets",
+                              "sgkEmployeeRateBasisPoints",
+                              "sgkEmployerRateBasisPoints",
+                              "sgkEmployerIncentiveBasisPoints",
+                              "unemploymentEmployeeRateBasisPoints",
+                              "unemploymentEmployerRateBasisPoints",
+                              "sgkFloorMultiplierBasisPoints",
+                              "sgkCeilingMultiplierBasisPoints",
+                              "stampTaxRatePer100k",
+                              "minimumWageIncomeTaxExempt",
+                              "minimumWageStampTaxExempt",
+                              "severanceCeilingCents",
+                              "source"
+                            ]
+                          },
+                          "description": "Platform setinde ayrıca doğrulanması gereken alanlar (M-40)"
+                        },
+                        "derived": {
+                          "type": "object",
+                          "properties": {
+                            "minimumWageEmployeeSgkCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "minimumWageEmployeeUnemploymentCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "minimumWageIncomeTaxCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İstisna açıksa 0"
+                            },
+                            "minimumWageStampTaxCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İstisna açıksa 0"
+                            },
+                            "minimumWageNetCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Net asgari ücret (saklanmaz, K-310)"
+                            },
+                            "sgkFloorCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Prime esas kazanç tabanı, kuruş"
+                            },
+                            "sgkCeilingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Prime esas kazanç tavanı, kuruş"
+                            },
+                            "sgkEmployerNetRateBasisPoints": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İndirimli işveren payı"
+                            }
+                          },
+                          "required": [
+                            "minimumWageEmployeeSgkCents",
+                            "minimumWageEmployeeUnemploymentCents",
+                            "minimumWageIncomeTaxCents",
+                            "minimumWageStampTaxCents",
+                            "minimumWageNetCents",
+                            "sgkFloorCents",
+                            "sgkCeilingCents",
+                            "sgkEmployerNetRateBasisPoints"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Setten hesaplanan değerler; saklanmaz"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "stale",
+                        "id",
+                        "origin",
+                        "overridesPlatform",
+                        "version",
+                        "effectiveFrom",
+                        "minimumWageGrossCents",
+                        "incomeTaxBrackets",
+                        "sgkEmployeeRateBasisPoints",
+                        "sgkEmployerRateBasisPoints",
+                        "sgkEmployerIncentiveBasisPoints",
+                        "unemploymentEmployeeRateBasisPoints",
+                        "unemploymentEmployerRateBasisPoints",
+                        "sgkFloorMultiplierBasisPoints",
+                        "sgkCeilingMultiplierBasisPoints",
+                        "stampTaxRatePer100k",
+                        "minimumWageIncomeTaxExempt",
+                        "minimumWageStampTaxExempt",
+                        "severanceCeilingCents",
+                        "source",
+                        "unverifiedFields",
+                        "derived"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/payroll-parameters/{setId}": {
+      "patch": {
+        "operationId": "updatePayrollParameterSet",
+        "summary": "Kurum bordro parametre setini düzelt",
+        "tags": [
+          "finance-payroll"
+        ],
+        "description": "Kısmi düzeltme; dilimler bütün olarak yazılır, birleşik set yeniden doğrulanır (400). Başka setin başlangıcı 409 `payroll_parameters_exist`; olmayan, arşivli ya da başka kurumun seti 404; `If-Match` zorunlu, sürüm tutmazsa 409 `version_conflict`. Platform seti düzeltilmez: aynı başlangıçla kurum kopyası eklenir. Rol: `yonetici` (K-309). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "effectiveFrom": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "minimumWageGrossCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000
+                  },
+                  "incomeTaxBrackets": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "lowerBoundCents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000000000
+                        },
+                        "rateBasisPoints": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        }
+                      },
+                      "required": [
+                        "lowerBoundCents",
+                        "rateBasisPoints"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "sgkEmployeeRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "sgkEmployerRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "sgkEmployerIncentiveBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "unemploymentEmployeeRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "unemploymentEmployerRateBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "sgkFloorMultiplierBasisPoints": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200000
+                  },
+                  "sgkCeilingMultiplierBasisPoints": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200000
+                  },
+                  "stampTaxRatePer100k": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "minimumWageIncomeTaxExempt": {
+                    "type": "boolean"
+                  },
+                  "minimumWageStampTaxExempt": {
+                    "type": "boolean"
+                  },
+                  "severanceCeilingCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "setId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "description": "Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`)"
+                        },
+                        "minimumWageGrossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aylık brüt asgari ücret, kuruş"
+                        },
+                        "incomeTaxBrackets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "lowerBoundCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dilim alt sınırı: yıllık kümülatif matrah, kuruş"
+                              },
+                              "rateBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dilim oranı, on binde bir"
+                              }
+                            },
+                            "required": [
+                              "lowerBoundCents",
+                              "rateBasisPoints"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız"
+                        },
+                        "sgkEmployeeRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK işçi payı, on binde bir"
+                        },
+                        "sgkEmployerRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK işveren payı (indirimsiz), on binde bir"
+                        },
+                        "sgkEmployerIncentiveBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşveren prim indirimi (5510 md. 81/ı), on binde bir"
+                        },
+                        "unemploymentEmployeeRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşsizlik sigortası işçi payı, on binde bir"
+                        },
+                        "unemploymentEmployerRateBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İşsizlik sigortası işveren payı, on binde bir"
+                        },
+                        "sgkFloorMultiplierBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK taban çarpanı, on binde bir (10.000 = 1 kat)"
+                        },
+                        "sgkCeilingMultiplierBasisPoints": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "SGK tavan çarpanı, on binde bir (90.000 = 9 kat)"
+                        },
+                        "stampTaxRatePer100k": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Damga vergisi oranı, yüz binde bir (759 = binde 7,59)"
+                        },
+                        "minimumWageIncomeTaxExempt": {
+                          "type": "boolean",
+                          "description": "Asgari ücret gelir vergisi istisnası"
+                        },
+                        "minimumWageStampTaxExempt": {
+                          "type": "boolean",
+                          "description": "Asgari ücret damga vergisi istisnası"
+                        },
+                        "severanceCeilingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Aylık kıdem tazminatı tavanı, kuruş"
+                        },
+                        "source": {
+                          "type": "string",
+                          "description": "Değerlerin kaynağı"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "effectiveFrom",
+                        "minimumWageGrossCents",
+                        "incomeTaxBrackets",
+                        "sgkEmployeeRateBasisPoints",
+                        "sgkEmployerRateBasisPoints",
+                        "sgkEmployerIncentiveBasisPoints",
+                        "unemploymentEmployeeRateBasisPoints",
+                        "unemploymentEmployerRateBasisPoints",
+                        "sgkFloorMultiplierBasisPoints",
+                        "sgkCeilingMultiplierBasisPoints",
+                        "stampTaxRatePer100k",
+                        "minimumWageIncomeTaxExempt",
+                        "minimumWageStampTaxExempt",
+                        "severanceCeilingCents",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archivePayrollParameterSet",
+        "summary": "Kurum bordro parametre setini arşivle",
+        "tags": [
+          "finance-payroll"
+        ],
+        "description": "Arşivli set çözüme girmez; aynı başlangıçlı platform seti varsa yeniden geçerli olur (K-309). Olmayan ya da başka kurumun seti 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (K-309). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "setId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archivedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

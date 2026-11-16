@@ -54,6 +54,7 @@ import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
+import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
@@ -530,6 +531,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceMaintenancePlanRoutes(app)
   registerFinanceBudgetDraftRoutes(app)
   registerFinanceRefundInvoiceRoutes(app)
+  registerFinancePayrollParameterRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

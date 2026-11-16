@@ -736,6 +736,13 @@
       "when": 1794825546275,
       "tag": "0104_refund_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1794831455951,
+      "tag": "0105_create_payroll_parameters",
+      "breakpoints": true
     }
   ]
 }

@@ -47,7 +47,7 @@ const ADVANCE = {
   firstMonth: '2026-11',
 } as const
 const advanceTerms = (
-  overrides: Partial<StoredAdvanceTerms> = {},
+  overrides: Partial<StoredAdvanceTerms & { id: string }> = {},
 ): StoredAdvanceTerms & {
   id: string
 } => ({

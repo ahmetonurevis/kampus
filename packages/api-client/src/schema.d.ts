@@ -7372,6 +7372,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/refund-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İade faturaları ve iptal istekleri
+         * @description Vazgeçilmemiş belgeler, en yeni önce (DOM-FIN-096). `status`, `kind` ve `withdrawalId` ile süzülür; sayfalıdır, bilinmeyen parametre 400. `Accept: text/csv` ile entegratör portalına elle giriş için dosya iner (sayfa yok sayılır, en çok 5000 belge; aşarsa 422 `refund_invoice_export_too_large`): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; alıcının kimliği ve IBAN'ı yazılmaz (K-295); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.refund_invoice_export`. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listRefundInvoices"];
+        put?: never;
+        /**
+         * İade faturası ya da iptal isteği taslağı aç
+         * @description Ödenmiş ayrılış iadesi (DOM-FIN-041) için asıl faturaya bağlı taslak (DOM-FIN-096). Asıl faturanın GİB numarası (16 karakter; yıl fatura gününün yılı), tarihi, türü (`e_archive`, `e_invoice`), KDV dahil tutarı ve KDV oranı (on binde birlik: 0, 100, 1000, 2000) elle girilir. `kind` verilmezse önerilen tür yazılır: iade asıl faturanın tamamıysa ve bugün iptal penceresindeyse (e-Arşiv 7, e-Fatura 8 gün; doğrulanmalı) iptal isteği, değilse iade faturası (K-292). İade faturası her zaman seçilir; iptal isteği kısmi iadede 422 `refund_invoice_cancel_partial`, pencere dışında 422 `refund_invoice_cancel_window_closed`. Tutar iadeyi (422 `refund_invoice_amount_exceeds_refund`) ve asıl faturayı (422 `refund_invoice_amount_exceeds_invoice`) aşamaz; KDV asıl faturanın oranıyla ayrılır (K-293). İade ödenmemişse 422 `refund_invoice_refund_not_paid`, iade yoksa 422 `refund_invoice_no_refund`; asıl fatura bugünden sonra 422 `refund_invoice_original_date_future`, iade ödemesinden sonra 422 `refund_invoice_original_after_refund`. Aynı iadeye vazgeçilmemiş ikinci belge 409 `refund_invoice_exists`. Olmayan ya da başka kurumun ayrılışı 404; gövdedeki `institutionId` 400. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. 201 ve `Location`. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createRefundInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İade belgesi ayrıntısı
+         * @description Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getRefundInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Belgeyi gönderime hazır işaretle
+         * @description Taslak gönderime hazır olur (K-294); taslak değilse 422 `refund_invoice_not_draft`. İptal isteğinde pencere yeniden denetlenir: süre geçtiyse 422 `refund_invoice_cancel_window_closed` (belgeden vazgeçilip iade faturası açılır). Entegratör bağlantısı olmadığından belge hazırda kalır; CSV ile dışa aktarılır. `If-Match` belgenin sürümüdür; tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["markRefundInvoiceReady"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Entegratördeki sonucu işle
+         * @description Gönderime hazır belgenin sonucu (K-294): iade faturası `documentNumber` (GİB numarası; yıl işlem gününün yılı, asıl faturanınkinden farklı) ile `sent`, iptal isteği numarasız `cancelled` olur. Hazır değilse 422 `refund_invoice_not_ready`; gün bugünden sonra 422 `refund_invoice_completed_date_future`, asıl faturadan önce 422 `refund_invoice_completed_before_original`; iptal pencere dışında 422 `refund_invoice_cancel_window_closed`; iade faturasında numara yoksa 422 `refund_invoice_number_required`, iptalde numara 422 `refund_invoice_number_not_applicable`; numara kurumda kayıtlıysa 409 `refund_invoice_number_exists`. Sonucu işlenen belge değişmez. `If-Match` belgenin sürümüdür; tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["completeRefundInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Belgeden vazgeç
+         * @description Taslak ya da hazır belge gerekçeyle (5–500 karakter) arşivlenir; aynı iade için yeni belge açılabilir (K-294). Sonucu işlenmiş belge 422 `refund_invoice_completed`. Yanıt arşivlenen belgenin son hâlidir. `If-Match` belgenin sürümüdür; tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["discardRefundInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -78369,6 +78473,989 @@ export interface operations {
                                     afterCents: number | null;
                                 }[] | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRefundInvoices: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Durum */
+                status?: "draft" | "ready" | "sent" | "cancelled";
+                /** @description Belge türü */
+                kind?: "cancellation" | "return_invoice";
+                /** @description Ayrılış iadesi */
+                withdrawalId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin dayandığı ayrılış iadesi */
+                            withdrawalId: string;
+                            studentName: string | null;
+                            /** @description Ayrılış günü `YYYY-MM-DD` */
+                            withdrawalDate: string;
+                            /** @description İade tutarı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin ödendiği gün */
+                            refundPaidDate: string | null;
+                            /**
+                             * @description `cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)
+                             * @enum {string}
+                             */
+                            kind: "cancellation" | "return_invoice";
+                            /**
+                             * @description `draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)
+                             * @enum {string}
+                             */
+                            status: "draft" | "ready" | "sent" | "cancelled";
+                            /** @description Kampüs dışında kesilmiş asıl fatura; elle girilir */
+                            originalInvoice: {
+                                /** @description GİB numarası */
+                                number: string;
+                                date: string;
+                                /** @enum {string} */
+                                type: "e_archive" | "e_invoice";
+                                /** @description KDV dahil tutar, kuruş */
+                                totalCents: number;
+                                vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                            };
+                            /** @description İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8 */
+                            cancelWindowEndsOn: string;
+                            /** @description Belge tutarı (KDV dahil), kuruş */
+                            amountCents: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description Belge asıl faturanın tamamından az mı (kısmi iade) */
+                            partial: boolean;
+                            note: string | null;
+                            /** @description Gönderilen iade faturasının numarası */
+                            documentNumber: string | null;
+                            /** @description Sonucun işlendiği gün */
+                            completedDate: string | null;
+                            createdAt: string;
+                            readyAt: string | null;
+                            completedAt: string | null;
+                            /** @description Oturumdaki kullanıcının yapabilecekleri */
+                            actions: {
+                                ready: boolean;
+                                complete: boolean;
+                                discard: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createRefundInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    withdrawalId: string;
+                    /** @enum {string} */
+                    kind?: "cancellation" | "return_invoice";
+                    originalInvoice: {
+                        number: string;
+                        date: string;
+                        /** @enum {string} */
+                        type: "e_archive" | "e_invoice";
+                        totalCents: number;
+                        /** @enum {number} */
+                        vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                    };
+                    amountCents: number;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin dayandığı ayrılış iadesi */
+                            withdrawalId: string;
+                            studentName: string | null;
+                            /** @description Ayrılış günü `YYYY-MM-DD` */
+                            withdrawalDate: string;
+                            /** @description İade tutarı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin ödendiği gün */
+                            refundPaidDate: string | null;
+                            /**
+                             * @description `cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)
+                             * @enum {string}
+                             */
+                            kind: "cancellation" | "return_invoice";
+                            /**
+                             * @description `draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)
+                             * @enum {string}
+                             */
+                            status: "draft" | "ready" | "sent" | "cancelled";
+                            /** @description Kampüs dışında kesilmiş asıl fatura; elle girilir */
+                            originalInvoice: {
+                                /** @description GİB numarası */
+                                number: string;
+                                date: string;
+                                /** @enum {string} */
+                                type: "e_archive" | "e_invoice";
+                                /** @description KDV dahil tutar, kuruş */
+                                totalCents: number;
+                                vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                            };
+                            /** @description İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8 */
+                            cancelWindowEndsOn: string;
+                            /** @description Belge tutarı (KDV dahil), kuruş */
+                            amountCents: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description Belge asıl faturanın tamamından az mı (kısmi iade) */
+                            partial: boolean;
+                            note: string | null;
+                            /** @description Gönderilen iade faturasının numarası */
+                            documentNumber: string | null;
+                            /** @description Sonucun işlendiği gün */
+                            completedDate: string | null;
+                            createdAt: string;
+                            readyAt: string | null;
+                            completedAt: string | null;
+                            /** @description Oturumdaki kullanıcının yapabilecekleri */
+                            actions: {
+                                ready: boolean;
+                                complete: boolean;
+                                discard: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getRefundInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                refundInvoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin dayandığı ayrılış iadesi */
+                            withdrawalId: string;
+                            studentName: string | null;
+                            /** @description Ayrılış günü `YYYY-MM-DD` */
+                            withdrawalDate: string;
+                            /** @description İade tutarı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin ödendiği gün */
+                            refundPaidDate: string | null;
+                            /**
+                             * @description `cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)
+                             * @enum {string}
+                             */
+                            kind: "cancellation" | "return_invoice";
+                            /**
+                             * @description `draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)
+                             * @enum {string}
+                             */
+                            status: "draft" | "ready" | "sent" | "cancelled";
+                            /** @description Kampüs dışında kesilmiş asıl fatura; elle girilir */
+                            originalInvoice: {
+                                /** @description GİB numarası */
+                                number: string;
+                                date: string;
+                                /** @enum {string} */
+                                type: "e_archive" | "e_invoice";
+                                /** @description KDV dahil tutar, kuruş */
+                                totalCents: number;
+                                vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                            };
+                            /** @description İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8 */
+                            cancelWindowEndsOn: string;
+                            /** @description Belge tutarı (KDV dahil), kuruş */
+                            amountCents: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description Belge asıl faturanın tamamından az mı (kısmi iade) */
+                            partial: boolean;
+                            note: string | null;
+                            /** @description Gönderilen iade faturasının numarası */
+                            documentNumber: string | null;
+                            /** @description Sonucun işlendiği gün */
+                            completedDate: string | null;
+                            createdAt: string;
+                            readyAt: string | null;
+                            completedAt: string | null;
+                            /** @description Oturumdaki kullanıcının yapabilecekleri */
+                            actions: {
+                                ready: boolean;
+                                complete: boolean;
+                                discard: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    markRefundInvoiceReady: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                refundInvoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin dayandığı ayrılış iadesi */
+                            withdrawalId: string;
+                            studentName: string | null;
+                            /** @description Ayrılış günü `YYYY-MM-DD` */
+                            withdrawalDate: string;
+                            /** @description İade tutarı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin ödendiği gün */
+                            refundPaidDate: string | null;
+                            /**
+                             * @description `cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)
+                             * @enum {string}
+                             */
+                            kind: "cancellation" | "return_invoice";
+                            /**
+                             * @description `draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)
+                             * @enum {string}
+                             */
+                            status: "draft" | "ready" | "sent" | "cancelled";
+                            /** @description Kampüs dışında kesilmiş asıl fatura; elle girilir */
+                            originalInvoice: {
+                                /** @description GİB numarası */
+                                number: string;
+                                date: string;
+                                /** @enum {string} */
+                                type: "e_archive" | "e_invoice";
+                                /** @description KDV dahil tutar, kuruş */
+                                totalCents: number;
+                                vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                            };
+                            /** @description İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8 */
+                            cancelWindowEndsOn: string;
+                            /** @description Belge tutarı (KDV dahil), kuruş */
+                            amountCents: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description Belge asıl faturanın tamamından az mı (kısmi iade) */
+                            partial: boolean;
+                            note: string | null;
+                            /** @description Gönderilen iade faturasının numarası */
+                            documentNumber: string | null;
+                            /** @description Sonucun işlendiği gün */
+                            completedDate: string | null;
+                            createdAt: string;
+                            readyAt: string | null;
+                            completedAt: string | null;
+                            /** @description Oturumdaki kullanıcının yapabilecekleri */
+                            actions: {
+                                ready: boolean;
+                                complete: boolean;
+                                discard: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeRefundInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                refundInvoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    completedDate: string;
+                    documentNumber?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin dayandığı ayrılış iadesi */
+                            withdrawalId: string;
+                            studentName: string | null;
+                            /** @description Ayrılış günü `YYYY-MM-DD` */
+                            withdrawalDate: string;
+                            /** @description İade tutarı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin ödendiği gün */
+                            refundPaidDate: string | null;
+                            /**
+                             * @description `cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)
+                             * @enum {string}
+                             */
+                            kind: "cancellation" | "return_invoice";
+                            /**
+                             * @description `draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)
+                             * @enum {string}
+                             */
+                            status: "draft" | "ready" | "sent" | "cancelled";
+                            /** @description Kampüs dışında kesilmiş asıl fatura; elle girilir */
+                            originalInvoice: {
+                                /** @description GİB numarası */
+                                number: string;
+                                date: string;
+                                /** @enum {string} */
+                                type: "e_archive" | "e_invoice";
+                                /** @description KDV dahil tutar, kuruş */
+                                totalCents: number;
+                                vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                            };
+                            /** @description İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8 */
+                            cancelWindowEndsOn: string;
+                            /** @description Belge tutarı (KDV dahil), kuruş */
+                            amountCents: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description Belge asıl faturanın tamamından az mı (kısmi iade) */
+                            partial: boolean;
+                            note: string | null;
+                            /** @description Gönderilen iade faturasının numarası */
+                            documentNumber: string | null;
+                            /** @description Sonucun işlendiği gün */
+                            completedDate: string | null;
+                            createdAt: string;
+                            readyAt: string | null;
+                            completedAt: string | null;
+                            /** @description Oturumdaki kullanıcının yapabilecekleri */
+                            actions: {
+                                ready: boolean;
+                                complete: boolean;
+                                discard: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    discardRefundInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                refundInvoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin dayandığı ayrılış iadesi */
+                            withdrawalId: string;
+                            studentName: string | null;
+                            /** @description Ayrılış günü `YYYY-MM-DD` */
+                            withdrawalDate: string;
+                            /** @description İade tutarı, kuruş */
+                            refundCents: number;
+                            /** @description İadenin ödendiği gün */
+                            refundPaidDate: string | null;
+                            /**
+                             * @description `cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)
+                             * @enum {string}
+                             */
+                            kind: "cancellation" | "return_invoice";
+                            /**
+                             * @description `draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)
+                             * @enum {string}
+                             */
+                            status: "draft" | "ready" | "sent" | "cancelled";
+                            /** @description Kampüs dışında kesilmiş asıl fatura; elle girilir */
+                            originalInvoice: {
+                                /** @description GİB numarası */
+                                number: string;
+                                date: string;
+                                /** @enum {string} */
+                                type: "e_archive" | "e_invoice";
+                                /** @description KDV dahil tutar, kuruş */
+                                totalCents: number;
+                                vatRateBasisPoints: 0 | 100 | 1000 | 2000;
+                            };
+                            /** @description İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8 */
+                            cancelWindowEndsOn: string;
+                            /** @description Belge tutarı (KDV dahil), kuruş */
+                            amountCents: number;
+                            /** @description KDV hariç tutar, kuruş */
+                            netCents: number;
+                            /** @description KDV, kuruş */
+                            vatCents: number;
+                            /** @description Belge asıl faturanın tamamından az mı (kısmi iade) */
+                            partial: boolean;
+                            note: string | null;
+                            /** @description Gönderilen iade faturasının numarası */
+                            documentNumber: string | null;
+                            /** @description Sonucun işlendiği gün */
+                            completedDate: string | null;
+                            createdAt: string;
+                            readyAt: string | null;
+                            completedAt: string | null;
+                            /** @description Oturumdaki kullanıcının yapabilecekleri */
+                            actions: {
+                                ready: boolean;
+                                complete: boolean;
+                                discard: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

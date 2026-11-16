@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { parseAmountInput } from './payments.ts'
 
 /**
  * İade faturası ve iptal isteği (docs/domain/finans.md DOM-FIN-096; ON-266; IST-110, IST-112).
@@ -493,4 +494,70 @@ export function refundInvoicesCsv(rows: readonly RefundInvoiceCsvRow[]): string 
     ]),
   ]
   return lines.map((line) => line.join(CSV_SEPARATOR)).join('\r\n')
+}
+
+// --- Web formu ---------------------------------------------------------------------------------
+
+/** Formda belge türü: önerilen (sunucu seçer) ya da açık seçim. */
+export const REFUND_FORM_KINDS = ['suggested', ...REFUND_DOCUMENT_KINDS] as const
+const VAT_OPTIONS = ['0', '100', '1000', '2000'] as const
+const formAmount = (message: string) =>
+  z
+    .string()
+    .refine(
+      (value) => parseAmountInput(value, { maxCents: REFUND_INVOICE_AMOUNT_MAX }) !== null,
+      message,
+    )
+
+/** Taslak formu (web): tutarlar metindir, gönderimde kuruşa çevrilir (`refundInvoiceFormToInput`). */
+export const refundInvoiceFormSchema = z.object({
+  kind: z.enum(REFUND_FORM_KINDS),
+  originalNumber: invoiceNumberSchema,
+  originalDate: daySchema,
+  originalType: z.enum(ORIGINAL_INVOICE_TYPES, 'Asıl faturanın türünü seçin.'),
+  originalTotal: formAmount('Asıl fatura tutarını 1.234,56 biçiminde girin.'),
+  vatRate: z.enum(VAT_OPTIONS, 'KDV oranını seçin.'),
+  amount: formAmount('Belge tutarını 1.234,56 biçiminde girin.'),
+  note: z
+    .string()
+    .trim()
+    .max(REFUND_INVOICE_NOTE_MAX, `En fazla ${String(REFUND_INVOICE_NOTE_MAX)} karakter girin.`),
+})
+export type RefundInvoiceFormValues = z.input<typeof refundInvoiceFormSchema>
+
+/** Form değerlerini API gövdesine çevirir; şema geçtiyse tutarlar çözülür. */
+export function refundInvoiceFormToInput(
+  withdrawalId: string,
+  values: z.output<typeof refundInvoiceFormSchema>,
+): CreateRefundInvoiceInput {
+  const cents = (text: string) =>
+    parseAmountInput(text, { maxCents: REFUND_INVOICE_AMOUNT_MAX }) ?? 0
+  return {
+    withdrawalId,
+    ...(values.kind === 'suggested' ? {} : { kind: values.kind }),
+    originalInvoice: {
+      number: values.originalNumber,
+      date: values.originalDate,
+      type: values.originalType,
+      totalCents: cents(values.originalTotal),
+      vatRateBasisPoints: Number(values.vatRate) as RefundVatRate,
+    },
+    amountCents: cents(values.amount),
+    note: values.note === '' ? null : values.note,
+  }
+}
+
+/** Sunucu doğrulama yolunu (`originalInvoice.number`) form alanına çevirir. */
+export function refundInvoiceFormField(path: string): keyof RefundInvoiceFormValues | null {
+  const fields: Readonly<Record<string, keyof RefundInvoiceFormValues>> = {
+    kind: 'kind',
+    'originalInvoice.number': 'originalNumber',
+    'originalInvoice.date': 'originalDate',
+    'originalInvoice.type': 'originalType',
+    'originalInvoice.totalCents': 'originalTotal',
+    'originalInvoice.vatRateBasisPoints': 'vatRate',
+    amountCents: 'amount',
+    note: 'note',
+  }
+  return fields[path] ?? null
 }

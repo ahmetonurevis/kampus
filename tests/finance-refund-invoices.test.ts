@@ -10,6 +10,9 @@ import {
   planRefundInvoiceDiscard,
   planRefundInvoiceReady,
   refundInvoiceActions,
+  refundInvoiceFormField,
+  refundInvoiceFormSchema,
+  refundInvoiceFormToInput,
   refundInvoicesCsv,
   splitVat,
   suggestRefundDocumentKind,
@@ -338,4 +341,40 @@ test('DOM-FIN-096, K-294: CSV ayırıcı, ondalık virgül, oran ve formül kaç
       '""',
     ].join(';'),
   )
+})
+
+test('DOM-FIN-096: web formu tutarları kuruşa çevirir; önerilen tür gövdeye yazılmaz', () => {
+  const values = refundInvoiceFormSchema.parse({
+    kind: 'suggested',
+    originalNumber: 'kmp2026000000012',
+    originalDate: '2026-10-01',
+    originalType: 'e_archive',
+    originalTotal: '11.000,00',
+    vatRate: '1000',
+    amount: '5500,5',
+    note: '  ',
+  })
+  const body = refundInvoiceFormToInput(WITHDRAWAL_ID, values)
+  assert.deepEqual(body, {
+    withdrawalId: WITHDRAWAL_ID,
+    originalInvoice: { ...ORIGINAL },
+    amountCents: 550_050,
+    note: null,
+  })
+  assert.equal(createRefundInvoiceSchema.safeParse(body).success, true)
+  const chosen = refundInvoiceFormToInput(WITHDRAWAL_ID, {
+    ...values,
+    kind: 'return_invoice',
+    note: 'Not',
+  })
+  assert.equal(chosen.kind, 'return_invoice')
+  assert.equal(chosen.note, 'Not')
+  const parsed = refundInvoiceFormSchema.safeParse({ ...values, amount: '0', originalTotal: 'abc' })
+  assert.deepEqual(parsed.error?.issues.map((issue) => issue.path.join('.')).sort(), [
+    'amount',
+    'originalTotal',
+  ])
+  assert.equal(refundInvoiceFormField('originalInvoice.number'), 'originalNumber')
+  assert.equal(refundInvoiceFormField('amountCents'), 'amount')
+  assert.equal(refundInvoiceFormField('withdrawalId'), null)
 })

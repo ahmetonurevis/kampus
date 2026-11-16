@@ -121,6 +121,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/paid-activities/{activityId}/participants',
   'POST /api/v1/finance/paid-activity-participants/{participantId}/cancel',
   'POST /api/v1/finance/paid-activity-participants/{participantId}/pay-refund',
+  // Personel belgesi yıl bazlı numara keser; çift tıklama ikinci belge açmaz
+  // (routes/finance-staff-certificates.ts; DOM-FIN-106).
+  'POST /api/v1/finance/staff-certificates',
 ]
 // Onur: kayıt ve finans sonu
 

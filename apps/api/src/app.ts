@@ -81,6 +81,7 @@ import { registerFinanceSupplierLedgerRoutes } from './routes/finance-supplier-l
 import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requests.ts'
 import { registerFinanceStakeholderRoutes } from './routes/finance-stakeholders.ts'
+import { registerFinanceStaffCertificateRoutes } from './routes/finance-staff-certificates.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -546,6 +547,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceStakeholderRoutes(app)
   registerFinancePayRateRoutes(app)
   registerFinancePaidActivityRoutes(app)
+  registerFinanceStaffCertificateRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

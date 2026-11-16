@@ -7372,6 +7372,226 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/donation-campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bağış kampanyalarını listele
+         * @description Açık kampanyalar önce, sonra taslak ve kapananlar; toplanan nakdi bağış, ayni bağış değeri ve hedefe göre ilerlemeyle (DOM-FIN-097). `q` adda arar, `status` süzer. Rol: `yonetici`.
+         */
+        get: operations["listDonationCampaigns"];
+        put?: never;
+        /**
+         * Bağış kampanyası aç (taslak)
+         * @description Ad, amaç, hedef (kuruş), başlangıç ve bitiş günü, isteğe bağlı banka hesabı. Kampanya taslak açılır; bağış açıldıktan sonra yazılır (K-296). Aynı ad 409 `donation_campaign_exists`; olmayan ya da başka kurumun hesabı 404. Rol: `yonetici`.
+         */
+        post: operations["createDonationCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donation-campaigns/{campaignId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bağış kampanyası
+         * @description Kampanya, toplamlar ve ilerleme. Olmayan ya da başka kurumun kampanyası 404. Rol: `yonetici`.
+         */
+        get: operations["getDonationCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bağış kampanyasını düzelt
+         * @description Taslakta ve açıkken; kapanmış kampanya 422 `donation_campaign_closed`. Günler geçerli bağışların günlerini kapsamalıdır (422 `donation_campaign_dates_conflict`). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici`.
+         */
+        patch: operations["updateDonationCampaign"];
+        trace?: never;
+    };
+    "/api/v1/finance/donation-campaigns/{campaignId}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bağış kampanyasını aç
+         * @description Taslak açılır ve bağış almaya başlar; taslak olmayan 409 `donation_campaign_not_draft`, bitiş günü geçmişse 422 `donation_campaign_ended`. `If-Match` zorunlu (K-296). Rol: `yonetici`.
+         */
+        post: operations["openDonationCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donation-campaigns/{campaignId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bağış kampanyasını kapat
+         * @description Açık kampanya kapanır; kapanana bağış yazılmaz, geri açılmaz. Açık olmayan 409 `donation_campaign_not_open`. Bağış iptali kapandıktan sonra da yapılır. `If-Match` zorunlu (K-296). Rol: `yonetici`.
+         */
+        post: operations["closeDonationCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donation-campaigns/{campaignId}/donations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kampanyanın bağışları
+         * @description Makbuz numarasına göre en yeni önce, iptal edilenler dahil; kimlik numarası maskeli (K-298). `Accept: text/csv` ile bütün döküm iner (sayfalama yok): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, son satır geçerli nakdi toplam; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.donation_export`. Rol: `yonetici`.
+         */
+        get: operations["listCampaignDonations"];
+        put?: never;
+        /**
+         * Bağış kaydet ve makbuz kes
+         * @description Elle girilen bağış: `donorId` (anonimde `null`), tür (`cash` nakdi: tutar ve yöntem `cash`/`bank_transfer`/`card_slip`; `in_kind` ayni: açıklama, isteğe bağlı beyan edilen değer), gün. Havalede banka hesabı verilmezse kampanyanınki; ikisi de yoksa 422 `donation_bank_account_required`. Taslak ya da kapanmış kampanya 422 `donation_campaign_not_open`, gelecek gün 422 `donation_date_future`, kampanya günleri dışı 422 `donation_date_outside_campaign`; olmayan ya da başka kurumun bağışçısı, hesabı 404. Makbuz numarası yılın sıradaki numarasıdır (K-297); vergi ibaresi ayar açıksa ve bağış anonim değilse kopyalanır (K-299). `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["recordDonation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donations/{donationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bağışı ve makbuzunu iptal et
+         * @description Gerekçeyle (5–500 karakter); silinmez, makbuz numarası yeniden kullanılmaz, makbuz "İptal edildi" ibaresiyle kalır (K-297). İptal edilmiş bağış 409 `donation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.
+         */
+        post: operations["cancelDonation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donations/{donationId}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bağış makbuzu verisi
+         * @description Makbuz PDF'inin verisi: bağışçının tam kimlik numarası, kampanya ve kopyalanmış vergi ibaresi. Okuma denetime yazılır (`finance.donation_receipt`, K-298). Olmayan ya da başka kurumun bağışı 404. Rol: `yonetici`.
+         */
+        get: operations["getDonationReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bağışçıları listele
+         * @description Ada göre; kimlik numarası maskeli (K-298). Rol: `yonetici`.
+         */
+        get: operations["listDonors"];
+        put?: never;
+        /**
+         * Bağışçı kaydet
+         * @description Kişi ya da kurum; ad zorunlu, kimlik numarası (kişide TCKN, kurumda VKN), telefon, e-posta, adres ve veli/mezun bağı isteğe bağlı (K-298). Kimlik numarası kurumda tekil (409 `donor_identity_exists`); olmayan ya da başka kurumun öğrencisi 404. Rol: `yonetici`.
+         */
+        post: operations["createDonor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/donors/{donorId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bağışçıyı düzelt
+         * @description Tür değişmez; `null` isteğe bağlı alanı temizler. Kesilmiş makbuzlar değişmez (bağışçı bilgisi makbuza kopyalanmıştır). Kimlik numarası türe uymazsa 422 `donor_identity_invalid`. `If-Match` zorunlu. Rol: `yonetici`.
+         */
+        patch: operations["updateDonor"];
+        trace?: never;
+    };
+    "/api/v1/finance/donation-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bağış ayarı
+         * @description Makbuza vergi indirimi ibaresi yazılıp yazılmayacağı ve metni; varsayılan kapalı (K-299). Rol: `yonetici`.
+         */
+        get: operations["getDonationSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Vergi indirimi ibaresini ayarla
+         * @description İbare açıkken metin (20–600 karakter) zorunlu. Yalnız bundan sonra kesilen makbuzları etkiler. GVK md. 89 / KVK md. 10 kapsamı kurumun mali müşavirince doğrulanmalıdır (H-37). `If-Match` (ayar hiç değişmediyse 1) zorunlu. Rol: `yonetici`.
+         */
+        patch: operations["setDonationSettings"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -78369,6 +78589,2019 @@ export interface operations {
                                     afterCents: number | null;
                                 }[] | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDonationCampaigns: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kampanya adında arama */
+                q?: string;
+                /** @description Durum süzgeci */
+                status?: "draft" | "open" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            purpose: string;
+                            /** @description Hedef tutar */
+                            targetCents: number;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startsOn: string;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endsOn: string;
+                            bankAccountId: string | null;
+                            /** @description Banka adı ve IBAN son dört hanesi */
+                            bankAccountLabel: string | null;
+                            /**
+                             * @description `draft`, `open`, `closed` (K-296)
+                             * @enum {string}
+                             */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli nakdi bağışların toplamı (ilerleme tabanı) */
+                            collectedCents: number;
+                            /** @description Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz */
+                            inKindDeclaredCents: number;
+                            /** @description Geçerli bağış sayısı (nakdi ve ayni) */
+                            donationCount: number;
+                            /** @description Geçerli ayni bağış sayısı */
+                            inKindCount: number;
+                            /** @description Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir) */
+                            percent: number;
+                            /** @description Hedefe kalan; aşılınca 0 */
+                            remainingCents: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDonationCampaign: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    purpose: string;
+                    targetCents: number;
+                    startsOn: string;
+                    endsOn: string;
+                    bankAccountId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            purpose: string;
+                            /** @description Hedef tutar */
+                            targetCents: number;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startsOn: string;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endsOn: string;
+                            bankAccountId: string | null;
+                            /** @description Banka adı ve IBAN son dört hanesi */
+                            bankAccountLabel: string | null;
+                            /**
+                             * @description `draft`, `open`, `closed` (K-296)
+                             * @enum {string}
+                             */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli nakdi bağışların toplamı (ilerleme tabanı) */
+                            collectedCents: number;
+                            /** @description Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz */
+                            inKindDeclaredCents: number;
+                            /** @description Geçerli bağış sayısı (nakdi ve ayni) */
+                            donationCount: number;
+                            /** @description Geçerli ayni bağış sayısı */
+                            inKindCount: number;
+                            /** @description Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir) */
+                            percent: number;
+                            /** @description Hedefe kalan; aşılınca 0 */
+                            remainingCents: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDonationCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            purpose: string;
+                            /** @description Hedef tutar */
+                            targetCents: number;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startsOn: string;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endsOn: string;
+                            bankAccountId: string | null;
+                            /** @description Banka adı ve IBAN son dört hanesi */
+                            bankAccountLabel: string | null;
+                            /**
+                             * @description `draft`, `open`, `closed` (K-296)
+                             * @enum {string}
+                             */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli nakdi bağışların toplamı (ilerleme tabanı) */
+                            collectedCents: number;
+                            /** @description Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz */
+                            inKindDeclaredCents: number;
+                            /** @description Geçerli bağış sayısı (nakdi ve ayni) */
+                            donationCount: number;
+                            /** @description Geçerli ayni bağış sayısı */
+                            inKindCount: number;
+                            /** @description Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir) */
+                            percent: number;
+                            /** @description Hedefe kalan; aşılınca 0 */
+                            remainingCents: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateDonationCampaign: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    purpose?: string;
+                    targetCents?: number;
+                    startsOn?: string;
+                    endsOn?: string;
+                    bankAccountId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            purpose: string;
+                            /** @description Hedef tutar */
+                            targetCents: number;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startsOn: string;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endsOn: string;
+                            bankAccountId: string | null;
+                            /** @description Banka adı ve IBAN son dört hanesi */
+                            bankAccountLabel: string | null;
+                            /**
+                             * @description `draft`, `open`, `closed` (K-296)
+                             * @enum {string}
+                             */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli nakdi bağışların toplamı (ilerleme tabanı) */
+                            collectedCents: number;
+                            /** @description Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz */
+                            inKindDeclaredCents: number;
+                            /** @description Geçerli bağış sayısı (nakdi ve ayni) */
+                            donationCount: number;
+                            /** @description Geçerli ayni bağış sayısı */
+                            inKindCount: number;
+                            /** @description Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir) */
+                            percent: number;
+                            /** @description Hedefe kalan; aşılınca 0 */
+                            remainingCents: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openDonationCampaign: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            purpose: string;
+                            /** @description Hedef tutar */
+                            targetCents: number;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startsOn: string;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endsOn: string;
+                            bankAccountId: string | null;
+                            /** @description Banka adı ve IBAN son dört hanesi */
+                            bankAccountLabel: string | null;
+                            /**
+                             * @description `draft`, `open`, `closed` (K-296)
+                             * @enum {string}
+                             */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli nakdi bağışların toplamı (ilerleme tabanı) */
+                            collectedCents: number;
+                            /** @description Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz */
+                            inKindDeclaredCents: number;
+                            /** @description Geçerli bağış sayısı (nakdi ve ayni) */
+                            donationCount: number;
+                            /** @description Geçerli ayni bağış sayısı */
+                            inKindCount: number;
+                            /** @description Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir) */
+                            percent: number;
+                            /** @description Hedefe kalan; aşılınca 0 */
+                            remainingCents: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeDonationCampaign: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            purpose: string;
+                            /** @description Hedef tutar */
+                            targetCents: number;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startsOn: string;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endsOn: string;
+                            bankAccountId: string | null;
+                            /** @description Banka adı ve IBAN son dört hanesi */
+                            bankAccountLabel: string | null;
+                            /**
+                             * @description `draft`, `open`, `closed` (K-296)
+                             * @enum {string}
+                             */
+                            status: "draft" | "open" | "closed";
+                            openedAt: string | null;
+                            closedAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli nakdi bağışların toplamı (ilerleme tabanı) */
+                            collectedCents: number;
+                            /** @description Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz */
+                            inKindDeclaredCents: number;
+                            /** @description Geçerli bağış sayısı (nakdi ve ayni) */
+                            donationCount: number;
+                            /** @description Geçerli ayni bağış sayısı */
+                            inKindCount: number;
+                            /** @description Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir) */
+                            percent: number;
+                            /** @description Hedefe kalan; aşılınca 0 */
+                            remainingCents: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCampaignDonations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            campaignId: string;
+                            /** @description Anonim bağışta boş */
+                            donorId: string | null;
+                            donorKind: ("person" | "organization") | null;
+                            /** @description Makbuz anındaki bağışçı adı; anonimde boş */
+                            donorName: string | null;
+                            maskedIdentityNumber: string | null;
+                            /**
+                             * @description `cash` nakdi, `in_kind` ayni (K-297)
+                             * @enum {string}
+                             */
+                            kind: "cash" | "in_kind";
+                            amountCents: number | null;
+                            method: ("cash" | "bank_transfer" | "card_slip") | null;
+                            bankAccountId: string | null;
+                            bankAccountLabel: string | null;
+                            /** @description Dekont ya da slip numarası */
+                            reference: string | null;
+                            /** @description Ayni bağış açıklaması */
+                            description: string | null;
+                            declaredValueCents: number | null;
+                            /** @description Bağış günü (YYYY-MM-DD) */
+                            donatedOn: string;
+                            note: string | null;
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık makbuz numarası */
+                            receiptNumber: number;
+                            /** @description Makbuzda vergi indirimi ibaresi var mı */
+                            hasTaxNotice: boolean;
+                            /** @description Kayıt (makbuz düzenleme) anı */
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordDonation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    donorId: string | null;
+                    /** @enum {string} */
+                    kind: "cash" | "in_kind";
+                    donatedOn: string;
+                    amountCents?: number;
+                    /** @enum {string} */
+                    method?: "cash" | "bank_transfer" | "card_slip";
+                    /** Format: uuid */
+                    bankAccountId?: string;
+                    reference?: string | null;
+                    description?: string | null;
+                    declaredValueCents?: number;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            campaignId: string;
+                            /** @description Anonim bağışta boş */
+                            donorId: string | null;
+                            donorKind: ("person" | "organization") | null;
+                            /** @description Makbuz anındaki bağışçı adı; anonimde boş */
+                            donorName: string | null;
+                            maskedIdentityNumber: string | null;
+                            /**
+                             * @description `cash` nakdi, `in_kind` ayni (K-297)
+                             * @enum {string}
+                             */
+                            kind: "cash" | "in_kind";
+                            amountCents: number | null;
+                            method: ("cash" | "bank_transfer" | "card_slip") | null;
+                            bankAccountId: string | null;
+                            bankAccountLabel: string | null;
+                            /** @description Dekont ya da slip numarası */
+                            reference: string | null;
+                            /** @description Ayni bağış açıklaması */
+                            description: string | null;
+                            declaredValueCents: number | null;
+                            /** @description Bağış günü (YYYY-MM-DD) */
+                            donatedOn: string;
+                            note: string | null;
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık makbuz numarası */
+                            receiptNumber: number;
+                            /** @description Makbuzda vergi indirimi ibaresi var mı */
+                            hasTaxNotice: boolean;
+                            /** @description Kayıt (makbuz düzenleme) anı */
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelDonation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                donationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            campaignId: string;
+                            /** @description Anonim bağışta boş */
+                            donorId: string | null;
+                            donorKind: ("person" | "organization") | null;
+                            /** @description Makbuz anındaki bağışçı adı; anonimde boş */
+                            donorName: string | null;
+                            maskedIdentityNumber: string | null;
+                            /**
+                             * @description `cash` nakdi, `in_kind` ayni (K-297)
+                             * @enum {string}
+                             */
+                            kind: "cash" | "in_kind";
+                            amountCents: number | null;
+                            method: ("cash" | "bank_transfer" | "card_slip") | null;
+                            bankAccountId: string | null;
+                            bankAccountLabel: string | null;
+                            /** @description Dekont ya da slip numarası */
+                            reference: string | null;
+                            /** @description Ayni bağış açıklaması */
+                            description: string | null;
+                            declaredValueCents: number | null;
+                            /** @description Bağış günü (YYYY-MM-DD) */
+                            donatedOn: string;
+                            note: string | null;
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık makbuz numarası */
+                            receiptNumber: number;
+                            /** @description Makbuzda vergi indirimi ibaresi var mı */
+                            hasTaxNotice: boolean;
+                            /** @description Kayıt (makbuz düzenleme) anı */
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDonationReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            campaignId: string;
+                            /** @description Anonim bağışta boş */
+                            donorId: string | null;
+                            donorKind: ("person" | "organization") | null;
+                            /** @description Makbuz anındaki bağışçı adı; anonimde boş */
+                            donorName: string | null;
+                            maskedIdentityNumber: string | null;
+                            /**
+                             * @description `cash` nakdi, `in_kind` ayni (K-297)
+                             * @enum {string}
+                             */
+                            kind: "cash" | "in_kind";
+                            amountCents: number | null;
+                            method: ("cash" | "bank_transfer" | "card_slip") | null;
+                            bankAccountId: string | null;
+                            bankAccountLabel: string | null;
+                            /** @description Dekont ya da slip numarası */
+                            reference: string | null;
+                            /** @description Ayni bağış açıklaması */
+                            description: string | null;
+                            declaredValueCents: number | null;
+                            /** @description Bağış günü (YYYY-MM-DD) */
+                            donatedOn: string;
+                            note: string | null;
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık makbuz numarası */
+                            receiptNumber: number;
+                            /** @description Makbuzda vergi indirimi ibaresi var mı */
+                            hasTaxNotice: boolean;
+                            /** @description Kayıt (makbuz düzenleme) anı */
+                            createdAt: string;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                            /** @description Makbuz anındaki bağışçının tam TCKN/VKN; okuma denetime yazılır */
+                            identityNumber: string | null;
+                            /** @description Makbuza kopyalanmış vergi indirimi ibaresi */
+                            taxNotice: string | null;
+                            campaign: {
+                                id: string;
+                                name: string;
+                                purpose: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDonors: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Adda arama; dört hane kimlik numarasının son haneleriyle, tam numara tam eşleşir */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "person" | "organization";
+                            name: string;
+                            /** @description Son dört hane dışında maskeli TCKN/VKN; tam değer yalnız makbuz ucunda (K-298) */
+                            maskedIdentityNumber: string | null;
+                            phone: string | null;
+                            email: string | null;
+                            address: string | null;
+                            /** @description Veli ya da mezun bağı (isteğe bağlı) */
+                            link: {
+                                studentId: string;
+                                /** @enum {string} */
+                                relation: "parent" | "alumnus";
+                                studentName: string | null;
+                            } | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDonor: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "person" | "organization";
+                    name: string;
+                    identityNumber?: string | null;
+                    phone?: string | null;
+                    email?: string | null;
+                    address?: string | null;
+                    link?: {
+                        studentId: string;
+                        /** @enum {string} */
+                        relation: "parent" | "alumnus";
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "person" | "organization";
+                            name: string;
+                            /** @description Son dört hane dışında maskeli TCKN/VKN; tam değer yalnız makbuz ucunda (K-298) */
+                            maskedIdentityNumber: string | null;
+                            phone: string | null;
+                            email: string | null;
+                            address: string | null;
+                            /** @description Veli ya da mezun bağı (isteğe bağlı) */
+                            link: {
+                                studentId: string;
+                                /** @enum {string} */
+                                relation: "parent" | "alumnus";
+                                studentName: string | null;
+                            } | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateDonor: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                donorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    identityNumber?: string | null;
+                    phone?: string | null;
+                    email?: string | null;
+                    address?: string | null;
+                    link?: {
+                        studentId: string;
+                        /** @enum {string} */
+                        relation: "parent" | "alumnus";
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "person" | "organization";
+                            name: string;
+                            /** @description Son dört hane dışında maskeli TCKN/VKN; tam değer yalnız makbuz ucunda (K-298) */
+                            maskedIdentityNumber: string | null;
+                            phone: string | null;
+                            email: string | null;
+                            address: string | null;
+                            /** @description Veli ya da mezun bağı (isteğe bağlı) */
+                            link: {
+                                studentId: string;
+                                /** @enum {string} */
+                                relation: "parent" | "alumnus";
+                                studentName: string | null;
+                            } | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDonationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            taxNoticeEnabled: boolean;
+                            taxNoticeText: string | null;
+                            /** @description `If-Match` için ayar sürümü; ayar hiç değişmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setDonationSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    taxNoticeEnabled: boolean;
+                    taxNoticeText: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            taxNoticeEnabled: boolean;
+                            taxNoticeText: string | null;
+                            /** @description `If-Match` için ayar sürümü; ayar hiç değişmediyse 1 */
+                            version: number;
                         };
                     };
                 };

@@ -48,6 +48,7 @@ import { registerFinanceFixedAssetCountRoutes } from './routes/finance-fixed-ass
 import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.ts'
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceFreeTuitionRoutes } from './routes/finance-free-tuition.ts'
+import { registerFinanceDonationRoutes } from './routes/finance-donations.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
@@ -175,6 +176,12 @@ export const REDACTED_PATHS = [
   // (DOM-FIN-070); IBAN yukarıda `iban`. Talep gerekçesi serbest metindir (DOM-FIN-071).
   'taxNumber',
   '*.taxNumber',
+  // kvkk: K — bağış makbuzuna kopyalanan bağışçı adı ve kimlik numarası (DOM-FIN-097); bağışçı
+  // kaydının kimlik numarası, iletişimi ve adresi `identityNumber`, `phone`, `email`, `address`.
+  'donorName',
+  '*.donorName',
+  'donorIdentityNumber',
+  '*.donorIdentityNumber',
   'contactName',
   '*.contactName',
   'contactPhone',
@@ -528,6 +535,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePurchaseApprovalRoutes(app)
   registerFinanceMaintenancePlanRoutes(app)
   registerFinanceBudgetDraftRoutes(app)
+  registerFinanceDonationRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 
